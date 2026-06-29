@@ -104,16 +104,21 @@ function Landing() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companions")
-        .select("id, name, age, ethnicity, short_bio, image_url")
+        .select("id, name, age, ethnicity, short_bio, image_url, gender, orientation")
         .order("sort_order");
       if (error) throw error;
       return data as Companion[];
     },
   });
 
-  const [activeCat, setActiveCat] = useState("For you");
+  const [activeCat, setActiveCat] = useState<Cat>("For you");
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
+
+  const filtered = useMemo(
+    () => (companions ?? []).filter(c => matchesCategory(c, activeCat)),
+    [companions, activeCat]
+  );
 
   return (
     <div className="min-h-screen overflow-x-hidden pb-24">

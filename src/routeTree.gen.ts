@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MeRouteImport } from './routes/me'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as CreditsRouteImport } from './routes/credits'
+import { Route as CreateRouteImport } from './routes/create'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,9 +25,19 @@ const MeRoute = MeRouteImport.update({
   path: '/me',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreditsRoute = CreditsRouteImport.update({
   id: '/credits',
   path: '/credits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateRoute = CreateRouteImport.update({
+  id: '/create',
+  path: '/create',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrowseRoute = BrowseRouteImport.update({
@@ -63,7 +75,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
+  '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -73,7 +87,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
+  '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -84,7 +100,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
+  '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -96,7 +114,9 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/browse'
+    | '/create'
     | '/credits'
+    | '/gallery'
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -106,7 +126,9 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/browse'
+    | '/create'
     | '/credits'
+    | '/gallery'
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -116,7 +138,9 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/browse'
+    | '/create'
     | '/credits'
+    | '/gallery'
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -127,7 +151,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
+  CreateRoute: typeof CreateRoute
   CreditsRoute: typeof CreditsRoute
+  GalleryRoute: typeof GalleryRoute
   MeRoute: typeof MeRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
@@ -143,11 +169,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/credits': {
       id: '/credits'
       path: '/credits'
       fullPath: '/credits'
       preLoaderRoute: typeof CreditsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create': {
+      id: '/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof CreateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/browse': {
@@ -199,7 +239,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
+  CreateRoute: CreateRoute,
   CreditsRoute: CreditsRoute,
+  GalleryRoute: GalleryRoute,
   MeRoute: MeRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,

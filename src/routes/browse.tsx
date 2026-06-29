@@ -18,6 +18,7 @@ function Browse() {
       const { data, error } = await supabase
         .from("companions")
         .select("id, name, ethnicity, age, image_url, short_bio")
+        .is("created_by", null)
         .order("sort_order");
       if (error) throw error;
       return data;

@@ -125,6 +125,7 @@ function Landing() {
       const { data, error } = await supabase
         .from("companions")
         .select("id, name, age, ethnicity, short_bio, image_url, gender, orientation")
+        .is("created_by", null)
         .order("sort_order");
       if (error) throw error;
       return data as Companion[];
@@ -373,10 +374,13 @@ function Nav() {
       </Link>
       <nav className="flex items-center gap-1">
         <Button asChild variant="ghost" className="rounded-full text-sm">
+          <Link to="/gallery">Gallery</Link>
+        </Button>
+        <Button asChild variant="ghost" className="rounded-full text-sm">
           <Link to="/browse">Browse</Link>
         </Button>
         <Button asChild className="rounded-full bg-grad-primary text-primary-foreground">
-          <Link to="/auth">Sign in</Link>
+          <Link to="/create"><Sparkles className="mr-1 h-4 w-4" /> Create AI</Link>
         </Button>
       </nav>
     </header>

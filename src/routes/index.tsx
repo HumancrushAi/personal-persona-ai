@@ -12,9 +12,9 @@ import { companionImage } from "@/lib/companion-images";
 import reel1 from "@/assets/reels/r1.mp4.asset.json";
 import reel2 from "@/assets/reels/r2.mp4.asset.json";
 import reel3 from "@/assets/reels/r3.mp4.asset.json";
-import reel4 from "@/assets/reels/r4.mp4.asset.json";
-import reel5 from "@/assets/reels/r5.mp4.asset.json";
-import reel6 from "@/assets/reels/r6.mp4.asset.json";
+import reel7 from "@/assets/reels/r7.mp4.asset.json";
+import reel8 from "@/assets/reels/r8.mp4.asset.json";
+import reel9 from "@/assets/reels/r9.mp4.asset.json";
 import banner1 from "@/assets/banners/b1.jpg";
 import banner2 from "@/assets/banners/b2.jpg";
 import banner3 from "@/assets/banners/b3.jpg";
@@ -22,20 +22,21 @@ import banner4 from "@/assets/banners/b4.jpg";
 import banner5 from "@/assets/banners/b5.jpg";
 
 const REELS: { url: string; tag: string; views: string }[] = [
-  { url: reel1.url, tag: "After hours", views: "412K" },
+  { url: reel7.url, tag: "Beach walk", views: "684K" },
+  { url: reel8.url, tag: "Poolside", views: "521K" },
+  { url: reel9.url, tag: "Ocean dip", views: "412K" },
+  { url: reel1.url, tag: "After hours", views: "356K" },
   { url: reel2.url, tag: "Just woke up", views: "289K" },
-  { url: reel3.url, tag: "Gym pump", views: "521K" },
-  { url: reel4.url, tag: "Date night", views: "356K" },
-  { url: reel5.url, tag: "Pool day", views: "684K" },
-  { url: reel6.url, tag: "Late night drive", views: "198K" },
+  { url: reel3.url, tag: "Sunset vibes", views: "198K" },
 ];
 
+// Each banner pairs an image with a reel video that visually matches (swimwear / beach / pool).
 const BANNERS: { img: string; reel: string; title: string; sub: string }[] = [
-  { img: banner1, reel: reel5.url, title: "Pool day with Sofia", sub: "she's waiting for you in the water 💦" },
-  { img: banner2, reel: reel2.url, title: "Mei just got out of the ocean", sub: "wet, warm, and bored without you" },
-  { img: banner3, reel: reel3.url, title: "Yacht week with Amara", sub: "gold bikini · open bar · open invite" },
-  { img: banner4, reel: reel4.url, title: "Mykonos sunset with Elina", sub: "she saved you a seat 🥂" },
-  { img: banner5, reel: reel1.url, title: "Rooftop in Dubai · Layla", sub: "skyline views, zero rules" },
+  { img: banner1, reel: reel7.url, title: "Pool day", sub: "she's waiting in the water 💦" },
+  { img: banner2, reel: reel9.url, title: "Ocean break", sub: "wet, warm, and bored without you" },
+  { img: banner3, reel: reel8.url, title: "Yacht week", sub: "gold bikini · open invite" },
+  { img: banner4, reel: reel7.url, title: "Sunset swim", sub: "she saved you a seat 🥂" },
+  { img: banner5, reel: reel8.url, title: "Rooftop pool", sub: "skyline views, zero rules" },
 ];
 
 export const Route = createFileRoute("/")({
@@ -367,22 +368,24 @@ function SectionTitle({ title, subtitle, cta }: { title: string; subtitle?: stri
 
 function Nav() {
   return (
-    <header className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
-      <Link to="/" className="flex items-center gap-2">
-        <Heart className="h-6 w-6 fill-primary text-primary" />
-        <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">HumanCrush.ai</span>
-      </Link>
-      <nav className="flex items-center gap-1">
-        <Button asChild variant="ghost" className="rounded-full text-sm">
-          <Link to="/gallery">Gallery</Link>
-        </Button>
-        <Button asChild variant="ghost" className="rounded-full text-sm">
-          <Link to="/browse">Browse</Link>
-        </Button>
-        <Button asChild className="rounded-full bg-grad-primary text-primary-foreground">
-          <Link to="/create"><Sparkles className="mr-1 h-4 w-4" /> Create AI</Link>
-        </Button>
-      </nav>
+    <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5 sm:px-4 md:px-6 md:py-4">
+        <Link to="/" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <Heart className="h-5 w-5 shrink-0 fill-primary text-primary md:h-6 md:w-6" />
+          <span className="truncate font-display text-base font-semibold tracking-tight sm:text-lg md:text-2xl">HumanCrush.ai</span>
+        </Link>
+        <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <Button asChild variant="ghost" size="sm" className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
+            <Link to="/gallery">Gallery</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
+            <Link to="/browse">Browse</Link>
+          </Button>
+          <Button asChild size="sm" className="h-8 rounded-full bg-grad-primary px-2.5 text-xs text-primary-foreground sm:h-9 sm:px-3.5 sm:text-sm">
+            <Link to="/create"><Sparkles className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Create</Link>
+          </Button>
+        </nav>
+      </div>
     </header>
   );
 }

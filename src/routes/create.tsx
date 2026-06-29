@@ -166,13 +166,13 @@ function VibeSwatch({ emoji, hue }: { emoji: string; hue: string }) {
 type Visual = { id: string; label: string; swatch: React.ReactNode };
 
 const BODIES: Visual[] = [
-  { id: "Slim",      label: "Slim",      swatch: <Silhouette w={14} /> },
-  { id: "Athletic",  label: "Athletic",  swatch: <Silhouette w={18} /> },
-  { id: "Curvy",     label: "Curvy",     swatch: <Silhouette w={22} hips /> },
-  { id: "Petite",    label: "Petite",    swatch: <Silhouette w={14} short /> },
-  { id: "Tall",      label: "Tall",      swatch: <Silhouette w={16} tall /> },
-  { id: "Thick",     label: "Thick",     swatch: <Silhouette w={24} hips /> },
-  { id: "Muscular",  label: "Muscular",  swatch: <Silhouette w={20} muscular /> },
+  { id: "Slim",      label: "Slim",      swatch: <PhotoSwatch src={bodySlim} alt="Slim" /> },
+  { id: "Athletic",  label: "Athletic",  swatch: <PhotoSwatch src={bodyAthletic} alt="Athletic" /> },
+  { id: "Curvy",     label: "Curvy",     swatch: <PhotoSwatch src={bodyCurvy} alt="Curvy" /> },
+  { id: "Petite",    label: "Petite",    swatch: <PhotoSwatch src={bodyPetite} alt="Petite" /> },
+  { id: "Tall",      label: "Tall",      swatch: <PhotoSwatch src={bodyTall} alt="Tall" /> },
+  { id: "Thick",     label: "Thick",     swatch: <PhotoSwatch src={bodyThick} alt="Thick" /> },
+  { id: "Muscular",  label: "Muscular",  swatch: <PhotoSwatch src={bodyMuscular} alt="Muscular" /> },
 ];
 
 const HAIRS: Visual[] = [

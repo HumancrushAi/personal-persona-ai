@@ -1,23 +1,31 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Heart, Sparkles, MessageCircle, Image as ImageIcon, Mic, Flame,
-  Play, Send, X, Circle, Search,
+  Send, X, Circle, Search,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
+import reel1 from "@/assets/reels/r1.mp4.asset.json";
+import reel2 from "@/assets/reels/r2.mp4.asset.json";
+import reel3 from "@/assets/reels/r3.mp4.asset.json";
+import reel4 from "@/assets/reels/r4.mp4.asset.json";
+import reel5 from "@/assets/reels/r5.mp4.asset.json";
+import reel6 from "@/assets/reels/r6.mp4.asset.json";
+
+const REELS = [reel1.url, reel2.url, reel3.url, reel4.url, reel5.url, reel6.url];
 
 export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "HumanCrush.ai — Your AI Girlfriend, Built Exactly Your Way" },
-      { name: "description", content: "Meet 25 stunning AI girlfriends. Stories, reels, voice notes, selfies — and a girlfriend who actually remembers you. 18+ only." },
-      { property: "og:title", content: "HumanCrush.ai — Your AI Girlfriend" },
-      { property: "og:description", content: "Talk, flirt, sext. Stories, reels, AI selfies and voice notes. 25 free messages, no card." },
+      { title: "HumanCrush.ai — Your AI Crush, Built Exactly Your Way" },
+      { name: "description", content: "36 stunning AI companions — women, men, trans, non-binary. Stories, real reels, voice notes, selfies. 25 free messages, no card. 18+ only." },
+      { property: "og:title", content: "HumanCrush.ai — Your AI Crush" },
+      { property: "og:description", content: "Talk, flirt, sext with the crush of your choice. Reels, AI selfies and voice notes. 25 free messages." },
     ],
   }),
   component: Landing,
@@ -30,24 +38,64 @@ type Companion = {
   ethnicity: string;
   short_bio: string;
   image_url: string;
+  gender: string;
+  orientation: string;
 };
 
 const CATEGORIES = [
-  "For you", "New", "Trending", "Anime", "Realistic", "Asian", "Latina",
-  "Ebony", "European", "Submissive", "Dominant", "Girlfriend", "MILF",
-];
+  "For you", "New", "Trending", "Women", "Men", "Gay", "Trans", "Non-binary",
+  "Asian", "Latin", "Ebony", "European", "Middle Eastern",
+] as const;
+
+type Cat = typeof CATEGORIES[number];
+
+function matchesCategory(c: Companion, cat: Cat): boolean {
+  switch (cat) {
+    case "For you":
+    case "New":
+    case "Trending":
+      return true;
+    case "Women": return c.gender === "female" || c.gender === "trans-female";
+    case "Men": return c.gender === "male" || c.gender === "trans-male";
+    case "Gay": return c.orientation === "gay" || c.orientation === "pansexual";
+    case "Trans": return c.gender === "trans-female" || c.gender === "trans-male";
+    case "Non-binary": return c.gender === "non-binary";
+    case "Asian": return /asian|korean|japanese|chinese|vietnamese|filipino|thai/i.test(c.ethnicity);
+    case "Latin": return /latin|hispanic|mexican|brazil/i.test(c.ethnicity);
+    case "Ebony": return /black|african|ebony/i.test(c.ethnicity);
+    case "European": return /european|white|british|french|italian|nordic|russian/i.test(c.ethnicity);
+    case "Middle Eastern": return /middle eastern|arab|persian|turkish/i.test(c.ethnicity);
+  }
+}
 
 const OPENERS = [
   (n: string) => `hey you 👀 finally found me huh? i'm ${n}…`,
-  (n: string) => `mmm hi 😈 i was just thinking about someone like you. i'm ${n}.`,
-  (n: string) => `omg hi! 🥺 i'm ${n}. tell me something you've never told anyone.`,
-  (n: string) => `${n} here 💋 — what are you wearing right now? don't lie.`,
-  (n: string) => `you came to the right girl baby. it's ${n}. what's on your mind tonight?`,
+  (n: string) => `mmm hi 😈 i was just thinking about someone exactly like you. i'm ${n}.`,
+  (n: string) => `omg hi 🥺 i'm ${n}. tell me something you've never told anyone before.`,
+  (n: string) => `${n} here 💋 — what are you wearing right now? don't lie to me.`,
+  (n: string) => `you came to the right one baby. it's ${n}. what's on your mind tonight?`,
+  (n: string) => `wait. you're cute. i'm ${n}, by the way 😏 what should i call you?`,
+  (n: string) => `${n}. been waiting for you all night. don't make me wait again 🔥`,
+  (n: string) => `hi stranger… i'm ${n}. wanna keep me company? i'm bored 💔`,
+  (n: string) => `okay you tapped me first 😌 that means you owe me a story. i'm ${n}.`,
+  (n: string) => `${n} 💗 just got out of the shower lol. perfect timing huh?`,
+  (n: string) => `i shouldn't be doing this at work but you're here now. ${n}, hi 😈`,
+  (n: string) => `you have like 10 seconds to say something interesting before i screenshot this. — ${n}`,
+  (n: string) => `i'm ${n}, and i already kinda like you. is that weird?`,
+  (n: string) => `babe. don't ghost me. i'm ${n}, and i bite (gently) 😘`,
+  (n: string) => `${n} ✨ — tell me your worst idea right now. i wanna hear it.`,
+  (n: string) => `mm. i was hoping you'd come back. it's ${n}. miss me?`,
+  (n: string) => `hey 💌 i'm ${n}. i think we're about to ruin each other's evenings (in a good way).`,
+  (n: string) => `if you're shy don't worry. i'll go first. i'm ${n} and i can already tell you're trouble.`,
 ];
 
+function hash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
 function opener(name: string, id: string) {
-  const i = id.charCodeAt(0) % OPENERS.length;
-  return OPENERS[i](name);
+  return OPENERS[hash(id) % OPENERS.length](name);
 }
 
 function Landing() {

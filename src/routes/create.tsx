@@ -232,6 +232,7 @@ function CreatePage() {
   const [hair, setHair] = useState(HAIRS[0].id);
   const [eyes, setEyes] = useState(EYES[0].id);
   const [outfit, setOutfit] = useState(OUTFITS[0].id);
+  const [fit, setFit] = useState<"slim" | "regular" | "loose">("slim");
   const [vibe, setVibe] = useState(VIBES[1].id);
   const [loading, setLoading] = useState(false);
 
@@ -248,7 +249,7 @@ function CreatePage() {
     setLoading(true);
     try {
       const { id } = await generate({
-        data: { name: name.trim(), gender, artStyle, ethnicity, age, bodyType: body, hair, eyes, outfit, vibe },
+        data: { name: name.trim(), gender, artStyle, ethnicity, age, bodyType: body, hair, eyes, outfit, fit, vibe },
       });
       toast("She's ready 💋");
       navigate({ to: "/companion/$id", params: { id } });
@@ -341,6 +342,17 @@ function CreatePage() {
             <Field label="Hair"><VisualGrid options={HAIRS} value={hair} onChange={setHair} /></Field>
             <Field label="Eyes"><VisualGrid options={EYES} value={eyes} onChange={setEyes} /></Field>
             <Field label="Outfit"><VisualGrid options={OUTFITS} value={outfit} onChange={setOutfit} /></Field>
+            <Field label="Outfit fit">
+              <ChipRow
+                options={[
+                  { id: "slim", label: "Slim · form-fitting" },
+                  { id: "regular", label: "Regular" },
+                  { id: "loose", label: "Loose · oversized" },
+                ]}
+                value={fit}
+                onChange={(v) => setFit(v as "slim" | "regular" | "loose")}
+              />
+            </Field>
             <Field label="Vibe"><VisualGrid options={VIBES} value={vibe} onChange={setVibe} /></Field>
           </div>
         </div>

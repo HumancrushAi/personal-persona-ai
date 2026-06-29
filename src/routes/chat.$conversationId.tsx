@@ -49,7 +49,7 @@ function ChatPage() {
     queryKey: ["conv-meta", conversationId],
     queryFn: async () => {
       const { data, error } = await supabase.from("conversations")
-        .select("id, personality_id, scenario, relationship_level, relationship_xp, user_personalities(nickname, companions(name, image_url))")
+        .select("id, personality_id, scenario, relationship_level, relationship_xp, user_personalities(nickname, companion_id, companions(name, image_url))")
         .eq("id", conversationId).maybeSingle();
       if (error) throw error;
       return data;

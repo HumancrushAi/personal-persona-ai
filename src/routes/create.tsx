@@ -6,7 +6,7 @@ import { generateCharacter } from "@/lib/characters.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Heart, Sparkles, Wand2, Loader2, ArrowLeft } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/create")({
   ssr: false,

@@ -80,11 +80,11 @@ function matchesCategory(c: Companion, cat: Cat): boolean {
     case "Gay": return c.orientation === "gay" || c.orientation === "pansexual";
     case "Trans": return c.gender === "trans-female" || c.gender === "trans-male";
     case "Non-binary": return c.gender === "non-binary";
-    case "Asian": return /asian|korean|japanese|chinese|vietnamese|filipino|thai/i.test(c.ethnicity);
-    case "Latin": return /latin|hispanic|mexican|brazil/i.test(c.ethnicity);
-    case "Ebony": return /black|african|ebony/i.test(c.ethnicity);
-    case "European": return /european|white|british|french|italian|nordic|russian/i.test(c.ethnicity);
-    case "Middle Eastern": return /middle eastern|arab|persian|turkish/i.test(c.ethnicity);
+    case "Asian": return /asian|korean|japanese|chinese|vietnamese|filipin|thai|indian|pakistani|hawaiian/i.test(c.ethnicity);
+    case "Latin": return /latin|hispanic|mexican|brazil|spanish/i.test(c.ethnicity);
+    case "Ebony": return /black|african|ebony|jamaican|ethiopian/i.test(c.ethnicity);
+    case "European": return /european|white|british|french|italian|nordic|russian|greek|australian|irish|german/i.test(c.ethnicity);
+    case "Middle Eastern": return /middle eastern|arab|persian|turkish|lebanese|egyptian|israeli|moroccan/i.test(c.ethnicity);
   }
 }
 

@@ -551,6 +551,8 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const n = BANNERS.length;
+  const touchStartX = useRef<number | null>(null);
+  const touchDeltaX = useRef(0);
 
   useEffect(() => {
     if (paused) return;
@@ -560,11 +562,31 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
 
   const go = (d: number) => setIdx((i) => (i + d + n) % n);
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+    setPaused(true);
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  };
+  const onTouchEnd = () => {
+    const dx = touchDeltaX.current;
+    touchStartX.current = null;
+    touchDeltaX.current = 0;
+    setPaused(false);
+    if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+  };
+
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-glow"
+      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-glow select-none"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
     >
       <div
         className="flex h-[260px] transition-transform duration-700 ease-out md:h-[420px]"
@@ -575,25 +597,25 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
             key={i}
             type="button"
             onClick={() => onPlay(b)}
-            className="relative block h-full shrink-0 text-left"
+            className="group relative block h-full shrink-0 text-left"
             style={{ width: `${100 / n}%` }}
             aria-label={`Play reel: ${b.title}`}
           >
             <img
               src={b.img}
               alt={b.title}
-              loading={i === 0 ? "eager" : "lazy"}
               width={1920}
               height={1024}
-              className="h-full w-full object-cover"
+              draggable={false}
+              className="pointer-events-none h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <span className="grid h-16 w-16 place-items-center rounded-full bg-white/15 backdrop-blur-md ring-1 ring-white/40 transition group-hover:scale-110 md:h-20 md:w-20">
                 <Play className="ml-1 h-7 w-7 fill-white text-white md:h-9 md:w-9" />
               </span>
             </div>
-            <div className="absolute inset-x-0 bottom-0 p-5 md:p-7">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 md:p-7">
               <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live reel
               </span>
@@ -608,26 +630,26 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
 
       {/* arrows */}
       <button
-        onClick={() => go(-1)}
+        onClick={(e) => { e.stopPropagation(); go(-1); }}
         aria-label="Previous"
-        className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65 md:left-4"
+        className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white backdrop-blur hover:bg-black/75 md:left-4"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
       <button
-        onClick={() => go(1)}
+        onClick={(e) => { e.stopPropagation(); go(1); }}
         aria-label="Next"
-        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65 md:right-4"
+        className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white backdrop-blur hover:bg-black/75 md:right-4"
       >
         <ChevronRight className="h-5 w-5" />
       </button>
 
       {/* dots */}
-      <div className="absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
+      <div className="absolute inset-x-0 bottom-2 z-10 flex justify-center gap-1.5">
         {BANNERS.map((_, i) => (
           <button
             key={i}
-            onClick={() => setIdx(i)}
+            onClick={(e) => { e.stopPropagation(); setIdx(i); }}
             aria-label={`Slide ${i + 1}`}
             className={`h-1.5 rounded-full transition-all ${
               i === idx ? "w-6 bg-white" : "w-1.5 bg-white/50 hover:bg-white/80"
@@ -638,6 +660,7 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
     </div>
   );
 }
+
 
 /* ---------- Reel Player Modal ---------- */
 function ReelPlayer({ url, title, onClose }: { url: string; title: string; onClose: () => void; onChat: () => void }) {

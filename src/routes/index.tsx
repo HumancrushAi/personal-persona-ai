@@ -347,6 +347,7 @@ function Landing() {
         />
       )}
       {tease && <TeaseChat companion={tease} onClose={() => setTease(null)} />}
+      {playReel && <ReelPlayer url={playReel.url} title={playReel.title} onClose={() => setPlayReel(null)} onChat={() => { setPlayReel(null); }} />}
     </div>
   );
 }

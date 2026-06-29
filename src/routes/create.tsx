@@ -249,7 +249,7 @@ function CreatePage() {
     setLoading(true);
     try {
       const { id } = await generate({
-        data: { name: name.trim(), gender, artStyle, ethnicity, age, bodyType: body, hair, eyes, outfit, vibe },
+        data: { name: name.trim(), gender, artStyle, ethnicity, age, bodyType: body, hair, eyes, outfit, fit, vibe },
       });
       toast("She's ready 💋");
       navigate({ to: "/companion/$id", params: { id } });

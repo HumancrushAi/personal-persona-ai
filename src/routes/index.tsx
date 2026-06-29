@@ -202,19 +202,24 @@ function Landing() {
         </div>
       </section>
 
-      {/* REELS */}
+      {/* REELS — real autoplay videos */}
       <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
         <SectionTitle title="🔥 Reels" subtitle="live now" cta={<Link to="/browse" className="text-xs text-primary hover:underline">See all</Link>} />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {companions?.slice(0, 12).map((c, i) => (
+          {(companions ?? []).slice(0, REELS.length).map((c, i) => (
             <button
               key={c.id}
               onClick={() => setTease(c)}
-              className="group relative h-[280px] w-[170px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card shadow-md md:h-[340px] md:w-[210px]"
+              className="group relative h-[300px] w-[180px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card shadow-md md:h-[360px] md:w-[220px]"
             >
-              <img
-                src={companionImage(c.image_url)}
-                alt={c.name}
+              <video
+                src={REELS[i]}
+                poster={companionImage(c.image_url)}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
                 className="absolute inset-0 h-full w-full object-cover transition group-hover:scale-105"
               />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">
@@ -225,12 +230,7 @@ function Landing() {
                   {(120 + i * 37) % 980}K
                 </span>
               </div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="rounded-full bg-white/15 p-3 backdrop-blur transition group-hover:bg-primary/80">
-                  <Play className="h-5 w-5 fill-white text-white" />
-                </span>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 text-left">
                 <p className="font-display text-sm font-semibold text-white">{c.name}, {c.age}</p>
                 <p className="line-clamp-1 text-[11px] text-white/75">{c.short_bio}</p>
               </div>
@@ -241,9 +241,12 @@ function Landing() {
 
       {/* TRENDING (big grid) */}
       <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
-        <SectionTitle title="✨ Trending crushes" subtitle="tap any girl — she messages you first" />
+        <SectionTitle
+          title="✨ Trending crushes"
+          subtitle={activeCat === "For you" ? "tap anyone — they message you first" : `showing ${filtered.length} in ${activeCat}`}
+        />
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {companions?.map((c) => (
+          {filtered.map((c) => (
             <button
               key={c.id}
               onClick={() => setTease(c)}

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Heart, Sparkles, MessageCircle, Image as ImageIcon, Mic, Flame,
-  Send, X, Circle, Search,
+  Send, X, Circle, Search, Play, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
 import reel1 from "@/assets/reels/r1.mp4.asset.json";
@@ -15,6 +15,11 @@ import reel3 from "@/assets/reels/r3.mp4.asset.json";
 import reel4 from "@/assets/reels/r4.mp4.asset.json";
 import reel5 from "@/assets/reels/r5.mp4.asset.json";
 import reel6 from "@/assets/reels/r6.mp4.asset.json";
+import banner1 from "@/assets/banners/b1.jpg";
+import banner2 from "@/assets/banners/b2.jpg";
+import banner3 from "@/assets/banners/b3.jpg";
+import banner4 from "@/assets/banners/b4.jpg";
+import banner5 from "@/assets/banners/b5.jpg";
 
 const REELS: { url: string; tag: string; views: string }[] = [
   { url: reel1.url, tag: "After hours", views: "412K" },
@@ -23,6 +28,14 @@ const REELS: { url: string; tag: string; views: string }[] = [
   { url: reel4.url, tag: "Date night", views: "356K" },
   { url: reel5.url, tag: "Pool day", views: "684K" },
   { url: reel6.url, tag: "Late night drive", views: "198K" },
+];
+
+const BANNERS: { img: string; reel: string; title: string; sub: string }[] = [
+  { img: banner1, reel: reel5.url, title: "Pool day with Sofia", sub: "she's waiting for you in the water 💦" },
+  { img: banner2, reel: reel2.url, title: "Mei just got out of the ocean", sub: "wet, warm, and bored without you" },
+  { img: banner3, reel: reel3.url, title: "Yacht week with Amara", sub: "gold bikini · open bar · open invite" },
+  { img: banner4, reel: reel4.url, title: "Mykonos sunset with Elina", sub: "she saved you a seat 🥂" },
+  { img: banner5, reel: reel1.url, title: "Rooftop in Dubai · Layla", sub: "skyline views, zero rules" },
 ];
 
 export const Route = createFileRoute("/")({
@@ -121,6 +134,7 @@ function Landing() {
   const [activeCat, setActiveCat] = useState<Cat>("For you");
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
+  const [playReel, setPlayReel] = useState<{ url: string; title: string } | null>(null);
 
   const filtered = useMemo(
     () => (companions ?? []).filter(c => matchesCategory(c, activeCat)),
@@ -130,6 +144,12 @@ function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden pb-24">
       <Nav />
+
+      {/* BANNER SLIDER */}
+      <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
+        <BannerSlider onPlay={(b) => setPlayReel({ url: b.reel, title: b.title })} />
+      </section>
+
 
       {/* HERO STRIP */}
       <section className="relative mx-auto max-w-7xl px-4 pt-2 md:px-6">
@@ -327,6 +347,7 @@ function Landing() {
         />
       )}
       {tease && <TeaseChat companion={tease} onClose={() => setTease(null)} />}
+      {playReel && <ReelPlayer url={playReel.url} title={playReel.title} onClose={() => setPlayReel(null)} onChat={() => { setPlayReel(null); }} />}
     </div>
   );
 }
@@ -522,3 +543,138 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
     </div>
   );
 }
+
+/* ---------- Banner Slider ---------- */
+type Banner = typeof BANNERS[number];
+
+function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const n = BANNERS.length;
+
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % n), 5000);
+    return () => clearInterval(t);
+  }, [paused, n]);
+
+  const go = (d: number) => setIdx((i) => (i + d + n) % n);
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-glow"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div
+        className="flex h-[260px] transition-transform duration-700 ease-out md:h-[420px]"
+        style={{ transform: `translateX(-${idx * 100}%)`, width: `${n * 100}%` }}
+      >
+        {BANNERS.map((b, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onPlay(b)}
+            className="relative block h-full shrink-0 text-left"
+            style={{ width: `${100 / n}%` }}
+            aria-label={`Play reel: ${b.title}`}
+          >
+            <img
+              src={b.img}
+              alt={b.title}
+              loading={i === 0 ? "eager" : "lazy"}
+              width={1920}
+              height={1024}
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="grid h-16 w-16 place-items-center rounded-full bg-white/15 backdrop-blur-md ring-1 ring-white/40 transition group-hover:scale-110 md:h-20 md:w-20">
+                <Play className="ml-1 h-7 w-7 fill-white text-white md:h-9 md:w-9" />
+              </span>
+            </div>
+            <div className="absolute inset-x-0 bottom-0 p-5 md:p-7">
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live reel
+              </span>
+              <h2 className="mt-2 font-display text-2xl font-semibold text-white drop-shadow md:text-4xl">
+                {b.title}
+              </h2>
+              <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">{b.sub}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* arrows */}
+      <button
+        onClick={() => go(-1)}
+        aria-label="Previous"
+        className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65 md:left-4"
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </button>
+      <button
+        onClick={() => go(1)}
+        aria-label="Next"
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65 md:right-4"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </button>
+
+      {/* dots */}
+      <div className="absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
+        {BANNERS.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIdx(i)}
+            aria-label={`Slide ${i + 1}`}
+            className={`h-1.5 rounded-full transition-all ${
+              i === idx ? "w-6 bg-white" : "w-1.5 bg-white/50 hover:bg-white/80"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Reel Player Modal ---------- */
+function ReelPlayer({ url, title, onClose }: { url: string; title: string; onClose: () => void; onChat: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[160] flex items-center justify-center bg-black/95 p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="relative h-[90vh] w-full max-w-md overflow-hidden rounded-3xl bg-black ring-1 ring-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <video
+          src={url}
+          autoPlay
+          loop
+          playsInline
+          controls
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-3">
+          <p className="font-display text-sm font-semibold text-white drop-shadow">{title}</p>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-full bg-black/45 p-1.5 text-white backdrop-blur hover:bg-black/70"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-4">
+          <Button asChild className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow">
+            <Link to="/auth">Chat with her — 25 free messages →</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

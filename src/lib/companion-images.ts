@@ -12,5 +12,9 @@ for (const [path, url] of Object.entries(modules)) {
 }
 
 export function companionImage(filename: string): string {
+  if (!filename) return "";
+  if (filename.startsWith("data:") || filename.startsWith("http") || filename.startsWith("/")) {
+    return filename;
+  }
   return map[filename] ?? "";
 }

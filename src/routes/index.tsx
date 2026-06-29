@@ -610,14 +610,14 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
           >
             <video
               src={b.reel}
-              poster={b.img}
               autoPlay
               muted
               loop
               playsInline
-              preload="metadata"
+              preload="auto"
               className="pointer-events-none absolute inset-0 h-full w-full object-cover"
             />
+            <div className="pointer-events-none absolute inset-0 bg-black" style={{ zIndex: -1 }} />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <span className="grid h-16 w-16 place-items-center rounded-full bg-white/15 backdrop-blur-md ring-1 ring-white/40 transition group-hover:scale-110 md:h-20 md:w-20">

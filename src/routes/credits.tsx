@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Heart, Check } from "lucide-react";
 import { CREDIT_PACKS, formatPrice } from "@/lib/credit-packs";
 import { purchaseCredits } from "@/lib/payments.functions";
+import { getPaymentConfig } from "@/lib/payment-config.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/credits")({
@@ -68,8 +69,12 @@ function CreditsPage() {
   const [zip, setZip] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  const clientKey = import.meta.env.VITE_AUTHORIZE_NET_CLIENT_KEY as string | undefined;
-  const apiLoginId = import.meta.env.VITE_AUTHORIZE_NET_API_LOGIN_ID as string | undefined;
+  const { data: payCfg } = useQuery({
+    queryKey: ["pay-cfg"],
+    queryFn: () => getPaymentConfig(),
+  });
+  const clientKey = payCfg?.clientKey;
+  const apiLoginId = payCfg?.apiLoginId;
 
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();

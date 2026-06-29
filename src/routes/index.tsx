@@ -236,10 +236,11 @@ function Landing() {
         <SectionTitle title="🔥 Reels" subtitle="live now" cta={<Link to="/browse" className="text-xs text-primary hover:underline">See all</Link>} />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {REELS.map((r, i) => (
-            <Link
+            <button
               key={i}
-              to="/browse"
-              className="group relative h-[300px] w-[180px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card shadow-md md:h-[360px] md:w-[220px]"
+              type="button"
+              onClick={() => setPlayReel({ url: r.url, title: r.tag })}
+              className="group relative h-[300px] w-[180px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card text-left shadow-md md:h-[360px] md:w-[220px]"
             >
               <video
                 src={r.url}
@@ -260,9 +261,9 @@ function Landing() {
               </div>
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 text-left">
                 <p className="font-display text-sm font-semibold text-white">{r.tag}</p>
-                <p className="line-clamp-1 text-[11px] text-white/75">Tap to browse crushes</p>
+                <p className="line-clamp-1 text-[11px] text-white/75">Tap to play</p>
               </div>
-            </Link>
+            </button>
           ))}
         </div>
       </section>

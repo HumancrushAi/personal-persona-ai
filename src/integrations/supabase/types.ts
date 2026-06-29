@@ -54,7 +54,11 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          memory: string
           personality_id: string
+          relationship_level: number
+          relationship_xp: number
+          scenario: string | null
           title: string | null
           updated_at: string
           user_id: string
@@ -62,7 +66,11 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          memory?: string
           personality_id: string
+          relationship_level?: number
+          relationship_xp?: number
+          scenario?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -70,7 +78,11 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          memory?: string
           personality_id?: string
+          relationship_level?: number
+          relationship_xp?: number
+          scenario?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
@@ -112,6 +124,8 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          kind: string
+          media_url: string | null
           role: string
           user_id: string
         }
@@ -120,6 +134,8 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          kind?: string
+          media_url?: string | null
           role: string
           user_id: string
         }
@@ -128,6 +144,8 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          kind?: string
+          media_url?: string | null
           role?: string
           user_id?: string
         }
@@ -143,24 +161,33 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age_confirmed: boolean
           avatar_url: string | null
           created_at: string
           display_name: string | null
           id: string
+          subscription_renews_at: string | null
+          subscription_tier: string | null
           updated_at: string
         }
         Insert: {
+          age_confirmed?: boolean
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id: string
+          subscription_renews_at?: string | null
+          subscription_tier?: string | null
           updated_at?: string
         }
         Update: {
+          age_confirmed?: boolean
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          subscription_renews_at?: string | null
+          subscription_tier?: string | null
           updated_at?: string
         }
         Relationships: []

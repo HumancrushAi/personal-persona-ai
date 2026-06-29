@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
-import { Heart } from "lucide-react";
+import { Heart, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/browse")({
@@ -33,36 +33,38 @@ function Browse() {
         </Link>
         <div className="flex gap-2">
           <Button asChild variant="ghost" className="rounded-full"><Link to="/me">My chats</Link></Button>
-          <Button asChild variant="ghost" className="rounded-full"><Link to="/credits">Credits</Link></Button>
+          <Button asChild variant="ghost" className="rounded-full">
+            <Link to="/credits"><Coins className="mr-1 h-4 w-4" />Credits</Link>
+          </Button>
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-6 pb-16">
-        <h1 className="text-4xl font-semibold md:text-5xl">Meet your match</h1>
-        <p className="mt-2 text-muted-foreground">25 hand-crafted companions. Pick one, then make her yours.</p>
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <h1 className="font-display text-4xl font-semibold md:text-6xl">Pick your girl.</h1>
+        <p className="mt-2 text-muted-foreground">25 hand-crafted companions. Customize anyone you tap.</p>
 
         {isLoading && <div className="mt-10 text-muted-foreground">Loading…</div>}
 
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {data?.map(c => (
             <Link
               key={c.id}
               to="/companion/$id"
               params={{ id: c.id }}
-              className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition hover:shadow-md"
+              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-card shadow-md transition hover:shadow-glow"
             >
               <img
                 src={companionImage(c.image_url)}
                 alt={`Portrait of ${c.name}`}
                 width={1024} height={1024} loading="lazy"
-                className="aspect-[3/4] w-full object-cover transition group-hover:scale-[1.02]"
+                className="aspect-[3/4] w-full object-cover transition group-hover:scale-[1.04]"
               />
-              <div className="p-3">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3">
                 <div className="flex items-baseline justify-between">
-                  <h3 className="font-display text-lg font-semibold">{c.name}, {c.age}</h3>
+                  <h3 className="font-display text-lg font-semibold text-white">{c.name}, {c.age}</h3>
                 </div>
-                <p className="text-xs text-muted-foreground">{c.ethnicity}</p>
-                <p className="mt-1.5 line-clamp-2 text-sm">{c.short_bio}</p>
+                <p className="text-[11px] uppercase tracking-wide text-white/70">{c.ethnicity}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-white/85">{c.short_bio}</p>
               </div>
             </Link>
           ))}

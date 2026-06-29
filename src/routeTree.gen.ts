@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MeRouteImport } from './routes/me'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as CreditsRouteImport } from './routes/credits'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -21,6 +22,11 @@ import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public
 const MeRoute = MeRouteImport.update({
   id: '/me',
   path: '/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreditsRoute = CreditsRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/credits': typeof CreditsRoute
+  '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/credits': typeof CreditsRoute
+  '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/credits': typeof CreditsRoute
+  '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/credits'
+    | '/gallery'
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/credits'
+    | '/gallery'
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/credits'
+    | '/gallery'
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   CreditsRoute: typeof CreditsRoute
+  GalleryRoute: typeof GalleryRoute
   MeRoute: typeof MeRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/me'
       fullPath: '/me'
       preLoaderRoute: typeof MeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/credits': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   CreditsRoute: CreditsRoute,
+  GalleryRoute: GalleryRoute,
   MeRoute: MeRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,

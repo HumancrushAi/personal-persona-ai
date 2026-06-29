@@ -272,6 +272,7 @@ export type Database = {
       }
       user_personalities: {
         Row: {
+          boundaries: string | null
           companion_id: string
           created_at: string
           id: string
@@ -280,10 +281,12 @@ export type Database = {
           nickname: string
           personality_traits: string | null
           style_backstory: string | null
+          tone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          boundaries?: string | null
           companion_id: string
           created_at?: string
           id?: string
@@ -292,10 +295,12 @@ export type Database = {
           nickname: string
           personality_traits?: string | null
           style_backstory?: string | null
+          tone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          boundaries?: string | null
           companion_id?: string
           created_at?: string
           id?: string
@@ -304,6 +309,7 @@ export type Database = {
           nickname?: string
           personality_traits?: string | null
           style_backstory?: string | null
+          tone?: string | null
           updated_at?: string
           user_id?: string
         }

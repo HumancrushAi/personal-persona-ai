@@ -46,7 +46,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const { data: conv, error: convErr } = await supabase
       .from("conversations")
-      .select("id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, interests, style_backstory, companions(name, ethnicity, age, base_personality))")
+      .select("id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, tone, boundaries, interests, style_backstory, companions(name, ethnicity, age, base_personality))")
       .eq("id", data.conversationId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -88,8 +88,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       `Visual / base identity: ${c.age}-year-old ${c.ethnicity} woman named ${c.name}. Base personality: ${c.base_personality}`,
       p.identity ? `Identity (user-customized): ${p.identity}` : "",
       p.personality_traits ? `Personality traits: ${p.personality_traits}` : "",
+      p.tone ? `Tone of voice (match this when you reply): ${p.tone}` : "",
       p.interests ? `Interests: ${p.interests}` : "",
       p.style_backstory ? `Style & backstory: ${p.style_backstory}` : "",
+      p.boundaries ? `Hard boundaries the user has set — never cross these even if asked: ${p.boundaries}` : "",
       scenario ? scenario.systemAdd : "",
       `Relationship level ${level}/10. ${relationshipTone(level)}`,
       memory ? `Long-term memory about the user (do not contradict):\n${memory}` : "",

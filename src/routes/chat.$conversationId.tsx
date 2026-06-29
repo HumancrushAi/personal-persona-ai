@@ -49,7 +49,7 @@ function ChatPage() {
     queryKey: ["conv-meta", conversationId],
     queryFn: async () => {
       const { data, error } = await supabase.from("conversations")
-        .select("id, personality_id, scenario, relationship_level, relationship_xp, user_personalities(nickname, companions(name, image_url))")
+        .select("id, personality_id, scenario, relationship_level, relationship_xp, user_personalities(nickname, companion_id, companions(name, image_url))")
         .eq("id", conversationId).maybeSingle();
       if (error) throw error;
       return data;
@@ -168,6 +168,13 @@ function ChatPage() {
             <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3 fill-primary text-primary" /> Lv {level}</span>
           </div>
         </div>
+        {p?.companion_id && (
+          <Button asChild size="icon" variant="ghost" className="rounded-full" title="Edit her personality">
+            <Link to="/companion/$id" params={{ id: p.companion_id }} search={{ edit: true }}>
+              <Sparkles className="h-4 w-4 text-primary" />
+            </Link>
+          </Button>
+        )}
         <Link to="/credits" className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium ring-1 ring-white/10">
           <Coins className="h-3.5 w-3.5 text-primary" /> {total}
         </Link>

@@ -162,6 +162,7 @@ export type Database = {
       profiles: {
         Row: {
           age_confirmed: boolean
+          authnet_subscription_id: string | null
           avatar_url: string | null
           created_at: string
           display_name: string | null
@@ -174,6 +175,7 @@ export type Database = {
         }
         Insert: {
           age_confirmed?: boolean
+          authnet_subscription_id?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -186,6 +188,7 @@ export type Database = {
         }
         Update: {
           age_confirmed?: boolean
+          authnet_subscription_id?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -195,6 +198,42 @@ export type Database = {
           subscription_status?: string | null
           subscription_tier?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      subscription_events: {
+        Row: {
+          amount_cents: number | null
+          authnet_subscription_id: string | null
+          authnet_transaction_id: string | null
+          created_at: string
+          credits_granted: number | null
+          event_type: string
+          id: string
+          raw_payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          authnet_subscription_id?: string | null
+          authnet_transaction_id?: string | null
+          created_at?: string
+          credits_granted?: number | null
+          event_type: string
+          id?: string
+          raw_payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          authnet_subscription_id?: string | null
+          authnet_transaction_id?: string | null
+          created_at?: string
+          credits_granted?: number | null
+          event_type?: string
+          id?: string
+          raw_payload?: Json | null
+          user_id?: string | null
         }
         Relationships: []
       }

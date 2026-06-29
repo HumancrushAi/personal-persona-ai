@@ -15,7 +15,7 @@ import { getScenario } from "@/lib/scenarios";
 
 export const Route = createFileRoute("/chat/$conversationId")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Chat — Aurelia" }] }),
+  head: () => ({ meta: [{ title: "Chat — HumanCrush.ai" }] }),
   component: ChatPage,
 });
 

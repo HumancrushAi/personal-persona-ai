@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/credits")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Credits & subscriptions — Aurelia" }] }),
+  head: () => ({ meta: [{ title: "Credits & subscriptions — HumanCrush.ai" }] }),
   component: CreditsPage,
 });
 
@@ -114,7 +114,7 @@ function CreditsPage() {
         <Button asChild variant="ghost" className="rounded-full"><Link to="/me"><ArrowLeft className="mr-1 h-4 w-4" /> Back</Link></Button>
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-5 w-5 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold">Aurelia</span>
+          <span className="font-display text-xl font-semibold">HumanCrush.ai</span>
         </Link>
       </header>
 

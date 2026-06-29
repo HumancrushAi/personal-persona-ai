@@ -78,9 +78,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Aurelia — Your AI Companion, Designed by You" },
+      { title: "HumanCrush.ai — Your AI Companion, Designed by You" },
       { name: "description", content: "Build the AI girlfriend you've always imagined — 25 stunning companions, fully customizable personality." },
-      { property: "og:title", content: "Aurelia — Your AI Companion, Designed by You" },
+      { property: "og:title", content: "HumanCrush.ai — Your AI Companion, Designed by You" },
       { property: "og:description", content: "Build the AI girlfriend you've always imagined — 25 stunning companions, fully customizable personality." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -9,7 +9,7 @@ import { AgeGate } from "@/components/AgeGate";
 
 export const Route = createFileRoute("/me")({
   ssr: false,
-  head: () => ({ meta: [{ title: "My chats — Aurelia" }] }),
+  head: () => ({ meta: [{ title: "My chats — HumanCrush.ai" }] }),
   component: MePage,
 });
 
@@ -49,7 +49,7 @@ function MePage() {
       <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-2xl font-semibold">Aurelia</span>
+          <span className="font-display text-2xl font-semibold">HumanCrush.ai</span>
         </Link>
         <div className="flex items-center gap-2">
           <Link to="/credits" className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium ring-1 ring-white/10">

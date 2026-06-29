@@ -39,7 +39,7 @@ export const listUsers = createServerFn({ method: "GET" })
     const ids = users.users.map((u) => u.id);
     const [{ data: profiles }, { data: balances }, { data: roles }] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, display_name, subscription_tier, subscription_status, subscription_renews_at, authnet_subscription_id").in("id", ids),
-      supabaseAdmin.from("credit_balances").select("user_id, free_credits, paid_credits").in("user_id", ids),
+      supabaseAdmin.from("credit_balances").select("user_id, free_messages_remaining, paid_credits").in("user_id", ids),
       supabaseAdmin.from("user_roles").select("user_id, role").in("user_id", ids),
     ]);
 

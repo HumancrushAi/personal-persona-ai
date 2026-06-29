@@ -166,7 +166,9 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          subscription_id: string | null
           subscription_renews_at: string | null
+          subscription_status: string | null
           subscription_tier: string | null
           updated_at: string
         }
@@ -176,7 +178,9 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          subscription_id?: string | null
           subscription_renews_at?: string | null
+          subscription_status?: string | null
           subscription_tier?: string | null
           updated_at?: string
         }
@@ -186,7 +190,9 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          subscription_id?: string | null
           subscription_renews_at?: string | null
+          subscription_status?: string | null
           subscription_tier?: string | null
           updated_at?: string
         }

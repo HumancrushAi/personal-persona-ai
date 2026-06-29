@@ -9,6 +9,7 @@ import {
   Send, X, Circle, Search, Play, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
+import { FAQSection } from "@/components/FAQSection";
 import reel1 from "@/assets/reels/r1.mp4.asset.json";
 import reel2 from "@/assets/reels/r2.mp4.asset.json";
 import reel3 from "@/assets/reels/r3.mp4.asset.json";
@@ -342,7 +343,14 @@ function Landing() {
         </div>
       </section>
 
-      <footer className="mt-16 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
+      <FAQSection />
+
+      <footer className="mt-4 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
+        <div className="mb-2 flex items-center justify-center gap-4">
+          <Link to="/faq" className="hover:text-foreground">FAQ</Link>
+          <Link to="/gallery" className="hover:text-foreground">Gallery</Link>
+          <Link to="/create" className="hover:text-foreground">Create AI</Link>
+        </div>
         © {new Date().getFullYear()} HumanCrush.ai · 18+ only · AI characters are fictional.
       </footer>
 

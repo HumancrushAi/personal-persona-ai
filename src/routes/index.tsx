@@ -16,7 +16,14 @@ import reel4 from "@/assets/reels/r4.mp4.asset.json";
 import reel5 from "@/assets/reels/r5.mp4.asset.json";
 import reel6 from "@/assets/reels/r6.mp4.asset.json";
 
-const REELS = [reel1.url, reel2.url, reel3.url, reel4.url, reel5.url, reel6.url];
+const REELS: { url: string; tag: string; views: string }[] = [
+  { url: reel1.url, tag: "After hours", views: "412K" },
+  { url: reel2.url, tag: "Just woke up", views: "289K" },
+  { url: reel3.url, tag: "Gym pump", views: "521K" },
+  { url: reel4.url, tag: "Date night", views: "356K" },
+  { url: reel5.url, tag: "Pool day", views: "684K" },
+  { url: reel6.url, tag: "Late night drive", views: "198K" },
+];
 
 export const Route = createFileRoute("/")({
   ssr: false,

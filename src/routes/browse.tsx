@@ -40,8 +40,8 @@ function Browse() {
       </header>
 
       <section className="mx-auto max-w-6xl px-6 pb-20">
-        <h1 className="font-display text-4xl font-semibold md:text-6xl">Pick your girl.</h1>
-        <p className="mt-2 text-muted-foreground">25 hand-crafted companions. Customize anyone you tap.</p>
+        <h1 className="font-display text-4xl font-semibold md:text-6xl">Pick your crush.</h1>
+        <p className="mt-2 text-muted-foreground">36 hand-crafted companions — women, men, trans, non-binary. Customize anyone you tap.</p>
 
         {isLoading && <div className="mt-10 text-muted-foreground">Loading…</div>}
 

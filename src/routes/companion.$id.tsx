@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { z } from "zod";
-import { zodValidator } from "@tanstack/zod-adapter";
+
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { Button } from "@/components/ui/button";

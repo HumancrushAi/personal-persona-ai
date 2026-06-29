@@ -14,7 +14,237 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companions: {
+        Row: {
+          age: number
+          base_personality: string
+          created_at: string
+          ethnicity: string
+          id: string
+          image_url: string
+          name: string
+          short_bio: string
+          sort_order: number
+        }
+        Insert: {
+          age: number
+          base_personality: string
+          created_at?: string
+          ethnicity: string
+          id?: string
+          image_url: string
+          name: string
+          short_bio: string
+          sort_order?: number
+        }
+        Update: {
+          age?: number
+          base_personality?: string
+          created_at?: string
+          ethnicity?: string
+          id?: string
+          image_url?: string
+          name?: string
+          short_bio?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          personality_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          personality_id: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          personality_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_personality_id_fkey"
+            columns: ["personality_id"]
+            isOneToOne: false
+            referencedRelation: "user_personalities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_balances: {
+        Row: {
+          free_messages_remaining: number
+          paid_credits: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          free_messages_remaining?: number
+          paid_credits?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          free_messages_remaining?: number
+          paid_credits?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount_cents: number
+          authnet_transaction_id: string | null
+          created_at: string
+          credits_added: number
+          id: string
+          pack_name: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          authnet_transaction_id?: string | null
+          created_at?: string
+          credits_added: number
+          id?: string
+          pack_name: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          authnet_transaction_id?: string | null
+          created_at?: string
+          credits_added?: number
+          id?: string
+          pack_name?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_personalities: {
+        Row: {
+          companion_id: string
+          created_at: string
+          id: string
+          identity: string | null
+          interests: string | null
+          nickname: string
+          personality_traits: string | null
+          style_backstory: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          companion_id: string
+          created_at?: string
+          id?: string
+          identity?: string | null
+          interests?: string | null
+          nickname: string
+          personality_traits?: string | null
+          style_backstory?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          companion_id?: string
+          created_at?: string
+          id?: string
+          identity?: string | null
+          interests?: string | null
+          nickname?: string
+          personality_traits?: string | null
+          style_backstory?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_personalities_companion_id_fkey"
+            columns: ["companion_id"]
+            isOneToOne: false
+            referencedRelation: "companions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

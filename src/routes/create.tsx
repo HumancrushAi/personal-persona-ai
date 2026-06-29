@@ -44,6 +44,96 @@ const ETHNICITIES = [
   "Middle Eastern", "Mixed",
 ];
 
+/* ---------- Visual swatches (lightweight illustrations) ---------- */
+
+function Silhouette({
+  w, tall, short, hips, muscular,
+}: { w: number; tall?: boolean; short?: boolean; hips?: boolean; muscular?: boolean }) {
+  const height = tall ? 70 : short ? 50 : 60;
+  const shoulder = muscular ? w + 6 : w + 2;
+  const hip = hips ? w + 8 : w + 2;
+  return (
+    <svg viewBox="0 0 60 80" className="h-14 w-full">
+      <defs>
+        <linearGradient id="sil" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
+          <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
+        </linearGradient>
+      </defs>
+      <circle cx="30" cy={40 - height / 2 + 6} r="5" fill="url(#sil)" />
+      <path
+        d={`M${30 - shoulder / 2},${46 - height / 2 + 4}
+            C${30 - w / 2},${50 - height / 2 + 4} ${30 - w / 2},${30 + height / 4} ${30 - hip / 2},${40 + height / 2 - 6}
+            L${30 + hip / 2},${40 + height / 2 - 6}
+            C${30 + w / 2},${30 + height / 4} ${30 + w / 2},${50 - height / 2 + 4} ${30 + shoulder / 2},${46 - height / 2 + 4}
+            Z`}
+        fill="url(#sil)"
+      />
+    </svg>
+  );
+}
+
+function HairSwatch({
+  color, long, wavy, curly,
+}: { color: string; long?: boolean; wavy?: boolean; curly?: boolean }) {
+  return (
+    <svg viewBox="0 0 60 60" className="h-14 w-full">
+      {/* face */}
+      <circle cx="30" cy="32" r="13" fill="#f3d3bd" />
+      {/* hair cap */}
+      <path
+        d={
+          curly
+            ? "M14,28 q0,-18 16,-18 q16,0 16,18 q-4,-6 -10,-4 q-2,-4 -6,0 q-4,-4 -8,2 q-2,-2 -8,2 z"
+            : "M14,28 q0,-18 16,-18 q16,0 16,18 q-3,-2 -6,-1 q-3,-3 -6,-1 q-4,-3 -7,-1 q-4,-2 -7,-1 q-3,-1 -6,1 z"
+        }
+        fill={color}
+      />
+      {/* long flowing strands */}
+      {long && (
+        <path
+          d={
+            wavy
+              ? "M14,30 q-2,12 1,22 q3,-3 5,-1 q-1,-10 1,-18 z M46,30 q2,12 -1,22 q-3,-3 -5,-1 q1,-10 -1,-18 z"
+              : "M14,30 q-1,12 2,22 l4,0 q-2,-12 0,-22 z M46,30 q1,12 -2,22 l-4,0 q2,-12 0,-22 z"
+          }
+          fill={color}
+        />
+      )}
+    </svg>
+  );
+}
+
+function EyeSwatch({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 60 60" className="h-14 w-full">
+      <ellipse cx="30" cy="30" rx="22" ry="11" fill="#fff" />
+      <ellipse cx="30" cy="30" rx="22" ry="11" fill="none" stroke="#1a0d10" strokeWidth="2" />
+      <circle cx="30" cy="30" r="9" fill={color} />
+      <circle cx="30" cy="30" r="4" fill="#0a0a0c" />
+      <circle cx="32" cy="28" r="1.4" fill="#fff" />
+    </svg>
+  );
+}
+
+function OutfitSwatch({ top, bottom, emoji }: { top: string; bottom: string; emoji: string }) {
+  return (
+    <div className="relative h-14 w-full overflow-hidden rounded-lg">
+      <div className="absolute inset-x-0 top-0 h-1/2" style={{ background: top }} />
+      <div className="absolute inset-x-0 bottom-0 h-1/2" style={{ background: bottom }} />
+      <div className="absolute inset-0 grid place-items-center text-2xl drop-shadow">{emoji}</div>
+    </div>
+  );
+}
+
+function VibeSwatch({ emoji, hue }: { emoji: string; hue: string }) {
+  return (
+    <div className={`grid h-14 w-full place-items-center rounded-lg bg-gradient-to-br ${hue}`}>
+      <span className="text-2xl drop-shadow">{emoji}</span>
+    </div>
+  );
+}
+
 type Visual = { id: string; label: string; swatch: React.ReactNode };
 
 const BODIES: Visual[] = [
@@ -109,11 +199,11 @@ function CreatePage() {
   const [artStyle, setArtStyle] = useState<Style>("realistic");
   const [ethnicity, setEthnicity] = useState(ETHNICITIES[0]);
   const [age, setAge] = useState(22);
-  const [body, setBody] = useState(BODIES[1]);
-  const [hair, setHair] = useState(HAIRS[0]);
-  const [eyes, setEyes] = useState(EYES[0]);
-  const [outfit, setOutfit] = useState(OUTFITS[0]);
-  const [vibe, setVibe] = useState(VIBES[1]);
+  const [body, setBody] = useState(BODIES[1].id);
+  const [hair, setHair] = useState(HAIRS[0].id);
+  const [eyes, setEyes] = useState(EYES[0].id);
+  const [outfit, setOutfit] = useState(OUTFITS[0].id);
+  const [vibe, setVibe] = useState(VIBES[1].id);
   const [loading, setLoading] = useState(false);
 
   async function submit() {
@@ -192,8 +282,11 @@ function CreatePage() {
             </Field>
 
             <Field label="Gender">
-              <ChipRow options={GENDERS.map((g) => ({ id: g.id, label: `${g.emoji} ${g.label}` }))}
-                value={gender} onChange={(v) => setGender(v as Gender)} />
+              <ChipRow
+                options={GENDERS.map((g) => ({ id: g.id, label: `${g.emoji} ${g.label}` }))}
+                value={gender}
+                onChange={(v) => setGender(v as Gender)}
+              />
             </Field>
 
             <Field label={`Age · ${age}`}>
@@ -205,27 +298,21 @@ function CreatePage() {
             </Field>
 
             <Field label="Ethnicity">
-              <ChipRow options={ETHNICITIES.map((e) => ({ id: e, label: e }))} value={ethnicity} onChange={setEthnicity} />
+              <ChipRow
+                options={ETHNICITIES.map((e) => ({ id: e, label: e }))}
+                value={ethnicity}
+                onChange={setEthnicity}
+              />
             </Field>
           </div>
 
           {/* RIGHT — appearance + vibe */}
           <div className="space-y-5 rounded-3xl border border-white/10 bg-card p-5">
-            <Field label="Body">
-              <ChipRow options={BODIES.map((e) => ({ id: e, label: e }))} value={body} onChange={setBody} />
-            </Field>
-            <Field label="Hair">
-              <ChipRow options={HAIRS.map((e) => ({ id: e, label: e }))} value={hair} onChange={setHair} />
-            </Field>
-            <Field label="Eyes">
-              <ChipRow options={EYES.map((e) => ({ id: e, label: e }))} value={eyes} onChange={setEyes} />
-            </Field>
-            <Field label="Outfit">
-              <ChipRow options={OUTFITS.map((e) => ({ id: e, label: e }))} value={outfit} onChange={setOutfit} />
-            </Field>
-            <Field label="Vibe">
-              <ChipRow options={VIBES.map((e) => ({ id: e, label: e }))} value={vibe} onChange={setVibe} />
-            </Field>
+            <Field label="Body"><VisualGrid options={BODIES} value={body} onChange={setBody} /></Field>
+            <Field label="Hair"><VisualGrid options={HAIRS} value={hair} onChange={setHair} /></Field>
+            <Field label="Eyes"><VisualGrid options={EYES} value={eyes} onChange={setEyes} /></Field>
+            <Field label="Outfit"><VisualGrid options={OUTFITS} value={outfit} onChange={setOutfit} /></Field>
+            <Field label="Vibe"><VisualGrid options={VIBES} value={vibe} onChange={setVibe} /></Field>
           </div>
         </div>
 
@@ -273,6 +360,33 @@ function ChipRow({
           }`}
         >
           {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function VisualGrid({
+  options, value, onChange,
+}: { options: Visual[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          onClick={() => onChange(o.id)}
+          className={`group flex flex-col items-center gap-1 rounded-2xl border p-2 text-center transition ${
+            value === o.id
+              ? "border-primary bg-grad-primary/15 shadow-glow"
+              : "border-white/10 bg-white/5 hover:bg-white/10"
+          }`}
+        >
+          <div className="w-full overflow-hidden rounded-lg bg-black/30 px-1 py-1">
+            {o.swatch}
+          </div>
+          <span className={`line-clamp-1 text-[10px] font-medium ${value === o.id ? "text-white" : "text-white/75"}`}>
+            {o.label}
+          </span>
         </button>
       ))}
     </div>

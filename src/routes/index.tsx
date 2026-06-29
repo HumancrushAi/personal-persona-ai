@@ -607,10 +607,14 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
             className="group relative block h-full w-full shrink-0 text-left"
             aria-label={`Play reel: ${b.title}`}
           >
-            <img
-              src={b.img}
-              alt={b.title}
-              draggable={false}
+            <video
+              src={b.reel}
+              poster={b.img}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
               className="pointer-events-none absolute inset-0 h-full w-full object-cover"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />

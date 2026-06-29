@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Heart, Check, Crown } from "lucide-react";
 import { CREDIT_PACKS, SUBSCRIPTION_TIERS, formatPrice, findPurchasable } from "@/lib/credit-packs";
-import { purchaseCredits } from "@/lib/payments.functions";
+import { purchaseCredits, cancelSubscription } from "@/lib/payments.functions";
 import { getPaymentConfig } from "@/lib/payment-config.functions";
 import { toast } from "sonner";
 
@@ -49,10 +49,20 @@ function CreditsPage() {
     enabled: !!userId, queryKey: ["profile", userId],
     queryFn: async () => {
       const { data } = await supabase.from("profiles")
-        .select("subscription_tier, subscription_renews_at").eq("id", userId!).maybeSingle();
+        .select("subscription_tier, subscription_renews_at, subscription_status, authnet_subscription_id").eq("id", userId!).maybeSingle();
       return data;
     },
   });
+
+  const cancelSub = useServerFn(cancelSubscription);
+  async function handleCancel() {
+    if (!confirm("Cancel your subscription? You keep your current credits but won't be charged again.")) return;
+    try {
+      await cancelSub();
+      toast.success("Subscription cancelled");
+      qc.invalidateQueries({ queryKey: ["profile", userId] });
+    } catch (e: any) { toast.error(e.message ?? "Cancel failed"); }
+  }
 
   useEffect(() => {
     if (document.querySelector(`script[src="${ACCEPT_JS_URL}"]`)) return;
@@ -192,10 +202,24 @@ function CreditsPage() {
           </Button>
           {tab === "subs" && (
             <p className="text-center text-[11px] text-muted-foreground">
-              Charged today as a one-time payment. We don't auto-renew — you'll be reminded near {profile?.subscription_renews_at ? new Date(profile.subscription_renews_at).toLocaleDateString() : "your renewal date"}.
+              Auto-renews monthly. Cancel anytime — you keep credits already granted.
             </p>
           )}
         </form>
+
+        {profile?.authnet_subscription_id && profile?.subscription_status === "active" && (
+          <div className="glass mt-6 flex items-center justify-between rounded-3xl p-5">
+            <div>
+              <div className="font-medium">Active subscription</div>
+              <div className="text-xs text-muted-foreground">
+                Next charge {profile?.subscription_renews_at ? new Date(profile.subscription_renews_at).toLocaleDateString() : "soon"}
+              </div>
+            </div>
+            <Button variant="outline" className="rounded-full border-white/20" onClick={handleCancel}>
+              Cancel subscription
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   );

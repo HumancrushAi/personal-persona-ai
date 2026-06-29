@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Heart, Sparkles, MessageCircle, Image as ImageIcon, Mic, Flame,
-  Send, X, Circle, Search,
+  Send, X, Circle, Search, Play, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
 import reel1 from "@/assets/reels/r1.mp4.asset.json";

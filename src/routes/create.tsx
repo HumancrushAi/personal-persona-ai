@@ -44,11 +44,61 @@ const ETHNICITIES = [
   "Middle Eastern", "Mixed",
 ];
 
-const BODIES = ["Slim", "Athletic", "Curvy", "Petite", "Tall", "Thick", "Muscular"];
-const HAIRS = ["Long black", "Long blonde", "Long brunette", "Short pixie", "Bob cut", "Wavy red", "Pink dyed", "Curly afro", "Silver"];
-const EYES = ["Brown", "Hazel", "Green", "Blue", "Grey", "Amber"];
-const OUTFITS = ["Crop top + jeans", "Black dress", "White bikini", "Workout set", "Oversized hoodie", "Lace lingerie", "Silk slip", "Streetwear"];
-const VIBES = ["Sweet & shy", "Confident & flirty", "Dominant", "Submissive", "Playful brat", "Romantic", "Mysterious", "Goth", "Girl next door"];
+type Visual = { id: string; label: string; swatch: React.ReactNode };
+
+const BODIES: Visual[] = [
+  { id: "Slim",      label: "Slim",      swatch: <Silhouette w={14} /> },
+  { id: "Athletic",  label: "Athletic",  swatch: <Silhouette w={18} /> },
+  { id: "Curvy",     label: "Curvy",     swatch: <Silhouette w={22} hips /> },
+  { id: "Petite",    label: "Petite",    swatch: <Silhouette w={14} short /> },
+  { id: "Tall",      label: "Tall",      swatch: <Silhouette w={16} tall /> },
+  { id: "Thick",     label: "Thick",     swatch: <Silhouette w={24} hips /> },
+  { id: "Muscular",  label: "Muscular",  swatch: <Silhouette w={20} muscular /> },
+];
+
+const HAIRS: Visual[] = [
+  { id: "Long black",     label: "Long black",     swatch: <HairSwatch color="#0b0b0d" long /> },
+  { id: "Long blonde",    label: "Long blonde",    swatch: <HairSwatch color="#e9c77a" long /> },
+  { id: "Long brunette",  label: "Long brunette",  swatch: <HairSwatch color="#4a2c1a" long /> },
+  { id: "Short pixie",    label: "Short pixie",    swatch: <HairSwatch color="#1a1a1a" /> },
+  { id: "Bob cut",        label: "Bob cut",        swatch: <HairSwatch color="#2a1a10" /> },
+  { id: "Wavy red",       label: "Wavy red",       swatch: <HairSwatch color="#b3431d" long wavy /> },
+  { id: "Pink dyed",      label: "Pink dyed",      swatch: <HairSwatch color="#ff6fb1" long /> },
+  { id: "Curly afro",     label: "Curly afro",     swatch: <HairSwatch color="#1a1310" curly /> },
+  { id: "Silver",         label: "Silver",         swatch: <HairSwatch color="#c9cad0" long /> },
+];
+
+const EYES: Visual[] = [
+  { id: "Brown",  label: "Brown",  swatch: <EyeSwatch color="#5a3a1c" /> },
+  { id: "Hazel",  label: "Hazel",  swatch: <EyeSwatch color="#8a6a32" /> },
+  { id: "Green",  label: "Green",  swatch: <EyeSwatch color="#3a8a4a" /> },
+  { id: "Blue",   label: "Blue",   swatch: <EyeSwatch color="#2f6dc9" /> },
+  { id: "Grey",   label: "Grey",   swatch: <EyeSwatch color="#8a96a4" /> },
+  { id: "Amber",  label: "Amber",  swatch: <EyeSwatch color="#c7821f" /> },
+];
+
+const OUTFITS: Visual[] = [
+  { id: "Crop top + jeans", label: "Crop top + jeans", swatch: <OutfitSwatch top="#f4d3c2" bottom="#3b5478" emoji="👚" /> },
+  { id: "Black dress",      label: "Black dress",      swatch: <OutfitSwatch top="#0e0e10" bottom="#0e0e10" emoji="👗" /> },
+  { id: "Sundress",         label: "Sundress",         swatch: <OutfitSwatch top="#ffd16a" bottom="#ffd16a" emoji="🌼" /> },
+  { id: "Workout set",      label: "Workout set",      swatch: <OutfitSwatch top="#1e1f24" bottom="#1e1f24" emoji="🏋️‍♀️" /> },
+  { id: "Oversized hoodie", label: "Oversized hoodie", swatch: <OutfitSwatch top="#c9c4bd" bottom="#3a3a3f" emoji="🧥" /> },
+  { id: "Silk blouse",      label: "Silk blouse",      swatch: <OutfitSwatch top="#e7c4d6" bottom="#1c1c20" emoji="🎀" /> },
+  { id: "Streetwear",       label: "Streetwear",       swatch: <OutfitSwatch top="#222226" bottom="#5a5a62" emoji="🧢" /> },
+  { id: "Evening gown",     label: "Evening gown",     swatch: <OutfitSwatch top="#7a1a3a" bottom="#7a1a3a" emoji="✨" /> },
+];
+
+const VIBES: Visual[] = [
+  { id: "Sweet & shy",         label: "Sweet & shy",         swatch: <VibeSwatch emoji="🥺" hue="from-pink-400/60 to-rose-300/60" /> },
+  { id: "Confident & flirty",  label: "Confident & flirty",  swatch: <VibeSwatch emoji="😉" hue="from-fuchsia-500/70 to-rose-400/60" /> },
+  { id: "Dominant",            label: "Dominant",            swatch: <VibeSwatch emoji="🔥" hue="from-red-600/70 to-orange-500/60" /> },
+  { id: "Submissive",          label: "Submissive",          swatch: <VibeSwatch emoji="🎀" hue="from-pink-300/60 to-rose-200/60" /> },
+  { id: "Playful brat",        label: "Playful brat",        swatch: <VibeSwatch emoji="😈" hue="from-violet-500/70 to-fuchsia-500/60" /> },
+  { id: "Romantic",            label: "Romantic",            swatch: <VibeSwatch emoji="💖" hue="from-rose-400/70 to-pink-300/60" /> },
+  { id: "Mysterious",          label: "Mysterious",          swatch: <VibeSwatch emoji="🌙" hue="from-indigo-700/70 to-slate-700/60" /> },
+  { id: "Goth",                label: "Goth",                swatch: <VibeSwatch emoji="🦇" hue="from-zinc-800/80 to-purple-900/70" /> },
+  { id: "Girl next door",      label: "Girl next door",      swatch: <VibeSwatch emoji="🌻" hue="from-amber-300/70 to-yellow-200/60" /> },
+];
 
 function CreatePage() {
   const navigate = useNavigate();

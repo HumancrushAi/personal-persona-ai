@@ -46,7 +46,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const { data: conv, error: convErr } = await supabase
       .from("conversations")
-      .select("id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, interests, style_backstory, companions(name, ethnicity, age, base_personality))")
+      .select("id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, tone, boundaries, interests, style_backstory, companions(name, ethnicity, age, base_personality))")
       .eq("id", data.conversationId)
       .eq("user_id", userId)
       .maybeSingle();

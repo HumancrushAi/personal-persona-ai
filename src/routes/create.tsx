@@ -197,14 +197,14 @@ const EYES: Visual[] = [
 ];
 
 const OUTFITS: Visual[] = [
-  { id: "Crop top + jeans", label: "Crop top + jeans", swatch: <OutfitSwatch top="#f4d3c2" bottom="#3b5478" emoji="👚" /> },
-  { id: "Black dress",      label: "Black dress",      swatch: <OutfitSwatch top="#0e0e10" bottom="#0e0e10" emoji="👗" /> },
-  { id: "Sundress",         label: "Sundress",         swatch: <OutfitSwatch top="#ffd16a" bottom="#ffd16a" emoji="🌼" /> },
-  { id: "Workout set",      label: "Workout set",      swatch: <OutfitSwatch top="#1e1f24" bottom="#1e1f24" emoji="🏋️‍♀️" /> },
-  { id: "Oversized hoodie", label: "Oversized hoodie", swatch: <OutfitSwatch top="#c9c4bd" bottom="#3a3a3f" emoji="🧥" /> },
-  { id: "Silk blouse",      label: "Silk blouse",      swatch: <OutfitSwatch top="#e7c4d6" bottom="#1c1c20" emoji="🎀" /> },
-  { id: "Streetwear",       label: "Streetwear",       swatch: <OutfitSwatch top="#222226" bottom="#5a5a62" emoji="🧢" /> },
-  { id: "Evening gown",     label: "Evening gown",     swatch: <OutfitSwatch top="#7a1a3a" bottom="#7a1a3a" emoji="✨" /> },
+  { id: "Crop top + jeans", label: "Crop top + jeans", swatch: <PhotoSwatch src={outfitCrop} alt="Crop top + jeans" /> },
+  { id: "Black dress",      label: "Black dress",      swatch: <PhotoSwatch src={outfitBlack} alt="Black dress" /> },
+  { id: "Sundress",         label: "Sundress",         swatch: <PhotoSwatch src={outfitSundress} alt="Sundress" /> },
+  { id: "Workout set",      label: "Workout set",      swatch: <PhotoSwatch src={outfitWorkout} alt="Workout set" /> },
+  { id: "Oversized hoodie", label: "Oversized hoodie", swatch: <PhotoSwatch src={outfitHoodie} alt="Oversized hoodie" /> },
+  { id: "Silk blouse",      label: "Silk blouse",      swatch: <PhotoSwatch src={outfitSilk} alt="Silk blouse" /> },
+  { id: "Streetwear",       label: "Streetwear",       swatch: <PhotoSwatch src={outfitStreet} alt="Streetwear" /> },
+  { id: "Evening gown",     label: "Evening gown",     swatch: <PhotoSwatch src={outfitGown} alt="Evening gown" /> },
 ];
 
 const VIBES: Visual[] = [

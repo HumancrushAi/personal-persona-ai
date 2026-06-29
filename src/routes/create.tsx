@@ -8,6 +8,35 @@ import { Input } from "@/components/ui/input";
 import { Heart, Sparkles, Wand2, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
+import bodySlim from "@/assets/create/body-slim.jpg";
+import bodyAthletic from "@/assets/create/body-athletic.jpg";
+import bodyCurvy from "@/assets/create/body-curvy.jpg";
+import bodyPetite from "@/assets/create/body-petite.jpg";
+import bodyTall from "@/assets/create/body-tall.jpg";
+import bodyThick from "@/assets/create/body-thick.jpg";
+import bodyMuscular from "@/assets/create/body-muscular.jpg";
+import outfitCrop from "@/assets/create/outfit-crop.jpg";
+import outfitBlack from "@/assets/create/outfit-black-dress.jpg";
+import outfitSundress from "@/assets/create/outfit-sundress.jpg";
+import outfitWorkout from "@/assets/create/outfit-workout.jpg";
+import outfitHoodie from "@/assets/create/outfit-hoodie.jpg";
+import outfitSilk from "@/assets/create/outfit-silk.jpg";
+import outfitStreet from "@/assets/create/outfit-streetwear.jpg";
+import outfitGown from "@/assets/create/outfit-gown.jpg";
+
+function PhotoSwatch({ src, alt }: { src: string; alt: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      width={512}
+      height={768}
+      className="h-24 w-full rounded-lg object-cover object-top"
+    />
+  );
+}
+
 export const Route = createFileRoute("/create")({
   ssr: false,
   head: () => ({
@@ -137,13 +166,13 @@ function VibeSwatch({ emoji, hue }: { emoji: string; hue: string }) {
 type Visual = { id: string; label: string; swatch: React.ReactNode };
 
 const BODIES: Visual[] = [
-  { id: "Slim",      label: "Slim",      swatch: <Silhouette w={14} /> },
-  { id: "Athletic",  label: "Athletic",  swatch: <Silhouette w={18} /> },
-  { id: "Curvy",     label: "Curvy",     swatch: <Silhouette w={22} hips /> },
-  { id: "Petite",    label: "Petite",    swatch: <Silhouette w={14} short /> },
-  { id: "Tall",      label: "Tall",      swatch: <Silhouette w={16} tall /> },
-  { id: "Thick",     label: "Thick",     swatch: <Silhouette w={24} hips /> },
-  { id: "Muscular",  label: "Muscular",  swatch: <Silhouette w={20} muscular /> },
+  { id: "Slim",      label: "Slim",      swatch: <PhotoSwatch src={bodySlim} alt="Slim" /> },
+  { id: "Athletic",  label: "Athletic",  swatch: <PhotoSwatch src={bodyAthletic} alt="Athletic" /> },
+  { id: "Curvy",     label: "Curvy",     swatch: <PhotoSwatch src={bodyCurvy} alt="Curvy" /> },
+  { id: "Petite",    label: "Petite",    swatch: <PhotoSwatch src={bodyPetite} alt="Petite" /> },
+  { id: "Tall",      label: "Tall",      swatch: <PhotoSwatch src={bodyTall} alt="Tall" /> },
+  { id: "Thick",     label: "Thick",     swatch: <PhotoSwatch src={bodyThick} alt="Thick" /> },
+  { id: "Muscular",  label: "Muscular",  swatch: <PhotoSwatch src={bodyMuscular} alt="Muscular" /> },
 ];
 
 const HAIRS: Visual[] = [
@@ -168,14 +197,14 @@ const EYES: Visual[] = [
 ];
 
 const OUTFITS: Visual[] = [
-  { id: "Crop top + jeans", label: "Crop top + jeans", swatch: <OutfitSwatch top="#f4d3c2" bottom="#3b5478" emoji="👚" /> },
-  { id: "Black dress",      label: "Black dress",      swatch: <OutfitSwatch top="#0e0e10" bottom="#0e0e10" emoji="👗" /> },
-  { id: "Sundress",         label: "Sundress",         swatch: <OutfitSwatch top="#ffd16a" bottom="#ffd16a" emoji="🌼" /> },
-  { id: "Workout set",      label: "Workout set",      swatch: <OutfitSwatch top="#1e1f24" bottom="#1e1f24" emoji="🏋️‍♀️" /> },
-  { id: "Oversized hoodie", label: "Oversized hoodie", swatch: <OutfitSwatch top="#c9c4bd" bottom="#3a3a3f" emoji="🧥" /> },
-  { id: "Silk blouse",      label: "Silk blouse",      swatch: <OutfitSwatch top="#e7c4d6" bottom="#1c1c20" emoji="🎀" /> },
-  { id: "Streetwear",       label: "Streetwear",       swatch: <OutfitSwatch top="#222226" bottom="#5a5a62" emoji="🧢" /> },
-  { id: "Evening gown",     label: "Evening gown",     swatch: <OutfitSwatch top="#7a1a3a" bottom="#7a1a3a" emoji="✨" /> },
+  { id: "Crop top + jeans", label: "Crop top + jeans", swatch: <PhotoSwatch src={outfitCrop} alt="Crop top + jeans" /> },
+  { id: "Black dress",      label: "Black dress",      swatch: <PhotoSwatch src={outfitBlack} alt="Black dress" /> },
+  { id: "Sundress",         label: "Sundress",         swatch: <PhotoSwatch src={outfitSundress} alt="Sundress" /> },
+  { id: "Workout set",      label: "Workout set",      swatch: <PhotoSwatch src={outfitWorkout} alt="Workout set" /> },
+  { id: "Oversized hoodie", label: "Oversized hoodie", swatch: <PhotoSwatch src={outfitHoodie} alt="Oversized hoodie" /> },
+  { id: "Silk blouse",      label: "Silk blouse",      swatch: <PhotoSwatch src={outfitSilk} alt="Silk blouse" /> },
+  { id: "Streetwear",       label: "Streetwear",       swatch: <PhotoSwatch src={outfitStreet} alt="Streetwear" /> },
+  { id: "Evening gown",     label: "Evening gown",     swatch: <PhotoSwatch src={outfitGown} alt="Evening gown" /> },
 ];
 
 const VIBES: Visual[] = [

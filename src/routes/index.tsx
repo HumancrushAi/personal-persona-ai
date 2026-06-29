@@ -125,6 +125,7 @@ function Landing() {
       const { data, error } = await supabase
         .from("companions")
         .select("id, name, age, ethnicity, short_bio, image_url, gender, orientation")
+        .is("created_by", null)
         .order("sort_order");
       if (error) throw error;
       return data as Companion[];

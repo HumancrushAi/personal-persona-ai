@@ -8,6 +8,35 @@ import { Input } from "@/components/ui/input";
 import { Heart, Sparkles, Wand2, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
+import bodySlim from "@/assets/create/body-slim.jpg";
+import bodyAthletic from "@/assets/create/body-athletic.jpg";
+import bodyCurvy from "@/assets/create/body-curvy.jpg";
+import bodyPetite from "@/assets/create/body-petite.jpg";
+import bodyTall from "@/assets/create/body-tall.jpg";
+import bodyThick from "@/assets/create/body-thick.jpg";
+import bodyMuscular from "@/assets/create/body-muscular.jpg";
+import outfitCrop from "@/assets/create/outfit-crop.jpg";
+import outfitBlack from "@/assets/create/outfit-black-dress.jpg";
+import outfitSundress from "@/assets/create/outfit-sundress.jpg";
+import outfitWorkout from "@/assets/create/outfit-workout.jpg";
+import outfitHoodie from "@/assets/create/outfit-hoodie.jpg";
+import outfitSilk from "@/assets/create/outfit-silk.jpg";
+import outfitStreet from "@/assets/create/outfit-streetwear.jpg";
+import outfitGown from "@/assets/create/outfit-gown.jpg";
+
+function PhotoSwatch({ src, alt }: { src: string; alt: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      width={512}
+      height={768}
+      className="h-24 w-full rounded-lg object-cover object-top"
+    />
+  );
+}
+
 export const Route = createFileRoute("/create")({
   ssr: false,
   head: () => ({

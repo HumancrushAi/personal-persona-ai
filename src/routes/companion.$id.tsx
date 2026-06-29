@@ -20,7 +20,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/companion/$id")({
   ssr: false,
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: (s: Record<string, unknown>) => searchSchema.parse(s),
   head: () => ({ meta: [{ title: "Customize — HumanCrush.ai" }] }),
   component: Page,
 });

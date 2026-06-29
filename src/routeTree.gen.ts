@@ -9,38 +9,148 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MeRouteImport } from './routes/me'
+import { Route as CreditsRouteImport } from './routes/credits'
+import { Route as BrowseRouteImport } from './routes/browse'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompanionIdRouteImport } from './routes/companion.$id'
+import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 
+const MeRoute = MeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreditsRoute = CreditsRouteImport.update({
+  id: '/credits',
+  path: '/credits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrowseRoute = BrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompanionIdRoute = CompanionIdRouteImport.update({
+  id: '/companion/$id',
+  path: '/companion/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
+  id: '/chat/$conversationId',
+  path: '/chat/$conversationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/browse': typeof BrowseRoute
+  '/credits': typeof CreditsRoute
+  '/me': typeof MeRoute
+  '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/companion/$id': typeof CompanionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/browse': typeof BrowseRoute
+  '/credits': typeof CreditsRoute
+  '/me': typeof MeRoute
+  '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/companion/$id': typeof CompanionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/browse': typeof BrowseRoute
+  '/credits': typeof CreditsRoute
+  '/me': typeof MeRoute
+  '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/companion/$id': typeof CompanionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/browse'
+    | '/credits'
+    | '/me'
+    | '/chat/$conversationId'
+    | '/companion/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/browse'
+    | '/credits'
+    | '/me'
+    | '/chat/$conversationId'
+    | '/companion/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/browse'
+    | '/credits'
+    | '/me'
+    | '/chat/$conversationId'
+    | '/companion/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  BrowseRoute: typeof BrowseRoute
+  CreditsRoute: typeof CreditsRoute
+  MeRoute: typeof MeRoute
+  ChatConversationIdRoute: typeof ChatConversationIdRoute
+  CompanionIdRoute: typeof CompanionIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/credits': {
+      id: '/credits'
+      path: '/credits'
+      fullPath: '/credits'
+      preLoaderRoute: typeof CreditsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/browse': {
+      id: '/browse'
+      path: '/browse'
+      fullPath: '/browse'
+      preLoaderRoute: typeof BrowseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +158,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/companion/$id': {
+      id: '/companion/$id'
+      path: '/companion/$id'
+      fullPath: '/companion/$id'
+      preLoaderRoute: typeof CompanionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat/$conversationId': {
+      id: '/chat/$conversationId'
+      path: '/chat/$conversationId'
+      fullPath: '/chat/$conversationId'
+      preLoaderRoute: typeof ChatConversationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  BrowseRoute: BrowseRoute,
+  CreditsRoute: CreditsRoute,
+  MeRoute: MeRoute,
+  ChatConversationIdRoute: ChatConversationIdRoute,
+  CompanionIdRoute: CompanionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

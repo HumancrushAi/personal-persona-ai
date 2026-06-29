@@ -58,7 +58,7 @@ export const listUsers = createServerFn({ method: "GET" })
           status: p?.subscription_status ?? null,
           renewsAt: p?.subscription_renews_at ?? null,
           authnetSubId: p?.authnet_subscription_id ?? null,
-          freeCredits: b?.free_credits ?? 0,
+          freeCredits: b?.free_messages_remaining ?? 0,
           paidCredits: b?.paid_credits ?? 0,
           roles: r,
         };

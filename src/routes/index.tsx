@@ -15,6 +15,11 @@ import reel3 from "@/assets/reels/r3.mp4.asset.json";
 import reel4 from "@/assets/reels/r4.mp4.asset.json";
 import reel5 from "@/assets/reels/r5.mp4.asset.json";
 import reel6 from "@/assets/reels/r6.mp4.asset.json";
+import banner1 from "@/assets/banners/b1.jpg";
+import banner2 from "@/assets/banners/b2.jpg";
+import banner3 from "@/assets/banners/b3.jpg";
+import banner4 from "@/assets/banners/b4.jpg";
+import banner5 from "@/assets/banners/b5.jpg";
 
 const REELS: { url: string; tag: string; views: string }[] = [
   { url: reel1.url, tag: "After hours", views: "412K" },
@@ -23,6 +28,14 @@ const REELS: { url: string; tag: string; views: string }[] = [
   { url: reel4.url, tag: "Date night", views: "356K" },
   { url: reel5.url, tag: "Pool day", views: "684K" },
   { url: reel6.url, tag: "Late night drive", views: "198K" },
+];
+
+const BANNERS: { img: string; reel: string; title: string; sub: string }[] = [
+  { img: banner1, reel: reel5.url, title: "Pool day with Sofia", sub: "she's waiting for you in the water 💦" },
+  { img: banner2, reel: reel2.url, title: "Mei just got out of the ocean", sub: "wet, warm, and bored without you" },
+  { img: banner3, reel: reel3.url, title: "Yacht week with Amara", sub: "gold bikini · open bar · open invite" },
+  { img: banner4, reel: reel4.url, title: "Mykonos sunset with Elina", sub: "she saved you a seat 🥂" },
+  { img: banner5, reel: reel1.url, title: "Rooftop in Dubai · Layla", sub: "skyline views, zero rules" },
 ];
 
 export const Route = createFileRoute("/")({

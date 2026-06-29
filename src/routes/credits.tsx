@@ -79,7 +79,7 @@ function CreditsPage() {
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();
     if (!window.Accept) { toast.error("Payment system not loaded yet, try again."); return; }
-    if (!clientKey || !apiLoginId) { toast.error("Payment not configured. Add VITE_AUTHORIZE_NET_CLIENT_KEY and VITE_AUTHORIZE_NET_API_LOGIN_ID."); return; }
+    if (!clientKey || !apiLoginId) { toast.error("Payment system not configured."); return; }
     setProcessing(true);
     const secureData = {
       authData: { clientKey, apiLoginID: apiLoginId },

@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CompanionIdRouteImport } from './routes/companion.$id'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
+import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
 
 const MeRoute = MeRouteImport.update({
   id: '/me',
@@ -52,6 +53,11 @@ const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
   path: '/chat/$conversationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAuthnetWebhookRoute = ApiPublicAuthnetWebhookRouteImport.update({
+  id: '/api/public/authnet-webhook',
+  path: '/api/public/authnet-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/api/public/authnet-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/api/public/authnet-webhook'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/api/public/authnet-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   MeRoute: typeof MeRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
+  ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatConversationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/authnet-webhook': {
+      id: '/api/public/authnet-webhook'
+      path: '/api/public/authnet-webhook'
+      fullPath: '/api/public/authnet-webhook'
+      preLoaderRoute: typeof ApiPublicAuthnetWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   MeRoute: MeRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,
+  ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

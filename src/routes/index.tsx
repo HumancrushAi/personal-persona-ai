@@ -590,24 +590,21 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
     >
       <div
         className="flex h-[260px] transition-transform duration-700 ease-out md:h-[420px]"
-        style={{ transform: `translateX(-${idx * 100}%)`, width: `${n * 100}%` }}
+        style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {BANNERS.map((b, i) => (
           <button
             key={i}
             type="button"
             onClick={() => onPlay(b)}
-            className="group relative block h-full shrink-0 text-left"
-            style={{ width: `${100 / n}%` }}
+            className="group relative block h-full w-full shrink-0 text-left"
             aria-label={`Play reel: ${b.title}`}
           >
             <img
               src={b.img}
               alt={b.title}
-              width={1920}
-              height={1024}
               draggable={false}
-              className="pointer-events-none h-full w-full object-cover"
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

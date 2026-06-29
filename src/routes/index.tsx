@@ -134,6 +134,7 @@ function Landing() {
   const [activeCat, setActiveCat] = useState<Cat>("For you");
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
+  const [playReel, setPlayReel] = useState<{ url: string; title: string } | null>(null);
 
   const filtered = useMemo(
     () => (companions ?? []).filter(c => matchesCategory(c, activeCat)),
@@ -143,6 +144,12 @@ function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden pb-24">
       <Nav />
+
+      {/* BANNER SLIDER */}
+      <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
+        <BannerSlider onPlay={(b) => setPlayReel({ url: b.reel, title: b.title })} />
+      </section>
+
 
       {/* HERO STRIP */}
       <section className="relative mx-auto max-w-7xl px-4 pt-2 md:px-6">

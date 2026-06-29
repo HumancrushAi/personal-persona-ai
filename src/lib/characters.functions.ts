@@ -12,6 +12,7 @@ const Input = z.object({
   hair: z.string().max(60).optional(),
   eyes: z.string().max(40).optional(),
   outfit: z.string().max(100).optional(),
+  fit: z.enum(["slim", "regular", "loose"]).optional(),
   vibe: z.string().max(200).optional(),
 });
 

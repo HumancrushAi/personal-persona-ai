@@ -232,6 +232,7 @@ function CreatePage() {
   const [hair, setHair] = useState(HAIRS[0].id);
   const [eyes, setEyes] = useState(EYES[0].id);
   const [outfit, setOutfit] = useState(OUTFITS[0].id);
+  const [fit, setFit] = useState<"slim" | "regular" | "loose">("slim");
   const [vibe, setVibe] = useState(VIBES[1].id);
   const [loading, setLoading] = useState(false);
 

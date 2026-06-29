@@ -202,10 +202,24 @@ function CreditsPage() {
           </Button>
           {tab === "subs" && (
             <p className="text-center text-[11px] text-muted-foreground">
-              Charged today as a one-time payment. We don't auto-renew — you'll be reminded near {profile?.subscription_renews_at ? new Date(profile.subscription_renews_at).toLocaleDateString() : "your renewal date"}.
+              Auto-renews monthly. Cancel anytime — you keep credits already granted.
             </p>
           )}
         </form>
+
+        {profile?.authnet_subscription_id && profile?.subscription_status === "active" && (
+          <div className="glass mt-6 flex items-center justify-between rounded-3xl p-5">
+            <div>
+              <div className="font-medium">Active subscription</div>
+              <div className="text-xs text-muted-foreground">
+                Next charge {profile?.subscription_renews_at ? new Date(profile.subscription_renews_at).toLocaleDateString() : "soon"}
+              </div>
+            </div>
+            <Button variant="outline" className="rounded-full border-white/20" onClick={handleCancel}>
+              Cancel subscription
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   );

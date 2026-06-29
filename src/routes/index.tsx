@@ -209,19 +209,18 @@ function Landing() {
         </div>
       </section>
 
-      {/* REELS — real autoplay videos */}
+      {/* REELS — showcase clips, not tied to specific companions */}
       <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
         <SectionTitle title="🔥 Reels" subtitle="live now" cta={<Link to="/browse" className="text-xs text-primary hover:underline">See all</Link>} />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {(companions ?? []).slice(0, REELS.length).map((c, i) => (
-            <button
-              key={c.id}
-              onClick={() => setTease(c)}
+          {REELS.map((r, i) => (
+            <Link
+              key={i}
+              to="/browse"
               className="group relative h-[300px] w-[180px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card shadow-md md:h-[360px] md:w-[220px]"
             >
               <video
-                src={REELS[i]}
-                poster={companionImage(c.image_url)}
+                src={r.url}
                 autoPlay
                 muted
                 loop
@@ -234,14 +233,14 @@ function Landing() {
                   <Circle className="h-1.5 w-1.5 fill-red-500 text-red-500" /> LIVE
                 </span>
                 <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] backdrop-blur">
-                  {(120 + i * 37) % 980}K
+                  {r.views}
                 </span>
               </div>
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 text-left">
-                <p className="font-display text-sm font-semibold text-white">{c.name}, {c.age}</p>
-                <p className="line-clamp-1 text-[11px] text-white/75">{c.short_bio}</p>
+                <p className="font-display text-sm font-semibold text-white">{r.tag}</p>
+                <p className="line-clamp-1 text-[11px] text-white/75">Tap to browse crushes</p>
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       </section>

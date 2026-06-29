@@ -151,7 +151,7 @@ function Landing() {
           <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
-              placeholder="Search girls, vibes, kinks…"
+              placeholder="Search people, vibes, kinks…"
               className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>

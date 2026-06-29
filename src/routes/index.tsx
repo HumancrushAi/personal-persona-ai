@@ -137,7 +137,7 @@ function Landing() {
                 She's whoever <span className="bg-grad-primary bg-clip-text text-transparent">you</span> want her to be.
               </h1>
               <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
-                Tap any girl below — she messages you first.
+                Tap anyone below — they message you first.
               </p>
             </div>
             <div className="hidden gap-2 md:flex">

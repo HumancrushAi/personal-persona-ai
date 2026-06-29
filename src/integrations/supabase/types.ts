@@ -20,33 +20,42 @@ export type Database = {
           base_personality: string
           created_at: string
           ethnicity: string
+          gender: string
           id: string
           image_url: string
           name: string
+          orientation: string
           short_bio: string
           sort_order: number
+          video_url: string | null
         }
         Insert: {
           age: number
           base_personality: string
           created_at?: string
           ethnicity: string
+          gender?: string
           id?: string
           image_url: string
           name: string
+          orientation?: string
           short_bio: string
           sort_order?: number
+          video_url?: string | null
         }
         Update: {
           age?: number
           base_personality?: string
           created_at?: string
           ethnicity?: string
+          gender?: string
           id?: string
           image_url?: string
           name?: string
+          orientation?: string
           short_bio?: string
           sort_order?: number
+          video_url?: string | null
         }
         Relationships: []
       }

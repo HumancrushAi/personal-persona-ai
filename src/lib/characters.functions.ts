@@ -39,6 +39,11 @@ export const generateCharacter = createServerFn({ method: "POST" })
       data.hair ? `Hair: ${data.hair}.` : "",
       data.eyes ? `Eyes: ${data.eyes}.` : "",
       data.outfit ? `Wearing: ${data.outfit}.` : "Wearing stylish casual clothes.",
+      data.fit === "slim"
+        ? "Outfit fit: tailored and form-fitting, hugs the figure, not baggy."
+        : data.fit === "loose"
+        ? "Outfit fit: relaxed and loose, oversized silhouette."
+        : "Outfit fit: regular, true-to-size.",
       data.vibe ? `Vibe: ${data.vibe}.` : "",
       "Looking softly at the camera. Tasteful, attractive, no nudity. Centered head and shoulders.",
     ].filter(Boolean).join(" ");

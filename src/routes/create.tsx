@@ -342,6 +342,17 @@ function CreatePage() {
             <Field label="Hair"><VisualGrid options={HAIRS} value={hair} onChange={setHair} /></Field>
             <Field label="Eyes"><VisualGrid options={EYES} value={eyes} onChange={setEyes} /></Field>
             <Field label="Outfit"><VisualGrid options={OUTFITS} value={outfit} onChange={setOutfit} /></Field>
+            <Field label="Outfit fit">
+              <ChipRow
+                options={[
+                  { id: "slim", label: "Slim · form-fitting" },
+                  { id: "regular", label: "Regular" },
+                  { id: "loose", label: "Loose · oversized" },
+                ]}
+                value={fit}
+                onChange={(v) => setFit(v as "slim" | "regular" | "loose")}
+              />
+            </Field>
             <Field label="Vibe"><VisualGrid options={VIBES} value={vibe} onChange={setVibe} /></Field>
           </div>
         </div>

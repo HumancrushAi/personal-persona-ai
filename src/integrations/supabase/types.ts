@@ -17,8 +17,10 @@ export type Database = {
       companions: {
         Row: {
           age: number
+          art_style: string
           base_personality: string
           created_at: string
+          created_by: string | null
           ethnicity: string
           gender: string
           id: string
@@ -31,8 +33,10 @@ export type Database = {
         }
         Insert: {
           age: number
+          art_style?: string
           base_personality: string
           created_at?: string
+          created_by?: string | null
           ethnicity: string
           gender?: string
           id?: string
@@ -45,8 +49,10 @@ export type Database = {
         }
         Update: {
           age?: number
+          art_style?: string
           base_personality?: string
           created_at?: string
+          created_by?: string | null
           ethnicity?: string
           gender?: string
           id?: string

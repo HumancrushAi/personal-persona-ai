@@ -42,7 +42,7 @@ export function AgeGate() {
         </div>
         <h2 className="mt-5 text-center font-display text-2xl font-semibold">Adults only — 18+</h2>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          Aurelia contains explicit, adult AI roleplay. By continuing you confirm you are
+          HumanCrush.ai contains explicit, adult AI roleplay. By continuing you confirm you are
           at least 18 years old (21 where required) and that adult content is legal in your
           jurisdiction.
         </p>

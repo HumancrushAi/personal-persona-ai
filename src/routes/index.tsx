@@ -6,9 +6,9 @@ import { companionImage } from "@/lib/companion-images";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Aurelia — Your AI Girlfriend, Built Exactly Your Way" },
+      { title: "HumanCrush.ai — Your AI Girlfriend, Built Exactly Your Way" },
       { name: "description", content: "Design her face, personality, voice, and story. Spicy 18+ AI girlfriend with selfies, voice notes, and a relationship that actually grows." },
-      { property: "og:title", content: "Aurelia — Your AI Girlfriend, Built Exactly Your Way" },
+      { property: "og:title", content: "HumanCrush.ai — Your AI Girlfriend, Built Exactly Your Way" },
       { property: "og:description", content: "25 stunning AI companions. Custom personalities. Selfies, voice notes, and roleplay scenarios that unlock as she falls for you." },
     ],
   }),
@@ -96,7 +96,7 @@ function Landing() {
       </section>
 
       <footer className="border-t border-white/10 py-10 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Aurelia. 18+ only. AI characters are fictional.
+        © {new Date().getFullYear()} HumanCrush.ai. 18+ only. AI characters are fictional.
       </footer>
     </div>
   );
@@ -115,7 +115,7 @@ function Nav() {
     <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
       <Link to="/" className="flex items-center gap-2">
         <Heart className="h-6 w-6 fill-primary text-primary" />
-        <span className="font-display text-2xl font-semibold tracking-tight">Aurelia</span>
+        <span className="font-display text-2xl font-semibold tracking-tight">HumanCrush.ai</span>
       </Link>
       <nav className="flex items-center gap-2">
         <Button asChild variant="ghost" className="rounded-full">

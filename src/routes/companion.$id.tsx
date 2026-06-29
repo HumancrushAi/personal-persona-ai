@@ -13,7 +13,7 @@ import { SCENARIOS } from "@/lib/scenarios";
 
 export const Route = createFileRoute("/companion/$id")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Customize — Aurelia" }] }),
+  head: () => ({ meta: [{ title: "Customize — HumanCrush.ai" }] }),
   component: Page,
 });
 
@@ -87,7 +87,7 @@ function Page() {
         </Button>
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-5 w-5 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold">Aurelia</span>
+          <span className="font-display text-xl font-semibold">HumanCrush.ai</span>
         </Link>
       </header>
 

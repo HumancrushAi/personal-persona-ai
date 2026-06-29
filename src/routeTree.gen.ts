@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as GalleryRouteImport } from './routes/gallery'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as CreditsRouteImport } from './routes/credits'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as BrowseRouteImport } from './routes/browse'
@@ -28,6 +29,11 @@ const MeRoute = MeRouteImport.update({
 const GalleryRoute = GalleryRouteImport.update({
   id: '/gallery',
   path: '/gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreditsRoute = CreditsRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/browse': typeof BrowseRoute
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
+  '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/browse': typeof BrowseRoute
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
+  '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/browse': typeof BrowseRoute
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
+  '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/me': typeof MeRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/create'
     | '/credits'
+    | '/faq'
     | '/gallery'
     | '/me'
     | '/chat/$conversationId'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/create'
     | '/credits'
+    | '/faq'
     | '/gallery'
     | '/me'
     | '/chat/$conversationId'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/create'
     | '/credits'
+    | '/faq'
     | '/gallery'
     | '/me'
     | '/chat/$conversationId'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   BrowseRoute: typeof BrowseRoute
   CreateRoute: typeof CreateRoute
   CreditsRoute: typeof CreditsRoute
+  FaqRoute: typeof FaqRoute
   GalleryRoute: typeof GalleryRoute
   MeRoute: typeof MeRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/gallery'
       fullPath: '/gallery'
       preLoaderRoute: typeof GalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/credits': {
@@ -241,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   BrowseRoute: BrowseRoute,
   CreateRoute: CreateRoute,
   CreditsRoute: CreditsRoute,
+  FaqRoute: FaqRoute,
   GalleryRoute: GalleryRoute,
   MeRoute: MeRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,

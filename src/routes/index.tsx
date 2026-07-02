@@ -10,38 +10,34 @@ import {
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
 import { FAQSection } from "@/components/FAQSection";
-import reel1 from "@/assets/reels/r1.mp4.asset.json";
-import reel2 from "@/assets/reels/r2.mp4.asset.json";
-import reel3 from "@/assets/reels/r3.mp4.asset.json";
-import reel7 from "@/assets/reels/r7.mp4.asset.json";
-import reel8 from "@/assets/reels/r8.mp4.asset.json";
-import reel9 from "@/assets/reels/r9.mp4.asset.json";
-import reel10 from "@/assets/reels/r10.mp4.asset.json";
-import reel11 from "@/assets/reels/r11.mp4.asset.json";
 import banner1 from "@/assets/banners/b1.jpg";
 import banner2 from "@/assets/banners/b2.jpg";
 import banner3 from "@/assets/banners/b3.jpg";
 import banner4 from "@/assets/banners/b4.jpg";
 import banner5 from "@/assets/banners/b5.jpg";
 
+// Reel videos live in the Supabase Storage public `reels` bucket.
+const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
+const reelUrl = (name: string) => `${REEL_BASE}/${name}.mp4`;
+
 const REELS: { url: string; tag: string; views: string }[] = [
-  { url: reel7.url, tag: "Beach walk", views: "684K" },
-  { url: reel10.url, tag: "Pool boy", views: "612K" },
-  { url: reel8.url, tag: "Poolside", views: "521K" },
-  { url: reel11.url, tag: "Beach hunk", views: "478K" },
-  { url: reel9.url, tag: "Ocean dip", views: "412K" },
-  { url: reel1.url, tag: "After hours", views: "356K" },
-  { url: reel2.url, tag: "Just woke up", views: "289K" },
-  { url: reel3.url, tag: "Sunset vibes", views: "198K" },
+  { url: reelUrl("r7"), tag: "Beach walk", views: "684K" },
+  { url: reelUrl("r10"), tag: "Pool boy", views: "612K" },
+  { url: reelUrl("r8"), tag: "Poolside", views: "521K" },
+  { url: reelUrl("r11"), tag: "Beach hunk", views: "478K" },
+  { url: reelUrl("r9"), tag: "Ocean dip", views: "412K" },
+  { url: reelUrl("r1"), tag: "After hours", views: "356K" },
+  { url: reelUrl("r2"), tag: "Just woke up", views: "289K" },
+  { url: reelUrl("r3"), tag: "Sunset vibes", views: "198K" },
 ];
 
 // Each banner pairs an image with a reel video that visually matches (swimwear / beach / pool).
 const BANNERS: { img: string; reel: string; title: string; sub: string }[] = [
-  { img: banner1, reel: reel7.url, title: "Pool day", sub: "she's waiting in the water 💦" },
-  { img: banner2, reel: reel10.url, title: "Pool boy", sub: "abs, dripping wet, all yours 🔥" },
-  { img: banner3, reel: reel9.url, title: "Ocean break", sub: "wet, warm, and bored without you" },
-  { img: banner4, reel: reel11.url, title: "Beach hunk", sub: "sunset stroll · shirt optional" },
-  { img: banner5, reel: reel8.url, title: "Rooftop pool", sub: "skyline views, zero rules" },
+  { img: banner1, reel: reelUrl("r7"), title: "Pool day", sub: "she's waiting in the water 💦" },
+  { img: banner2, reel: reelUrl("r10"), title: "Pool boy", sub: "abs, dripping wet, all yours 🔥" },
+  { img: banner3, reel: reelUrl("r9"), title: "Ocean break", sub: "wet, warm, and bored without you" },
+  { img: banner4, reel: reelUrl("r11"), title: "Beach hunk", sub: "sunset stroll · shirt optional" },
+  { img: banner5, reel: reelUrl("r8"), title: "Rooftop pool", sub: "skyline views, zero rules" },
 ];
 
 export const Route = createFileRoute("/")({

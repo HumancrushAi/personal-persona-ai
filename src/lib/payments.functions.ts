@@ -3,7 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { CREDIT_PACKS, SUBSCRIPTION_TIERS } from "./credit-packs";
-import { getStripe, stripePriceId } from "./stripe.server";
+import { getStripe, resolvePriceId } from "./stripe.server";
 
 // Resolve the public origin for Stripe redirect URLs.
 function appOrigin(): string {
@@ -51,11 +51,12 @@ export const createCheckout = createServerFn({ method: "POST" })
     const customerId = await ensureCustomer(supabase, userId, email);
     const origin = appOrigin();
     const credits = pack ? pack.credits : tier!.monthlyCredits;
+    const priceId = await resolvePriceId(data.packId);
 
     const session = await stripe.checkout.sessions.create({
       mode: tier ? "subscription" : "payment",
       customer: customerId,
-      line_items: [{ price: stripePriceId(data.packId), quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/credits?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/credits?checkout=cancel`,
       allow_promotion_codes: true,

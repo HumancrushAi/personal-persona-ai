@@ -78,23 +78,32 @@ export const adminAddCredits = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    if (data.credits === 0) throw new Error("Credits must be non-zero");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
 
-    const { data: bal } = await supabaseAdmin
-      .from("credit_balances").select("paid_credits").eq("user_id", data.userId).maybeSingle();
-    const newPaid = Math.max(0, (bal?.paid_credits ?? 0) + data.credits);
-    const { error } = await supabaseAdmin
-      .from("credit_balances")
-      .upsert({ user_id: data.userId, paid_credits: newPaid }, { onConflict: "user_id" });
+    // Atomic, ledgered adjustment (clamps the wallet at zero on debit).
+    const { data: g, error } = await admin.rpc("grant_credits", {
+      p_user: data.userId, p_amount: data.credits, p_reason: "admin_adjust",
+      p_ref_type: "admin", p_ref_id: context.userId,
+    });
     if (error) throw new Error(error.message);
+    const row = Array.isArray(g) ? g[0] : g;
+    const newPaid = row?.paid_remaining ?? 0;
 
-    await supabaseAdmin.from("transactions").insert({
+    await admin.from("transactions").insert({
       user_id: data.userId,
       amount_cents: 0,
       credits_added: data.credits,
       pack_name: data.credits >= 0 ? "Admin grant" : "Admin adjustment",
-      authnet_transaction_id: `admin-${Date.now()}`,
+      provider: "admin",
       status: "completed",
+    });
+    await admin.from("audit_logs").insert({
+      actor_id: context.userId,
+      action: "admin_add_credits",
+      target: data.userId,
+      meta: { credits: data.credits },
     });
 
     return { ok: true, paidCredits: newPaid };

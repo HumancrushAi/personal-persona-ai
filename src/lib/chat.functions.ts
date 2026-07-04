@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { getScenario } from "./scenarios";
+import { spendCredits, logAiUsage } from "./tokens.functions";
 
 const sendSchema = z.object({
   conversationId: z.string().uuid(),
@@ -117,14 +118,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       kind: "text",
     });
 
-    // Decrement credits (free first)
-    let newFree = bal.free_messages_remaining ?? 0;
-    let newPaid = bal.paid_credits ?? 0;
-    if (newFree > 0) newFree -= 1;
-    else newPaid -= 1;
-    await supabase.from("credit_balances")
-      .update({ free_messages_remaining: newFree, paid_credits: newPaid })
-      .eq("user_id", userId);
+    // Atomic debit: 1 credit, free messages first, then paid (ledgered).
+    const { free: newFree, paid: newPaid } = await spendCredits(
+      supabase, userId, 1, "chat", "conversation", data.conversationId,
+    );
+    await logAiUsage(supabase, userId, "chat", 1, data.conversationId);
 
     // Relationship XP — +1 per user msg, level up every 15 xp, cap at 10
     const newXp = ((conv as any).relationship_xp ?? 0) + 1;

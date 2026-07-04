@@ -21,7 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CompanionIdRouteImport } from './routes/companion.$id'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
+import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 
 const MeRoute = MeRouteImport.update({
   id: '/me',
@@ -82,9 +82,9 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicAuthnetWebhookRoute = ApiPublicAuthnetWebhookRouteImport.update({
-  id: '/api/public/authnet-webhook',
-  path: '/api/public/authnet-webhook',
+const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
+  id: '/api/public/stripe-webhook',
+  path: '/api/public/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -100,7 +100,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
-  '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -114,7 +114,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
-  '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -130,7 +130,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
-  '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -146,7 +146,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/chat/$conversationId'
     | '/companion/$id'
-    | '/api/public/authnet-webhook'
+    | '/api/public/stripe-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -160,7 +160,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/chat/$conversationId'
     | '/companion/$id'
-    | '/api/public/authnet-webhook'
+    | '/api/public/stripe-webhook'
   id:
     | '__root__'
     | '/'
@@ -175,7 +175,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/chat/$conversationId'
     | '/companion/$id'
-    | '/api/public/authnet-webhook'
+    | '/api/public/stripe-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -190,7 +190,7 @@ export interface RootRouteChildren {
   MeRoute: typeof MeRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
-  ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
+  ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -279,11 +279,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/authnet-webhook': {
-      id: '/api/public/authnet-webhook'
-      path: '/api/public/authnet-webhook'
-      fullPath: '/api/public/authnet-webhook'
-      preLoaderRoute: typeof ApiPublicAuthnetWebhookRouteImport
+    '/api/public/stripe-webhook': {
+      id: '/api/public/stripe-webhook'
+      path: '/api/public/stripe-webhook'
+      fullPath: '/api/public/stripe-webhook'
+      preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -312,7 +312,7 @@ const rootRouteChildren: RootRouteChildren = {
   MeRoute: MeRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,
-  ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
+  ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

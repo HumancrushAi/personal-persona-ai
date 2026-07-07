@@ -33,7 +33,7 @@ export const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What payment methods are accepted?",
-    a: "We accept all major credit and debit cards (Visa, Mastercard, American Express, Discover) processed securely through Stripe. Your card details never touch our servers.",
+    a: "We accept all major credit and debit cards (Visa, Mastercard, American Express, Discover) processed securely through Authorize.Net. Your card details never touch our servers.",
   },
   {
     q: "Can I cancel my subscription?",

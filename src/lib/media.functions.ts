@@ -1,20 +1,32 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { spendCredits, logAiUsage } from "./tokens.functions";
 
 const SELFIE_COST = 8;
 const VOICE_COST = 3;
 
 const VOICES = ["alloy", "sage", "shimmer", "nova", "coral", "verse"];
 
-// Atomic debit for a premium media action (free messages first, then paid).
-async function chargeCredits(
-  supabase: any, userId: string, cost: number, action: string, conversationId?: string,
-) {
-  const balance = await spendCredits(supabase, userId, cost, action, "conversation", conversationId);
-  await logAiUsage(supabase, userId, action, cost, conversationId);
-  return balance;
+async function chargeCredits(supabase: any, userId: string, cost: number) {
+  const { data: bal } = await supabase
+    .from("credit_balances")
+    .select("free_messages_remaining, paid_credits")
+    .eq("user_id", userId).maybeSingle();
+  if (!bal) throw new Error("No balance");
+  const total = (bal.free_messages_remaining ?? 0) + (bal.paid_credits ?? 0);
+  if (total < cost) throw new Error("OUT_OF_CREDITS");
+  let newFree = bal.free_messages_remaining ?? 0;
+  let newPaid = bal.paid_credits ?? 0;
+  let remaining = cost;
+  if (newFree > 0) {
+    const used = Math.min(newFree, remaining);
+    newFree -= used; remaining -= used;
+  }
+  if (remaining > 0) newPaid -= remaining;
+  await supabase.from("credit_balances")
+    .update({ free_messages_remaining: newFree, paid_credits: newPaid })
+    .eq("user_id", userId);
+  return { free: newFree, paid: newPaid };
 }
 
 export const generateSelfie = createServerFn({ method: "POST" })
@@ -32,7 +44,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
       .eq("id", data.conversationId).eq("user_id", userId).maybeSingle();
     if (!conv) throw new Error("Conversation not found");
 
-    const balance = await chargeCredits(supabase, userId, SELFIE_COST, "image", data.conversationId);
+    const balance = await chargeCredits(supabase, userId, SELFIE_COST);
 
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
@@ -95,7 +107,7 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
       .eq("id", data.conversationId).eq("user_id", userId).maybeSingle();
     if (!conv) throw new Error("Conversation not found");
 
-    const balance = await chargeCredits(supabase, userId, VOICE_COST, "voice", data.conversationId);
+    const balance = await chargeCredits(supabase, userId, VOICE_COST);
 
     const sort: number = (conv as any).user_personalities?.companions?.sort_order ?? 0;
     const voice = VOICES[sort % VOICES.length];

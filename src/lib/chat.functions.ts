@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
+import { chatComplete } from "./ai";
 
 const sendSchema = z.object({
   conversationId: z.string().uuid(),
@@ -22,29 +23,6 @@ function relationshipTone(level: number) {
   if (level <= 8)
     return "We are committed partners. You know me intimately, finish my sentences, and crave me physically and emotionally.";
   return "We are soulmates. Total trust, deep desire, complete intimacy. Speak with the warmth and rawness of someone who loves me without conditions.";
-}
-
-async function callGateway(
-  messages: { role: string; content: string }[],
-  opts?: { maxTokens?: number },
-) {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("Missing LOVABLE_API_KEY");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages,
-      ...(opts?.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`AI error: ${res.status} ${text.slice(0, 200)}`);
-  }
-  const json = await res.json();
-  return (json.choices?.[0]?.message?.content ?? "").trim();
 }
 
 export const sendChatMessage = createServerFn({ method: "POST" })
@@ -130,7 +108,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       })),
     ];
 
-    const reply = await callGateway(messages);
+    const reply = await chatComplete(messages);
 
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,
@@ -166,7 +144,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     let newMemory = memory;
     if (newXp % 4 === 0) {
       try {
-        const extracted = await callGateway(
+        const extracted = await chatComplete(
           [
             {
               role: "system",

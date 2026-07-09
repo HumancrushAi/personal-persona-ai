@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
+import { generateImage, textToSpeech } from "./ai";
 
 const SELFIE_COST = 8;
 const VOICE_COST = 3;
@@ -71,26 +72,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join(" ");
 
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        prompt: imagePrompt,
-        size: "1024x1024",
-        n: 1,
-      }),
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Image error: ${res.status} ${t.slice(0, 200)}`);
-    }
-    const json = await res.json();
-    const b64 = json.data?.[0]?.b64_json;
-    if (!b64) throw new Error("No image returned");
-    const dataUrl = `data:image/png;base64,${b64}`;
+    const dataUrl = await generateImage(imagePrompt);
 
     const caption = userPrompt ? `*sends a pic* ${userPrompt}` : "*sends you a selfie* 💋";
     await supabase.from("messages").insert({
@@ -131,27 +113,8 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
     const sort: number = (conv as any).user_personalities?.companions?.sort_order ?? 0;
     const voice = VOICES[sort % VOICES.length];
 
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini-tts",
-        input: data.text,
-        voice,
-        response_format: "mp3",
-        instructions:
-          "Speak warmly, intimately, like a girlfriend leaving a private voice note. Slightly low, slow, breathy.",
-      }),
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Voice error: ${res.status} ${t.slice(0, 200)}`);
-    }
-    const buf = await res.arrayBuffer();
-    const b64 = Buffer.from(buf).toString("base64");
-    const dataUrl = `data:audio/mpeg;base64,${b64}`;
+    const buf = await textToSpeech(data.text, voice);
+    const dataUrl = `data:audio/mpeg;base64,${buf.toString("base64")}`;
 
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,

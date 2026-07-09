@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { generateImage } from "./ai";
 
 const Input = z.object({
   name: z.string().min(1).max(40),
@@ -23,9 +24,11 @@ export const generateCharacter = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     const genderWord =
-      data.gender === "male" || data.gender === "trans-male" ? "man"
-      : data.gender === "non-binary" ? "androgynous person"
-      : "woman";
+      data.gender === "male" || data.gender === "trans-male"
+        ? "man"
+        : data.gender === "non-binary"
+          ? "androgynous person"
+          : "woman";
 
     const style =
       data.artStyle === "anime"
@@ -42,46 +45,36 @@ export const generateCharacter = createServerFn({ method: "POST" })
       data.fit === "slim"
         ? "Outfit fit: tailored and form-fitting, hugs the figure, not baggy."
         : data.fit === "loose"
-        ? "Outfit fit: relaxed and loose, oversized silhouette."
-        : "Outfit fit: regular, true-to-size.",
+          ? "Outfit fit: relaxed and loose, oversized silhouette."
+          : "Outfit fit: regular, true-to-size.",
       data.vibe ? `Vibe: ${data.vibe}.` : "",
       "Looking softly at the camera. Tasteful, attractive, no nudity. Centered head and shoulders.",
-    ].filter(Boolean).join(" ");
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
-
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        prompt,
-        size: "1024x1024",
-        n: 1,
-      }),
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Image error: ${res.status} ${t.slice(0, 200)}`);
-    }
-    const json = await res.json();
-    const b64 = json.data?.[0]?.b64_json;
-    if (!b64) throw new Error("No image returned");
-    const dataUrl = `data:image/png;base64,${b64}`;
+    const dataUrl = await generateImage(prompt);
 
     const bio = data.vibe
       ? data.vibe.slice(0, 140)
       : `${data.ethnicity} · ${data.bodyType ?? "your type"} · just made for you.`;
 
     const { data: maxRow } = await supabase
-      .from("companions").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();
+      .from("companions")
+      .select("sort_order")
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const sort = ((maxRow as any)?.sort_order ?? 100) + 1;
 
     const orientation =
-      data.gender === "male" ? "straight"
-      : data.gender === "non-binary" || data.gender === "trans-female" || data.gender === "trans-male" ? "pansexual"
-      : "straight";
+      data.gender === "male"
+        ? "straight"
+        : data.gender === "non-binary" ||
+            data.gender === "trans-female" ||
+            data.gender === "trans-male"
+          ? "pansexual"
+          : "straight";
 
     const { data: companion, error } = await supabase
       .from("companions")

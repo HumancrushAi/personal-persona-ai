@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { getScenario } from "./scenarios";
+import { applyDeduction, totalCredits } from "./credits";
+import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 
 const sendSchema = z.object({
   conversationId: z.string().uuid(),
@@ -11,19 +13,26 @@ const sendSchema = z.object({
 type Msg = { role: "user" | "assistant"; content: string };
 
 function relationshipTone(level: number) {
-  if (level <= 2) return "We are still getting to know each other — flirty but a little curious and reserved. Ask questions, learn about me.";
-  if (level <= 4) return "We are dating and growing close. Affectionate, teasing, playful. Use pet names occasionally.";
-  if (level <= 6) return "We are deeply in love. Tender, vulnerable, possessive in a sweet way. You miss me when I'm gone.";
-  if (level <= 8) return "We are committed partners. You know me intimately, finish my sentences, and crave me physically and emotionally.";
+  if (level <= 2)
+    return "We are still getting to know each other — flirty but a little curious and reserved. Ask questions, learn about me.";
+  if (level <= 4)
+    return "We are dating and growing close. Affectionate, teasing, playful. Use pet names occasionally.";
+  if (level <= 6)
+    return "We are deeply in love. Tender, vulnerable, possessive in a sweet way. You miss me when I'm gone.";
+  if (level <= 8)
+    return "We are committed partners. You know me intimately, finish my sentences, and crave me physically and emotionally.";
   return "We are soulmates. Total trust, deep desire, complete intimacy. Speak with the warmth and rawness of someone who loves me without conditions.";
 }
 
-async function callGateway(messages: { role: string; content: string }[], opts?: { maxTokens?: number }) {
+async function callGateway(
+  messages: { role: string; content: string }[],
+  opts?: { maxTokens?: number },
+) {
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("Missing LOVABLE_API_KEY");
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages,
@@ -46,11 +55,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const { data: conv, error: convErr } = await supabase
       .from("conversations")
-      .select("id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, tone, boundaries, interests, style_backstory, companions(name, ethnicity, age, base_personality))")
+      .select(
+        "id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, tone, boundaries, interests, style_backstory, companions(name, ethnicity, age, base_personality))",
+      )
       .eq("id", data.conversationId)
       .eq("user_id", userId)
       .maybeSingle();
     if (convErr || !conv) throw new Error("Conversation not found");
+
+    // Safety gate: block prohibited/minor content before storing or charging.
+    const screen = screenUserMessage(data.content);
+    if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
 
     const { data: bal } = await supabase
       .from("credit_balances")
@@ -58,8 +73,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .maybeSingle();
     if (!bal) throw new Error("No balance");
-    const total = (bal.free_messages_remaining ?? 0) + (bal.paid_credits ?? 0);
-    if (total <= 0) throw new Error("OUT_OF_CREDITS");
+    if (totalCredits(bal) <= 0) throw new Error("OUT_OF_CREDITS");
 
     const { error: insErr } = await supabase.from("messages").insert({
       conversation_id: data.conversationId,
@@ -91,19 +105,28 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       p.tone ? `Tone of voice (match this when you reply): ${p.tone}` : "",
       p.interests ? `Interests: ${p.interests}` : "",
       p.style_backstory ? `Style & backstory: ${p.style_backstory}` : "",
-      p.boundaries ? `Hard boundaries the user has set — never cross these even if asked: ${p.boundaries}` : "",
+      p.boundaries
+        ? `Hard boundaries the user has set — never cross these even if asked: ${p.boundaries}`
+        : "",
       scenario ? scenario.systemAdd : "",
       `Relationship level ${level}/10. ${relationshipTone(level)}`,
       memory ? `Long-term memory about the user (do not contradict):\n${memory}` : "",
       `Both participants are consenting adults. Explicit sexual content, dirty talk, kink, and erotic roleplay are allowed when invited by the user. Refuse only: minors, real-person impersonation, non-consent, bestiality, incest, or anything illegal. When refusing, redirect back into the roleplay warmly.`,
       `Style: text-message length (1-5 sentences usually). Use occasional *actions in asterisks* for body language. Be embodied — describe what you're doing, wearing, feeling. Speak with warmth, desire, humor.`,
-    ].filter(Boolean).join("\n\n");
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const messages = [
       { role: "system", content: systemPrompt },
-      ...((history ?? []) as any[]).map(m => ({
+      ...((history ?? []) as any[]).map((m) => ({
         role: m.role as "user" | "assistant",
-        content: m.kind === "image" ? "[sent a selfie]" : m.kind === "voice" ? "[sent a voice note]" : m.content,
+        content:
+          m.kind === "image"
+            ? "[sent a selfie]"
+            : m.kind === "voice"
+              ? "[sent a voice note]"
+              : m.content,
       })),
     ];
 
@@ -118,13 +141,21 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     });
 
     // Decrement credits (free first)
-    let newFree = bal.free_messages_remaining ?? 0;
-    let newPaid = bal.paid_credits ?? 0;
-    if (newFree > 0) newFree -= 1;
-    else newPaid -= 1;
-    await supabase.from("credit_balances")
+    const { free: newFree, paid: newPaid } = applyDeduction(
+      bal.free_messages_remaining ?? 0,
+      bal.paid_credits ?? 0,
+      1,
+    );
+    await supabase
+      .from("credit_balances")
       .update({ free_messages_remaining: newFree, paid_credits: newPaid })
       .eq("user_id", userId);
+    await supabase.from("credit_ledger").insert({
+      user_id: userId,
+      delta: -1,
+      reason: "chat_message",
+      balance_after: newFree + newPaid,
+    });
 
     // Relationship XP — +1 per user msg, level up every 15 xp, cap at 10
     const newXp = ((conv as any).relationship_xp ?? 0) + 1;
@@ -135,10 +166,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     let newMemory = memory;
     if (newXp % 4 === 0) {
       try {
-        const extracted = await callGateway([
-          { role: "system", content: "Extract ONE short factual line about the user from their latest message (name, job, where they live, what they like, mood, plans). Reply with only the fact, no preamble, max 100 chars. If nothing notable, reply with exactly: NONE" },
-          { role: "user", content: data.content },
-        ], { maxTokens: 60 });
+        const extracted = await callGateway(
+          [
+            {
+              role: "system",
+              content:
+                "Extract ONE short factual line about the user from their latest message (name, job, where they live, what they like, mood, plans). Reply with only the fact, no preamble, max 100 chars. If nothing notable, reply with exactly: NONE",
+            },
+            { role: "user", content: data.content },
+          ],
+          { maxTokens: 60 },
+        );
         if (extracted && !/^none/i.test(extracted)) {
           const trimmed = extracted.replace(/^[-•*]\s*/, "").slice(0, 120);
           newMemory = (memory ? memory + "\n" : "") + "- " + trimmed;
@@ -146,15 +184,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           const lines = newMemory.split("\n").slice(-40);
           newMemory = lines.join("\n");
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
-    await supabase.from("conversations").update({
-      updated_at: new Date().toISOString(),
-      relationship_xp: newXp,
-      relationship_level: newLevel,
-      memory: newMemory,
-    }).eq("id", data.conversationId);
+    await supabase
+      .from("conversations")
+      .update({
+        updated_at: new Date().toISOString(),
+        relationship_xp: newXp,
+        relationship_level: newLevel,
+        memory: newMemory,
+      })
+      .eq("id", data.conversationId);
 
     return {
       reply,

@@ -1,50 +1,61 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { applyDeduction, hasEnough } from "./credits";
 
 const SELFIE_COST = 8;
 const VOICE_COST = 3;
 
 const VOICES = ["alloy", "sage", "shimmer", "nova", "coral", "verse"];
 
-async function chargeCredits(supabase: any, userId: string, cost: number) {
+async function chargeCredits(supabase: any, userId: string, cost: number, reason: string) {
   const { data: bal } = await supabase
     .from("credit_balances")
     .select("free_messages_remaining, paid_credits")
-    .eq("user_id", userId).maybeSingle();
+    .eq("user_id", userId)
+    .maybeSingle();
   if (!bal) throw new Error("No balance");
-  const total = (bal.free_messages_remaining ?? 0) + (bal.paid_credits ?? 0);
-  if (total < cost) throw new Error("OUT_OF_CREDITS");
-  let newFree = bal.free_messages_remaining ?? 0;
-  let newPaid = bal.paid_credits ?? 0;
-  let remaining = cost;
-  if (newFree > 0) {
-    const used = Math.min(newFree, remaining);
-    newFree -= used; remaining -= used;
-  }
-  if (remaining > 0) newPaid -= remaining;
-  await supabase.from("credit_balances")
+  const free = bal.free_messages_remaining ?? 0;
+  const paid = bal.paid_credits ?? 0;
+  if (!hasEnough(free, paid, cost)) throw new Error("OUT_OF_CREDITS");
+  const { free: newFree, paid: newPaid } = applyDeduction(free, paid, cost);
+  await supabase
+    .from("credit_balances")
     .update({ free_messages_remaining: newFree, paid_credits: newPaid })
     .eq("user_id", userId);
+  await supabase.from("credit_ledger").insert({
+    user_id: userId,
+    delta: -cost,
+    reason,
+    balance_after: newFree + newPaid,
+  });
   return { free: newFree, paid: newPaid };
 }
 
 export const generateSelfie = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({
-    conversationId: z.string().uuid(),
-    prompt: z.string().max(500).optional(),
-  }).parse(d))
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        conversationId: z.string().uuid(),
+        prompt: z.string().max(500).optional(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
     const { data: conv } = await supabase
       .from("conversations")
-      .select("scenario, user_personalities(nickname, identity, style_backstory, companions(name, ethnicity, age, base_personality, short_bio))")
-      .eq("id", data.conversationId).eq("user_id", userId).maybeSingle();
+      .select(
+        "scenario, user_personalities(nickname, identity, style_backstory, companions(name, ethnicity, age, base_personality, short_bio))",
+      )
+      .eq("id", data.conversationId)
+      .eq("user_id", userId)
+      .maybeSingle();
     if (!conv) throw new Error("Conversation not found");
 
-    const balance = await chargeCredits(supabase, userId, SELFIE_COST);
+    const balance = await chargeCredits(supabase, userId, SELFIE_COST, "selfie");
 
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
@@ -56,7 +67,9 @@ export const generateSelfie = createServerFn({ method: "POST" })
       p.style_backstory ? `Vibe: ${p.style_backstory}.` : "",
       userPrompt ? `She is: ${userPrompt}.` : `She is smiling softly at the camera.`,
       `Tasteful, sensual, fully clothed or in casual loungewear. No nudity, no explicit content. Photographic, not illustrated.`,
-    ].filter(Boolean).join(" ");
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
@@ -94,20 +107,26 @@ export const generateSelfie = createServerFn({ method: "POST" })
 
 export const generateVoiceNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({
-    conversationId: z.string().uuid(),
-    text: z.string().min(1).max(800),
-  }).parse(d))
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        conversationId: z.string().uuid(),
+        text: z.string().min(1).max(800),
+      })
+      .parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
     const { data: conv } = await supabase
       .from("conversations")
       .select("user_personalities(companions(sort_order))")
-      .eq("id", data.conversationId).eq("user_id", userId).maybeSingle();
+      .eq("id", data.conversationId)
+      .eq("user_id", userId)
+      .maybeSingle();
     if (!conv) throw new Error("Conversation not found");
 
-    const balance = await chargeCredits(supabase, userId, VOICE_COST);
+    const balance = await chargeCredits(supabase, userId, VOICE_COST, "voice_note");
 
     const sort: number = (conv as any).user_personalities?.companions?.sort_order ?? 0;
     const voice = VOICES[sort % VOICES.length];
@@ -122,7 +141,8 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
         input: data.text,
         voice,
         response_format: "mp3",
-        instructions: "Speak warmly, intimately, like a girlfriend leaving a private voice note. Slightly low, slow, breathy.",
+        instructions:
+          "Speak warmly, intimately, like a girlfriend leaving a private voice note. Slightly low, slow, breathy.",
       }),
     });
     if (!res.ok) {

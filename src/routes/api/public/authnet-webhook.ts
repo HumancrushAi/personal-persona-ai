@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createHmac, timingSafeEqual } from "crypto";
 import { SUBSCRIPTION_TIERS } from "@/lib/credit-packs";
+import { verifyAuthnetSignature } from "@/lib/authnet-signature";
 
 // Authorize.Net webhook receiver for recurring billing events.
 // Configure in Authorize.Net → Account → Webhooks with URL:
@@ -18,17 +18,16 @@ export const Route = createFileRoute("/api/public/authnet-webhook")({
         const sigHeader = request.headers.get("x-anet-signature") ?? "";
         const body = await request.text();
 
-        // Header format: "sha512=HEXDIGEST"
-        const provided = sigHeader.replace(/^sha512=/i, "").trim().toUpperCase();
-        const expected = createHmac("sha512", signatureKey).update(body).digest("hex").toUpperCase();
-
-        if (provided.length !== expected.length ||
-            !timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+        if (!verifyAuthnetSignature(body, sigHeader, signatureKey)) {
           return new Response("Invalid signature", { status: 401 });
         }
 
         let event: any;
-        try { event = JSON.parse(body); } catch { return new Response("Bad JSON", { status: 400 }); }
+        try {
+          event = JSON.parse(body);
+        } catch {
+          return new Response("Bad JSON", { status: 400 });
+        }
 
         const eventType: string = event.eventType ?? "";
         const payload = event.payload ?? {};
@@ -47,33 +46,51 @@ export const Route = createFileRoute("/api/public/authnet-webhook")({
             .select("id, subscription_tier")
             .eq("authnet_subscription_id", subscriptionId)
             .maybeSingle();
-          if (profile) { userId = profile.id; tierId = profile.subscription_tier; }
+          if (profile) {
+            userId = profile.id;
+            tierId = profile.subscription_tier;
+          }
         }
 
         // Recurring payment succeeded → grant monthly credits
         if (eventType.includes("payment.authcapture.created") && userId && tierId) {
-          const tier = SUBSCRIPTION_TIERS.find(t => t.id === tierId);
+          const tier = SUBSCRIPTION_TIERS.find((t) => t.id === tierId);
           if (tier) {
             // Skip the first charge (already granted at purchase) by checking
             // for an existing transaction with this id.
             const { data: existing } = await supabaseAdmin
-              .from("transactions").select("id")
+              .from("transactions")
+              .select("id")
               .eq("authnet_transaction_id", transactionId ?? "")
               .maybeSingle();
 
             if (!existing) {
               const { data: bal } = await supabaseAdmin
-                .from("credit_balances").select("paid_credits")
-                .eq("user_id", userId).maybeSingle();
+                .from("credit_balances")
+                .select("free_messages_remaining, paid_credits")
+                .eq("user_id", userId)
+                .maybeSingle();
               const newPaid = (bal?.paid_credits ?? 0) + tier.monthlyCredits;
-              await supabaseAdmin.from("credit_balances")
-                .update({ paid_credits: newPaid }).eq("user_id", userId);
+              await supabaseAdmin
+                .from("credit_balances")
+                .update({ paid_credits: newPaid })
+                .eq("user_id", userId);
+              await supabaseAdmin.from("credit_ledger").insert({
+                user_id: userId,
+                delta: tier.monthlyCredits,
+                reason: "recurring_grant",
+                balance_after: (bal?.free_messages_remaining ?? 0) + newPaid,
+              });
 
-              const renews = new Date(); renews.setMonth(renews.getMonth() + 1);
-              await supabaseAdmin.from("profiles").update({
-                subscription_renews_at: renews.toISOString(),
-                subscription_status: "active",
-              }).eq("id", userId);
+              const renews = new Date();
+              renews.setMonth(renews.getMonth() + 1);
+              await supabaseAdmin
+                .from("profiles")
+                .update({
+                  subscription_renews_at: renews.toISOString(),
+                  subscription_status: "active",
+                })
+                .eq("id", userId);
 
               await supabaseAdmin.from("transactions").insert({
                 user_id: userId,
@@ -88,14 +105,19 @@ export const Route = createFileRoute("/api/public/authnet-webhook")({
         }
 
         // Subscription cancelled / expired / suspended
-        if (eventType.includes("subscription.cancelled") ||
-            eventType.includes("subscription.expired") ||
-            eventType.includes("subscription.suspended") ||
-            eventType.includes("subscription.terminated")) {
+        if (
+          eventType.includes("subscription.cancelled") ||
+          eventType.includes("subscription.expired") ||
+          eventType.includes("subscription.suspended") ||
+          eventType.includes("subscription.terminated")
+        ) {
           if (userId) {
-            await supabaseAdmin.from("profiles").update({
-              subscription_status: "cancelled",
-            }).eq("id", userId);
+            await supabaseAdmin
+              .from("profiles")
+              .update({
+                subscription_status: "cancelled",
+              })
+              .eq("id", userId);
           }
         }
 

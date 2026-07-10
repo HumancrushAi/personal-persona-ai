@@ -24,7 +24,11 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
         if (error) throw error;
         toast.success("Welcome — check your email to confirm.");
         setMode("signin");
@@ -33,8 +37,30 @@ function AuthPage() {
         if (error) throw error;
         navigate({ to: "/browse" });
       }
-    } catch (err: any) { toast.error(err.message ?? "Something went wrong"); }
-    finally { setLoading(false); }
+    } catch (err: any) {
+      toast.error(err.message ?? "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleForgot() {
+    if (!email) {
+      toast.error("Enter your email first, then tap “Forgot password?”");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Password reset link sent — check your email.");
+    } catch (err: any) {
+      toast.error(err.message ?? "Could not send reset email");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleGoogle() {
@@ -46,7 +72,10 @@ function AuthPage() {
         options: { redirectTo: `${window.location.origin}/browse` },
       });
       if (error) throw error;
-    } catch (err: any) { toast.error(err.message ?? "Sign-in failed"); setLoading(false); }
+    } catch (err: any) {
+      toast.error(err.message ?? "Sign-in failed");
+      setLoading(false);
+    }
   }
 
   return (
@@ -60,35 +89,78 @@ function AuthPage() {
           {mode === "signin" ? "Welcome back" : "She's waiting."}
         </h1>
         <p className="mt-1 text-center text-sm text-muted-foreground">
-          {mode === "signin" ? "Sign in to keep your chats and credits." : "25 free messages, no card needed. 18+ only."}
+          {mode === "signin"
+            ? "Sign in to keep your chats and credits."
+            : "25 free messages, no card needed. 18+ only."}
         </p>
 
-        <Button onClick={handleGoogle} variant="outline" className="mt-6 w-full rounded-full border-white/15 bg-white/5" disabled={loading}>
+        <Button
+          onClick={handleGoogle}
+          variant="outline"
+          className="mt-6 w-full rounded-full border-white/15 bg-white/5"
+          disabled={loading}
+        >
           Continue with Google
         </Button>
 
         <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-          <div className="h-px flex-1 bg-border" /> or email <div className="h-px flex-1 bg-border" />
+          <div className="h-px flex-1 bg-border" /> or email{" "}
+          <div className="h-px flex-1 bg-border" />
         </div>
 
         <form onSubmit={handleEmail} className="space-y-3">
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} className="border-white/10 bg-white/5" />
+            <Input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="border-white/10 bg-white/5"
+            />
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} className="border-white/10 bg-white/5" />
+            <Input
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="border-white/10 bg-white/5"
+            />
           </div>
-          <Button type="submit" className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+            disabled={loading}
+          >
             {mode === "signin" ? "Sign in" : "Create account"}
           </Button>
         </form>
 
+        {mode === "signin" && (
+          <p className="mt-3 text-center text-sm">
+            <button
+              type="button"
+              onClick={handleForgot}
+              disabled={loading}
+              className="text-muted-foreground hover:text-primary hover:underline"
+            >
+              Forgot password?
+            </button>
+          </p>
+        )}
+
         <p className="mt-5 text-center text-sm text-muted-foreground">
           {mode === "signin" ? "New here?" : "Already have an account?"}{" "}
-          <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="font-medium text-primary hover:underline">
+          <button
+            type="button"
+            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+            className="font-medium text-primary hover:underline"
+          >
             {mode === "signin" ? "Create account" : "Sign in"}
           </button>
         </p>

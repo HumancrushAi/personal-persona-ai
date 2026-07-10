@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as GalleryRouteImport } from './routes/gallery'
@@ -24,6 +25,11 @@ import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversat
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MeRoute = MeRouteImport.update({
   id: '/me',
   path: '/me',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
   '/me': typeof MeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
   '/me': typeof MeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
   '/me': typeof MeRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/history'
     | '/me'
+    | '/reset-password'
     | '/admin'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/history'
     | '/me'
+    | '/reset-password'
     | '/admin'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/history'
     | '/me'
+    | '/reset-password'
     | '/_authenticated/admin'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -201,6 +213,7 @@ export interface RootRouteChildren {
   GalleryRoute: typeof GalleryRoute
   HistoryRoute: typeof HistoryRoute
   MeRoute: typeof MeRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
@@ -208,6 +221,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/me': {
       id: '/me'
       path: '/me'
@@ -331,6 +351,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalleryRoute: GalleryRoute,
   HistoryRoute: HistoryRoute,
   MeRoute: MeRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,

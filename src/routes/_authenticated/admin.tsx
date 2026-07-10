@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SUPPORTED_LANGUAGES } from "@/lib/languages";
+import { companionImage } from "@/lib/companion-images";
 import { formatPrice } from "@/lib/credit-packs";
 import { toast } from "sonner";
 import { Shield, Search, UserPlus, RefreshCw, Receipt } from "lucide-react";
@@ -674,9 +675,9 @@ function PersonasPanel() {
                 <tr key={p.id} className="border-t border-white/5">
                   <td className="p-2">
                     <div className="flex items-center gap-2">
-                      {p.image_url && (
+                      {companionImage(p.image_url) && (
                         <img
-                          src={p.image_url}
+                          src={companionImage(p.image_url)}
                           alt=""
                           width={32}
                           height={32}

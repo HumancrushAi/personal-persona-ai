@@ -8,8 +8,9 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
 
-// Uncensored default so adult roleplay isn't refused. Override with OPENROUTER_MODEL.
-const DEFAULT_CHAT_MODEL = "nousresearch/hermes-3-llama-3.1-70b";
+// Uncensored default tuned for intimate girlfriend RP. Override with OPENROUTER_MODEL.
+// Alternatives: anthracite-org/magnum-v4-72b (softer/warmer), sao10k/l3-lunaris-8b (cheap).
+const DEFAULT_CHAT_MODEL = "sao10k/l3.1-euryale-70b";
 
 export async function chatComplete(
   messages: { role: string; content: string }[],

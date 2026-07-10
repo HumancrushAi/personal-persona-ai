@@ -43,7 +43,7 @@ present when Vercel runs the build.
 | `SUPABASE_PUBLISHABLE_KEY` | server | Public key, server runtime |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Full DB access. **No `VITE_` prefix. Never expose.** |
 | `OPENROUTER_API_KEY` | server only | Powers chat replies. Use an NSFW-permitting model. |
-| `OPENROUTER_MODEL` | server only | Optional. Default `nousresearch/hermes-3-llama-3.1-70b`. |
+| `OPENROUTER_MODEL` | server only | Optional. Default `sao10k/l3.1-euryale-70b`. |
 | `OPENAI_API_KEY` | server only | Powers selfies (image) + voice notes (TTS). |
 | `OPENAI_IMAGE_MODEL` / `OPENAI_TTS_MODEL` | server only | Optional overrides (defaults `gpt-image-1` / `gpt-4o-mini-tts`). |
 | `AUTHORIZE_NET_API_LOGIN_ID` | server | Also returned to client for Accept.js (public) |

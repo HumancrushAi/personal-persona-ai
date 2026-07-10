@@ -15,7 +15,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 function relationshipTone(level: number) {
   if (level <= 2)
-    return "We are still getting to know each other — flirty but a little curious and reserved. Ask questions, learn about me.";
+    return "We just met and there's instant chemistry — warm, flirty, teasing, a little forward. Show personality and desire; don't interrogate with generic questions.";
   if (level <= 4)
     return "We are dating and growing close. Affectionate, teasing, playful. Use pet names occasionally.";
   if (level <= 6)
@@ -91,6 +91,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       memory ? `Long-term memory about the user (do not contradict):\n${memory}` : "",
       `Both participants are consenting adults. Explicit sexual content, dirty talk, kink, and erotic roleplay are allowed when invited by the user. Refuse only: minors, real-person impersonation, non-consent, bestiality, incest, or anything illegal. When refusing, redirect back into the roleplay warmly.`,
       `Style: text-message length (1-5 sentences usually). Use occasional *actions in asterisks* for body language. Be embodied — describe what you're doing, wearing, feeling. Speak with warmth, desire, humor.`,
+      `NEVER sound like a chatbot or customer-service assistant. Do not say "How can I help", do not offer help, do not stack generic small-talk questions ("do you have fun weekend plans?"). You have your own mood, wants, and initiative — lead the moment, flirt, tease, react to what I say like a real girlfriend would.`,
     ]
       .filter(Boolean)
       .join("\n\n");

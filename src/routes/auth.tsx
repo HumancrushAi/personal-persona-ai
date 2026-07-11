@@ -18,6 +18,8 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // Only show Google sign-in once the provider is actually configured in Supabase.
+  const googleEnabled = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -94,21 +96,25 @@ function AuthPage() {
             : "25 free messages, no card needed. 18+ only."}
         </p>
 
-        <Button
-          onClick={handleGoogle}
-          variant="outline"
-          className="mt-6 w-full rounded-full border-white/15 bg-white/5"
-          disabled={loading}
-        >
-          Continue with Google
-        </Button>
+        {googleEnabled && (
+          <>
+            <Button
+              onClick={handleGoogle}
+              variant="outline"
+              className="mt-6 w-full rounded-full border-white/15 bg-white/5"
+              disabled={loading}
+            >
+              Continue with Google
+            </Button>
 
-        <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-          <div className="h-px flex-1 bg-border" /> or email{" "}
-          <div className="h-px flex-1 bg-border" />
-        </div>
+            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="h-px flex-1 bg-border" /> or email{" "}
+              <div className="h-px flex-1 bg-border" />
+            </div>
+          </>
+        )}
 
-        <form onSubmit={handleEmail} className="space-y-3">
+        <form onSubmit={handleEmail} className={googleEnabled ? "space-y-3" : "mt-6 space-y-3"}>
           <div>
             <Label htmlFor="email">Email</Label>
             <Input

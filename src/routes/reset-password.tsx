@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Heart } from "lucide-react";
+import { Heart, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
@@ -20,6 +20,7 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   // The recovery link drops a one-time session in the URL, which supabase-js
   // consumes automatically. Confirm we actually have a session before allowing
@@ -75,21 +76,31 @@ function ResetPasswordPage() {
           <form onSubmit={handleSubmit} className="mt-6 space-y-3">
             <div>
               <Label htmlFor="password">New password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="border-white/10 bg-white/5"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPw ? "text" : "password"}
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="border-white/10 bg-white/5 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <div>
               <Label htmlFor="confirm">Confirm password</Label>
               <Input
                 id="confirm"
-                type="password"
+                type={showPw ? "text" : "password"}
                 required
                 minLength={6}
                 value={confirm}

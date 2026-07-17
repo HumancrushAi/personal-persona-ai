@@ -49,20 +49,25 @@ async function tryImageModel(
   prompt: string,
   size: string,
 ): Promise<string> {
-  const body: Record<string, unknown> = { model, prompt, size, n: 1 };
-  // gpt-image-1 always returns b64_json; dall-e-* must be asked for it explicitly.
-  if (model.startsWith("dall-e")) body.response_format = "b64_json";
-
+  // Don't send response_format — gpt-image-1 rejects it, and some accounts
+  // reject it for dall-e too. Handle whichever shape comes back (b64 or url).
   const res = await fetch(OPENAI_IMAGE_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ model, prompt, size, n: 1 }),
   });
   if (!res.ok) throw new Error(`${model}: ${res.status} ${(await res.text()).slice(0, 200)}`);
   const json = await res.json();
-  const b64 = json.data?.[0]?.b64_json;
-  if (!b64) throw new Error(`${model}: no image returned`);
-  return `data:image/png;base64,${b64}`;
+  const item = json.data?.[0];
+  if (item?.b64_json) return `data:image/png;base64,${item.b64_json}`;
+  if (item?.url) {
+    // dall-e returns a temporary URL — fetch it and inline so we can store it.
+    const img = await fetch(item.url);
+    if (!img.ok) throw new Error(`${model}: could not fetch generated image`);
+    const b64 = Buffer.from(await img.arrayBuffer()).toString("base64");
+    return `data:image/png;base64,${b64}`;
+  }
+  throw new Error(`${model}: no image returned`);
 }
 
 // Returns a data: URL (base64 PNG). If OPENAI_IMAGE_MODEL isn't pinned, try
@@ -101,7 +106,10 @@ export async function textToSpeech(text: string, voice: string): Promise<Buffer>
       voice,
       response_format: "mp3",
       instructions:
-        "Speak warmly, intimately, like a girlfriend leaving a private voice note. Slightly low, slow, breathy.",
+        "You are a real girlfriend recording a private voice note just for the person you adore. " +
+        "Sound human and natural — warm, soft, affectionate, and a little playful. Vary your pace and " +
+        "intonation like real speech, add gentle breathiness and a smile in your voice. Never sound " +
+        "robotic, flat, or like a narrator reading text. Speak intimately, as if leaning close to their ear.",
     }),
   });
   if (!res.ok) {

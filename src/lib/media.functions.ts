@@ -7,7 +7,8 @@ import { generateImage, textToSpeech } from "./ai";
 const SELFIE_COST = 8;
 const VOICE_COST = 3;
 
-const VOICES = ["alloy", "sage", "shimmer", "nova", "coral", "verse"];
+// Warmer, more natural voices first (alloy is the flattest, so it's last).
+const VOICES = ["shimmer", "coral", "sage", "nova", "verse", "alloy"];
 
 async function chargeCredits(supabase: any, userId: string, cost: number, reason: string) {
   const { data: bal } = await supabase

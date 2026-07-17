@@ -35,6 +35,7 @@ function ChatPage() {
   const voiceFn = useServerFn(generateVoiceNote);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [pendingUser, setPendingUser] = useState<string | null>(null);
   const [mediaBusy, setMediaBusy] = useState<"selfie" | "voice" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +93,7 @@ function ChatPage() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, sending, mediaBusy]);
+  }, [messages, sending, mediaBusy, pendingUser]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -106,11 +107,21 @@ function ChatPage() {
     setSending(true);
     const content = input.trim();
     setInput("");
+    setPendingUser(content); // show my message instantly
+    const start = Date.now();
     try {
       const res = await send({ data: { conversationId, content } });
-      qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+
+      // Human-feeling typing pause: aim for a total "typing" time based on how
+      // long the reply is, but don't add time the AI call already used up.
+      const target = Math.min(1200 + (res?.reply?.length ?? 0) * 28, 7000);
+      const elapsed = Date.now() - start;
+      if (elapsed < target) await new Promise((r) => setTimeout(r, target - elapsed));
+
       qc.invalidateQueries({ queryKey: ["balance"] });
       qc.invalidateQueries({ queryKey: ["conv-meta", conversationId] });
+      await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+      setPendingUser(null); // real messages are loaded now — drop the optimistic bubble
       if (res?.relationship?.leveledUp) {
         toast.success(`💖 Relationship level up — now level ${res.relationship.level}`);
       }
@@ -123,6 +134,7 @@ function ChatPage() {
         toast.error(msg.split("BLOCKED_CONTENT:")[1]?.trim() || "That request isn't allowed.");
       } else toast.error(msg);
       setInput(content);
+      setPendingUser(null);
     } finally {
       setSending(false);
     }
@@ -277,14 +289,27 @@ function ChatPage() {
               </div>
             </div>
           ))}
+          {pendingUser && (
+            <div className="flex justify-end">
+              <div className="max-w-[80%] rounded-2xl rounded-br-md bg-grad-primary px-4 py-2.5 text-sm text-primary-foreground shadow-glow">
+                {pendingUser}
+              </div>
+            </div>
+          )}
           {(sending || mediaBusy) && (
             <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-muted-foreground">
-                {mediaBusy === "selfie"
-                  ? "taking a pic for you…"
-                  : mediaBusy === "voice"
-                    ? "recording…"
-                    : "typing…"}
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground">
+                {mediaBusy === "selfie" ? (
+                  "taking a pic for you…"
+                ) : mediaBusy === "voice" ? (
+                  "recording…"
+                ) : (
+                  <>
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60" />
+                  </>
+                )}
               </div>
             </div>
           )}

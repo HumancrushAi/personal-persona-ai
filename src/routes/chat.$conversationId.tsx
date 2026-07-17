@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send, Coins, Image as ImageIcon, Mic, Heart, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { AgeGate } from "@/components/AgeGate";
 import { getScenario } from "@/lib/scenarios";
 
 export const Route = createFileRoute("/chat/$conversationId")({
@@ -183,7 +182,6 @@ function ChatPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <AgeGate />
       <header className="glass flex items-center gap-3 px-4 py-3">
         <Button asChild size="icon" variant="ghost" className="rounded-full">
           <Link to="/me">

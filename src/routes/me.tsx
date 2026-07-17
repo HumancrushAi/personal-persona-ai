@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Plus, Coins, Shield } from "lucide-react";
-import { AgeGate } from "@/components/AgeGate";
 
 export const Route = createFileRoute("/me")({
   ssr: false,
@@ -64,7 +63,6 @@ function MePage() {
 
   return (
     <div className="min-h-screen">
-      <AgeGate />
       <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />

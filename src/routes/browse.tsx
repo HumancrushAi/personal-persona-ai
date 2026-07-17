@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { Heart, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRequireAuth } from "@/hooks/use-require-auth";
 
 export const Route = createFileRoute("/browse")({
   ssr: false,
@@ -13,9 +12,7 @@ export const Route = createFileRoute("/browse")({
 });
 
 function Browse() {
-  const ready = useRequireAuth();
   const { data, isLoading } = useQuery({
-    enabled: ready,
     queryKey: ["companions"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -27,8 +24,6 @@ function Browse() {
       return data;
     },
   });
-
-  if (!ready) return <div className="p-10 text-center text-muted-foreground">Loading…</div>;
 
   return (
     <div className="min-h-screen">

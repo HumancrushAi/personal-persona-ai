@@ -112,14 +112,10 @@ function Page() {
   const { edit, personalityId } = Route.useSearch();
   const navigate = useNavigate();
 
-  // Login-first: bounce anonymous visitors to /auth before they can view/customize.
+  // View freely; the chat/save actions below prompt sign-in when needed.
   const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) navigate({ to: "/auth" });
-      else setAuthed(true);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
   }, []);
 
   const { data: companion } = useQuery({

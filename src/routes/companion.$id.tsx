@@ -26,29 +26,57 @@ export const Route = createFileRoute("/companion/$id")({
 });
 
 const TONE_PRESETS = [
-  "Flirty & teasing", "Soft & affectionate", "Confident & dominant",
-  "Submissive & eager", "Playful & bratty", "Sultry & slow",
-  "Sweet & innocent", "Filthy & explicit", "Sarcastic & witty",
+  "Flirty & teasing",
+  "Soft & affectionate",
+  "Confident & dominant",
+  "Submissive & eager",
+  "Playful & bratty",
+  "Sultry & slow",
+  "Sweet & innocent",
+  "Filthy & explicit",
+  "Sarcastic & witty",
 ];
 
 const BOUNDARY_PRESETS = [
-  "No degrading language", "No pain / rough kink", "No pet names",
-  "No jealousy / possessive talk", "Keep it SFW", "No mentions of exes",
-  "No drug references", "No emojis",
+  "No degrading language",
+  "No pain / rough kink",
+  "No pet names",
+  "No jealousy / possessive talk",
+  "Keep it SFW",
+  "No mentions of exes",
+  "No drug references",
+  "No emojis",
 ];
 
 const INTEREST_PRESETS = [
-  "Late-night philosophy", "Gaming", "Indie music", "Cooking",
-  "Travel", "Working out", "Anime", "Fashion", "Books",
-  "True crime", "Yoga", "Photography", "Dancing", "Tattoos",
+  "Late-night philosophy",
+  "Gaming",
+  "Indie music",
+  "Cooking",
+  "Travel",
+  "Working out",
+  "Anime",
+  "Fashion",
+  "Books",
+  "True crime",
+  "Yoga",
+  "Photography",
+  "Dancing",
+  "Tattoos",
 ];
 
 function ChipPicker({
-  options, selected, onToggle,
-}: { options: string[]; selected: string[]; onToggle: (v: string) => void }) {
+  options,
+  selected,
+  onToggle,
+}: {
+  options: string[];
+  selected: string[];
+  onToggle: (v: string) => void;
+}) {
   return (
     <div className="mt-2 flex flex-wrap gap-2">
-      {options.map(o => {
+      {options.map((o) => {
         const on = selected.includes(o);
         return (
           <button
@@ -56,10 +84,13 @@ function ChipPicker({
             key={o}
             onClick={() => onToggle(o)}
             className={`rounded-full border px-3 py-1.5 text-xs transition ${
-              on ? "border-primary bg-primary/15 text-primary shadow-glow"
-                 : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40"
+              on
+                ? "border-primary bg-primary/15 text-primary shadow-glow"
+                : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40"
             }`}
-          >{o}</button>
+          >
+            {o}
+          </button>
         );
       })}
     </div>
@@ -67,22 +98,38 @@ function ChipPicker({
 }
 
 function toList(s: string): string[] {
-  return s.split(",").map(x => x.trim()).filter(Boolean);
+  return s
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
 }
-function fromList(arr: string[]): string { return arr.join(", "); }
+function fromList(arr: string[]): string {
+  return arr.join(", ");
+}
 
 function Page() {
   const { id } = Route.useParams();
   const { edit, personalityId } = Route.useSearch();
   const navigate = useNavigate();
 
+  // Login-first: bounce anonymous visitors to /auth before they can view/customize.
   const [authed, setAuthed] = useState<boolean | null>(null);
-  useEffect(() => { supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user)); }, []);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) navigate({ to: "/auth" });
+      else setAuthed(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: companion } = useQuery({
     queryKey: ["companion", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("companions").select("*").eq("id", id).maybeSingle();
+      const { data, error } = await supabase
+        .from("companions")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -95,7 +142,8 @@ function Page() {
     queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return null;
-      let q = supabase.from("user_personalities")
+      let q = supabase
+        .from("user_personalities")
         .select("*")
         .eq("user_id", u.user.id)
         .eq("companion_id", id)
@@ -145,13 +193,16 @@ function Page() {
   const interestList = useMemo(() => toList(interestsText), [interestsText]);
 
   function toggleIn(list: string[], setter: (s: string) => void, value: string) {
-    const next = list.includes(value) ? list.filter(x => x !== value) : [...list, value];
+    const next = list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
     setter(fromList(next));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!authed) { navigate({ to: "/auth" }); return; }
+    if (!authed) {
+      navigate({ to: "/auth" });
+      return;
+    }
     setSaving(true);
     try {
       const { data: user } = await supabase.auth.getUser();
@@ -192,7 +243,8 @@ function Page() {
         const { data: personality, error } = await supabase
           .from("user_personalities")
           .insert({ user_id: user.user!.id, companion_id: id, ...payload })
-          .select("id").single();
+          .select("id")
+          .single();
         if (error) throw error;
         personalityRowId = personality.id;
       }
@@ -205,13 +257,16 @@ function Page() {
           title: `Chat with ${nickname}`,
           scenario: scenario === "open" ? null : scenario,
         })
-        .select("id").single();
+        .select("id")
+        .single();
       if (cErr) throw cErr;
 
       navigate({ to: "/chat/$conversationId", params: { conversationId: conv.id } });
     } catch (err: any) {
       toast.error(err.message ?? "Couldn't save");
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!companion) return <div className="p-10 text-muted-foreground">Loading…</div>;
@@ -220,7 +275,9 @@ function Page() {
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <Button asChild variant="ghost" className="rounded-full">
-          <Link to="/browse"><ArrowLeft className="mr-1 h-4 w-4" /> Back</Link>
+          <Link to="/browse">
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back
+          </Link>
         </Button>
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-5 w-5 fill-primary text-primary" />
@@ -233,13 +290,18 @@ function Page() {
           <img
             src={companionImage(companion.image_url)}
             alt={companion.name}
-            width={1024} height={1024}
+            width={1024}
+            height={1024}
             className="aspect-[3/4] w-full rounded-3xl object-cover shadow-glow ring-1 ring-white/10"
           />
-          <h1 className="mt-4 font-display text-3xl font-semibold">{companion.name}, {companion.age}</h1>
+          <h1 className="mt-4 font-display text-3xl font-semibold">
+            {companion.name}, {companion.age}
+          </h1>
           <p className="text-xs uppercase tracking-wide text-primary">{companion.ethnicity}</p>
           <p className="mt-2 text-sm text-muted-foreground">{companion.short_bio}</p>
-          <p className="mt-3 text-xs italic text-muted-foreground">Base vibe: {companion.base_personality}</p>
+          <p className="mt-3 text-xs italic text-muted-foreground">
+            Base vibe: {companion.base_personality}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="glass space-y-6 rounded-3xl p-6">
@@ -259,59 +321,99 @@ function Page() {
 
           <div>
             <Label>Nickname</Label>
-            <Input value={nickname} onChange={e => setNickname(e.target.value)} placeholder={companion.name} required />
+            <Input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder={companion.name}
+              required
+            />
           </div>
 
           <div>
             <Label>Identity</Label>
-            <Textarea rows={3} value={identity} onChange={e => setIdentity(e.target.value)}
-              placeholder="Who is she? Where she lives, what she calls you, how she sees herself." />
+            <Textarea
+              rows={3}
+              value={identity}
+              onChange={(e) => setIdentity(e.target.value)}
+              placeholder="Who is she? Where she lives, what she calls you, how she sees herself."
+            />
           </div>
 
           <div>
             <Label>Personality traits</Label>
-            <Textarea rows={2} value={traits} onChange={e => setTraits(e.target.value)}
-              placeholder="Playful, dominant, deeply affectionate, possessive…" />
+            <Textarea
+              rows={2}
+              value={traits}
+              onChange={(e) => setTraits(e.target.value)}
+              placeholder="Playful, dominant, deeply affectionate, possessive…"
+            />
           </div>
 
           <div>
             <Label>Tone of voice</Label>
-            <p className="text-xs text-muted-foreground">How she texts. Tap to add, or write your own.</p>
-            <ChipPicker options={TONE_PRESETS} selected={toneList}
-              onToggle={(v) => toggleIn(toneList, setToneText, v)} />
-            <Input className="mt-2" value={toneText} onChange={e => setToneText(e.target.value)}
-              placeholder="e.g. Flirty & teasing, sultry & slow" />
+            <p className="text-xs text-muted-foreground">
+              How she texts. Tap to add, or write your own.
+            </p>
+            <ChipPicker
+              options={TONE_PRESETS}
+              selected={toneList}
+              onToggle={(v) => toggleIn(toneList, setToneText, v)}
+            />
+            <Input
+              className="mt-2"
+              value={toneText}
+              onChange={(e) => setToneText(e.target.value)}
+              placeholder="e.g. Flirty & teasing, sultry & slow"
+            />
           </div>
 
           <div>
             <Label>Boundaries</Label>
             <p className="text-xs text-muted-foreground">Hard limits she'll always respect.</p>
-            <ChipPicker options={BOUNDARY_PRESETS} selected={boundaryList}
-              onToggle={(v) => toggleIn(boundaryList, setBoundariesText, v)} />
-            <Input className="mt-2" value={boundariesText} onChange={e => setBoundariesText(e.target.value)}
-              placeholder="e.g. No degrading language, no pain" />
+            <ChipPicker
+              options={BOUNDARY_PRESETS}
+              selected={boundaryList}
+              onToggle={(v) => toggleIn(boundaryList, setBoundariesText, v)}
+            />
+            <Input
+              className="mt-2"
+              value={boundariesText}
+              onChange={(e) => setBoundariesText(e.target.value)}
+              placeholder="e.g. No degrading language, no pain"
+            />
           </div>
 
           <div>
             <Label>Interests</Label>
             <p className="text-xs text-muted-foreground">Things she loves talking about.</p>
-            <ChipPicker options={INTEREST_PRESETS} selected={interestList}
-              onToggle={(v) => toggleIn(interestList, setInterestsText, v)} />
-            <Input className="mt-2" value={interestsText} onChange={e => setInterestsText(e.target.value)}
-              placeholder="e.g. Indie music, climbing, cooking" />
+            <ChipPicker
+              options={INTEREST_PRESETS}
+              selected={interestList}
+              onToggle={(v) => toggleIn(interestList, setInterestsText, v)}
+            />
+            <Input
+              className="mt-2"
+              value={interestsText}
+              onChange={(e) => setInterestsText(e.target.value)}
+              placeholder="e.g. Indie music, climbing, cooking"
+            />
           </div>
 
           <div>
             <Label>Style &amp; backstory</Label>
-            <Textarea rows={3} value={backstory} onChange={e => setBackstory(e.target.value)}
-              placeholder="How she texts (pet names, slang) and how the two of you met." />
+            <Textarea
+              rows={3}
+              value={backstory}
+              onChange={(e) => setBackstory(e.target.value)}
+              placeholder="How she texts (pet names, slang) and how the two of you met."
+            />
           </div>
 
           {!isEditing && (
             <div>
               <Label>Pick a starting scene</Label>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {SCENARIOS.map(s => (
+                {SCENARIOS.map((s) => (
                   <button
                     type="button"
                     key={s.id}
@@ -331,12 +433,19 @@ function Page() {
             </div>
           )}
 
-          <Button type="submit" className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow" size="lg" disabled={saving}>
+          <Button
+            type="submit"
+            className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+            size="lg"
+            disabled={saving}
+          >
             {saving
               ? "Saving…"
               : !authed
                 ? "Sign in to start"
-                : isEditing ? "Save & return to chat" : "Start chatting →"}
+                : isEditing
+                  ? "Save & return to chat"
+                  : "Start chatting →"}
           </Button>
         </form>
       </div>

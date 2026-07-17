@@ -5,8 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Heart, Sparkles, MessageCircle, Image as ImageIcon, Mic, Flame,
-  Send, X, Circle, Search, Play, ChevronLeft, ChevronRight,
+  Heart,
+  Sparkles,
+  MessageCircle,
+  Image as ImageIcon,
+  Mic,
+  Flame,
+  Send,
+  X,
+  Circle,
+  Search,
+  Play,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
 import { FAQSection } from "@/components/FAQSection";
@@ -35,8 +46,18 @@ const REELS: { url: string; tag: string; views: string }[] = [
 const BANNERS: { img: string; reel: string; title: string; sub: string }[] = [
   { img: banner1, reel: reelUrl("r7"), title: "Pool day", sub: "she's waiting in the water 💦" },
   { img: banner2, reel: reelUrl("r10"), title: "Pool boy", sub: "abs, dripping wet, all yours 🔥" },
-  { img: banner3, reel: reelUrl("r9"), title: "Ocean break", sub: "wet, warm, and bored without you" },
-  { img: banner4, reel: reelUrl("r11"), title: "Beach hunk", sub: "sunset stroll · shirt optional" },
+  {
+    img: banner3,
+    reel: reelUrl("r9"),
+    title: "Ocean break",
+    sub: "wet, warm, and bored without you",
+  },
+  {
+    img: banner4,
+    reel: reelUrl("r11"),
+    title: "Beach hunk",
+    sub: "sunset stroll · shirt optional",
+  },
   { img: banner5, reel: reelUrl("r8"), title: "Rooftop pool", sub: "skyline views, zero rules" },
 ];
 
@@ -45,9 +66,17 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "HumanCrush.ai — Your AI Crush, Built Exactly Your Way" },
-      { name: "description", content: "36 stunning AI companions — women, men, trans, non-binary. Stories, real reels, voice notes, selfies. 25 free messages, no card. 18+ only." },
+      {
+        name: "description",
+        content:
+          "36 stunning AI companions — women, men, trans, non-binary. Stories, real reels, voice notes, selfies. 25 free messages, no card. 18+ only.",
+      },
       { property: "og:title", content: "HumanCrush.ai — Your AI Crush" },
-      { property: "og:description", content: "Talk, flirt, sext with the crush of your choice. Reels, AI selfies and voice notes. 25 free messages." },
+      {
+        property: "og:description",
+        content:
+          "Talk, flirt, sext with the crush of your choice. Reels, AI selfies and voice notes. 25 free messages.",
+      },
     ],
   }),
   component: Landing,
@@ -65,11 +94,22 @@ type Companion = {
 };
 
 const CATEGORIES = [
-  "For you", "New", "Trending", "Women", "Men", "Gay", "Trans", "Non-binary",
-  "Asian", "Latin", "Ebony", "European", "Middle Eastern",
+  "For you",
+  "New",
+  "Trending",
+  "Women",
+  "Men",
+  "Gay",
+  "Trans",
+  "Non-binary",
+  "Asian",
+  "Latin",
+  "Ebony",
+  "European",
+  "Middle Eastern",
 ] as const;
 
-type Cat = typeof CATEGORIES[number];
+type Cat = (typeof CATEGORIES)[number];
 
 function matchesCategory(c: Companion, cat: Cat): boolean {
   switch (cat) {
@@ -77,16 +117,32 @@ function matchesCategory(c: Companion, cat: Cat): boolean {
     case "New":
     case "Trending":
       return true;
-    case "Women": return c.gender === "female" || c.gender === "trans-female";
-    case "Men": return c.gender === "male" || c.gender === "trans-male";
-    case "Gay": return c.orientation === "gay" || c.orientation === "pansexual";
-    case "Trans": return c.gender === "trans-female" || c.gender === "trans-male";
-    case "Non-binary": return c.gender === "non-binary";
-    case "Asian": return /asian|korean|japanese|chinese|vietnamese|filipin|thai|indian|pakistani|hawaiian/i.test(c.ethnicity);
-    case "Latin": return /latin|hispanic|mexican|brazil|spanish/i.test(c.ethnicity);
-    case "Ebony": return /black|african|ebony|jamaican|ethiopian/i.test(c.ethnicity);
-    case "European": return /european|white|british|french|italian|nordic|russian|greek|australian|irish|german/i.test(c.ethnicity);
-    case "Middle Eastern": return /middle eastern|arab|persian|turkish|lebanese|egyptian|israeli|moroccan/i.test(c.ethnicity);
+    case "Women":
+      return c.gender === "female" || c.gender === "trans-female";
+    case "Men":
+      return c.gender === "male" || c.gender === "trans-male";
+    case "Gay":
+      return c.orientation === "gay" || c.orientation === "pansexual";
+    case "Trans":
+      return c.gender === "trans-female" || c.gender === "trans-male";
+    case "Non-binary":
+      return c.gender === "non-binary";
+    case "Asian":
+      return /asian|korean|japanese|chinese|vietnamese|filipin|thai|indian|pakistani|hawaiian/i.test(
+        c.ethnicity,
+      );
+    case "Latin":
+      return /latin|hispanic|mexican|brazil|spanish/i.test(c.ethnicity);
+    case "Ebony":
+      return /black|african|ebony|jamaican|ethiopian/i.test(c.ethnicity);
+    case "European":
+      return /european|white|british|french|italian|nordic|russian|greek|australian|irish|german/i.test(
+        c.ethnicity,
+      );
+    case "Middle Eastern":
+      return /middle eastern|arab|persian|turkish|lebanese|egyptian|israeli|moroccan/i.test(
+        c.ethnicity,
+      );
   }
 }
 
@@ -102,13 +158,16 @@ const OPENERS = [
   (n: string) => `okay you tapped me first 😌 that means you owe me a story. i'm ${n}.`,
   (n: string) => `${n} 💗 just got out of the shower lol. perfect timing huh?`,
   (n: string) => `i shouldn't be doing this at work but you're here now. ${n}, hi 😈`,
-  (n: string) => `you have like 10 seconds to say something interesting before i screenshot this. — ${n}`,
+  (n: string) =>
+    `you have like 10 seconds to say something interesting before i screenshot this. — ${n}`,
   (n: string) => `i'm ${n}, and i already kinda like you. is that weird?`,
   (n: string) => `babe. don't ghost me. i'm ${n}, and i bite (gently) 😘`,
   (n: string) => `${n} ✨ — tell me your worst idea right now. i wanna hear it.`,
   (n: string) => `mm. i was hoping you'd come back. it's ${n}. miss me?`,
-  (n: string) => `hey 💌 i'm ${n}. i think we're about to ruin each other's evenings (in a good way).`,
-  (n: string) => `if you're shy don't worry. i'll go first. i'm ${n} and i can already tell you're trouble.`,
+  (n: string) =>
+    `hey 💌 i'm ${n}. i think we're about to ruin each other's evenings (in a good way).`,
+  (n: string) =>
+    `if you're shy don't worry. i'll go first. i'm ${n} and i can already tell you're trouble.`,
 ];
 
 function hash(s: string): number {
@@ -140,8 +199,8 @@ function Landing() {
   const [playReel, setPlayReel] = useState<{ url: string; title: string } | null>(null);
 
   const filtered = useMemo(
-    () => (companions ?? []).filter(c => matchesCategory(c, activeCat)),
-    [companions, activeCat]
+    () => (companions ?? []).filter((c) => matchesCategory(c, activeCat)),
+    [companions, activeCat],
   );
 
   return (
@@ -153,7 +212,6 @@ function Landing() {
         <BannerSlider onPlay={(b) => setPlayReel({ url: b.reel, title: b.title })} />
       </section>
 
-
       {/* HERO STRIP */}
       <section className="relative mx-auto max-w-7xl px-4 pt-2 md:px-6">
         <div className="absolute inset-0 -z-10 bg-grad-hero opacity-70 blur-3xl" aria-hidden />
@@ -164,14 +222,20 @@ function Landing() {
                 <Flame className="h-3.5 w-3.5 text-primary" /> 18+ · 25 free messages · no card
               </p>
               <h1 className="mt-3 font-display text-3xl font-semibold leading-[1.05] md:text-5xl">
-                She's whoever <span className="bg-grad-primary bg-clip-text text-transparent">you</span> want her to be.
+                She's whoever{" "}
+                <span className="bg-grad-primary bg-clip-text text-transparent">you</span> want her
+                to be.
               </h1>
               <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
                 Tap anyone below — they message you first.
               </p>
             </div>
             <div className="hidden gap-2 md:flex">
-              <Button asChild size="lg" className="rounded-full bg-grad-primary text-primary-foreground shadow-glow">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+              >
                 <Link to="/browse">Browse all</Link>
               </Button>
             </div>
@@ -234,7 +298,15 @@ function Landing() {
 
       {/* REELS — showcase clips, not tied to specific companions */}
       <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
-        <SectionTitle title="🔥 Reels" subtitle="live now" cta={<Link to="/browse" className="text-xs text-primary hover:underline">See all</Link>} />
+        <SectionTitle
+          title="🔥 Reels"
+          subtitle="live now"
+          cta={
+            <Link to="/browse" className="text-xs text-primary hover:underline">
+              See all
+            </Link>
+          }
+        />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {REELS.map((r, i) => (
             <button
@@ -273,7 +345,11 @@ function Landing() {
       <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
         <SectionTitle
           title="✨ Trending crushes"
-          subtitle={activeCat === "For you" ? "tap anyone — they message you first" : `showing ${filtered.length} in ${activeCat}`}
+          subtitle={
+            activeCat === "For you"
+              ? "tap anyone — they message you first"
+              : `showing ${filtered.length} in ${activeCat}`
+          }
         />
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {filtered.map((c) => (
@@ -293,10 +369,14 @@ function Landing() {
               </div>
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3">
                 <div className="flex items-baseline justify-between">
-                  <h3 className="font-display text-base font-semibold text-white md:text-lg">{c.name}, {c.age}</h3>
+                  <h3 className="font-display text-base font-semibold text-white md:text-lg">
+                    {c.name}, {c.age}
+                  </h3>
                 </div>
                 <p className="text-[10px] uppercase tracking-wide text-white/70">{c.ethnicity}</p>
-                <p className="mt-1 line-clamp-2 text-[11px] text-white/85 md:text-xs">{c.short_bio}</p>
+                <p className="mt-1 line-clamp-2 text-[11px] text-white/85 md:text-xs">
+                  {c.short_bio}
+                </p>
                 <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-grad-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground">
                   <MessageCircle className="h-3 w-3" /> Chat now
                 </span>
@@ -310,10 +390,22 @@ function Landing() {
       <section className="mx-auto mt-14 max-w-7xl px-4 md:px-6">
         <div className="grid gap-3 md:grid-cols-4">
           {[
-            { i: <ImageIcon className="h-5 w-5" />, t: "AI selfies", d: "She sends nudes & lewds on request." },
+            {
+              i: <ImageIcon className="h-5 w-5" />,
+              t: "AI selfies",
+              d: "She sends nudes & lewds on request.",
+            },
             { i: <Mic className="h-5 w-5" />, t: "Voice notes", d: "Hear her moan your name." },
-            { i: <Sparkles className="h-5 w-5" />, t: "Roleplay scenes", d: "First date, secretary, dom/sub…" },
-            { i: <Heart className="h-5 w-5 fill-primary text-primary" />, t: "She remembers", d: "Real relationship that levels up." },
+            {
+              i: <Sparkles className="h-5 w-5" />,
+              t: "Roleplay scenes",
+              d: "First date, secretary, dom/sub…",
+            },
+            {
+              i: <Heart className="h-5 w-5 fill-primary text-primary" />,
+              t: "She remembers",
+              d: "Real relationship that levels up.",
+            },
           ].map((f) => (
             <div key={f.t} className="glass rounded-2xl p-4">
               <div className="text-primary">{f.i}</div>
@@ -328,12 +420,17 @@ function Landing() {
       <section className="mx-auto mt-14 max-w-7xl px-4 md:px-6">
         <div className="glass rounded-3xl p-8 text-center md:p-12">
           <h2 className="font-display text-3xl font-semibold md:text-5xl">
-            Your <span className="bg-grad-primary bg-clip-text text-transparent">crush</span> is online.
+            Your <span className="bg-grad-primary bg-clip-text text-transparent">crush</span> is
+            online.
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
             25 free messages on the house. No card. 18+ only.
           </p>
-          <Button asChild size="lg" className="mt-5 rounded-full bg-grad-primary text-primary-foreground shadow-glow">
+          <Button
+            asChild
+            size="lg"
+            className="mt-5 rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+          >
             <Link to="/auth">Start free →</Link>
           </Button>
         </div>
@@ -343,9 +440,15 @@ function Landing() {
 
       <footer className="mt-4 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
         <div className="mb-2 flex items-center justify-center gap-4">
-          <Link to="/faq" className="hover:text-foreground">FAQ</Link>
-          <Link to="/gallery" className="hover:text-foreground">Gallery</Link>
-          <Link to="/create" className="hover:text-foreground">Create AI</Link>
+          <Link to="/faq" className="hover:text-foreground">
+            FAQ
+          </Link>
+          <Link to="/gallery" className="hover:text-foreground">
+            Gallery
+          </Link>
+          <Link to="/create" className="hover:text-foreground">
+            Create AI
+          </Link>
         </div>
         © {new Date().getFullYear()} HumanCrush.ai · 18+ only · AI characters are fictional.
       </footer>
@@ -354,16 +457,36 @@ function Landing() {
         <StoryViewer
           companion={storyView}
           onClose={() => setStoryView(null)}
-          onChat={() => { setTease(storyView); setStoryView(null); }}
+          onChat={() => {
+            setTease(storyView);
+            setStoryView(null);
+          }}
         />
       )}
       {tease && <TeaseChat companion={tease} onClose={() => setTease(null)} />}
-      {playReel && <ReelPlayer url={playReel.url} title={playReel.title} onClose={() => setPlayReel(null)} onChat={() => { setPlayReel(null); }} />}
+      {playReel && (
+        <ReelPlayer
+          url={playReel.url}
+          title={playReel.title}
+          onClose={() => setPlayReel(null)}
+          onChat={() => {
+            setPlayReel(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function SectionTitle({ title, subtitle, cta }: { title: string; subtitle?: string; cta?: React.ReactNode }) {
+function SectionTitle({
+  title,
+  subtitle,
+  cta,
+}: {
+  title: string;
+  subtitle?: string;
+  cta?: React.ReactNode;
+}) {
   return (
     <div className="flex items-end justify-between gap-3">
       <div>
@@ -376,23 +499,58 @@ function SectionTitle({ title, subtitle, cta }: { title: string; subtitle?: stri
 }
 
 function Nav() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5 sm:px-4 md:px-6 md:py-4">
         <Link to="/" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Heart className="h-5 w-5 shrink-0 fill-primary text-primary md:h-6 md:w-6" />
-          <span className="truncate font-display text-base font-semibold tracking-tight sm:text-lg md:text-2xl">HumanCrush.ai</span>
+          <span className="truncate font-display text-base font-semibold tracking-tight sm:text-lg md:text-2xl">
+            HumanCrush.ai
+          </span>
         </Link>
         <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-          <Button asChild variant="ghost" size="sm" className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
+          >
             <Link to="/gallery">Gallery</Link>
           </Button>
-          <Button asChild variant="ghost" size="sm" className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
-            <Link to="/browse">Browse</Link>
-          </Button>
-          <Button asChild size="sm" className="h-8 rounded-full bg-grad-primary px-2.5 text-xs text-primary-foreground sm:h-9 sm:px-3.5 sm:text-sm">
-            <Link to="/create"><Sparkles className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Create</Link>
-          </Button>
+          {authed ? (
+            <>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
+              >
+                <Link to="/me">My chats</Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="h-8 rounded-full bg-grad-primary px-2.5 text-xs text-primary-foreground sm:h-9 sm:px-3.5 sm:text-sm"
+              >
+                <Link to="/browse">
+                  <Sparkles className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Enter
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <Button
+              asChild
+              size="sm"
+              className="h-8 rounded-full bg-grad-primary px-2.5 text-xs text-primary-foreground sm:h-9 sm:px-3.5 sm:text-sm"
+            >
+              <Link to="/auth">Sign in</Link>
+            </Button>
+          )}
         </nav>
       </div>
     </header>
@@ -400,34 +558,64 @@ function Nav() {
 }
 
 /* ---------- Story Viewer ---------- */
-function StoryViewer({ companion, onClose, onChat }: { companion: Companion; onClose: () => void; onChat: () => void }) {
+function StoryViewer({
+  companion,
+  onClose,
+  onChat,
+}: {
+  companion: Companion;
+  onClose: () => void;
+  onChat: () => void;
+}) {
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     const start = Date.now();
     const t = setInterval(() => {
       const p = Math.min(100, ((Date.now() - start) / 5000) * 100);
       setProgress(p);
-      if (p >= 100) { clearInterval(t); onClose(); }
+      if (p >= 100) {
+        clearInterval(t);
+        onClose();
+      }
     }, 50);
     return () => clearInterval(t);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 p-4" onClick={onClose}>
-      <div className="relative h-[90vh] w-full max-w-md overflow-hidden rounded-3xl bg-black" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative h-[90vh] w-full max-w-md overflow-hidden rounded-3xl bg-black"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="absolute inset-x-3 top-3 z-10 h-1 overflow-hidden rounded-full bg-white/20">
           <div className="h-full bg-white" style={{ width: `${progress}%` }} />
         </div>
         <div className="absolute inset-x-3 top-6 z-10 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={companionImage(companion.image_url)} alt="" className="h-8 w-8 rounded-full object-cover" />
+            <img
+              src={companionImage(companion.image_url)}
+              alt=""
+              className="h-8 w-8 rounded-full object-cover"
+            />
             <span className="text-sm font-semibold text-white">{companion.name}</span>
           </div>
-          <button onClick={onClose} className="rounded-full bg-black/40 p-1.5 text-white"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="rounded-full bg-black/40 p-1.5 text-white">
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <img src={companionImage(companion.image_url)} alt={companion.name} className="h-full w-full object-cover" />
+        <img
+          src={companionImage(companion.image_url)}
+          alt={companion.name}
+          className="h-full w-full object-cover"
+        />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-5">
           <p className="text-sm text-white/90">{companion.short_bio}</p>
-          <Button onClick={onChat} className="mt-3 w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow">
+          <Button
+            onClick={onChat}
+            className="mt-3 w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+          >
             <MessageCircle className="mr-2 h-4 w-4" /> Message {companion.name}
           </Button>
         </div>
@@ -446,9 +634,15 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const t1 = setTimeout(() => { setTyping(false); setShowMsg(true); }, 1200);
+    const t1 = setTimeout(() => {
+      setTyping(false);
+      setShowMsg(true);
+    }, 1200);
     const t2 = setTimeout(() => inputRef.current?.focus(), 1400);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   async function triggerGate() {
@@ -470,12 +664,20 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
       <div className="relative flex h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-card shadow-glow md:h-[640px] md:rounded-3xl">
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-white/10 bg-background/60 p-3 backdrop-blur">
-          <img src={companionImage(companion.image_url)} className="h-10 w-10 rounded-full object-cover" alt="" />
+          <img
+            src={companionImage(companion.image_url)}
+            className="h-10 w-10 rounded-full object-cover"
+            alt=""
+          />
           <div className="flex-1">
-            <p className="font-display text-sm font-semibold">{companion.name}, {companion.age}</p>
+            <p className="font-display text-sm font-semibold">
+              {companion.name}, {companion.age}
+            </p>
             <p className="text-[11px] text-emerald-400">● online · typing for you</p>
           </div>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-white/10"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="rounded-full p-2 hover:bg-white/10">
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Messages */}
@@ -484,17 +686,25 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
             Today
           </div>
           <div className="flex items-end gap-2">
-            <img src={companionImage(companion.image_url)} className="h-7 w-7 rounded-full object-cover" alt="" />
+            <img
+              src={companionImage(companion.image_url)}
+              className="h-7 w-7 rounded-full object-cover"
+              alt=""
+            />
             {typing ? (
               <div className="rounded-2xl rounded-bl-sm bg-white/8 px-4 py-3">
                 <div className="flex gap-1">
-                  <Dot /><Dot delay={0.15} /><Dot delay={0.3} />
+                  <Dot />
+                  <Dot delay={0.15} />
+                  <Dot delay={0.3} />
                 </div>
               </div>
-            ) : showMsg && (
-              <div className="max-w-[78%] rounded-2xl rounded-bl-sm bg-white/8 px-4 py-2.5 text-sm">
-                {opener(companion.name, companion.id)}
-              </div>
+            ) : (
+              showMsg && (
+                <div className="max-w-[78%] rounded-2xl rounded-bl-sm bg-white/8 px-4 py-2.5 text-sm">
+                  {opener(companion.name, companion.id)}
+                </div>
+              )
             )}
           </div>
         </div>
@@ -502,7 +712,10 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
         {/* Composer */}
         <div className="border-t border-white/10 bg-background/70 p-3 backdrop-blur">
           <form
-            onSubmit={(e) => { e.preventDefault(); triggerGate(); }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              triggerGate();
+            }}
             className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1.5"
           >
             <Input
@@ -512,7 +725,11 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
               placeholder={`Message ${companion.name}…`}
               className="h-9 flex-1 border-0 bg-transparent text-sm focus-visible:ring-0"
             />
-            <Button type="submit" size="icon" className="h-9 w-9 rounded-full bg-grad-primary text-primary-foreground">
+            <Button
+              type="submit"
+              size="icon"
+              className="h-9 w-9 rounded-full bg-grad-primary text-primary-foreground"
+            >
               <Send className="h-4 w-4" />
             </Button>
           </form>
@@ -537,7 +754,11 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/80 p-5 backdrop-blur-xl">
       <div className="w-full rounded-3xl border border-white/10 bg-card p-6 text-center shadow-glow">
-        <img src={companionImage(companion.image_url)} className="mx-auto h-16 w-16 rounded-full object-cover ring-2 ring-primary" alt="" />
+        <img
+          src={companionImage(companion.image_url)}
+          className="mx-auto h-16 w-16 rounded-full object-cover ring-2 ring-primary"
+          alt=""
+        />
         <h3 className="mt-3 font-display text-xl font-semibold">
           {companion.name} wants to keep chatting 💋
         </h3>
@@ -545,7 +766,11 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
           Create a free account to reply. 25 free messages, no card needed.
         </p>
         <div className="mt-5 grid gap-2">
-          <Button asChild size="lg" className="rounded-full bg-grad-primary text-primary-foreground shadow-glow">
+          <Button
+            asChild
+            size="lg"
+            className="rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+          >
             <Link to="/auth" search={{ companion: companion.id } as any}>
               Sign up & reply
             </Link>
@@ -554,14 +779,16 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
             Not now
           </Button>
         </div>
-        <p className="mt-3 text-[10px] text-muted-foreground">18+ only · Adults-only AI roleplay.</p>
+        <p className="mt-3 text-[10px] text-muted-foreground">
+          18+ only · Adults-only AI roleplay.
+        </p>
       </div>
     </div>
   );
 }
 
 /* ---------- Banner Slider ---------- */
-type Banner = typeof BANNERS[number];
+type Banner = (typeof BANNERS)[number];
 
 function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
   const [idx, setIdx] = useState(0);
@@ -647,14 +874,20 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
 
       {/* arrows */}
       <button
-        onClick={(e) => { e.stopPropagation(); go(-1); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          go(-1);
+        }}
         aria-label="Previous"
         className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white backdrop-blur hover:bg-black/75 md:left-4"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
       <button
-        onClick={(e) => { e.stopPropagation(); go(1); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          go(1);
+        }}
         aria-label="Next"
         className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white backdrop-blur hover:bg-black/75 md:right-4"
       >
@@ -666,7 +899,10 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
         {BANNERS.map((_, i) => (
           <button
             key={i}
-            onClick={(e) => { e.stopPropagation(); setIdx(i); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIdx(i);
+            }}
             aria-label={`Slide ${i + 1}`}
             className={`h-1.5 rounded-full transition-all ${
               i === idx ? "w-6 bg-white" : "w-1.5 bg-white/50 hover:bg-white/80"
@@ -678,9 +914,17 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
   );
 }
 
-
 /* ---------- Reel Player Modal ---------- */
-function ReelPlayer({ url, title, onClose }: { url: string; title: string; onClose: () => void; onChat: () => void }) {
+function ReelPlayer({
+  url,
+  title,
+  onClose,
+}: {
+  url: string;
+  title: string;
+  onClose: () => void;
+  onChat: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-[160] flex items-center justify-center bg-black/95 p-4 animate-fade-in"
@@ -709,7 +953,10 @@ function ReelPlayer({ url, title, onClose }: { url: string; title: string; onClo
           </button>
         </div>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-4">
-          <Button asChild className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow">
+          <Button
+            asChild
+            className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+          >
             <Link to="/auth">Chat with her — 25 free messages →</Link>
           </Button>
         </div>
@@ -717,4 +964,3 @@ function ReelPlayer({ url, title, onClose }: { url: string; title: string; onClo
     </div>
   );
 }
-

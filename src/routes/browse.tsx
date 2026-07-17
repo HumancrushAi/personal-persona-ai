@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { Heart, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 
 export const Route = createFileRoute("/browse")({
   ssr: false,
@@ -12,7 +13,9 @@ export const Route = createFileRoute("/browse")({
 });
 
 function Browse() {
+  const ready = useRequireAuth();
   const { data, isLoading } = useQuery({
+    enabled: ready,
     queryKey: ["companions"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -25,6 +28,8 @@ function Browse() {
     },
   });
 
+  if (!ready) return <div className="p-10 text-center text-muted-foreground">Loading…</div>;
+
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
@@ -33,21 +38,28 @@ function Browse() {
           <span className="font-display text-2xl font-semibold">HumanCrush.ai</span>
         </Link>
         <div className="flex gap-2">
-          <Button asChild variant="ghost" className="rounded-full"><Link to="/me">My chats</Link></Button>
           <Button asChild variant="ghost" className="rounded-full">
-            <Link to="/credits"><Coins className="mr-1 h-4 w-4" />Credits</Link>
+            <Link to="/me">My chats</Link>
+          </Button>
+          <Button asChild variant="ghost" className="rounded-full">
+            <Link to="/credits">
+              <Coins className="mr-1 h-4 w-4" />
+              Credits
+            </Link>
           </Button>
         </div>
       </header>
 
       <section className="mx-auto max-w-6xl px-6 pb-20">
         <h1 className="font-display text-4xl font-semibold md:text-6xl">Pick your crush.</h1>
-        <p className="mt-2 text-muted-foreground">36 hand-crafted companions — women, men, trans, non-binary. Customize anyone you tap.</p>
+        <p className="mt-2 text-muted-foreground">
+          36 hand-crafted companions — women, men, trans, non-binary. Customize anyone you tap.
+        </p>
 
         {isLoading && <div className="mt-10 text-muted-foreground">Loading…</div>}
 
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {data?.map(c => (
+          {data?.map((c) => (
             <Link
               key={c.id}
               to="/companion/$id"
@@ -57,12 +69,16 @@ function Browse() {
               <img
                 src={companionImage(c.image_url)}
                 alt={`Portrait of ${c.name}`}
-                width={1024} height={1024} loading="lazy"
+                width={1024}
+                height={1024}
+                loading="lazy"
                 className="aspect-[3/4] w-full object-cover transition group-hover:scale-[1.04]"
               />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3">
                 <div className="flex items-baseline justify-between">
-                  <h3 className="font-display text-lg font-semibold text-white">{c.name}, {c.age}</h3>
+                  <h3 className="font-display text-lg font-semibold text-white">
+                    {c.name}, {c.age}
+                  </h3>
                 </div>
                 <p className="text-[11px] uppercase tracking-wide text-white/70">{c.ethnicity}</p>
                 <p className="mt-1 line-clamp-2 text-xs text-white/85">{c.short_bio}</p>

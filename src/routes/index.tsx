@@ -222,9 +222,7 @@ function Landing() {
                 <Flame className="h-3.5 w-3.5 text-primary" /> 18+ · 25 free messages · no card
               </p>
               <h1 className="mt-3 font-display text-3xl font-semibold leading-[1.05] md:text-5xl">
-                She's whoever{" "}
-                <span className="bg-grad-primary bg-clip-text text-transparent">you</span> want her
-                to be.
+                She's whoever <span className="text-primary">you</span> want her to be.
               </h1>
               <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
                 Tap anyone below — they message you first.

@@ -114,7 +114,8 @@ function ChatPage() {
 
       // Human-feeling typing pause: aim for a total "typing" time based on how
       // long the reply is, but don't add time the AI call already used up.
-      const target = Math.min(1200 + (res?.reply?.length ?? 0) * 28, 7000);
+      // ~55ms/char ≈ a fast texter; a full paragraph takes several seconds.
+      const target = Math.min(2000 + (res?.reply?.length ?? 0) * 55, 14000);
       const elapsed = Date.now() - start;
       if (elapsed < target) await new Promise((r) => setTimeout(r, target - elapsed));
 
@@ -155,6 +156,10 @@ function ChatPage() {
       if (msg.includes("OUT_OF_CREDITS")) {
         toast.error("Not enough credits — selfies cost 8");
         navigate({ to: "/credits" });
+      } else if (/safety|rejected|Image error|content/i.test(msg)) {
+        toast.error(
+          "She can't take that kind of pic yet 😅 try a softer request — no credits used.",
+        );
       } else toast.error(msg);
     } finally {
       setMediaBusy(null);

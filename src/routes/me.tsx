@@ -27,12 +27,19 @@ function MePage() {
       const { data, error } = await supabase
         .from("conversations")
         .select(
-          "id, title, updated_at, relationship_level, user_personalities(nickname, companions(image_url))",
+          "id, title, updated_at, relationship_level, user_personalities(nickname, companion_id, companions(image_url))",
         )
         .eq("user_id", userId!)
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data;
+      // One entry per model — keep the most recent conversation per companion.
+      const seen = new Set<string>();
+      return (data ?? []).filter((c: any) => {
+        const key = c.user_personalities?.companion_id ?? c.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     },
   });
 

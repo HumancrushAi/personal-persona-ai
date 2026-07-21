@@ -6,8 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { viewerCount } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
 import { sendTip, startPrivateShow, TIP_AMOUNTS, PRIVATE_ENTRY_COST } from "@/lib/cams.functions";
+import { startChat } from "@/lib/chat.functions";
 import { Button } from "@/components/ui/button";
-import { X, Circle, Coins, Gift, Lock, Heart } from "lucide-react";
+import { X, Circle, Coins, Gift, Lock, Heart, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/cams/$id")({
@@ -36,6 +37,7 @@ function CamView() {
   const qc = useQueryClient();
   const tip = useServerFn(sendTip);
   const goPrivate = useServerFn(startPrivateShow);
+  const openChat = useServerFn(startChat);
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => {
@@ -122,6 +124,19 @@ function CamView() {
     }
   }
 
+  async function doChat() {
+    if (!requireLogin() || busy) return;
+    setBusy(true);
+    try {
+      const res = await openChat({ data: { companionId: id } });
+      navigate({ to: "/chat/$conversationId", params: { conversationId: res.conversationId } });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't open chat");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function doPrivate() {
     if (!requireLogin() || busy) return;
     setBusy(true);
@@ -140,12 +155,12 @@ function CamView() {
 
   return (
     <div className="relative flex h-screen w-full items-stretch justify-center bg-black">
-      <div className="relative h-full w-full max-w-md overflow-hidden">
+      <div className="relative h-full w-full overflow-hidden">
         <img
           key={id}
           src={companionImage(model?.image_url ?? "")}
           alt={model?.name ?? ""}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover object-top"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/50" />
 
@@ -181,7 +196,7 @@ function CamView() {
         {/* Ambient live chat */}
         <div
           ref={feedRef}
-          className="absolute inset-x-0 bottom-40 max-h-48 space-y-1.5 overflow-y-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="absolute inset-x-0 bottom-44 mx-auto max-h-48 max-w-lg space-y-1.5 overflow-y-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {chat.map((m, i) => (
             <div key={i} className="text-sm drop-shadow">
@@ -204,8 +219,8 @@ function CamView() {
         )}
 
         {/* Controls */}
-        <div className="absolute inset-x-0 bottom-0 space-y-3 p-4">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-lg space-y-3 p-4">
+          <div className="flex items-center justify-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {TIP_AMOUNTS.map((a) => (
               <button
                 key={a}
@@ -222,21 +237,32 @@ function CamView() {
               onClick={() => doTip(TIP_AMOUNTS[1])}
               disabled={busy}
               variant="outline"
-              className="flex-1 rounded-full border-white/20 bg-black/50 text-white backdrop-blur"
+              size="icon"
+              className="rounded-full border-white/20 bg-black/50 text-white backdrop-blur"
+              title="Send a tip"
             >
-              <Gift className="mr-1 h-4 w-4 text-primary" /> Tip
+              <Gift className="h-4 w-4 text-primary" />
+            </Button>
+            <Button
+              onClick={doChat}
+              disabled={busy}
+              className="flex-1 rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+            >
+              <MessageCircle className="mr-1 h-4 w-4" /> Chat
             </Button>
             <Button
               onClick={doPrivate}
               disabled={busy}
-              className="flex-1 rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+              variant="outline"
+              className="flex-1 rounded-full border-white/20 bg-black/50 text-white backdrop-blur"
             >
-              <Lock className="mr-1 h-4 w-4" /> Go Private · {PRIVATE_ENTRY_COST}
+              <Lock className="mr-1 h-4 w-4" /> Private · {PRIVATE_ENTRY_COST}
             </Button>
           </div>
           {authed === false && (
             <p className="flex items-center justify-center gap-1 text-center text-[11px] text-white/60">
-              <Heart className="h-3 w-3 fill-primary text-primary" /> Sign in to tip or go private
+              <Heart className="h-3 w-3 fill-primary text-primary" /> Sign in to chat, tip, or go
+              private
             </p>
           )}
         </div>

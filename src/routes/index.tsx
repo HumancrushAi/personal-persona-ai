@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { startChat } from "@/lib/chat.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -656,6 +658,7 @@ function StoryViewer({
 /* ---------- Tease Chat (signup gate) ---------- */
 function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () => void }) {
   const navigate = useNavigate();
+  const openChat = useServerFn(startChat);
   const [typing, setTyping] = useState(true);
   const [showMsg, setShowMsg] = useState(false);
   const [input, setInput] = useState("");
@@ -676,10 +679,17 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
 
   async function triggerGate() {
     const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      navigate({ to: "/companion/$id", params: { id: companion.id } });
-    } else {
+    if (!data.user) {
       setGate(true);
+      return;
+    }
+    // Logged in → jump straight into a real chat with THIS model.
+    try {
+      const res = await openChat({ data: { companionId: companion.id } });
+      navigate({ to: "/chat/$conversationId", params: { conversationId: res.conversationId } });
+    } catch {
+      // Fallback to the customize page if the quick-start fails.
+      navigate({ to: "/companion/$id", params: { id: companion.id } });
     }
   }
 

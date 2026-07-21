@@ -205,3 +205,58 @@ export const startConversation = createServerFn({ method: "POST" })
     if (error) throw error;
     return { conversationId: conv.id };
   });
+
+// One-tap "chat with this model" — reuse the latest conversation for the
+// companion, else create a default personality + conversation. No charge.
+export const startChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ companionId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: comp } = await supabase
+      .from("companions")
+      .select("id, name")
+      .eq("id", data.companionId)
+      .maybeSingle();
+    if (!comp) throw new Error("Model not found");
+
+    // Reuse or create a personality for this user + companion.
+    const { data: pers } = await supabase
+      .from("user_personalities")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("companion_id", data.companionId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    let personalityId = pers?.id;
+    if (!personalityId) {
+      const { data: created, error } = await supabase
+        .from("user_personalities")
+        .insert({ user_id: userId, companion_id: data.companionId, nickname: comp.name })
+        .select("id")
+        .single();
+      if (error) throw error;
+      personalityId = created.id;
+    }
+
+    // Continue the latest conversation for this personality if one exists.
+    const { data: existingConv } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("personality_id", personalityId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingConv) return { conversationId: existingConv.id };
+
+    const { data: conv, error: cErr } = await supabase
+      .from("conversations")
+      .insert({ user_id: userId, personality_id: personalityId, title: `Chat with ${comp.name}` })
+      .select("id")
+      .single();
+    if (cErr) throw cErr;
+    return { conversationId: conv.id };
+  });

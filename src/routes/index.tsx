@@ -196,7 +196,21 @@ function Landing() {
   const [activeCat, setActiveCat] = useState<Cat>("For you");
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
-  const [playReel, setPlayReel] = useState<{ url: string; title: string } | null>(null);
+  const [playReel, setPlayReel] = useState<{
+    url: string;
+    title: string;
+    companion: Companion | null;
+  } | null>(null);
+
+  // Videos (banners/reels) aren't real models, so tie each to an actual
+  // companion (female-first) — clicking "chat" then opens THAT model, never
+  // the generic all-models page.
+  const pickCompanion = (i: number): Companion | null => {
+    const list = companions ?? [];
+    const pool = list.filter((c) => c.gender === "female" || c.gender === "trans-female");
+    const from = pool.length ? pool : list;
+    return from.length ? from[i % from.length] : null;
+  };
 
   const filtered = useMemo(
     () => (companions ?? []).filter((c) => matchesCategory(c, activeCat)),
@@ -209,7 +223,11 @@ function Landing() {
 
       {/* BANNER SLIDER */}
       <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
-        <BannerSlider onPlay={(b) => setPlayReel({ url: b.reel, title: b.title })} />
+        <BannerSlider
+          onPlay={(b, i) =>
+            setPlayReel({ url: b.reel, title: b.title, companion: pickCompanion(i) })
+          }
+        />
       </section>
 
       {/* HERO STRIP */}
@@ -310,7 +328,7 @@ function Landing() {
             <button
               key={i}
               type="button"
-              onClick={() => setPlayReel({ url: r.url, title: r.tag })}
+              onClick={() => setPlayReel({ url: r.url, title: r.tag, companion: pickCompanion(i) })}
               className="group relative h-[300px] w-[180px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card text-left shadow-md md:h-[360px] md:w-[220px]"
             >
               <video
@@ -466,9 +484,12 @@ function Landing() {
         <ReelPlayer
           url={playReel.url}
           title={playReel.title}
+          canChat={!!playReel.companion}
           onClose={() => setPlayReel(null)}
           onChat={() => {
+            const c = playReel.companion;
             setPlayReel(null);
+            if (c) setTease(c);
           }}
         />
       )}
@@ -788,7 +809,7 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
 /* ---------- Banner Slider ---------- */
 type Banner = (typeof BANNERS)[number];
 
-function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
+function BannerSlider({ onPlay }: { onPlay: (b: Banner, i: number) => void }) {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const n = BANNERS.length;
@@ -837,7 +858,7 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
           <button
             key={i}
             type="button"
-            onClick={() => onPlay(b)}
+            onClick={() => onPlay(b, i)}
             className="group relative block h-full w-full shrink-0 text-left"
             aria-label={`Play reel: ${b.title}`}
           >
@@ -916,10 +937,13 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner) => void }) {
 function ReelPlayer({
   url,
   title,
+  canChat,
   onClose,
+  onChat,
 }: {
   url: string;
   title: string;
+  canChat: boolean;
   onClose: () => void;
   onChat: () => void;
 }) {
@@ -952,10 +976,11 @@ function ReelPlayer({
         </div>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-4">
           <Button
-            asChild
+            onClick={onChat}
+            disabled={!canChat}
             className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
           >
-            <Link to="/auth">Chat with her — 25 free messages →</Link>
+            Chat with her — 25 free messages →
           </Button>
         </div>
       </div>

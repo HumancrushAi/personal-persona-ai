@@ -12,8 +12,20 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+// Optional ?companion=<id> on the URL — the model the user tapped before login.
+function pendingCompanion(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return new URLSearchParams(window.location.search).get("companion") ?? undefined;
+}
+
 function AuthPage() {
   const navigate = useNavigate();
+  // After auth, go straight to the model they tapped (if any), else browse.
+  const goAfterAuth = () => {
+    const companion = pendingCompanion();
+    if (companion) navigate({ to: "/companion/$id", params: { id: companion } });
+    else navigate({ to: "/browse" });
+  };
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,7 +50,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/browse" });
+        goAfterAuth();
       }
     } catch (err: any) {
       toast.error(err.message ?? "Something went wrong");
@@ -70,9 +82,11 @@ function AuthPage() {
     setLoading(true);
     try {
       // Supabase-native OAuth: redirects the browser to Google, then back to /browse.
+      const companion = pendingCompanion();
+      const dest = companion ? `/companion/${companion}` : "/browse";
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/browse` },
+        options: { redirectTo: `${window.location.origin}${dest}` },
       });
       if (error) throw error;
     } catch (err: any) {

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
+import { adminTts } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -50,8 +52,10 @@ export function ClipMaker() {
     },
   });
 
+  const tts = useServerFn(adminTts);
   const [modelId, setModelId] = useState<string>("");
   const [caption, setCaption] = useState(PRESET_JOKES[0]);
+  const [voice, setVoice] = useState(true);
   const [busy, setBusy] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -141,10 +145,36 @@ export function ClipMaker() {
       ctx.textAlign = "left";
     };
 
+    // Optional: the model "speaks" the caption (TTS audio track).
+    let audioEl: HTMLAudioElement | null = null;
+    let audioTracks: MediaStreamTrack[] = [];
+    let durationMs = DURATION;
+    if (voice) {
+      try {
+        const { dataUrl } = await tts({ data: { text: caption } });
+        audioEl = new Audio(dataUrl);
+        await new Promise<void>((res, rej) => {
+          audioEl!.onloadedmetadata = () => res();
+          audioEl!.onerror = () => rej(new Error("audio load failed"));
+        });
+        durationMs = Math.max(DURATION, (audioEl.duration || 6) * 1000 + 400);
+        const actx = new AudioContext();
+        const src = actx.createMediaElementSource(audioEl);
+        const dest = actx.createMediaStreamDestination();
+        src.connect(dest);
+        src.connect(actx.destination);
+        audioTracks = dest.stream.getAudioTracks();
+      } catch {
+        toast.error("Voice unavailable — making a silent clip");
+        audioEl = null;
+      }
+    }
+
     try {
-      const stream = canvas.captureStream(30);
-      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-        ? "video/webm;codecs=vp9"
+      const videoStream = canvas.captureStream(30);
+      const stream = new MediaStream([...videoStream.getVideoTracks(), ...audioTracks]);
+      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
         : "video/webm";
       const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
       const chunks: Blob[] = [];
@@ -155,12 +185,13 @@ export function ClipMaker() {
         setBusy(false);
       };
       rec.start();
+      audioEl?.play().catch(() => {});
       const start = performance.now();
       const frame = (now: number) => {
-        const t = Math.min(1, (now - start) / DURATION);
+        const t = Math.min(1, (now - start) / durationMs);
         draw(t);
         if (t < 1) requestAnimationFrame(frame);
-        else setTimeout(() => rec.stop(), 120);
+        else setTimeout(() => rec.stop(), 150);
       };
       requestAnimationFrame(frame);
     } catch (e: any) {
@@ -214,6 +245,10 @@ export function ClipMaker() {
               ))}
             </div>
           </div>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} />
+            She reads the caption out loud (voice)
+          </label>
           <Button onClick={makeClip} disabled={busy || !model}>
             {busy ? "Rendering…" : "Generate clip"}
           </Button>

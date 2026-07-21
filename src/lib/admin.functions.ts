@@ -444,6 +444,19 @@ export const adminUploadImage = createServerFn({ method: "POST" })
     return { imageUrl: pub.publicUrl };
   });
 
+// Text-to-speech for the clip maker (returns an mp3 data URL).
+export const adminTts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ text: z.string().min(1).max(300), voice: z.string().max(20).optional() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { textToSpeech } = await import("./ai");
+    const buf = await textToSpeech(data.text, data.voice || "coral");
+    return { dataUrl: `data:audio/mpeg;base64,${buf.toString("base64")}` };
+  });
+
 export const adminCreateUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>

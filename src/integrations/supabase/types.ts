@@ -242,6 +242,7 @@ export type Database = {
           created_at: string;
           display_name: string | null;
           id: string;
+          last_reengaged_at: string | null;
           subscription_id: string | null;
           subscription_renews_at: string | null;
           subscription_status: string | null;
@@ -255,6 +256,7 @@ export type Database = {
           created_at?: string;
           display_name?: string | null;
           id: string;
+          last_reengaged_at?: string | null;
           subscription_id?: string | null;
           subscription_renews_at?: string | null;
           subscription_status?: string | null;
@@ -268,6 +270,7 @@ export type Database = {
           created_at?: string;
           display_name?: string | null;
           id?: string;
+          last_reengaged_at?: string | null;
           subscription_id?: string | null;
           subscription_renews_at?: string | null;
           subscription_status?: string | null;

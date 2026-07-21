@@ -26,6 +26,7 @@ import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversat
 import { Route as CamsIdRouteImport } from './routes/cams.$id'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
+import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -111,6 +112,11 @@ const ApiPublicAuthnetWebhookRoute = ApiPublicAuthnetWebhookRouteImport.update({
   path: '/api/public/authnet-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronReengageRoute = ApiCronReengageRouteImport.update({
+  id: '/api/cron/reengage',
+  path: '/api/cron/reengage',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
 export interface FileRoutesById {
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
 export interface FileRouteTypes {
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
   id:
     | '__root__'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
+  ApiCronReengageRoute: typeof ApiCronReengageRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
 }
 
@@ -365,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAuthnetWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/reengage': {
+      id: '/api/cron/reengage'
+      path: '/api/cron/reengage'
+      fullPath: '/api/cron/reengage'
+      preLoaderRoute: typeof ApiCronReengageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -404,6 +424,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,
+  ApiCronReengageRoute: ApiCronReengageRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
 }
 export const routeTree = rootRouteImport

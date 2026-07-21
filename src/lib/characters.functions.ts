@@ -16,6 +16,7 @@ const Input = z.object({
   fit: z.enum(["slim", "regular", "loose"]).optional(),
   vibe: z.string().max(200).optional(),
   breastSize: z.string().max(20).optional(),
+  buttSize: z.string().max(20).optional(),
 });
 
 export const generateCharacter = createServerFn({ method: "POST" })
@@ -38,9 +39,10 @@ export const generateCharacter = createServerFn({ method: "POST" })
 
     const prompt = [
       style,
-      `Subject: a ${data.age}-year-old ${data.ethnicity} ${genderWord} named ${data.name}.`,
-      data.bodyType ? `Body: ${data.bodyType}.` : "",
+      `Subject: a ${data.ethnicity} ${genderWord} named ${data.name} who is exactly ${data.age} years old and clearly looks ${data.age} — age-appropriate face, skin, and body for a ${data.age}-year-old.`,
+      data.bodyType ? `Body type: ${data.bodyType}.` : "",
       data.breastSize && genderWord === "woman" ? `Breast size: ${data.breastSize}.` : "",
+      data.buttSize && genderWord === "woman" ? `Hips and butt size: ${data.buttSize}.` : "",
       data.hair ? `Hair: ${data.hair}.` : "",
       data.eyes ? `Eyes: ${data.eyes}.` : "",
       data.outfit ? `Wearing: ${data.outfit}.` : "Wearing stylish casual clothes.",

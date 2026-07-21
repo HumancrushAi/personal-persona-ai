@@ -28,7 +28,7 @@ function portraitPrompt(
       : "Ultra photorealistic glamour portrait photograph, natural skin texture and pores, soft warm lighting, shot on a 50mm DSLR, shallow depth of field, sharp focus, high detail, vertical portrait.";
   return [
     style,
-    `A stunning, sexy ${c.age}-year-old ${c.ethnicity} ${noun} named ${c.name}.`,
+    `A stunning, sexy ${c.ethnicity} ${noun} named ${c.name} who is exactly ${c.age} years old and clearly looks ${c.age} — age-appropriate face, skin, and body.`,
     c.short_bio ? `Vibe: ${c.short_bio}.` : "",
     extra ? `${extra}.` : "",
     "Sultry seductive expression, flirty eye contact with the camera, confident and alluring, subtle curves, form-fitting stylish outfit, intimate bedroom/boudoir setting. Tasteful and provocative but NOT nude. Realistic, not illustrated (unless anime).",

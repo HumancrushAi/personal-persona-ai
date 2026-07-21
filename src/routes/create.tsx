@@ -339,6 +339,7 @@ function CreatePage() {
   const [fit, setFit] = useState<"slim" | "regular" | "loose">("slim");
   const [vibe, setVibe] = useState(VIBES[1].id);
   const [breast, setBreast] = useState("Medium");
+  const [butt, setButt] = useState("Medium");
   const [loading, setLoading] = useState(false);
 
   const isWoman = gender === "female" || gender === "trans-female";
@@ -369,6 +370,7 @@ function CreatePage() {
           fit,
           vibe,
           breastSize: isWoman ? breast : undefined,
+          buttSize: isWoman ? butt : undefined,
         },
       });
       toast("She's ready 💋");
@@ -440,7 +442,7 @@ function CreatePage() {
               <input
                 type="range"
                 min={18}
-                max={45}
+                max={60}
                 value={age}
                 onChange={(e) => setAge(Number(e.target.value))}
                 className="w-full accent-[hsl(var(--primary))]"
@@ -467,6 +469,15 @@ function CreatePage() {
                   options={["Small", "Medium", "Large", "Busty"].map((b) => ({ id: b, label: b }))}
                   value={breast}
                   onChange={setBreast}
+                />
+              </Field>
+            )}
+            {isWoman && (
+              <Field label="Butt size">
+                <ChipRow
+                  options={["Small", "Medium", "Large", "Big"].map((b) => ({ id: b, label: b }))}
+                  value={butt}
+                  onChange={setButt}
                 />
               </Field>
             )}

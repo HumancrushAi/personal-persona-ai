@@ -631,6 +631,13 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
   }, []);
 
   async function triggerGate() {
+    const msg = input.trim();
+    // Carry the typed message into the real chat (auto-sent there).
+    try {
+      if (msg) sessionStorage.setItem("hc_pending_msg", msg);
+    } catch {
+      /* private mode */
+    }
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
       setGate(true);
@@ -648,7 +655,6 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
 
   function onChange(v: string) {
     setInput(v);
-    if (v.length >= 1 && !gate) triggerGate();
   }
 
   return (

@@ -95,9 +95,9 @@ function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending, mediaBusy, pendingUser]);
 
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
-    if (!input.trim() || sending) return;
+  async function sendMessage(raw: string) {
+    const content = raw.trim();
+    if (!content || sending) return;
     const total = (balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0);
     if (total <= 0) {
       toast.error("You're out of credits");
@@ -105,8 +105,6 @@ function ChatPage() {
       return;
     }
     setSending(true);
-    const content = input.trim();
-    setInput("");
     setPendingUser(content); // show my message instantly
     const start = Date.now();
     try {
@@ -140,6 +138,37 @@ function ChatPage() {
       setSending(false);
     }
   }
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    const content = input.trim();
+    if (!content) return;
+    setInput("");
+    await sendMessage(content);
+  }
+
+  // Auto-send a message carried over from the home-page tease chat.
+  const sentPending = useRef(false);
+  useEffect(() => {
+    if (sentPending.current || sending) return;
+    if (balance === undefined) return; // wait until credits are loaded
+    let pending = "";
+    try {
+      pending = sessionStorage.getItem("hc_pending_msg") || "";
+    } catch {
+      /* private mode */
+    }
+    if (pending) {
+      sentPending.current = true;
+      try {
+        sessionStorage.removeItem("hc_pending_msg");
+      } catch {
+        /* ignore */
+      }
+      sendMessage(pending);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [balance]);
 
   async function handleSelfie() {
     if (mediaBusy) return;

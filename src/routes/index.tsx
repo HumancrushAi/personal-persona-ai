@@ -17,73 +17,11 @@ import {
   X,
   Circle,
   Search,
-  Play,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
 import { FAQSection } from "@/components/FAQSection";
-import banner1 from "@/assets/banners/b1.jpg";
-import banner2 from "@/assets/banners/b2.jpg";
-import banner3 from "@/assets/banners/b3.jpg";
-import banner4 from "@/assets/banners/b4.jpg";
-import banner5 from "@/assets/banners/b5.jpg";
-
-// Reel videos live in the Supabase Storage public `reels` bucket.
-const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
-const reelUrl = (name: string) => `${REEL_BASE}/${name}.mp4`;
-
-// gender = who's actually IN the clip, so "chat" opens a matching-gender model.
-type Vid = "m" | "f";
-const REELS: { url: string; tag: string; views: string; gender: Vid }[] = [
-  { url: reelUrl("r7"), tag: "Beach walk", views: "684K", gender: "m" },
-  { url: reelUrl("r10"), tag: "Pool boy", views: "612K", gender: "m" },
-  { url: reelUrl("r8"), tag: "Poolside", views: "521K", gender: "m" },
-  { url: reelUrl("r11"), tag: "Beach hunk", views: "478K", gender: "m" },
-  { url: reelUrl("r9"), tag: "Ocean dip", views: "412K", gender: "m" },
-  { url: reelUrl("r1"), tag: "After hours", views: "356K", gender: "f" },
-  { url: reelUrl("r2"), tag: "Just woke up", views: "289K", gender: "f" },
-  { url: reelUrl("r3"), tag: "Sunset vibes", views: "198K", gender: "f" },
-];
-
-// Each banner pairs an image with a reel video that visually matches (swimwear / beach / pool).
-const BANNERS: { img: string; reel: string; title: string; sub: string; gender: Vid }[] = [
-  {
-    img: banner1,
-    reel: reelUrl("r7"),
-    title: "Beach day",
-    sub: "sun's out, come find me 🔥",
-    gender: "m",
-  },
-  {
-    img: banner2,
-    reel: reelUrl("r10"),
-    title: "Pool boy",
-    sub: "abs, dripping wet, all yours 🔥",
-    gender: "m",
-  },
-  {
-    img: banner3,
-    reel: reelUrl("r9"),
-    title: "Ocean break",
-    sub: "wet, warm, and bored without you",
-    gender: "m",
-  },
-  {
-    img: banner4,
-    reel: reelUrl("r11"),
-    title: "Beach hunk",
-    sub: "sunset stroll · shirt optional",
-    gender: "m",
-  },
-  {
-    img: banner5,
-    reel: reelUrl("r8"),
-    title: "Rooftop pool",
-    sub: "skyline views, zero rules",
-    gender: "m",
-  },
-];
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -220,26 +158,6 @@ function Landing() {
   const [activeCat, setActiveCat] = useState<Cat>("For you");
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
-  const [playReel, setPlayReel] = useState<{
-    url: string;
-    title: string;
-    companion: Companion | null;
-  } | null>(null);
-
-  // Videos (banners/reels) aren't real models, so tie each to an actual
-  // companion whose gender MATCHES the clip — clicking "chat" opens THAT model,
-  // gender-correct, never the generic all-models page.
-  const pickCompanion = (i: number, vid: "m" | "f"): Companion | null => {
-    const list = companions ?? [];
-    const wantMale = vid === "m";
-    const pool = list.filter((c) =>
-      wantMale
-        ? c.gender === "male" || c.gender === "trans-male"
-        : c.gender === "female" || c.gender === "trans-female",
-    );
-    const from = pool.length ? pool : list;
-    return from.length ? from[i % from.length] : null;
-  };
 
   const filtered = useMemo(
     () => (companions ?? []).filter((c) => matchesCategory(c, activeCat)),
@@ -252,11 +170,7 @@ function Landing() {
 
       {/* BANNER SLIDER */}
       <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
-        <BannerSlider
-          onPlay={(b, i) =>
-            setPlayReel({ url: b.reel, title: b.title, companion: pickCompanion(i, b.gender) })
-          }
-        />
+        <BannerSlider companions={companions ?? []} onPick={(c) => setTease(c)} />
       </section>
 
       {/* HERO STRIP */}
@@ -341,47 +255,41 @@ function Landing() {
         </div>
       </section>
 
-      {/* REELS — showcase clips, not tied to specific companions */}
+      {/* LIVE NOW — real models; the image IS who you chat with */}
       <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
         <SectionTitle
-          title="🔥 Reels"
-          subtitle="live now"
+          title="🔴 Live now"
+          subtitle="tap to chat"
           cta={
-            <Link to="/browse" className="text-xs text-primary hover:underline">
+            <Link to="/cams" className="text-xs text-primary hover:underline">
               See all
             </Link>
           }
         />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {REELS.map((r, i) => (
+          {(companions ?? []).slice(0, 14).map((c) => (
             <button
-              key={i}
+              key={c.id}
               type="button"
-              onClick={() =>
-                setPlayReel({ url: r.url, title: r.tag, companion: pickCompanion(i, r.gender) })
-              }
+              onClick={() => setTease(c)}
               className="group relative h-[300px] w-[180px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card text-left shadow-md md:h-[360px] md:w-[220px]"
             >
-              <video
-                src={r.url}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
+              <img
+                src={companionImage(c.image_url)}
+                alt={c.name}
+                loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover transition group-hover:scale-105"
               />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium backdrop-blur">
                   <Circle className="h-1.5 w-1.5 fill-red-500 text-red-500" /> LIVE
                 </span>
-                <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] backdrop-blur">
-                  {r.views}
-                </span>
               </div>
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 text-left">
-                <p className="font-display text-sm font-semibold text-white">{r.tag}</p>
-                <p className="line-clamp-1 text-[11px] text-white/75">Tap to play</p>
+                <p className="font-display text-sm font-semibold text-white">
+                  {c.name}, {c.age}
+                </p>
+                <p className="line-clamp-1 text-[11px] text-white/75">{c.ethnicity}</p>
               </div>
             </button>
           ))}
@@ -510,20 +418,6 @@ function Landing() {
         />
       )}
       {tease && <TeaseChat companion={tease} onClose={() => setTease(null)} />}
-      {playReel && (
-        <ReelPlayer
-          url={playReel.url}
-          title={playReel.title}
-          canChat={!!playReel.companion}
-          chatName={playReel.companion?.name}
-          onClose={() => setPlayReel(null)}
-          onChat={() => {
-            const c = playReel.companion;
-            setPlayReel(null);
-            if (c) setTease(c);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -855,23 +749,31 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
   );
 }
 
-/* ---------- Banner Slider ---------- */
-type Banner = (typeof BANNERS)[number];
-
-function BannerSlider({ onPlay }: { onPlay: (b: Banner, i: number) => void }) {
+/* ---------- Banner Slider (real models) ---------- */
+function BannerSlider({
+  companions,
+  onPick,
+}: {
+  companions: Companion[];
+  onPick: (c: Companion) => void;
+}) {
+  const slides = companions.slice(0, 5);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
-  const n = BANNERS.length;
+  const n = slides.length;
   const touchStartX = useRef<number | null>(null);
   const touchDeltaX = useRef(0);
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || n === 0) return;
     const t = setInterval(() => setIdx((i) => (i + 1) % n), 5000);
     return () => clearInterval(t);
   }, [paused, n]);
+  useEffect(() => {
+    if (n > 0 && idx >= n) setIdx(0);
+  }, [n, idx]);
 
-  const go = (d: number) => setIdx((i) => (i + d + n) % n);
+  const go = (d: number) => n && setIdx((i) => (i + d + n) % n);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -890,6 +792,12 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner, i: number) => void }) {
     if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
   };
 
+  if (n === 0) {
+    return (
+      <div className="h-[260px] animate-pulse rounded-3xl border border-white/10 bg-white/5 md:h-[420px]" />
+    );
+  }
+
   return (
     <div
       className="relative overflow-hidden rounded-3xl border border-white/10 shadow-glow select-none"
@@ -903,38 +811,31 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner, i: number) => void }) {
         className="flex h-[260px] transition-transform duration-700 ease-out md:h-[420px]"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
-        {BANNERS.map((b, i) => (
+        {slides.map((c) => (
           <button
-            key={i}
+            key={c.id}
             type="button"
-            onClick={() => onPlay(b, i)}
+            onClick={() => onPick(c)}
             className="group relative block h-full w-full shrink-0 text-left"
-            aria-label={`Play reel: ${b.title}`}
+            aria-label={`Chat with ${c.name}`}
           >
-            <video
-              src={b.reel}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            <img
+              src={companionImage(c.image_url)}
+              alt={c.name}
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top"
             />
-            <div className="pointer-events-none absolute inset-0 bg-black" style={{ zIndex: -1 }} />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="grid h-16 w-16 place-items-center rounded-full bg-white/15 backdrop-blur-md ring-1 ring-white/40 transition group-hover:scale-110 md:h-20 md:w-20">
-                <Play className="ml-1 h-7 w-7 fill-white text-white md:h-9 md:w-9" />
-              </span>
-            </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-black/30" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 md:p-7">
               <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live reel
+                <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live
               </span>
               <h2 className="mt-2 font-display text-2xl font-semibold text-white drop-shadow md:text-4xl">
-                {b.title}
+                {c.name}, {c.age}
               </h2>
-              <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">{b.sub}</p>
+              <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">{c.short_bio}</p>
+              <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
+                Chat with {c.name} →
+              </span>
             </div>
           </button>
         ))}
@@ -964,7 +865,7 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner, i: number) => void }) {
 
       {/* dots */}
       <div className="absolute inset-x-0 bottom-2 z-10 flex justify-center gap-1.5">
-        {BANNERS.map((_, i) => (
+        {slides.map((_, i) => (
           <button
             key={i}
             onClick={(e) => {
@@ -977,63 +878,6 @@ function BannerSlider({ onPlay }: { onPlay: (b: Banner, i: number) => void }) {
             }`}
           />
         ))}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Reel Player Modal ---------- */
-function ReelPlayer({
-  url,
-  title,
-  canChat,
-  chatName,
-  onClose,
-  onChat,
-}: {
-  url: string;
-  title: string;
-  canChat: boolean;
-  chatName?: string;
-  onClose: () => void;
-  onChat: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-[160] flex items-center justify-center bg-black/95 p-4 animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="relative h-[90vh] w-full max-w-md overflow-hidden rounded-3xl bg-black ring-1 ring-white/10"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <video
-          src={url}
-          autoPlay
-          loop
-          playsInline
-          controls
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-3">
-          <p className="font-display text-sm font-semibold text-white drop-shadow">{title}</p>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-full bg-black/45 p-1.5 text-white backdrop-blur hover:bg-black/70"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-4">
-          <Button
-            onClick={onChat}
-            disabled={!canChat}
-            className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
-          >
-            {chatName ? `Chat with ${chatName}` : "Start chatting"} — 25 free messages →
-          </Button>
-        </div>
       </div>
     </div>
   );

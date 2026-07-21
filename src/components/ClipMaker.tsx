@@ -44,7 +44,6 @@ export function ClipMaker() {
       const { data, error } = await supabase
         .from("companions")
         .select("id, name, image_url")
-        .is("created_by", null)
         .order("sort_order");
       if (error) throw error;
       return data as Model[];

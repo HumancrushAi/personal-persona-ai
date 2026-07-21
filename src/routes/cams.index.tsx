@@ -27,7 +27,6 @@ function CamsPage() {
       const { data, error } = await supabase
         .from("companions")
         .select("id, name, age, ethnicity, image_url, gender")
-        .is("created_by", null)
         .order("sort_order");
       if (error) throw error;
       return data;

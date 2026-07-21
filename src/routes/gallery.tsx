@@ -48,7 +48,6 @@ function GalleryPage() {
       const { data, error } = await supabase
         .from("companions")
         .select("id, name, age, ethnicity, image_url, gender, art_style")
-        .is("created_by", null)
         .order("sort_order");
       if (error) throw error;
       return data as C[];

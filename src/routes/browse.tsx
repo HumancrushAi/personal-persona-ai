@@ -2,8 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
-import { Heart, Coins } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { SiteHeader } from "@/components/SiteHeader";
 
 export const Route = createFileRoute("/browse")({
   ssr: false,
@@ -27,25 +26,9 @@ function Browse() {
 
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Link to="/" className="flex items-center gap-2">
-          <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-2xl font-semibold">HumanCrush.com</span>
-        </Link>
-        <div className="flex gap-2">
-          <Button asChild variant="ghost" className="rounded-full">
-            <Link to="/me">My chats</Link>
-          </Button>
-          <Button asChild variant="ghost" className="rounded-full">
-            <Link to="/credits">
-              <Coins className="mr-1 h-4 w-4" />
-              Credits
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <SiteHeader />
 
-      <section className="mx-auto max-w-6xl px-6 pb-20">
+      <section className="mx-auto max-w-6xl px-6 py-8 pb-20">
         <h1 className="font-display text-4xl font-semibold md:text-6xl">Pick your crush.</h1>
         <p className="mt-2 text-muted-foreground">
           36 hand-crafted companions — women, men, trans, non-binary. Customize anyone you tap.

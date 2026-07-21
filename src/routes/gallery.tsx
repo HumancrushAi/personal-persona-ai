@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
-import { Button } from "@/components/ui/button";
-import { Heart, Sparkles, MessageCircle } from "lucide-react";
+import { SiteHeader } from "@/components/SiteHeader";
+import { MessageCircle } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/gallery")({
@@ -68,26 +68,9 @@ function GalleryPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
-        <Link to="/" className="flex items-center gap-2">
-          <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">
-            HumanCrush.com
-          </span>
-        </Link>
-        <nav className="flex items-center gap-1">
-          <Button asChild variant="ghost" className="rounded-full text-sm">
-            <Link to="/browse">Browse</Link>
-          </Button>
-          <Button asChild className="rounded-full bg-grad-primary text-primary-foreground">
-            <Link to="/create">
-              <Sparkles className="mr-1.5 h-4 w-4" /> Create AI
-            </Link>
-          </Button>
-        </nav>
-      </header>
+      <SiteHeader />
 
-      <section className="mx-auto max-w-7xl px-4 md:px-6">
+      <section className="mx-auto max-w-7xl px-4 py-6 md:px-6">
         <h1 className="font-display text-3xl font-semibold md:text-5xl">
           The <span className="text-primary">gallery</span>
         </h1>

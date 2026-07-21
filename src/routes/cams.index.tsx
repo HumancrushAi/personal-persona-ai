@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { viewerCount } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
-import { Button } from "@/components/ui/button";
-import { Heart, Circle, ArrowLeft } from "lucide-react";
+import { SiteHeader } from "@/components/SiteHeader";
+import { Circle } from "lucide-react";
 
 export const Route = createFileRoute("/cams/")({
   ssr: false,
@@ -36,22 +36,9 @@ function CamsPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Button asChild variant="ghost" className="rounded-full">
-          <Link to="/">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Home
-          </Link>
-        </Button>
-        <Link to="/" className="flex items-center gap-2">
-          <Heart className="h-5 w-5 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold">HumanCrush.com</span>
-        </Link>
-        <Button asChild variant="ghost" className="rounded-full">
-          <Link to="/browse">Browse</Link>
-        </Button>
-      </header>
+      <SiteHeader />
 
-      <section className="mx-auto max-w-6xl px-6 pb-20">
+      <section className="mx-auto max-w-6xl px-6 py-8 pb-20">
         <div className="flex items-center gap-2">
           <Circle className="h-3 w-3 fill-red-500 text-red-500" />
           <h1 className="font-display text-4xl font-semibold md:text-5xl">Live now</h1>

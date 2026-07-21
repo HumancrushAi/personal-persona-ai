@@ -278,7 +278,7 @@ function Landing() {
                 src={companionImage(c.image_url)}
                 alt={c.name}
                 loading="lazy"
-                className="absolute inset-0 h-full w-full object-cover transition group-hover:scale-105"
+                className="animate-live absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium backdrop-blur">

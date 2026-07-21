@@ -48,7 +48,7 @@ export const generateCharacter = createServerFn({ method: "POST" })
           ? "Outfit fit: relaxed and loose, oversized silhouette."
           : "Outfit fit: regular, true-to-size.",
       data.vibe ? `Vibe: ${data.vibe}.` : "",
-      "Looking softly at the camera. Tasteful, attractive, no nudity. Centered head and shoulders.",
+      "Sultry, seductive, flirty eye contact with the camera, confident alluring pose, form-fitting stylish outfit, intimate warm lighting. Provocative and sexy but NOT nude. Centered, head and shoulders to waist.",
     ]
       .filter(Boolean)
       .join(" ");

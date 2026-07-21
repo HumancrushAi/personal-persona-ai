@@ -168,7 +168,7 @@ function CamView() {
           key={id}
           src={companionImage(model?.image_url ?? "")}
           alt={model?.name ?? ""}
-          className="absolute inset-0 h-full w-full object-cover object-top"
+          className="animate-live absolute inset-0 h-full w-full object-cover object-top"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/50" />
 

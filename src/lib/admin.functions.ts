@@ -24,14 +24,14 @@ function portraitPrompt(
   const noun = genderNoun(c.gender);
   const style =
     c.art_style === "anime"
-      ? "Stylized high-quality anime illustration, cel shaded, expressive, vertical portrait."
-      : "Ultra photorealistic portrait photograph, natural skin texture and pores, soft natural lighting, shot on a 50mm DSLR, shallow depth of field, sharp focus, high detail, vertical portrait.";
+      ? "Stylized high-quality anime illustration, cel shaded, expressive, alluring, vertical portrait."
+      : "Ultra photorealistic glamour portrait photograph, natural skin texture and pores, soft warm lighting, shot on a 50mm DSLR, shallow depth of field, sharp focus, high detail, vertical portrait.";
   return [
     style,
-    `A stunning ${c.age}-year-old ${c.ethnicity} ${noun} named ${c.name}.`,
+    `A stunning, sexy ${c.age}-year-old ${c.ethnicity} ${noun} named ${c.name}.`,
     c.short_bio ? `Vibe: ${c.short_bio}.` : "",
     extra ? `${extra}.` : "",
-    "Looking at the camera, attractive, head and shoulders, realistic, not illustrated (unless anime).",
+    "Sultry seductive expression, flirty eye contact with the camera, confident and alluring, subtle curves, form-fitting stylish outfit, intimate bedroom/boudoir setting. Tasteful and provocative but NOT nude. Realistic, not illustrated (unless anime).",
   ]
     .filter(Boolean)
     .join(" ");

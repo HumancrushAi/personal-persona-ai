@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
 import { generateImage, textToSpeech } from "./ai";
+import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 
 const SELFIE_COST = 8;
 const VOICE_COST = 3;
@@ -72,18 +73,22 @@ export const generateSelfie = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!conv) throw new Error("Conversation not found");
 
+    const userPrompt = data.prompt?.trim();
+    // Safety gate on the image request (blocks minors / illegal even for photos).
+    const screen = screenUserMessage(userPrompt ?? "");
+    if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
+
     const { free, paid } = await ensureBalance(supabase, userId, SELFIE_COST);
 
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
-    const userPrompt = data.prompt?.trim();
     const imagePrompt = [
-      `Hyper-realistic intimate selfie of a ${c.age}-year-old ${c.ethnicity} woman named ${c.name}.`,
+      `Photorealistic amateur selfie of a ${c.age}-year-old ${c.ethnicity} woman named ${c.name}.`,
       `Soft warm lighting, shallow depth of field, shot on iPhone, slightly grainy, intimate bedroom or apartment setting.`,
       `She looks: ${c.short_bio}.`,
       p.style_backstory ? `Vibe: ${p.style_backstory}.` : "",
       userPrompt ? `She is: ${userPrompt}.` : `She is smiling softly at the camera.`,
-      `Tasteful, sensual, fully clothed or in casual loungewear. No nudity, no explicit content. Photographic, not illustrated.`,
+      `Attractive, sensual, photographic, highly detailed, not illustrated.`,
     ]
       .filter(Boolean)
       .join(" ");

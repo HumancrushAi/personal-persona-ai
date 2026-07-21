@@ -1,12 +1,18 @@
 // Centralized AI providers (post-Lovable migration).
 //   Chat text  -> OpenRouter  (NSFW-permitting models; set OPENROUTER_MODEL)
-//   Images     -> OpenAI      (tasteful/SFW selfies + character art)
+//   Images     -> Replicate   (NSFW-capable) when REPLICATE_API_TOKEN is set,
+//                 else OpenAI (SFW only — blocks nudity)
 //   Voice/TTS  -> OpenAI      (voice notes)
 // Keys are server-only env vars — never import.meta.env, never sent to the client.
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
+const REPLICATE_URL = "https://api.replicate.com/v1/predictions";
+
+// nsfw-flux-dev (aisha-ai-official) — photorealistic, uncensored. Override with
+// REPLICATE_IMAGE_VERSION to swap models without a code change.
+const DEFAULT_IMAGE_VERSION = "fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa";
 
 // Uncensored default tuned for intimate girlfriend RP. Override with OPENROUTER_MODEL.
 // Alternatives: anthracite-org/magnum-v4-72b (softer/warmer), sao10k/l3-lunaris-8b (cheap).
@@ -70,12 +76,41 @@ async function tryImageModel(
   throw new Error(`${model}: no image returned`);
 }
 
-// Returns a data: URL (base64 PNG). If OPENAI_IMAGE_MODEL isn't pinned, try
-// gpt-image-1 (needs OpenAI org verification) then fall back to dall-e-3 so
-// selfies never dead-end on an account that isn't verified for gpt-image-1.
+// Replicate (NSFW-capable). Uses Prefer: wait so the prediction resolves in one
+// request; downloads the result and inlines it as a data URL.
+async function generateImageReplicate(prompt: string): Promise<string> {
+  const token = process.env.REPLICATE_API_TOKEN!;
+  const version = process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION;
+  const res = await fetch(REPLICATE_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Prefer: "wait",
+    },
+    body: JSON.stringify({ version, input: { prompt, width: 768, height: 1024 } }),
+  });
+  if (!res.ok) throw new Error(`Image error: ${res.status} ${(await res.text()).slice(0, 200)}`);
+  const json = await res.json();
+  if (json.status !== "succeeded") {
+    throw new Error(`Image error: ${json.status}${json.error ? ` ${json.error}` : ""}`);
+  }
+  const out = Array.isArray(json.output) ? json.output[0] : json.output;
+  if (!out) throw new Error("No image returned");
+  const img = await fetch(out);
+  if (!img.ok) throw new Error("Could not fetch generated image");
+  const b64 = Buffer.from(await img.arrayBuffer()).toString("base64");
+  return `data:image/png;base64,${b64}`;
+}
+
+// Returns a data: URL (base64 PNG). Prefers Replicate (NSFW) when configured;
+// otherwise OpenAI (SFW only — gpt-image-1 then dall-e-3).
 export async function generateImage(prompt: string, opts?: { size?: string }): Promise<string> {
+  if (process.env.REPLICATE_API_TOKEN) return generateImageReplicate(prompt);
+
   const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("Image generation not configured (OPENAI_API_KEY missing)");
+  if (!key)
+    throw new Error("Image generation not configured (no REPLICATE_API_TOKEN / OPENAI_API_KEY)");
   const size = opts?.size || "1024x1024";
   const models = process.env.OPENAI_IMAGE_MODEL
     ? [process.env.OPENAI_IMAGE_MODEL]

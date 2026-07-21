@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/browse")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Browse companions — HumanCrush.ai" }] }),
+  head: () => ({ meta: [{ title: "Browse companions — HumanCrush.com" }] }),
   component: Browse,
 });
 
@@ -30,7 +30,7 @@ function Browse() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-2xl font-semibold">HumanCrush.ai</span>
+          <span className="font-display text-2xl font-semibold">HumanCrush.com</span>
         </Link>
         <div className="flex gap-2">
           <Button asChild variant="ghost" className="rounded-full">

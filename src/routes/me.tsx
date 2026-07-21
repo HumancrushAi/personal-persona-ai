@@ -8,7 +8,7 @@ import { Heart, MessageCircle, Plus, Coins, Shield } from "lucide-react";
 
 export const Route = createFileRoute("/me")({
   ssr: false,
-  head: () => ({ meta: [{ title: "My chats — HumanCrush.ai" }] }),
+  head: () => ({ meta: [{ title: "My chats — HumanCrush.com" }] }),
   component: MePage,
 });
 
@@ -66,7 +66,7 @@ function MePage() {
       <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-2xl font-semibold">HumanCrush.ai</span>
+          <span className="font-display text-2xl font-semibold">HumanCrush.com</span>
         </Link>
         <div className="flex items-center gap-2">
           <Link
@@ -94,7 +94,7 @@ function MePage() {
 
       <section className="mx-auto max-w-4xl px-6 pb-20">
         <div className="flex items-center justify-between">
-          <h1 className="font-display text-4xl font-semibold md:text-5xl">Your girls</h1>
+          <h1 className="font-display text-4xl font-semibold md:text-5xl">Your chats</h1>
           <Button
             asChild
             className="rounded-full bg-grad-primary text-primary-foreground shadow-glow"

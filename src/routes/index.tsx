@@ -67,13 +67,13 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "HumanCrush.ai — Your AI Crush, Built Exactly Your Way" },
+      { title: "HumanCrush.com — Your AI Crush, Built Exactly Your Way" },
       {
         name: "description",
         content:
           "36 stunning AI companions — women, men, trans, non-binary. Stories, real reels, voice notes, selfies. 25 free messages, no card. 18+ only.",
       },
-      { property: "og:title", content: "HumanCrush.ai — Your AI Crush" },
+      { property: "og:title", content: "HumanCrush.com — Your AI Crush" },
       {
         property: "og:description",
         content:
@@ -468,7 +468,7 @@ function Landing() {
             Create AI
           </Link>
         </div>
-        © {new Date().getFullYear()} HumanCrush.ai · 18+ only · AI characters are fictional.
+        © {new Date().getFullYear()} HumanCrush.com · 18+ only · AI characters are fictional.
       </footer>
 
       {storyView && (
@@ -487,6 +487,7 @@ function Landing() {
           url={playReel.url}
           title={playReel.title}
           canChat={!!playReel.companion}
+          chatName={playReel.companion?.name}
           onClose={() => setPlayReel(null)}
           onChat={() => {
             const c = playReel.companion;
@@ -531,7 +532,7 @@ function Nav() {
         <Link to="/" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Heart className="h-5 w-5 shrink-0 fill-primary text-primary md:h-6 md:w-6" />
           <span className="truncate font-display text-base font-semibold tracking-tight sm:text-lg md:text-2xl">
-            HumanCrush.ai
+            HumanCrush.com
           </span>
         </Link>
         <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
@@ -958,12 +959,14 @@ function ReelPlayer({
   url,
   title,
   canChat,
+  chatName,
   onClose,
   onChat,
 }: {
   url: string;
   title: string;
   canChat: boolean;
+  chatName?: string;
   onClose: () => void;
   onChat: () => void;
 }) {
@@ -1000,7 +1003,7 @@ function ReelPlayer({
             disabled={!canChat}
             className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
           >
-            Chat with her — 25 free messages →
+            {chatName ? `Chat with ${chatName}` : "Start chatting"} — 25 free messages →
           </Button>
         </div>
       </div>

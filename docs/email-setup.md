@@ -8,7 +8,7 @@ only dashboard configuration.
 ## 1. Resend account
 1. Create/log in at [resend.com](https://resend.com).
 2. **Add & verify a sending domain** (Resend → Domains → Add Domain), e.g.
-   `mail.humancrush.ai`. Add the DNS records Resend shows (SPF/DKIM). This is
+   `mail.humancrush.com`. Add the DNS records Resend shows (SPF/DKIM). This is
    required to send from `no-reply@yourdomain` in production.
    - For quick testing only, Resend can send from `onboarding@resend.dev`, but it
      will only deliver to the Resend account owner's email. Use a verified domain
@@ -26,7 +26,7 @@ Enable **Custom SMTP** and enter:
 | Username | `resend` |
 | Password | the `RESEND_API_KEY` (`re_...`) |
 | Sender email | `no-reply@yourdomain` (must be on the verified domain) |
-| Sender name | `HumanCrush.ai` |
+| Sender name | `HumanCrush.com` |
 
 Then raise the auth email rate limit: **Authentication → Rate Limits → emails per
 hour** (default is low; bump it for real traffic).
@@ -45,8 +45,8 @@ https://personal-persona-ai.vercel.app/**
 - **Reset Password** → `reset-password.html`
 
 Suggested subjects:
-- Confirm signup: `Confirm your HumanCrush.ai account`
-- Reset password: `Reset your HumanCrush.ai password`
+- Confirm signup: `Confirm your HumanCrush.com account`
+- Reset password: `Reset your HumanCrush.com password`
 
 ## 5. Test
 1. Sign up with a real address → confirm email arrives (branded) → link verifies.

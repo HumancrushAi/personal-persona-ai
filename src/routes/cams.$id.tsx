@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { reelForId, viewerCount } from "@/lib/reels";
+import { viewerCount } from "@/lib/reels";
+import { companionImage } from "@/lib/companion-images";
 import { sendTip, startPrivateShow, TIP_AMOUNTS, PRIVATE_ENTRY_COST } from "@/lib/cams.functions";
 import { Button } from "@/components/ui/button";
 import { X, Circle, Coins, Gift, Lock, Heart } from "lucide-react";
@@ -11,7 +12,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/cams/$id")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Live — HumanCrush.ai" }] }),
+  head: () => ({ meta: [{ title: "Live — HumanCrush.com" }] }),
   component: CamView,
 });
 
@@ -19,12 +20,12 @@ const AMBIENT: { u: string; t: string }[] = [
   { u: "user827", t: "nobody told me i'd be falling in love today" },
   { u: "guest7", t: "the eye contact through the screen feels illegal" },
   { u: "mike_d", t: "worth every credit 🔥" },
-  { u: "user19", t: "she just looked at me… i felt it" },
+  { u: "user19", t: "that look just hit different 😮‍💨" },
   { u: "guest23", t: "perfect background for my work session lol" },
-  { u: "j_playa", t: "tip her, she deserves it 💸" },
+  { u: "j_playa", t: "tip them, they earned it 💸" },
   { u: "anon_44", t: "going private brb 😏" },
-  { u: "leo_x", t: "how is she this real" },
-  { u: "danny", t: "okay she's my favorite now" },
+  { u: "leo_x", t: "how is this so real" },
+  { u: "danny", t: "okay new favorite fr" },
 ];
 
 const NAME_COLORS = ["#ff7ab6", "#8fd3ff", "#c9a3ff", "#9be29b", "#ffd479"];
@@ -140,13 +141,10 @@ function CamView() {
   return (
     <div className="relative flex h-screen w-full items-stretch justify-center bg-black">
       <div className="relative h-full w-full max-w-md overflow-hidden">
-        <video
+        <img
           key={id}
-          src={reelForId(id)}
-          autoPlay
-          loop
-          playsInline
-          muted
+          src={companionImage(model?.image_url ?? "")}
+          alt={model?.name ?? ""}
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/50" />

@@ -41,9 +41,9 @@ export const Route = createFileRoute("/create")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Create your AI — HumanCrush.ai" },
+      { title: "Create your AI — HumanCrush.com" },
       { name: "description", content: "Design your own AI crush — pick gender, art style, ethnicity, body, hair, eyes and vibe. Realistic or anime." },
-      { property: "og:title", content: "Create your AI · HumanCrush.ai" },
+      { property: "og:title", content: "Create your AI · HumanCrush.com" },
       { property: "og:description", content: "Build your dream AI companion in under a minute." },
     ],
   }),
@@ -265,7 +265,7 @@ function CreatePage() {
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 md:px-6">
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">HumanCrush.ai</span>
+          <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">HumanCrush.com</span>
         </Link>
         <Button asChild variant="ghost" className="rounded-full text-sm">
           <Link to="/gallery"><ArrowLeft className="mr-1.5 h-4 w-4" /> Gallery</Link>

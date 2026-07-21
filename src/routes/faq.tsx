@@ -8,17 +8,17 @@ export const Route = createFileRoute("/faq")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "FAQ — HumanCrush.ai" },
+      { title: "FAQ — HumanCrush.com" },
       {
         name: "description",
         content:
-          "Answers about HumanCrush.ai — pricing, credits, subscriptions, NSFW, custom AI companions, privacy, and more.",
+          "Answers about HumanCrush.com — pricing, credits, subscriptions, NSFW, custom AI companions, privacy, and more.",
       },
-      { property: "og:title", content: "FAQ — HumanCrush.ai" },
+      { property: "og:title", content: "FAQ — HumanCrush.com" },
       {
         property: "og:description",
         content:
-          "Everything you need to know about HumanCrush.ai: credits, plans, custom AI companions, privacy and more.",
+          "Everything you need to know about HumanCrush.com: credits, plans, custom AI companions, privacy and more.",
       },
     ],
   }),
@@ -42,7 +42,7 @@ function FAQPage() {
             Frequently asked questions
           </h1>
           <p className="mt-4 text-muted-foreground md:text-lg">
-            Everything you need to know about HumanCrush.ai.
+            Everything you need to know about HumanCrush.com.
           </p>
         </div>
 

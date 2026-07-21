@@ -27,7 +27,7 @@ import { Shield, Search, UserPlus, RefreshCw, Receipt } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
-    meta: [{ title: "Admin — HumanCrush.ai" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Admin — HumanCrush.com" }, { name: "robots", content: "noindex" }],
   }),
   component: AdminPage,
 });

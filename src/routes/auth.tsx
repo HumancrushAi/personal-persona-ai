@@ -8,7 +8,7 @@ import { Heart, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in — HumanCrush.ai" }] }),
+  head: () => ({ meta: [{ title: "Sign in — HumanCrush.com" }] }),
   component: AuthPage,
 });
 
@@ -100,7 +100,7 @@ function AuthPage() {
       <div className="glass w-full max-w-md rounded-3xl p-8 shadow-glow">
         <Link to="/" className="flex items-center justify-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-2xl font-semibold">HumanCrush.ai</span>
+          <span className="font-display text-2xl font-semibold">HumanCrush.com</span>
         </Link>
         <h1 className="mt-6 text-center font-display text-3xl font-semibold">
           {mode === "signin" ? "Welcome back" : "She's waiting."}

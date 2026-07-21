@@ -14,7 +14,7 @@ import { getScenario } from "@/lib/scenarios";
 
 export const Route = createFileRoute("/chat/$conversationId")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Chat — HumanCrush.ai" }] }),
+  head: () => ({ meta: [{ title: "Chat — HumanCrush.com" }] }),
   component: ChatPage,
 });
 
@@ -290,7 +290,7 @@ function ChatPage() {
             )}
             {messages?.length === 0 && !scenario && (
               <div className="glass rounded-2xl p-4 text-center text-sm text-muted-foreground">
-                Say hi to {p?.nickname ?? "her"} 💋
+                Say hi to {p?.nickname ?? "them"} 💋
               </div>
             )}
             {messages?.map((m) => (

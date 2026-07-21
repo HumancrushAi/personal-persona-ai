@@ -32,8 +32,8 @@ export async function chatComplete(
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
       // Recommended attribution headers for OpenRouter (optional).
-      "HTTP-Referer": process.env.PUBLIC_SITE_URL || "https://humancrush.ai",
-      "X-Title": "HumanCrush.ai",
+      "HTTP-Referer": process.env.PUBLIC_SITE_URL || "https://humancrush.com",
+      "X-Title": "HumanCrush.com",
     },
     body: JSON.stringify({
       model,

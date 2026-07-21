@@ -8,7 +8,7 @@ import { ArrowLeft, Heart, Coins, CreditCard } from "lucide-react";
 
 export const Route = createFileRoute("/history")({
   ssr: false,
-  head: () => ({ meta: [{ title: "History — HumanCrush.ai" }] }),
+  head: () => ({ meta: [{ title: "History — HumanCrush.com" }] }),
   component: HistoryPage,
 });
 
@@ -73,7 +73,7 @@ function HistoryPage() {
         </Button>
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-5 w-5 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold">HumanCrush.ai</span>
+          <span className="font-display text-xl font-semibold">HumanCrush.com</span>
         </Link>
       </header>
 

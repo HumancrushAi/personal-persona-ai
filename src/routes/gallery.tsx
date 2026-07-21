@@ -10,9 +10,9 @@ export const Route = createFileRoute("/gallery")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Gallery — HumanCrush.ai" },
+      { title: "Gallery — HumanCrush.com" },
       { name: "description", content: "Browse stunning AI-generated portraits from every HumanCrush companion. Tap any image to start chatting." },
-      { property: "og:title", content: "HumanCrush.ai Gallery" },
+      { property: "og:title", content: "HumanCrush.com Gallery" },
       { property: "og:description", content: "Endless AI-generated crushes — women, men, trans, non-binary, every ethnicity." },
     ],
   }),
@@ -59,7 +59,7 @@ function GalleryPage() {
       <header className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">HumanCrush.ai</span>
+          <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">HumanCrush.com</span>
         </Link>
         <nav className="flex items-center gap-1">
           <Button asChild variant="ghost" className="rounded-full text-sm"><Link to="/browse">Browse</Link></Button>

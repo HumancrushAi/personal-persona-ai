@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { reelForId, viewerCount } from "@/lib/reels";
+import { viewerCount } from "@/lib/reels";
+import { companionImage } from "@/lib/companion-images";
 import { Button } from "@/components/ui/button";
 import { Heart, Circle, ArrowLeft } from "lucide-react";
 
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/cams")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Live Cams — HumanCrush.ai" },
+      { title: "Live Cams — HumanCrush.com" },
       {
         name: "description",
         content: "Watch your favorite AI companions live. Tip, chat, go private.",
@@ -43,7 +44,7 @@ function CamsPage() {
         </Button>
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-5 w-5 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold">HumanCrush.ai</span>
+          <span className="font-display text-xl font-semibold">HumanCrush.com</span>
         </Link>
         <Button asChild variant="ghost" className="rounded-full">
           <Link to="/browse">Browse</Link>
@@ -56,7 +57,7 @@ function CamsPage() {
           <h1 className="font-display text-4xl font-semibold md:text-5xl">Live now</h1>
         </div>
         <p className="mt-2 text-muted-foreground">
-          Tap anyone to watch her live — send a tip or take her private.
+          Tap anyone to watch them live — send a tip or go private.
         </p>
 
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -67,13 +68,10 @@ function CamsPage() {
               params={{ id: c.id }}
               className="group relative aspect-[3/4] overflow-hidden rounded-3xl border border-white/10 bg-card shadow-md transition hover:shadow-glow"
             >
-              <video
-                src={reelForId(c.id)}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
+              <img
+                src={companionImage(c.image_url)}
+                alt={c.name}
+                loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover transition group-hover:scale-105"
               />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">

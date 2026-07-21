@@ -21,7 +21,7 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/companion/$id")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => searchSchema.parse(s),
-  head: () => ({ meta: [{ title: "Customize — HumanCrush.ai" }] }),
+  head: () => ({ meta: [{ title: "Customize — HumanCrush.com" }] }),
   component: Page,
 });
 
@@ -277,7 +277,7 @@ function Page() {
         </Button>
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-5 w-5 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold">HumanCrush.ai</span>
+          <span className="font-display text-xl font-semibold">HumanCrush.com</span>
         </Link>
       </header>
 

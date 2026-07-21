@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
+import { enablePush } from "@/lib/push-client";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Plus, Coins, Shield } from "lucide-react";
+import { Heart, MessageCircle, Plus, Coins, Shield, Bell } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/me")({
   ssr: false,
@@ -61,6 +63,17 @@ function MePage() {
     window.location.href = "/";
   }
 
+  async function turnOnNotifications() {
+    try {
+      const r = await enablePush();
+      if (r === "enabled") toast.success("Notifications on — she'll ping you 💌");
+      else if (r === "denied") toast.error("You blocked notifications in your browser");
+      else toast.error("Notifications aren't available on this device/browser");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't enable notifications");
+    }
+  }
+
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
@@ -76,6 +89,15 @@ function MePage() {
             <Coins className="h-3.5 w-3.5 text-primary" />{" "}
             {(balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0)}
           </Link>
+          <Button
+            onClick={turnOnNotifications}
+            variant="ghost"
+            size="icon"
+            className="rounded-full"
+            title="Enable notifications"
+          >
+            <Bell className="h-4 w-4" />
+          </Button>
           <Button asChild variant="ghost" className="rounded-full">
             <Link to="/history">History</Link>
           </Button>

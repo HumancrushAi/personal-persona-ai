@@ -357,6 +357,64 @@ export const adminRegeneratePersonaPhoto = createServerFn({ method: "POST" })
     return { ok: true, imageUrl };
   });
 
+// Send a push and/or email notification to all users.
+export const adminBroadcast = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        title: z.string().min(1).max(80),
+        body: z.string().min(1).max(300),
+        url: z.string().max(300).optional(),
+        push: z.boolean().default(true),
+        email: z.boolean().default(false),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { sendPush, sendEmail, notificationEmailHtml } = await import("./notify");
+
+    let pushSent = 0;
+    let pushFailed = 0;
+    let emailSent = 0;
+
+    if (data.push) {
+      const { data: subs } = await supabaseAdmin
+        .from("push_subscriptions")
+        .select("endpoint, p256dh, auth");
+      for (const s of subs ?? []) {
+        try {
+          await sendPush(s as any, { title: data.title, body: data.body, url: data.url });
+          pushSent++;
+        } catch (e: any) {
+          pushFailed++;
+          const code = String(e?.statusCode ?? "");
+          if (code === "410" || code === "404") {
+            await supabaseAdmin.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+          }
+        }
+      }
+    }
+
+    if (data.email) {
+      const html = notificationEmailHtml(data.title, data.body, data.url);
+      const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      for (const u of users.users) {
+        if (!u.email) continue;
+        try {
+          await sendEmail(u.email, data.title, html);
+          emailSent++;
+        } catch {
+          /* skip failures */
+        }
+      }
+    }
+
+    return { pushSent, pushFailed, emailSent };
+  });
+
 export const adminCreateUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>

@@ -13,6 +13,7 @@ import {
   adminListPersonas,
   adminUpsertPersona,
   adminRegeneratePersonaPhoto,
+  adminBroadcast,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -178,6 +179,7 @@ function AdminPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="personas">Personas</TabsTrigger>
+          <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -443,6 +445,10 @@ function AdminPage() {
 
         <TabsContent value="personas">
           <PersonasPanel />
+        </TabsContent>
+
+        <TabsContent value="broadcast">
+          <BroadcastPanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -752,5 +758,87 @@ function PersonasPanel() {
         </div>
       </section>
     </div>
+  );
+}
+
+function BroadcastPanel() {
+  const broadcast = useServerFn(adminBroadcast);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [url, setUrl] = useState("");
+  const [push, setPush] = useState(true);
+  const [email, setEmail] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    if (!push && !email) {
+      toast.error("Pick push, email, or both");
+      return;
+    }
+    setSending(true);
+    try {
+      const r = await broadcast({
+        data: { title, body, url: url || undefined, push, email },
+      });
+      toast.success(`Sent — push: ${r.pushSent} (failed ${r.pushFailed}), email: ${r.emailSent}`);
+      setTitle("");
+      setBody("");
+      setUrl("");
+    } catch (e: any) {
+      toast.error(e.message ?? "Broadcast failed");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <section className="glass max-w-xl rounded-2xl p-4">
+      <h2 className="mb-1 font-display text-lg">Send a notification</h2>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Push reaches users who enabled notifications; email reaches everyone (needs a verified
+        Resend domain).
+      </p>
+      <form onSubmit={send} className="space-y-3">
+        <div>
+          <Label className="text-xs">Title</Label>
+          <Input
+            required
+            maxLength={80}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Aria misses you 💌"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Message</Label>
+          <Textarea
+            required
+            rows={2}
+            maxLength={300}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Come back and see what she sent you…"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Link (optional)</Label>
+          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/me" />
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} />{" "}
+            Push
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={email} onChange={(e) => setEmail(e.target.checked)} />{" "}
+            Email
+          </label>
+        </div>
+        <Button type="submit" disabled={sending}>
+          {sending ? "Sending…" : "Send broadcast"}
+        </Button>
+      </form>
+    </section>
   );
 }

@@ -42,7 +42,11 @@ export const Route = createFileRoute("/create")({
   head: () => ({
     meta: [
       { title: "Create your AI — HumanCrush.com" },
-      { name: "description", content: "Design your own AI crush — pick gender, art style, ethnicity, body, hair, eyes and vibe. Realistic or anime." },
+      {
+        name: "description",
+        content:
+          "Design your own AI crush — pick gender, art style, ethnicity, body, hair, eyes and vibe. Realistic or anime.",
+      },
       { property: "og:title", content: "Create your AI · HumanCrush.com" },
       { property: "og:description", content: "Build your dream AI companion in under a minute." },
     ],
@@ -67,17 +71,40 @@ const STYLES: { id: Style; label: string; sub: string }[] = [
 ];
 
 const ETHNICITIES = [
-  "Latina", "East Asian", "Korean", "Japanese", "Indian", "Persian",
-  "Black", "African American", "Caribbean", "White European",
-  "Italian", "French", "Russian", "Brazilian", "Filipina",
-  "Middle Eastern", "Mixed",
+  "Latina",
+  "East Asian",
+  "Korean",
+  "Japanese",
+  "Indian",
+  "Persian",
+  "Black",
+  "African American",
+  "Caribbean",
+  "White European",
+  "Italian",
+  "French",
+  "Russian",
+  "Brazilian",
+  "Filipina",
+  "Middle Eastern",
+  "Mixed",
 ];
 
 /* ---------- Visual swatches (lightweight illustrations) ---------- */
 
 function Silhouette({
-  w, tall, short, hips, muscular,
-}: { w: number; tall?: boolean; short?: boolean; hips?: boolean; muscular?: boolean }) {
+  w,
+  tall,
+  short,
+  hips,
+  muscular,
+}: {
+  w: number;
+  tall?: boolean;
+  short?: boolean;
+  hips?: boolean;
+  muscular?: boolean;
+}) {
   const height = tall ? 70 : short ? 50 : 60;
   const shoulder = muscular ? w + 6 : w + 2;
   const hip = hips ? w + 8 : w + 2;
@@ -103,8 +130,16 @@ function Silhouette({
 }
 
 function HairSwatch({
-  color, long, wavy, curly,
-}: { color: string; long?: boolean; wavy?: boolean; curly?: boolean }) {
+  color,
+  long,
+  wavy,
+  curly,
+}: {
+  color: string;
+  long?: boolean;
+  wavy?: boolean;
+  curly?: boolean;
+}) {
   return (
     <svg viewBox="0 0 60 60" className="h-14 w-full">
       {/* face */}
@@ -166,57 +201,125 @@ function VibeSwatch({ emoji, hue }: { emoji: string; hue: string }) {
 type Visual = { id: string; label: string; swatch: React.ReactNode };
 
 const BODIES: Visual[] = [
-  { id: "Slim",      label: "Slim",      swatch: <PhotoSwatch src={bodySlim} alt="Slim" /> },
-  { id: "Athletic",  label: "Athletic",  swatch: <PhotoSwatch src={bodyAthletic} alt="Athletic" /> },
-  { id: "Curvy",     label: "Curvy",     swatch: <PhotoSwatch src={bodyCurvy} alt="Curvy" /> },
-  { id: "Petite",    label: "Petite",    swatch: <PhotoSwatch src={bodyPetite} alt="Petite" /> },
-  { id: "Tall",      label: "Tall",      swatch: <PhotoSwatch src={bodyTall} alt="Tall" /> },
-  { id: "Thick",     label: "Thick",     swatch: <PhotoSwatch src={bodyThick} alt="Thick" /> },
-  { id: "Muscular",  label: "Muscular",  swatch: <PhotoSwatch src={bodyMuscular} alt="Muscular" /> },
+  { id: "Slim", label: "Slim", swatch: <PhotoSwatch src={bodySlim} alt="Slim" /> },
+  { id: "Athletic", label: "Athletic", swatch: <PhotoSwatch src={bodyAthletic} alt="Athletic" /> },
+  { id: "Curvy", label: "Curvy", swatch: <PhotoSwatch src={bodyCurvy} alt="Curvy" /> },
+  { id: "Petite", label: "Petite", swatch: <PhotoSwatch src={bodyPetite} alt="Petite" /> },
+  { id: "Tall", label: "Tall", swatch: <PhotoSwatch src={bodyTall} alt="Tall" /> },
+  { id: "Thick", label: "Thick", swatch: <PhotoSwatch src={bodyThick} alt="Thick" /> },
+  { id: "Muscular", label: "Muscular", swatch: <PhotoSwatch src={bodyMuscular} alt="Muscular" /> },
 ];
 
 const HAIRS: Visual[] = [
-  { id: "Long black",     label: "Long black",     swatch: <HairSwatch color="#0b0b0d" long /> },
-  { id: "Long blonde",    label: "Long blonde",    swatch: <HairSwatch color="#e9c77a" long /> },
-  { id: "Long brunette",  label: "Long brunette",  swatch: <HairSwatch color="#4a2c1a" long /> },
-  { id: "Short pixie",    label: "Short pixie",    swatch: <HairSwatch color="#1a1a1a" /> },
-  { id: "Bob cut",        label: "Bob cut",        swatch: <HairSwatch color="#2a1a10" /> },
-  { id: "Wavy red",       label: "Wavy red",       swatch: <HairSwatch color="#b3431d" long wavy /> },
-  { id: "Pink dyed",      label: "Pink dyed",      swatch: <HairSwatch color="#ff6fb1" long /> },
-  { id: "Curly afro",     label: "Curly afro",     swatch: <HairSwatch color="#1a1310" curly /> },
-  { id: "Silver",         label: "Silver",         swatch: <HairSwatch color="#c9cad0" long /> },
+  { id: "Long black", label: "Long black", swatch: <HairSwatch color="#0b0b0d" long /> },
+  { id: "Long blonde", label: "Long blonde", swatch: <HairSwatch color="#e9c77a" long /> },
+  { id: "Long brunette", label: "Long brunette", swatch: <HairSwatch color="#4a2c1a" long /> },
+  { id: "Short pixie", label: "Short pixie", swatch: <HairSwatch color="#1a1a1a" /> },
+  { id: "Bob cut", label: "Bob cut", swatch: <HairSwatch color="#2a1a10" /> },
+  { id: "Wavy red", label: "Wavy red", swatch: <HairSwatch color="#b3431d" long wavy /> },
+  { id: "Pink dyed", label: "Pink dyed", swatch: <HairSwatch color="#ff6fb1" long /> },
+  { id: "Curly afro", label: "Curly afro", swatch: <HairSwatch color="#1a1310" curly /> },
+  { id: "Silver", label: "Silver", swatch: <HairSwatch color="#c9cad0" long /> },
 ];
 
 const EYES: Visual[] = [
-  { id: "Brown",  label: "Brown",  swatch: <EyeSwatch color="#5a3a1c" /> },
-  { id: "Hazel",  label: "Hazel",  swatch: <EyeSwatch color="#8a6a32" /> },
-  { id: "Green",  label: "Green",  swatch: <EyeSwatch color="#3a8a4a" /> },
-  { id: "Blue",   label: "Blue",   swatch: <EyeSwatch color="#2f6dc9" /> },
-  { id: "Grey",   label: "Grey",   swatch: <EyeSwatch color="#8a96a4" /> },
-  { id: "Amber",  label: "Amber",  swatch: <EyeSwatch color="#c7821f" /> },
+  { id: "Brown", label: "Brown", swatch: <EyeSwatch color="#5a3a1c" /> },
+  { id: "Hazel", label: "Hazel", swatch: <EyeSwatch color="#8a6a32" /> },
+  { id: "Green", label: "Green", swatch: <EyeSwatch color="#3a8a4a" /> },
+  { id: "Blue", label: "Blue", swatch: <EyeSwatch color="#2f6dc9" /> },
+  { id: "Grey", label: "Grey", swatch: <EyeSwatch color="#8a96a4" /> },
+  { id: "Amber", label: "Amber", swatch: <EyeSwatch color="#c7821f" /> },
 ];
 
 const OUTFITS: Visual[] = [
-  { id: "Crop top + jeans", label: "Crop top + jeans", swatch: <PhotoSwatch src={outfitCrop} alt="Crop top + jeans" /> },
-  { id: "Black dress",      label: "Black dress",      swatch: <PhotoSwatch src={outfitBlack} alt="Black dress" /> },
-  { id: "Sundress",         label: "Sundress",         swatch: <PhotoSwatch src={outfitSundress} alt="Sundress" /> },
-  { id: "Workout set",      label: "Workout set",      swatch: <PhotoSwatch src={outfitWorkout} alt="Workout set" /> },
-  { id: "Oversized hoodie", label: "Oversized hoodie", swatch: <PhotoSwatch src={outfitHoodie} alt="Oversized hoodie" /> },
-  { id: "Silk blouse",      label: "Silk blouse",      swatch: <PhotoSwatch src={outfitSilk} alt="Silk blouse" /> },
-  { id: "Streetwear",       label: "Streetwear",       swatch: <PhotoSwatch src={outfitStreet} alt="Streetwear" /> },
-  { id: "Evening gown",     label: "Evening gown",     swatch: <PhotoSwatch src={outfitGown} alt="Evening gown" /> },
+  {
+    id: "Crop top + jeans",
+    label: "Crop top + jeans",
+    swatch: <PhotoSwatch src={outfitCrop} alt="Crop top + jeans" />,
+  },
+  {
+    id: "Black dress",
+    label: "Black dress",
+    swatch: <PhotoSwatch src={outfitBlack} alt="Black dress" />,
+  },
+  {
+    id: "Sundress",
+    label: "Sundress",
+    swatch: <PhotoSwatch src={outfitSundress} alt="Sundress" />,
+  },
+  {
+    id: "Workout set",
+    label: "Workout set",
+    swatch: <PhotoSwatch src={outfitWorkout} alt="Workout set" />,
+  },
+  {
+    id: "Oversized hoodie",
+    label: "Oversized hoodie",
+    swatch: <PhotoSwatch src={outfitHoodie} alt="Oversized hoodie" />,
+  },
+  {
+    id: "Silk blouse",
+    label: "Silk blouse",
+    swatch: <PhotoSwatch src={outfitSilk} alt="Silk blouse" />,
+  },
+  {
+    id: "Streetwear",
+    label: "Streetwear",
+    swatch: <PhotoSwatch src={outfitStreet} alt="Streetwear" />,
+  },
+  {
+    id: "Evening gown",
+    label: "Evening gown",
+    swatch: <PhotoSwatch src={outfitGown} alt="Evening gown" />,
+  },
 ];
 
 const VIBES: Visual[] = [
-  { id: "Sweet & shy",         label: "Sweet & shy",         swatch: <VibeSwatch emoji="🥺" hue="from-pink-400/60 to-rose-300/60" /> },
-  { id: "Confident & flirty",  label: "Confident & flirty",  swatch: <VibeSwatch emoji="😉" hue="from-fuchsia-500/70 to-rose-400/60" /> },
-  { id: "Dominant",            label: "Dominant",            swatch: <VibeSwatch emoji="🔥" hue="from-red-600/70 to-orange-500/60" /> },
-  { id: "Submissive",          label: "Submissive",          swatch: <VibeSwatch emoji="🎀" hue="from-pink-300/60 to-rose-200/60" /> },
-  { id: "Playful brat",        label: "Playful brat",        swatch: <VibeSwatch emoji="😈" hue="from-violet-500/70 to-fuchsia-500/60" /> },
-  { id: "Romantic",            label: "Romantic",            swatch: <VibeSwatch emoji="💖" hue="from-rose-400/70 to-pink-300/60" /> },
-  { id: "Mysterious",          label: "Mysterious",          swatch: <VibeSwatch emoji="🌙" hue="from-indigo-700/70 to-slate-700/60" /> },
-  { id: "Goth",                label: "Goth",                swatch: <VibeSwatch emoji="🦇" hue="from-zinc-800/80 to-purple-900/70" /> },
-  { id: "Girl next door",      label: "Girl next door",      swatch: <VibeSwatch emoji="🌻" hue="from-amber-300/70 to-yellow-200/60" /> },
+  {
+    id: "Sweet & shy",
+    label: "Sweet & shy",
+    swatch: <VibeSwatch emoji="🥺" hue="from-pink-400/60 to-rose-300/60" />,
+  },
+  {
+    id: "Confident & flirty",
+    label: "Confident & flirty",
+    swatch: <VibeSwatch emoji="😉" hue="from-fuchsia-500/70 to-rose-400/60" />,
+  },
+  {
+    id: "Dominant",
+    label: "Dominant",
+    swatch: <VibeSwatch emoji="🔥" hue="from-red-600/70 to-orange-500/60" />,
+  },
+  {
+    id: "Submissive",
+    label: "Submissive",
+    swatch: <VibeSwatch emoji="🎀" hue="from-pink-300/60 to-rose-200/60" />,
+  },
+  {
+    id: "Playful brat",
+    label: "Playful brat",
+    swatch: <VibeSwatch emoji="😈" hue="from-violet-500/70 to-fuchsia-500/60" />,
+  },
+  {
+    id: "Romantic",
+    label: "Romantic",
+    swatch: <VibeSwatch emoji="💖" hue="from-rose-400/70 to-pink-300/60" />,
+  },
+  {
+    id: "Mysterious",
+    label: "Mysterious",
+    swatch: <VibeSwatch emoji="🌙" hue="from-indigo-700/70 to-slate-700/60" />,
+  },
+  {
+    id: "Goth",
+    label: "Goth",
+    swatch: <VibeSwatch emoji="🦇" hue="from-zinc-800/80 to-purple-900/70" />,
+  },
+  {
+    id: "Girl next door",
+    label: "Girl next door",
+    swatch: <VibeSwatch emoji="🌻" hue="from-amber-300/70 to-yellow-200/60" />,
+  },
 ];
 
 function CreatePage() {
@@ -249,7 +352,19 @@ function CreatePage() {
     setLoading(true);
     try {
       const { id } = await generate({
-        data: { name: name.trim(), gender, artStyle, ethnicity, age, bodyType: body, hair, eyes, outfit, fit, vibe },
+        data: {
+          name: name.trim(),
+          gender,
+          artStyle,
+          ethnicity,
+          age,
+          bodyType: body,
+          hair,
+          eyes,
+          outfit,
+          fit,
+          vibe,
+        },
       });
       toast("She's ready 💋");
       navigate({ to: "/companion/$id", params: { id } });
@@ -265,10 +380,14 @@ function CreatePage() {
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 md:px-6">
         <Link to="/" className="flex items-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">HumanCrush.com</span>
+          <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">
+            HumanCrush.com
+          </span>
         </Link>
         <Button asChild variant="ghost" className="rounded-full text-sm">
-          <Link to="/gallery"><ArrowLeft className="mr-1.5 h-4 w-4" /> Gallery</Link>
+          <Link to="/gallery">
+            <ArrowLeft className="mr-1.5 h-4 w-4" /> Gallery
+          </Link>
         </Button>
       </header>
 
@@ -278,7 +397,7 @@ function CreatePage() {
             <Sparkles className="h-3.5 w-3.5 text-primary" /> Create your AI · 1 portrait credit
           </p>
           <h1 className="mt-3 font-display text-3xl font-semibold md:text-5xl">
-            Build your <span className="bg-grad-primary bg-clip-text text-transparent">crush</span>.
+            Build your <span className="text-primary">crush</span>.
           </h1>
           <p className="mt-1 max-w-lg text-sm text-muted-foreground md:text-base">
             Pick the look. We generate her, then you fine-tune her personality.
@@ -289,7 +408,12 @@ function CreatePage() {
           {/* LEFT — basics */}
           <div className="space-y-5 rounded-3xl border border-white/10 bg-card p-5">
             <Field label="Name">
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Aria" maxLength={40} />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Aria"
+                maxLength={40}
+              />
             </Field>
 
             <Field label="Art style">
@@ -321,7 +445,10 @@ function CreatePage() {
 
             <Field label={`Age · ${age}`}>
               <input
-                type="range" min={18} max={45} value={age}
+                type="range"
+                min={18}
+                max={45}
+                value={age}
                 onChange={(e) => setAge(Number(e.target.value))}
                 className="w-full accent-[hsl(var(--primary))]"
               />
@@ -338,10 +465,18 @@ function CreatePage() {
 
           {/* RIGHT — appearance + vibe */}
           <div className="space-y-5 rounded-3xl border border-white/10 bg-card p-5">
-            <Field label="Body"><VisualGrid options={BODIES} value={body} onChange={setBody} /></Field>
-            <Field label="Hair"><VisualGrid options={HAIRS} value={hair} onChange={setHair} /></Field>
-            <Field label="Eyes"><VisualGrid options={EYES} value={eyes} onChange={setEyes} /></Field>
-            <Field label="Outfit"><VisualGrid options={OUTFITS} value={outfit} onChange={setOutfit} /></Field>
+            <Field label="Body">
+              <VisualGrid options={BODIES} value={body} onChange={setBody} />
+            </Field>
+            <Field label="Hair">
+              <VisualGrid options={HAIRS} value={hair} onChange={setHair} />
+            </Field>
+            <Field label="Eyes">
+              <VisualGrid options={EYES} value={eyes} onChange={setEyes} />
+            </Field>
+            <Field label="Outfit">
+              <VisualGrid options={OUTFITS} value={outfit} onChange={setOutfit} />
+            </Field>
             <Field label="Outfit fit">
               <ChipRow
                 options={[
@@ -353,7 +488,9 @@ function CreatePage() {
                 onChange={(v) => setFit(v as "slim" | "regular" | "loose")}
               />
             </Field>
-            <Field label="Vibe"><VisualGrid options={VIBES} value={vibe} onChange={setVibe} /></Field>
+            <Field label="Vibe">
+              <VisualGrid options={VIBES} value={vibe} onChange={setVibe} />
+            </Field>
           </div>
         </div>
 
@@ -365,9 +502,13 @@ function CreatePage() {
             className="rounded-full bg-grad-primary px-8 text-primary-foreground shadow-glow"
           >
             {loading ? (
-              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating your crush…</>
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating your crush…
+              </>
             ) : (
-              <><Wand2 className="mr-2 h-5 w-5" /> Generate AI character</>
+              <>
+                <Wand2 className="mr-2 h-5 w-5" /> Generate AI character
+              </>
             )}
           </Button>
         </div>
@@ -386,8 +527,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ChipRow({
-  options, value, onChange,
-}: { options: { id: string; label: string }[]; value: string; onChange: (v: string) => void }) {
+  options,
+  value,
+  onChange,
+}: {
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {options.map((o) => (
@@ -408,8 +555,14 @@ function ChipRow({
 }
 
 function VisualGrid({
-  options, value, onChange,
-}: { options: Visual[]; value: string; onChange: (v: string) => void }) {
+  options,
+  value,
+  onChange,
+}: {
+  options: Visual[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {options.map((o) => (
@@ -422,10 +575,10 @@ function VisualGrid({
               : "border-white/10 bg-white/5 hover:bg-white/10"
           }`}
         >
-          <div className="w-full overflow-hidden rounded-lg bg-black/30 px-1 py-1">
-            {o.swatch}
-          </div>
-          <span className={`line-clamp-1 text-[10px] font-medium ${value === o.id ? "text-white" : "text-white/75"}`}>
+          <div className="w-full overflow-hidden rounded-lg bg-black/30 px-1 py-1">{o.swatch}</div>
+          <span
+            className={`line-clamp-1 text-[10px] font-medium ${value === o.id ? "text-white" : "text-white/75"}`}
+          >
             {o.label}
           </span>
         </button>

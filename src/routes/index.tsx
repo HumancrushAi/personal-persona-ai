@@ -438,8 +438,7 @@ function Landing() {
       <section className="mx-auto mt-14 max-w-7xl px-4 md:px-6">
         <div className="glass rounded-3xl p-8 text-center md:p-12">
           <h2 className="font-display text-3xl font-semibold md:text-5xl">
-            Your <span className="bg-grad-primary bg-clip-text text-transparent">crush</span> is
-            online.
+            Your <span className="text-primary">crush</span> is online.
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
             25 free messages on the house. No card. 18+ only.

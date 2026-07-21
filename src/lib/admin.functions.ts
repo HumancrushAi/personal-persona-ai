@@ -1,6 +1,41 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { generateImage } from "./ai";
+
+function genderNoun(gender: string): string {
+  if (gender === "male" || gender === "trans-male") return "man";
+  if (gender === "non-binary") return "androgynous person";
+  return "woman";
+}
+
+// Build a photorealistic portrait prompt from a persona's attributes.
+function portraitPrompt(
+  c: {
+    name: string;
+    age: number;
+    ethnicity: string;
+    gender: string;
+    art_style: string;
+    short_bio: string;
+  },
+  extra?: string,
+): string {
+  const noun = genderNoun(c.gender);
+  const style =
+    c.art_style === "anime"
+      ? "Stylized high-quality anime illustration, cel shaded, expressive, vertical portrait."
+      : "Ultra photorealistic portrait photograph, natural skin texture and pores, soft natural lighting, shot on a 50mm DSLR, shallow depth of field, sharp focus, high detail, vertical portrait.";
+  return [
+    style,
+    `A stunning ${c.age}-year-old ${c.ethnicity} ${noun} named ${c.name}.`,
+    c.short_bio ? `Vibe: ${c.short_bio}.` : "",
+    extra ? `${extra}.` : "",
+    "Looking at the camera, attractive, head and shoulders, realistic, not illustrated (unless anime).",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data, error } = await ctx.supabase.rpc("has_role", {
@@ -271,6 +306,55 @@ export const adminUpsertPersona = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return { ok: true, id: created.id };
+  });
+
+// Regenerate a persona's photo with Replicate and store it in Supabase Storage
+// (public `avatars` bucket), then point companions.image_url at the new URL.
+export const adminRegeneratePersonaPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ companionId: z.string().uuid(), prompt: z.string().max(500).optional() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: c, error: cErr } = await supabaseAdmin
+      .from("companions")
+      .select("id, name, age, ethnicity, gender, art_style, short_bio")
+      .eq("id", data.companionId)
+      .maybeSingle();
+    if (cErr) throw new Error(cErr.message);
+    if (!c) throw new Error("Model not found");
+
+    // Generate (data URL) then decode to bytes.
+    const dataUrl = await generateImage(portraitPrompt(c as any, data.prompt));
+    const b64 = dataUrl.split(",")[1] ?? "";
+    const bytes = Buffer.from(b64, "base64");
+
+    // Ensure the public bucket exists (ignore "already exists").
+    try {
+      await supabaseAdmin.storage.createBucket("avatars", { public: true });
+    } catch {
+      /* already exists */
+    }
+
+    const path = `companions/${c.id}-${Date.now()}.png`;
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("avatars")
+      .upload(path, bytes, { contentType: "image/png", upsert: true });
+    if (upErr) throw new Error(upErr.message);
+
+    const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
+    const imageUrl = pub.publicUrl;
+
+    const { error: updErr } = await supabaseAdmin
+      .from("companions")
+      .update({ image_url: imageUrl })
+      .eq("id", c.id);
+    if (updErr) throw new Error(updErr.message);
+
+    return { ok: true, imageUrl };
   });
 
 export const adminCreateUser = createServerFn({ method: "POST" })

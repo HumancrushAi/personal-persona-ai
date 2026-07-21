@@ -12,6 +12,7 @@ import {
   adminListUserPayments,
   adminListPersonas,
   adminUpsertPersona,
+  adminRegeneratePersonaPhoto,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -468,11 +469,26 @@ const EMPTY_FORM = {
 function PersonasPanel() {
   const fetchPersonas = useServerFn(adminListPersonas);
   const upsert = useServerFn(adminUpsertPersona);
+  const regenPhoto = useServerFn(adminRegeneratePersonaPhoto);
 
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [regenId, setRegenId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+
+  async function regenerate(id: string) {
+    setRegenId(id);
+    try {
+      await regenPhoto({ data: { companionId: id } });
+      toast.success("New photo generated");
+      await load();
+    } catch (e: any) {
+      toast.error(e.message ?? "Regenerate failed");
+    } finally {
+      setRegenId(null);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -702,14 +718,25 @@ function PersonasPanel() {
                     </Badge>
                   </td>
                   <td className="p-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => editPersona(p)}
-                    >
-                      Edit
-                    </Button>
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => editPersona(p)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs"
+                        disabled={regenId === p.id}
+                        onClick={() => regenerate(p.id)}
+                      >
+                        {regenId === p.id ? "Generating…" : "Regenerate photo"}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

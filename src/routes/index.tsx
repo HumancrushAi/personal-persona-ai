@@ -33,34 +33,56 @@ import banner5 from "@/assets/banners/b5.jpg";
 const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
 const reelUrl = (name: string) => `${REEL_BASE}/${name}.mp4`;
 
-const REELS: { url: string; tag: string; views: string }[] = [
-  { url: reelUrl("r7"), tag: "Beach walk", views: "684K" },
-  { url: reelUrl("r10"), tag: "Pool boy", views: "612K" },
-  { url: reelUrl("r8"), tag: "Poolside", views: "521K" },
-  { url: reelUrl("r11"), tag: "Beach hunk", views: "478K" },
-  { url: reelUrl("r9"), tag: "Ocean dip", views: "412K" },
-  { url: reelUrl("r1"), tag: "After hours", views: "356K" },
-  { url: reelUrl("r2"), tag: "Just woke up", views: "289K" },
-  { url: reelUrl("r3"), tag: "Sunset vibes", views: "198K" },
+// gender = who's actually IN the clip, so "chat" opens a matching-gender model.
+type Vid = "m" | "f";
+const REELS: { url: string; tag: string; views: string; gender: Vid }[] = [
+  { url: reelUrl("r7"), tag: "Beach walk", views: "684K", gender: "m" },
+  { url: reelUrl("r10"), tag: "Pool boy", views: "612K", gender: "m" },
+  { url: reelUrl("r8"), tag: "Poolside", views: "521K", gender: "m" },
+  { url: reelUrl("r11"), tag: "Beach hunk", views: "478K", gender: "m" },
+  { url: reelUrl("r9"), tag: "Ocean dip", views: "412K", gender: "m" },
+  { url: reelUrl("r1"), tag: "After hours", views: "356K", gender: "f" },
+  { url: reelUrl("r2"), tag: "Just woke up", views: "289K", gender: "f" },
+  { url: reelUrl("r3"), tag: "Sunset vibes", views: "198K", gender: "f" },
 ];
 
 // Each banner pairs an image with a reel video that visually matches (swimwear / beach / pool).
-const BANNERS: { img: string; reel: string; title: string; sub: string }[] = [
-  { img: banner1, reel: reelUrl("r7"), title: "Pool day", sub: "she's waiting in the water 💦" },
-  { img: banner2, reel: reelUrl("r10"), title: "Pool boy", sub: "abs, dripping wet, all yours 🔥" },
+const BANNERS: { img: string; reel: string; title: string; sub: string; gender: Vid }[] = [
+  {
+    img: banner1,
+    reel: reelUrl("r7"),
+    title: "Beach day",
+    sub: "sun's out, come find me 🔥",
+    gender: "m",
+  },
+  {
+    img: banner2,
+    reel: reelUrl("r10"),
+    title: "Pool boy",
+    sub: "abs, dripping wet, all yours 🔥",
+    gender: "m",
+  },
   {
     img: banner3,
     reel: reelUrl("r9"),
     title: "Ocean break",
     sub: "wet, warm, and bored without you",
+    gender: "m",
   },
   {
     img: banner4,
     reel: reelUrl("r11"),
     title: "Beach hunk",
     sub: "sunset stroll · shirt optional",
+    gender: "m",
   },
-  { img: banner5, reel: reelUrl("r8"), title: "Rooftop pool", sub: "skyline views, zero rules" },
+  {
+    img: banner5,
+    reel: reelUrl("r8"),
+    title: "Rooftop pool",
+    sub: "skyline views, zero rules",
+    gender: "m",
+  },
 ];
 
 export const Route = createFileRoute("/")({
@@ -205,11 +227,16 @@ function Landing() {
   } | null>(null);
 
   // Videos (banners/reels) aren't real models, so tie each to an actual
-  // companion (female-first) — clicking "chat" then opens THAT model, never
-  // the generic all-models page.
-  const pickCompanion = (i: number): Companion | null => {
+  // companion whose gender MATCHES the clip — clicking "chat" opens THAT model,
+  // gender-correct, never the generic all-models page.
+  const pickCompanion = (i: number, vid: "m" | "f"): Companion | null => {
     const list = companions ?? [];
-    const pool = list.filter((c) => c.gender === "female" || c.gender === "trans-female");
+    const wantMale = vid === "m";
+    const pool = list.filter((c) =>
+      wantMale
+        ? c.gender === "male" || c.gender === "trans-male"
+        : c.gender === "female" || c.gender === "trans-female",
+    );
     const from = pool.length ? pool : list;
     return from.length ? from[i % from.length] : null;
   };
@@ -227,7 +254,7 @@ function Landing() {
       <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
         <BannerSlider
           onPlay={(b, i) =>
-            setPlayReel({ url: b.reel, title: b.title, companion: pickCompanion(i) })
+            setPlayReel({ url: b.reel, title: b.title, companion: pickCompanion(i, b.gender) })
           }
         />
       </section>
@@ -330,7 +357,9 @@ function Landing() {
             <button
               key={i}
               type="button"
-              onClick={() => setPlayReel({ url: r.url, title: r.tag, companion: pickCompanion(i) })}
+              onClick={() =>
+                setPlayReel({ url: r.url, title: r.tag, companion: pickCompanion(i, r.gender) })
+              }
               className="group relative h-[300px] w-[180px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card text-left shadow-md md:h-[360px] md:w-[220px]"
             >
               <video

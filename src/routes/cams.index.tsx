@@ -6,7 +6,7 @@ import { companionImage } from "@/lib/companion-images";
 import { Button } from "@/components/ui/button";
 import { Heart, Circle, ArrowLeft } from "lucide-react";
 
-export const Route = createFileRoute("/cams")({
+export const Route = createFileRoute("/cams/")({
   ssr: false,
   head: () => ({
     meta: [

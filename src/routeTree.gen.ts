@@ -16,11 +16,11 @@ import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as CreditsRouteImport } from './routes/credits'
 import { Route as CreateRouteImport } from './routes/create'
-import { Route as CamsRouteImport } from './routes/cams'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CamsIndexRouteImport } from './routes/cams.index'
 import { Route as CompanionIdRouteImport } from './routes/companion.$id'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 import { Route as CamsIdRouteImport } from './routes/cams.$id'
@@ -63,11 +63,6 @@ const CreateRoute = CreateRouteImport.update({
   path: '/create',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CamsRoute = CamsRouteImport.update({
-  id: '/cams',
-  path: '/cams',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BrowseRoute = BrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
@@ -87,6 +82,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CamsIndexRoute = CamsIndexRouteImport.update({
+  id: '/cams/',
+  path: '/cams/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompanionIdRoute = CompanionIdRouteImport.update({
   id: '/companion/$id',
   path: '/companion/$id',
@@ -98,9 +98,9 @@ const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const CamsIdRoute = CamsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => CamsRoute,
+  id: '/cams/$id',
+  path: '/cams/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
@@ -122,7 +122,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
-  '/cams': typeof CamsRouteWithChildren
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
@@ -134,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/cams/': typeof CamsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
@@ -141,7 +141,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
-  '/cams': typeof CamsRouteWithChildren
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
@@ -153,6 +152,7 @@ export interface FileRoutesByTo {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/cams': typeof CamsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
@@ -162,7 +162,6 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
-  '/cams': typeof CamsRouteWithChildren
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
@@ -174,6 +173,7 @@ export interface FileRoutesById {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/cams/': typeof CamsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
 }
@@ -183,7 +183,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/browse'
-    | '/cams'
     | '/create'
     | '/credits'
     | '/faq'
@@ -195,6 +194,7 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/cams/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -202,7 +202,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/browse'
-    | '/cams'
     | '/create'
     | '/credits'
     | '/faq'
@@ -214,6 +213,7 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/cams'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
   id:
@@ -222,7 +222,6 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/browse'
-    | '/cams'
     | '/create'
     | '/credits'
     | '/faq'
@@ -234,6 +233,7 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/cams/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
   fileRoutesById: FileRoutesById
@@ -243,7 +243,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
-  CamsRoute: typeof CamsRouteWithChildren
   CreateRoute: typeof CreateRoute
   CreditsRoute: typeof CreditsRoute
   FaqRoute: typeof FaqRoute
@@ -251,8 +250,10 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   MeRoute: typeof MeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  CamsIdRoute: typeof CamsIdRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
+  CamsIndexRoute: typeof CamsIndexRoute
   ApiCronReengageRoute: typeof ApiCronReengageRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
 }
@@ -308,13 +309,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cams': {
-      id: '/cams'
-      path: '/cams'
-      fullPath: '/cams'
-      preLoaderRoute: typeof CamsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/browse': {
       id: '/browse'
       path: '/browse'
@@ -343,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cams/': {
+      id: '/cams/'
+      path: '/cams'
+      fullPath: '/cams/'
+      preLoaderRoute: typeof CamsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/companion/$id': {
       id: '/companion/$id'
       path: '/companion/$id'
@@ -359,10 +360,10 @@ declare module '@tanstack/react-router' {
     }
     '/cams/$id': {
       id: '/cams/$id'
-      path: '/$id'
+      path: '/cams/$id'
       fullPath: '/cams/$id'
       preLoaderRoute: typeof CamsIdRouteImport
-      parentRoute: typeof CamsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
@@ -399,22 +400,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface CamsRouteChildren {
-  CamsIdRoute: typeof CamsIdRoute
-}
-
-const CamsRouteChildren: CamsRouteChildren = {
-  CamsIdRoute: CamsIdRoute,
-}
-
-const CamsRouteWithChildren = CamsRoute._addFileChildren(CamsRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
-  CamsRoute: CamsRouteWithChildren,
   CreateRoute: CreateRoute,
   CreditsRoute: CreditsRoute,
   FaqRoute: FaqRoute,
@@ -422,8 +412,10 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   MeRoute: MeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  CamsIdRoute: CamsIdRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,
+  CamsIndexRoute: CamsIndexRoute,
   ApiCronReengageRoute: ApiCronReengageRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
 }

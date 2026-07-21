@@ -2,9 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/credit-packs";
-import { ArrowLeft, Heart, Coins, CreditCard } from "lucide-react";
+import { SiteHeader } from "@/components/SiteHeader";
+import { Coins, CreditCard } from "lucide-react";
 
 export const Route = createFileRoute("/history")({
   ssr: false,
@@ -65,19 +65,9 @@ function HistoryPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
-        <Button asChild variant="ghost" className="rounded-full">
-          <Link to="/me">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Back
-          </Link>
-        </Button>
-        <Link to="/" className="flex items-center gap-2">
-          <Heart className="h-5 w-5 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold">HumanCrush.com</span>
-        </Link>
-      </header>
+      <SiteHeader />
 
-      <section className="mx-auto max-w-3xl px-6 pb-20">
+      <section className="mx-auto max-w-3xl px-6 py-8 pb-20">
         <h1 className="font-display text-4xl font-semibold md:text-5xl">History</h1>
 
         {/* Payments */}

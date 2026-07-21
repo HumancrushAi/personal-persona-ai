@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { enablePush } from "@/lib/push-client";
+import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Plus, Coins, Shield, Bell } from "lucide-react";
 import { toast } from "sonner";
@@ -83,43 +84,56 @@ function MePage() {
 
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
-        <Link to="/" className="flex items-center gap-2">
-          <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-2xl font-semibold">HumanCrush.com</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            to="/credits"
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium ring-1 ring-white/10"
-          >
-            <Coins className="h-3.5 w-3.5 text-primary" />{" "}
-            {(balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0)}
-          </Link>
-          <Button
-            onClick={turnOnNotifications}
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            title="Enable notifications"
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
-          <Button asChild variant="ghost" className="rounded-full">
-            <Link to="/history">History</Link>
-          </Button>
-          {isAdmin && (
-            <Button asChild variant="ghost" className="rounded-full">
-              <Link to="/admin">
-                <Shield className="mr-1 h-3.5 w-3.5" /> Admin
-              </Link>
+      <SiteHeader
+        right={
+          <>
+            <Link
+              to="/credits"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1.5 text-xs font-medium ring-1 ring-white/10"
+            >
+              <Coins className="h-3.5 w-3.5 text-primary" />{" "}
+              {(balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0)}
+            </Link>
+            <Button
+              onClick={turnOnNotifications}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              title="Enable notifications"
+            >
+              <Bell className="h-4 w-4" />
             </Button>
-          )}
-          <Button onClick={signOut} variant="ghost" className="rounded-full">
-            Sign out
-          </Button>
-        </div>
-      </header>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-8 rounded-full px-2 text-xs sm:px-3"
+            >
+              <Link to="/history">History</Link>
+            </Button>
+            {isAdmin && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-full px-2 text-xs sm:px-3"
+              >
+                <Link to="/admin">
+                  <Shield className="mr-1 h-3.5 w-3.5" /> Admin
+                </Link>
+              </Button>
+            )}
+            <Button
+              onClick={signOut}
+              variant="ghost"
+              size="sm"
+              className="h-8 rounded-full px-2 text-xs sm:px-3"
+            >
+              Sign out
+            </Button>
+          </>
+        }
+      />
 
       <section className="mx-auto max-w-4xl px-6 pb-20">
         <div className="flex items-center justify-between">

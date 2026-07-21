@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Heart, Circle, Sparkles } from "lucide-react";
 
 // One header used across the whole site so nav + branding are consistent.
-export function SiteHeader() {
+// `right` lets account pages append their own actions (credits, sign out, …).
+export function SiteHeader({ right }: { right?: ReactNode }) {
   const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
@@ -76,6 +77,7 @@ export function SiteHeader() {
               <Link to="/auth">Sign in</Link>
             </Button>
           )}
+          {right}
         </nav>
       </div>
     </header>

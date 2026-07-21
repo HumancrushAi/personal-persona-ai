@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateCharacter } from "@/lib/characters.functions";
+import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Heart, Sparkles, Wand2, Loader2, ArrowLeft } from "lucide-react";
@@ -337,7 +338,10 @@ function CreatePage() {
   const [outfit, setOutfit] = useState(OUTFITS[0].id);
   const [fit, setFit] = useState<"slim" | "regular" | "loose">("slim");
   const [vibe, setVibe] = useState(VIBES[1].id);
+  const [breast, setBreast] = useState("Medium");
   const [loading, setLoading] = useState(false);
+
+  const isWoman = gender === "female" || gender === "trans-female";
 
   async function submit() {
     if (!name.trim()) {
@@ -364,6 +368,7 @@ function CreatePage() {
           outfit,
           fit,
           vibe,
+          breastSize: isWoman ? breast : undefined,
         },
       });
       toast("She's ready 💋");
@@ -377,21 +382,9 @@ function CreatePage() {
 
   return (
     <div className="min-h-screen pb-24">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 md:px-6">
-        <Link to="/" className="flex items-center gap-2">
-          <Heart className="h-6 w-6 fill-primary text-primary" />
-          <span className="font-display text-xl font-semibold tracking-tight md:text-2xl">
-            HumanCrush.com
-          </span>
-        </Link>
-        <Button asChild variant="ghost" className="rounded-full text-sm">
-          <Link to="/gallery">
-            <ArrowLeft className="mr-1.5 h-4 w-4" /> Gallery
-          </Link>
-        </Button>
-      </header>
+      <SiteHeader />
 
-      <section className="mx-auto max-w-5xl px-4 md:px-6">
+      <section className="mx-auto max-w-5xl px-4 py-6 md:px-6">
         <div className="glass rounded-3xl p-5 md:p-8">
           <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium">
             <Sparkles className="h-3.5 w-3.5 text-primary" /> Create your AI · 1 portrait credit
@@ -466,16 +459,25 @@ function CreatePage() {
           {/* RIGHT — appearance + vibe */}
           <div className="space-y-5 rounded-3xl border border-white/10 bg-card p-5">
             <Field label="Body">
-              <VisualGrid options={BODIES} value={body} onChange={setBody} />
+              <ChipRow options={toOpts(BODIES)} value={body} onChange={setBody} />
             </Field>
+            {isWoman && (
+              <Field label="Breast size">
+                <ChipRow
+                  options={["Small", "Medium", "Large", "Busty"].map((b) => ({ id: b, label: b }))}
+                  value={breast}
+                  onChange={setBreast}
+                />
+              </Field>
+            )}
             <Field label="Hair">
-              <VisualGrid options={HAIRS} value={hair} onChange={setHair} />
+              <ChipRow options={toOpts(HAIRS)} value={hair} onChange={setHair} />
             </Field>
             <Field label="Eyes">
-              <VisualGrid options={EYES} value={eyes} onChange={setEyes} />
+              <ChipRow options={toOpts(EYES)} value={eyes} onChange={setEyes} />
             </Field>
             <Field label="Outfit">
-              <VisualGrid options={OUTFITS} value={outfit} onChange={setOutfit} />
+              <ChipRow options={toOpts(OUTFITS)} value={outfit} onChange={setOutfit} />
             </Field>
             <Field label="Outfit fit">
               <ChipRow
@@ -489,7 +491,7 @@ function CreatePage() {
               />
             </Field>
             <Field label="Vibe">
-              <VisualGrid options={VIBES} value={vibe} onChange={setVibe} />
+              <ChipRow options={toOpts(VIBES)} value={vibe} onChange={setVibe} />
             </Field>
           </div>
         </div>
@@ -524,6 +526,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function toOpts(v: Visual[]): { id: string; label: string }[] {
+  return v.map((o) => ({ id: o.id, label: o.label }));
 }
 
 function ChipRow({

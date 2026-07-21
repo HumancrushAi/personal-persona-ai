@@ -15,6 +15,7 @@ const Input = z.object({
   outfit: z.string().max(100).optional(),
   fit: z.enum(["slim", "regular", "loose"]).optional(),
   vibe: z.string().max(200).optional(),
+  breastSize: z.string().max(20).optional(),
 });
 
 export const generateCharacter = createServerFn({ method: "POST" })
@@ -39,6 +40,7 @@ export const generateCharacter = createServerFn({ method: "POST" })
       style,
       `Subject: a ${data.age}-year-old ${data.ethnicity} ${genderWord} named ${data.name}.`,
       data.bodyType ? `Body: ${data.bodyType}.` : "",
+      data.breastSize && genderWord === "woman" ? `Breast size: ${data.breastSize}.` : "",
       data.hair ? `Hair: ${data.hair}.` : "",
       data.eyes ? `Eyes: ${data.eyes}.` : "",
       data.outfit ? `Wearing: ${data.outfit}.` : "Wearing stylish casual clothes.",

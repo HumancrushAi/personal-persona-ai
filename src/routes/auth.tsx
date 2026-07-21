@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Heart, Eye, EyeOff } from "lucide-react";
+import { Heart, Eye, EyeOff, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -31,11 +31,16 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [age18, setAge18] = useState(false);
   // Only show Google sign-in once the provider is actually configured in Supabase.
   const googleEnabled = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
+    if (mode === "signup" && !age18) {
+      toast.error("You must confirm you're 18 or older to sign up.");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
@@ -97,7 +102,14 @@ function AuthPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-12">
-      <div className="glass w-full max-w-md rounded-3xl p-8 shadow-glow">
+      <div className="glass relative w-full max-w-md rounded-3xl p-8 shadow-glow">
+        <Link
+          to="/"
+          aria-label="Close"
+          className="absolute right-4 top-4 rounded-full bg-white/5 p-2 text-muted-foreground ring-1 ring-white/10 hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </Link>
         <Link to="/" className="flex items-center justify-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
           <span className="font-display text-2xl font-semibold">HumanCrush.com</span>
@@ -163,6 +175,20 @@ function AuthPage() {
               </button>
             </div>
           </div>
+          {mode === "signup" && (
+            <label className="flex items-start gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={age18}
+                onChange={(e) => setAge18(e.target.checked)}
+                className="mt-0.5 accent-[hsl(var(--primary))]"
+              />
+              <span>
+                I confirm I'm 18 or older (21 where required) and agree this is explicit adult
+                content.
+              </span>
+            </label>
+          )}
           <Button
             type="submit"
             className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"

@@ -14,7 +14,6 @@ import { Shield } from "lucide-react";
 import appCss from "../styles.css?url";
 import { supabase } from "../integrations/supabase/client";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { AgeGate } from "../components/AgeGate";
 
 // Subtle, admin-only shortcut to the console. Renders nothing for everyone else.
 function AdminFooterLink() {
@@ -158,7 +157,6 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      <AgeGate />
       <AdminFooterLink />
       <Toaster richColors position="top-center" />
     </QueryClientProvider>

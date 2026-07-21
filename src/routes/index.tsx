@@ -23,23 +23,6 @@ import {
 import { companionImage } from "@/lib/companion-images";
 import { FAQSection } from "@/components/FAQSection";
 
-// Hero reels live in the Supabase Storage public `reels` bucket — a mix of guys
-// and girls. gender = who's in the clip, so the CTA opens a gender-matched model.
-const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
-const reelUrl = (name: string) => `${REEL_BASE}/${name}.mp4`;
-const BANNERS: { reel: string; title: string; sub: string; gender: "m" | "f" }[] = [
-  { reel: reelUrl("r10"), title: "Pool boy", sub: "abs, dripping wet, all yours 🔥", gender: "m" },
-  {
-    reel: reelUrl("r1"),
-    title: "After hours",
-    sub: "still up… thinking about you 😏",
-    gender: "f",
-  },
-  { reel: reelUrl("r11"), title: "Beach hunk", sub: "sunset stroll · shirt optional", gender: "m" },
-  { reel: reelUrl("r2"), title: "Just woke up", sub: "come back to bed 💋", gender: "f" },
-  { reel: reelUrl("r3"), title: "Sunset vibes", sub: "wish you were here 🌅", gender: "f" },
-];
-
 export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
@@ -175,24 +158,18 @@ function Landing() {
   const [activeCat, setActiveCat] = useState<Cat>("For you");
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
+  const [query, setQuery] = useState("");
 
-  // Match each hero reel to a gender-correct model to chat with.
-  const pickCompanion = (i: number, vid: "m" | "f"): Companion | null => {
-    const list = companions ?? [];
-    const pool = list.filter((c) =>
-      vid === "m"
-        ? c.gender === "male" || c.gender === "trans-male"
-        : c.gender === "female" || c.gender === "trans-female",
-    );
-    const from = pool.length ? pool : list;
-    return from.length ? from[i % from.length] : null;
-  };
-  const bannerSlides = BANNERS.map((b, i) => ({ ...b, companion: pickCompanion(i, b.gender) }));
-
-  const filtered = useMemo(
-    () => (companions ?? []).filter((c) => matchesCategory(c, activeCat)),
-    [companions, activeCat],
-  );
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (companions ?? []).filter((c) => {
+      if (q) {
+        const hay = `${c.name} ${c.ethnicity} ${c.short_bio}`.toLowerCase();
+        return hay.includes(q);
+      }
+      return matchesCategory(c, activeCat);
+    });
+  }, [companions, activeCat, query]);
 
   return (
     <div className="min-h-screen overflow-x-hidden pb-24">
@@ -200,7 +177,7 @@ function Landing() {
 
       {/* BANNER SLIDER */}
       <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
-        <BannerSlider slides={bannerSlides} onPick={(c) => setTease(c)} />
+        <BannerSlider companions={companions ?? []} onPick={(c) => setTease(c)} />
       </section>
 
       {/* HERO STRIP */}
@@ -234,6 +211,8 @@ function Landing() {
           <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Search people, vibes, kinks…"
               className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
@@ -785,15 +764,15 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
   );
 }
 
-/* ---------- Banner Slider (video reels, gender-matched model) ---------- */
-type BannerSlide = { reel: string; title: string; sub: string; companion: Companion | null };
+/* ---------- Banner Slider (real models, animated) ---------- */
 function BannerSlider({
-  slides,
+  companions,
   onPick,
 }: {
-  slides: BannerSlide[];
+  companions: Companion[];
   onPick: (c: Companion) => void;
 }) {
+  const slides = companions.slice(0, 6);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const n = slides.length;
@@ -847,22 +826,18 @@ function BannerSlider({
         className="flex h-[260px] transition-transform duration-700 ease-out md:h-[420px]"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
-        {slides.map((s, i) => (
+        {slides.map((c) => (
           <button
-            key={i}
+            key={c.id}
             type="button"
-            onClick={() => s.companion && onPick(s.companion)}
-            className="group relative block h-full w-full shrink-0 text-left"
-            aria-label={s.companion ? `Chat with ${s.companion.name}` : s.title}
+            onClick={() => onPick(c)}
+            className="group relative block h-full w-full shrink-0 overflow-hidden text-left"
+            aria-label={`Chat with ${c.name}`}
           >
-            <video
-              src={s.reel}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            <img
+              src={companionImage(c.image_url)}
+              alt={c.name}
+              className="animate-live pointer-events-none absolute inset-0 h-full w-full object-cover object-top"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-black/30" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 md:p-7">
@@ -870,16 +845,12 @@ function BannerSlider({
                 <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live
               </span>
               <h2 className="mt-2 font-display text-2xl font-semibold text-white drop-shadow md:text-4xl">
-                {s.companion ? `${s.companion.name}, ${s.companion.age}` : s.title}
+                {c.name}, {c.age}
               </h2>
-              <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">
-                {s.companion?.short_bio ?? s.sub}
-              </p>
-              {s.companion && (
-                <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
-                  Chat with {s.companion.name} →
-                </span>
-              )}
+              <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">{c.short_bio}</p>
+              <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
+                Chat with {c.name} →
+              </span>
             </div>
           </button>
         ))}

@@ -16,12 +16,14 @@ import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as CreditsRouteImport } from './routes/credits'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as CamsRouteImport } from './routes/cams'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CompanionIdRouteImport } from './routes/companion.$id'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
+import { Route as CamsIdRouteImport } from './routes/cams.$id'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
 
@@ -60,6 +62,11 @@ const CreateRoute = CreateRouteImport.update({
   path: '/create',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CamsRoute = CamsRouteImport.update({
+  id: '/cams',
+  path: '/cams',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrowseRoute = BrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
@@ -89,6 +96,11 @@ const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
   path: '/chat/$conversationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CamsIdRoute = CamsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CamsRoute,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -104,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/cams': typeof CamsRouteWithChildren
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
@@ -112,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
@@ -120,6 +134,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/cams': typeof CamsRouteWithChildren
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
@@ -128,6 +143,7 @@ export interface FileRoutesByTo {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
@@ -138,6 +154,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/cams': typeof CamsRouteWithChildren
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
@@ -146,6 +163,7 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
@@ -156,6 +174,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/browse'
+    | '/cams'
     | '/create'
     | '/credits'
     | '/faq'
@@ -164,6 +183,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/admin'
+    | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
     | '/api/public/authnet-webhook'
@@ -172,6 +192,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/browse'
+    | '/cams'
     | '/create'
     | '/credits'
     | '/faq'
@@ -180,6 +201,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/admin'
+    | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
     | '/api/public/authnet-webhook'
@@ -189,6 +211,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/browse'
+    | '/cams'
     | '/create'
     | '/credits'
     | '/faq'
@@ -197,6 +220,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/_authenticated/admin'
+    | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
     | '/api/public/authnet-webhook'
@@ -207,6 +231,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
+  CamsRoute: typeof CamsRouteWithChildren
   CreateRoute: typeof CreateRoute
   CreditsRoute: typeof CreditsRoute
   FaqRoute: typeof FaqRoute
@@ -270,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cams': {
+      id: '/cams'
+      path: '/cams'
+      fullPath: '/cams'
+      preLoaderRoute: typeof CamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/browse': {
       id: '/browse'
       path: '/browse'
@@ -312,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatConversationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cams/$id': {
+      id: '/cams/$id'
+      path: '/$id'
+      fullPath: '/cams/$id'
+      preLoaderRoute: typeof CamsIdRouteImport
+      parentRoute: typeof CamsRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -340,11 +379,22 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface CamsRouteChildren {
+  CamsIdRoute: typeof CamsIdRoute
+}
+
+const CamsRouteChildren: CamsRouteChildren = {
+  CamsIdRoute: CamsIdRoute,
+}
+
+const CamsRouteWithChildren = CamsRoute._addFileChildren(CamsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
+  CamsRoute: CamsRouteWithChildren,
   CreateRoute: CreateRoute,
   CreditsRoute: CreditsRoute,
   FaqRoute: FaqRoute,

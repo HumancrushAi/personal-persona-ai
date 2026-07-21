@@ -19,6 +19,8 @@ const REASON_LABELS: Record<string, string> = {
   pack_purchase: "Credit pack",
   subscription_grant: "Subscription — first month",
   recurring_grant: "Subscription renewal",
+  tip: "Tip sent",
+  private_show: "Private show",
 };
 
 function HistoryPage() {

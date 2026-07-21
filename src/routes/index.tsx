@@ -539,6 +539,16 @@ function Nav() {
             size="sm"
             className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
           >
+            <Link to="/cams">
+              <Circle className="mr-1 h-2 w-2 fill-red-500 text-red-500" /> Live
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
+          >
             <Link to="/gallery">Gallery</Link>
           </Button>
           {authed ? (

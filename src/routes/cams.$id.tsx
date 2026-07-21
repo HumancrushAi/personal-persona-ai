@@ -154,8 +154,16 @@ function CamView() {
   }
 
   return (
-    <div className="relative flex h-screen w-full items-stretch justify-center bg-black">
-      <div className="relative h-full w-full overflow-hidden">
+    <div className="relative flex h-screen w-full items-stretch justify-center overflow-hidden bg-black">
+      {/* Blurred backdrop fills the wide desktop screen behind the portrait stage */}
+      <img
+        aria-hidden
+        src={companionImage(model?.image_url ?? "")}
+        alt=""
+        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-30 blur-2xl"
+      />
+      {/* Portrait stage — the model, centered and readable on any screen */}
+      <div className="relative h-full w-full max-w-[460px] overflow-hidden shadow-2xl">
         <img
           key={id}
           src={companionImage(model?.image_url ?? "")}

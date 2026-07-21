@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SUPPORTED_LANGUAGES } from "@/lib/languages";
 import { companionImage } from "@/lib/companion-images";
+import { ClipMaker } from "@/components/ClipMaker";
 import { formatPrice } from "@/lib/credit-packs";
 import { toast } from "sonner";
 import { Shield, Search, UserPlus, RefreshCw, Receipt } from "lucide-react";
@@ -181,6 +182,7 @@ function AdminPage() {
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="personas">Personas</TabsTrigger>
           <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
+          <TabsTrigger value="clips">Clips</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -450,6 +452,10 @@ function AdminPage() {
 
         <TabsContent value="broadcast">
           <BroadcastPanel />
+        </TabsContent>
+
+        <TabsContent value="clips">
+          <ClipMaker />
         </TabsContent>
       </Tabs>
     </div>

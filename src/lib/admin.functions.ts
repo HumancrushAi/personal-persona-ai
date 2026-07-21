@@ -259,7 +259,7 @@ export const adminListPersonas = createServerFn({ method: "GET" })
 const personaSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(60),
-  image_url: z.string().min(1),
+  image_url: z.string().default(""),
   short_bio: z.string().min(1).max(400),
   base_personality: z.string().min(1),
   tags: z.array(z.string().max(30)).max(20).default([]),
@@ -413,6 +413,35 @@ export const adminBroadcast = createServerFn({ method: "POST" })
     }
 
     return { pushSent, pushFailed, emailSent };
+  });
+
+// Upload an image (data URL from the admin's device) to the public avatars
+// bucket and return its URL — so admins pick a file instead of pasting a URL.
+export const adminUploadImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ dataUrl: z.string().min(16) }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const m = data.dataUrl.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
+    if (!m) throw new Error("Not a valid image file");
+    const contentType = m[1];
+    const bytes = Buffer.from(m[2], "base64");
+    if (bytes.length > 8 * 1024 * 1024) throw new Error("Image too large (max 8MB)");
+    const ext = (contentType.split("/")[1] || "png").replace("jpeg", "jpg");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    try {
+      await supabaseAdmin.storage.createBucket("avatars", { public: true });
+    } catch {
+      /* already exists */
+    }
+    const path = `uploads/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabaseAdmin.storage
+      .from("avatars")
+      .upload(path, bytes, { contentType, upsert: true });
+    if (error) throw new Error(error.message);
+    const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
+    return { imageUrl: pub.publicUrl };
   });
 
 export const adminCreateUser = createServerFn({ method: "POST" })

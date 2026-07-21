@@ -14,6 +14,7 @@ import {
   adminUpsertPersona,
   adminRegeneratePersonaPhoto,
   adminBroadcast,
+  adminUploadImage,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -476,6 +477,31 @@ function PersonasPanel() {
   const fetchPersonas = useServerFn(adminListPersonas);
   const upsert = useServerFn(adminUpsertPersona);
   const regenPhoto = useServerFn(adminRegeneratePersonaPhoto);
+  const uploadImg = useServerFn(adminUploadImage);
+  const [uploading, setUploading] = useState(false);
+
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const { imageUrl } = await uploadImg({ data: { dataUrl: String(reader.result) } });
+        setForm((f) => ({ ...f, image_url: imageUrl }));
+        toast.success("Image uploaded");
+      } catch (err: any) {
+        toast.error(err.message ?? "Upload failed");
+      } finally {
+        setUploading(false);
+      }
+    };
+    reader.onerror = () => {
+      toast.error("Could not read file");
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  }
 
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(false);
@@ -578,13 +604,32 @@ function PersonasPanel() {
             <Input required value={form.name} onChange={set("name")} />
           </div>
           <div>
-            <Label className="text-xs">Image / avatar URL</Label>
-            <Input
-              required
-              value={form.image_url}
-              onChange={set("image_url")}
-              placeholder="https://… or asset path"
-            />
+            <Label className="text-xs">Photo</Label>
+            <div className="flex items-center gap-3">
+              {form.image_url ? (
+                <img
+                  src={companionImage(form.image_url)}
+                  alt=""
+                  className="h-14 w-14 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="grid h-14 w-14 place-items-center rounded-lg bg-white/5 text-[10px] text-muted-foreground">
+                  none
+                </div>
+              )}
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickFile}
+                  disabled={uploading}
+                  className="text-xs file:mr-2 file:rounded-full file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-xs file:text-primary"
+                />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {uploading ? "Uploading…" : "Pick from your device, or use “Regenerate photo”."}
+                </p>
+              </div>
+            </div>
           </div>
           <div className="md:col-span-2">
             <Label className="text-xs">Description (short bio)</Label>

@@ -60,14 +60,16 @@ describe("selfiePrompt", () => {
   it("anchors male anatomy for male companions even without explicit keywords", () => {
     const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
     const p = selfiePrompt(maleC, "show me your body", "casual");
-    expect(p).toMatch(/male penis|adult male penis/i);
-    expect(p).toMatch(/NO female genitalia/i);
+    expect(p).toMatch(/penis and testicles/i);
+    // Flux draws any anatomy word it sees — the male prompt must never name female parts.
+    expect(p).not.toMatch(/vagina|vulva/i);
   });
 
   it("anchors female anatomy for female companions", () => {
     const p = selfiePrompt(c, "show me your body", "flirty");
-    expect(p).toMatch(/vulva\/vagina/i);
-    expect(p).toMatch(/NO male genitalia/i);
+    expect(p).toMatch(/vulva/i);
+    // Same rule in reverse: the female prompt must never name male parts.
+    expect(p).not.toMatch(/\bpenis\b|testicles/i);
   });
 
   it("uses gender-neutral pronouns for non-binary companions", () => {

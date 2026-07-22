@@ -24,15 +24,17 @@ export function selfiePrompt(
   const verb = isNb ? "smile" : "smiles";
 
   // Anatomy anchor — ALWAYS present so any nude/exposed render matches the
-  // companion's gender. Without this the image model defaults to ambiguous or
-  // female-looking anatomy on male companions.
+  // companion's gender. The image backend is Flux (nsfw-flux-dev), which has no
+  // negative prompt and will DRAW any body part it sees named — even a negated
+  // one ("no vagina" still produces a vagina). So this uses positive-only
+  // description and never names the wrong gender's anatomy.
   let anatomyAnchor = "";
   if (noun === "man") {
     anatomyAnchor =
-      "Anatomically correct adult male body: masculine flat chest, and an adult male penis at the groin whenever the crotch is visible or nude. Absolutely NO female genitalia — no vagina, no vulva, no breasts.";
+      "Anatomically correct adult male body: masculine flat chest, defined abs, and a realistic adult male penis and testicles clearly visible between his legs at the groin whenever the crotch is nude or exposed.";
   } else if (noun === "woman") {
     anatomyAnchor =
-      "Anatomically correct adult female body: breasts, and a vulva/vagina at the groin whenever the crotch is visible or nude. Absolutely NO male genitalia — no penis.";
+      "Anatomically correct adult female body: natural breasts, and a realistic vulva at the groin whenever the crotch is nude or exposed.";
   }
 
   // Enhancement for explicit anatomical requests

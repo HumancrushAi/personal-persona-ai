@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { viewerCount } from "@/lib/reels";
+import { viewerCount, reelForId } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Circle } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 
 export const Route = createFileRoute("/cams/")({
   ssr: false,
@@ -48,38 +49,70 @@ function CamsPage() {
 
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {models?.map((c) => (
-            <Link
-              key={c.id}
-              to="/cams/$id"
-              params={{ id: c.id }}
-              className="group relative aspect-[3/4] overflow-hidden rounded-3xl border border-white/10 bg-card shadow-md transition hover:shadow-glow"
-            >
-              <img
-                src={companionImage(c.image_url)}
-                alt={c.name}
-                loading="lazy"
-                className="animate-live absolute inset-0 h-full w-full object-cover"
-              />
-              <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold backdrop-blur">
-                  <Circle className="h-1.5 w-1.5 fill-red-500 text-red-500" /> LIVE
-                </span>
-                <span className="rounded-full bg-black/60 px-2 py-0.5 text-[10px] backdrop-blur">
-                  👁 {viewerCount(c.id)}
-                </span>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
-                <div className="font-display text-lg font-semibold text-white">
-                  {c.name}, {c.age}
-                </div>
-                <div className="text-[11px] uppercase tracking-wide text-white/70">
-                  {c.ethnicity}
-                </div>
-              </div>
-            </Link>
+            <CamCard key={c.id} c={c} />
           ))}
         </div>
       </section>
     </div>
+  );
+}
+
+function CamCard({ c }: { c: any }) {
+  const [hovered, setHovered] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (hovered) {
+      videoRef.current?.play().catch(() => {});
+    } else {
+      videoRef.current?.pause();
+      if (videoRef.current) videoRef.current.currentTime = 0;
+    }
+  }, [hovered]);
+
+  return (
+    <Link
+      to="/cams/$id"
+      params={{ id: c.id }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="group relative aspect-[3/4] overflow-hidden rounded-3xl border border-white/10 bg-card shadow-md transition hover:shadow-glow"
+    >
+      <img
+        src={companionImage(c.image_url)}
+        alt={c.name}
+        loading="lazy"
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+          hovered ? "opacity-0" : "opacity-100 animate-live"
+        }`}
+      />
+      <video
+        ref={videoRef}
+        src={reelForId(c.id)}
+        muted
+        loop
+        playsInline
+        preload="none"
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+          hovered ? "opacity-100" : "opacity-0"
+        }`}
+      />
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">
+        <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold backdrop-blur">
+          <Circle className="h-1.5 w-1.5 fill-red-500 text-red-500" /> LIVE
+        </span>
+        <span className="rounded-full bg-black/60 px-2 py-0.5 text-[10px] backdrop-blur">
+          👁 {viewerCount(c.id)}
+        </span>
+      </div>
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+        <div className="font-display text-lg font-semibold text-white">
+          {c.name}, {c.age}
+        </div>
+        <div className="text-[11px] uppercase tracking-wide text-white/70">
+          {c.ethnicity}
+        </div>
+      </div>
+    </Link>
   );
 }

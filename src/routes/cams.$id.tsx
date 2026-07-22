@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { viewerCount } from "@/lib/reels";
+import { viewerCount, reelForId } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
 import { sendTip, startPrivateShow, TIP_AMOUNTS, PRIVATE_ENTRY_COST } from "@/lib/cams.functions";
 import { startChat } from "@/lib/chat.functions";
@@ -164,11 +164,14 @@ function CamView() {
       />
       {/* Portrait stage — the model, centered and readable on any screen */}
       <div className="relative h-full w-full max-w-[460px] overflow-hidden shadow-2xl">
-        <img
+        <video
           key={id}
-          src={companionImage(model?.image_url ?? "")}
-          alt={model?.name ?? ""}
-          className="animate-live absolute inset-0 h-full w-full object-cover object-top"
+          src={reelForId(id)}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover object-top"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/50" />
 

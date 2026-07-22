@@ -31,32 +31,40 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
-  const [age18, setAge18] = useState(false);
+  const [showAgePopup, setShowAgePopup] = useState(false);
   // Only show Google sign-in once the provider is actually configured in Supabase.
   const googleEnabled = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
 
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
-    if (mode === "signup" && !age18) {
-      toast.error("You must confirm you're 18 or older to sign up.");
+    if (mode === "signup") {
+      setShowAgePopup(true);
       return;
     }
     setLoading(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast.success("Welcome — check your email to confirm.");
-        setMode("signin");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        goAfterAuth();
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      goAfterAuth();
+    } catch (err: any) {
+      toast.error(err.message ?? "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirmSignup() {
+    setShowAgePopup(false);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) throw error;
+      toast.success("Welcome — check your email to confirm.");
+      setMode("signin");
     } catch (err: any) {
       toast.error(err.message ?? "Something went wrong");
     } finally {
@@ -106,9 +114,9 @@ function AuthPage() {
         <Link
           to="/"
           aria-label="Close"
-          className="absolute right-4 top-4 rounded-full bg-white/5 p-2 text-muted-foreground ring-1 ring-white/10 hover:text-foreground"
+          className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-muted-foreground hover:bg-white/20 hover:text-foreground transition-colors"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </Link>
         <Link to="/" className="flex items-center justify-center gap-2">
           <Heart className="h-6 w-6 fill-primary text-primary" />
@@ -175,20 +183,7 @@ function AuthPage() {
               </button>
             </div>
           </div>
-          {mode === "signup" && (
-            <label className="flex items-start gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={age18}
-                onChange={(e) => setAge18(e.target.checked)}
-                className="mt-0.5 accent-[hsl(var(--primary))]"
-              />
-              <span>
-                I confirm I'm 18 or older (21 where required) and agree this is explicit adult
-                content.
-              </span>
-            </label>
-          )}
+          {/* Age checkbox removed in favor of modal popup confirmation on submit */}
           <Button
             type="submit"
             className="w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
@@ -222,6 +217,34 @@ function AuthPage() {
           </button>
         </p>
       </div>
+
+      {showAgePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-card p-6 text-center shadow-glow animate-in zoom-in-95 duration-200">
+            <h3 className="font-display text-xl font-semibold">Adults only — 18+ 🔞</h3>
+            <p className="mt-3 text-sm text-muted-foreground">
+              By signing up, you confirm that you are at least 18 years old (21 where required) and agree that this website contains explicit adult AI content.
+            </p>
+            <div className="mt-6 grid gap-2">
+              <Button
+                type="button"
+                onClick={confirmSignup}
+                className="rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+              >
+                I agree — create account
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setShowAgePopup(false)}
+                variant="ghost"
+                className="rounded-full"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

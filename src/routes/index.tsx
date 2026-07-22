@@ -177,18 +177,26 @@ function Landing() {
   const [storyView, setStoryView] = useState<Companion | null>(null);
   const [query, setQuery] = useState("");
 
-  // Match each hero reel to a gender-correct model to chat with.
-  const pickCompanion = (i: number, vid: "m" | "f"): Companion | null => {
+  // Match each hero reel to its exact companion by filename to prevent mismatched chat redirection.
+  const pickCompanion = (reelName: string): Companion | null => {
     const list = companions ?? [];
-    const pool = list.filter((c) =>
-      vid === "m"
-        ? c.gender === "male" || c.gender === "trans-male"
-        : c.gender === "female" || c.gender === "trans-female",
-    );
-    const from = pool.length ? pool : list;
-    return from.length ? from[i % from.length] : null;
+    const mapping: Record<string, string> = {
+      "r10": "kaito",
+      "r1": "sofia",
+      "r11": "akira",
+      "r8": "aria",
+      "r3": "priya",
+    };
+    const targetName = mapping[reelName];
+    if (targetName) {
+      return list.find((c) => c.name.toLowerCase() === targetName) || null;
+    }
+    return null;
   };
-  const bannerSlides = BANNERS.map((b, i) => ({ ...b, companion: pickCompanion(i, b.gender) }));
+  const bannerSlides = BANNERS.map((b) => {
+    const filename = b.reel.split("/").pop()?.replace(".mp4", "") || "";
+    return { ...b, companion: pickCompanion(filename) };
+  }).filter((s) => s.companion !== null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

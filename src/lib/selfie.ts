@@ -23,6 +23,18 @@ export function selfiePrompt(
   const possessive = isMan ? "His" : isNb ? "Their" : "Her";
   const verb = isNb ? "smile" : "smiles";
 
+  // Anatomy anchor — ALWAYS present so any nude/exposed render matches the
+  // companion's gender. Without this the image model defaults to ambiguous or
+  // female-looking anatomy on male companions.
+  let anatomyAnchor = "";
+  if (noun === "man") {
+    anatomyAnchor =
+      "Anatomically correct adult male body: masculine flat chest, and an adult male penis at the groin whenever the crotch is visible or nude. Absolutely NO female genitalia — no vagina, no vulva, no breasts.";
+  } else if (noun === "woman") {
+    anatomyAnchor =
+      "Anatomically correct adult female body: breasts, and a vulva/vagina at the groin whenever the crotch is visible or nude. Absolutely NO male genitalia — no penis.";
+  }
+
   // Enhancement for explicit anatomical requests
   let explicitEnhancement = "";
   if (noun === "woman") {
@@ -38,6 +50,7 @@ export function selfiePrompt(
   return [
     `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun} who clearly looks exactly ${c.age}.`,
     `Soft warm lighting, intimate bedroom or apartment, shot on an iPhone, natural skin texture, highly detailed, realistic, not illustrated.`,
+    anatomyAnchor,
     styleBackstory ? `${possessive} look/vibe: ${styleBackstory}.` : "",
     req
       ? `${subject} is doing EXACTLY this — this is the MAIN subject of the photo, follow it precisely: ${req}.`

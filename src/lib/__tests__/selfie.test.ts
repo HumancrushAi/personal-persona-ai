@@ -57,6 +57,19 @@ describe("selfiePrompt", () => {
     expect(p).not.toContain("Her");
   });
 
+  it("anchors male anatomy for male companions even without explicit keywords", () => {
+    const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
+    const p = selfiePrompt(maleC, "show me your body", "casual");
+    expect(p).toMatch(/male penis|adult male penis/i);
+    expect(p).toMatch(/NO female genitalia/i);
+  });
+
+  it("anchors female anatomy for female companions", () => {
+    const p = selfiePrompt(c, "show me your body", "flirty");
+    expect(p).toMatch(/vulva\/vagina/i);
+    expect(p).toMatch(/NO male genitalia/i);
+  });
+
   it("uses gender-neutral pronouns for non-binary companions", () => {
     const nbC = { name: "Jordan", age: 22, ethnicity: "mixed", gender: "non-binary" };
     const p = selfiePrompt(nbC, "", "alternative");

@@ -10,15 +10,22 @@ describe("imageModelForGender", () => {
     expect(m.negativePrompt).toMatch(/vagina|breasts/i);
   });
 
-  it("treats trans-male the same as male", () => {
-    expect(imageModelForGender("trans-male").negativePrompt).toBeTruthy();
+  it("routes female companions to Pony Realism with a male-suppressing negative prompt", () => {
+    for (const g of ["female", "trans-female", null, undefined]) {
+      const m = imageModelForGender(g);
+      expect(m.input.model).toBe("ponyRealism21.safetensors");
+      expect(m.negativePrompt).toMatch(/1boy|\bmale\b/i);
+      expect(m.negativePrompt).toMatch(/penis/i);
+    }
   });
 
-  it("leaves female and non-binary on the default model with no negative prompt", () => {
-    for (const g of ["female", "trans-female", "non-binary", null, undefined]) {
-      const m = imageModelForGender(g);
-      expect(m.negativePrompt).toBeUndefined();
-      expect(m.input.model).toBeUndefined();
-    }
+  it("treats trans-male the same as male", () => {
+    expect(imageModelForGender("trans-male").negativePrompt).toMatch(/1girl|female/i);
+  });
+
+  it("leaves non-binary on the Flux fallback with no negative prompt", () => {
+    const m = imageModelForGender("non-binary");
+    expect(m.negativePrompt).toBeUndefined();
+    expect(m.input.model).toBeUndefined();
   });
 });

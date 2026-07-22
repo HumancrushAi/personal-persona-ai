@@ -18,26 +18,47 @@ function requestIsNude(req: string): boolean {
   );
 }
 
-// Male companions render on Pony Realism (SDXL), which reliably produces
-// correct male anatomy — but only with booru-style tags. Natural-language
-// prose (what Flux wants for the female path) makes Pony ambiguous, so male
-// prompts are built as comma-separated tags instead. The `1boy` tag plus the
-// `1girl/female/breasts/pussy` negatives (in ai.ts) lock the gender.
-function malePonyPrompt(
+// Both male and female companions render on Pony Realism (SDXL), which reliably
+// produces correct anatomy AND follows explicit pose requests — but only with
+// booru-style tags. Natural-language prose makes Pony ambiguous, so the prompt
+// is built as comma-separated tags. The `1boy`/`1girl` tag plus the opposite-sex
+// negatives (in ai.ts) lock the gender; request keywords map to pose tags so the
+// picture matches what the user actually asked for.
+function booruPonyPrompt(
   c: { age: number; ethnicity: string },
   req: string,
-  styleBackstory?: string | null,
+  styleBackstory: string | null | undefined,
+  isMale: boolean,
 ): string {
   const isNude = requestIsNude(req);
+  const noun = isMale ? "man" : "woman";
+  const who = isMale ? "1boy, solo, male focus" : "1girl, solo";
+  const body = isMale ? "muscular, abs" : "curvy, feminine, attractive";
+
+  let nudeTags = "clothed";
+  if (isNude) {
+    nudeTags = isMale
+      ? "nude, completely naked, no clothing, standing, penis, testicles, pubic hair, groin visible"
+      : "nude, completely naked, bare breasts, nipples";
+  }
+
+  // Map request keywords to explicit pose/anatomy tags so the shot follows it.
+  let explicit = "";
+  if (isMale && /\b(dick|cock|penis|balls|shaft|hard|erect)\b/i.test(req)) {
+    explicit = "penis, testicles, full frontal nudity, groin visible";
+  } else if (!isMale && /\b(pussy|vagina|clit|vulva|spread|bend|bent over|from behind|doggy|ass|butt|behind|twerk)\b/i.test(req)) {
+    explicit = "pussy, spread pussy, spread legs, presenting, ass, rear view";
+  }
+
   const tags = [
     "source_photo, realistic, photorealistic, raw photo",
-    "1boy, solo, male focus",
-    `mature adult ${c.ethnicity} man, ${c.age} years old`,
-    "muscular, abs, full body, mirror selfie, holding phone, indoor, detailed skin",
-    isNude
-      ? "nude, completely naked, no clothing, standing, penis, testicles, pubic hair, groin visible"
-      : "clothed",
-    req || "looking at viewer, confident",
+    who,
+    `mature adult ${c.ethnicity} ${noun}, ${c.age} years old`,
+    body,
+    "full body, mirror selfie, holding phone, indoor, detailed skin",
+    nudeTags,
+    explicit,
+    req || "looking at viewer, seductive",
     styleBackstory || "",
   ];
   return tags.filter(Boolean).join(", ");
@@ -54,48 +75,20 @@ export function selfiePrompt(
   const isMan = noun === "man";
   const isNb = noun === "androgynous person";
 
-  // Male path uses a separate booru-tag prompt for the Pony model.
-  if (isMan) return malePonyPrompt(c, req, styleBackstory);
-
-  const subject = isNb ? "They" : "She";
-  const possessive = isNb ? "Their" : "Her";
-  const verb = isNb ? "smile" : "smiles";
+  // Male and female both use the booru-tag Pony prompt (reliable anatomy +
+  // follows explicit requests). Only non-binary falls back to Flux prose.
+  if (!isNb) return booruPonyPrompt(c, req, styleBackstory, isMan);
 
   const isNude = requestIsNude(req);
-
-  // Anatomy anchor — the image backend is Flux (nsfw-flux-dev): no negative
-  // prompt, and it DRAWS any body part it sees named — even a negated one
-  // ("no vagina" still produces a vagina). So: positive-only, front-loaded
-  // strong tokens, and never name the wrong gender's anatomy.
-  let anatomyAnchor = "";
-  if (noun === "woman") {
-    anatomyAnchor = isNude
-      ? "Female anatomy: natural breasts and a realistic vulva at the groin. Accurate female genitalia."
-      : "Feminine female physique, natural breasts.";
-  }
-
-  // Enhancement for explicit anatomical requests
-  let explicitEnhancement = "";
-  if (noun === "woman") {
-    if (/\b(pussy|vagina|clit|vulva|naked bottom|spread|panties off|naked down)\b/i.test(req)) {
-      explicitEnhancement = "Explicit close-up photo of her naked, uncovered vagina and pussy, spread legs, fully visible exposed genitalia, completely nude, no underwear.";
-    }
-  }
-
   return [
-    // Nude shots lead with full-body framing so the model doesn't crop to a
-    // face/waist-up portrait and hide the genitals; clothed shots keep the
-    // normal selfie framing.
     isNude
-      ? `Full-body nude mirror selfie photo, photorealistic, of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun} who clearly looks exactly ${c.age}. ${subject} stands back from the mirror so the ENTIRE body from head to at least mid-thigh is visible, groin centered in frame, completely naked with no clothing and no underwear.`
-      : `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun} who clearly looks exactly ${c.age}.`,
-    anatomyAnchor,
+      ? `Full-body nude mirror selfie photo, photorealistic, of ${c.name}, a ${c.age}-year-old ${c.ethnicity} androgynous person who clearly looks exactly ${c.age}. They stand back from the mirror so the ENTIRE body from head to at least mid-thigh is visible.`
+      : `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} androgynous person who clearly looks exactly ${c.age}.`,
     `Soft warm lighting, intimate bedroom or apartment, shot on an iPhone, natural skin texture, highly detailed, realistic, not illustrated.`,
-    styleBackstory ? `${possessive} look/vibe: ${styleBackstory}.` : "",
+    styleBackstory ? `Their look/vibe: ${styleBackstory}.` : "",
     req
-      ? `${subject} is doing EXACTLY this — this is the MAIN subject of the photo, follow it precisely: ${req}.`
-      : `${subject} ${verb} seductively at the camera, sexy and inviting.`,
-    explicitEnhancement,
+      ? `They are doing EXACTLY this — this is the MAIN subject of the photo, follow it precisely: ${req}.`
+      : `They smile seductively at the camera, sexy and inviting.`,
     `Frame and pose to match the request (full body, close-up, or explicit as asked). Sexy and provocative; explicit nudity is allowed when the request calls for it.`,
   ]
     .filter(Boolean)

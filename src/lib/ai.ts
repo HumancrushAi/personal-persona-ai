@@ -14,13 +14,24 @@ const REPLICATE_URL = "https://api.replicate.com/v1/predictions";
 // REPLICATE_IMAGE_VERSION to swap models without a code change.
 const DEFAULT_IMAGE_VERSION = "fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa";
 
-// Flux renders female anatomy well but was never trained on male genitalia (it
-// draws a vulva on any nude male). Juggernaut XL rendered male anatomy but
-// unreliably (some seeds still came out ambiguous). Male companions therefore
-// use Pony Realism (charlesmccarthy/pony-sdxl, ponyRealism21 checkpoint): with
-// booru tags (`1boy` + female negatives) it renders correct male anatomy
-// consistently. Override with REPLICATE_IMAGE_VERSION_MALE.
-const MALE_IMAGE_VERSION = "b070dedae81324788c3c933a5d9e1270093dc74636214b9815dae044b4b3a58a";
+// Flux (DEFAULT_IMAGE_VERSION) can't render male genitalia and ignores negative
+// prompts, and it won't follow explicit pose requests. Pony Realism
+// (charlesmccarthy/pony-sdxl, ponyRealism21 checkpoint) renders correct anatomy
+// for BOTH sexes and follows booru pose tags reliably, so male and female
+// companions both use it — the `1boy`/`1girl` tag plus opposite-sex negatives
+// lock the gender. Only non-binary stays on Flux. Override with
+// REPLICATE_IMAGE_VERSION_MALE. Flux is kept only as the non-binary fallback.
+const PONY_IMAGE_VERSION = "b070dedae81324788c3c933a5d9e1270093dc74636214b9815dae044b4b3a58a";
+
+const PONY_INPUT = {
+  model: "ponyRealism21.safetensors",
+  width: 768,
+  height: 1024,
+  steps: 24,
+  cfg_scale: 6,
+  scheduler: "DPM++ 2M SDE Karras",
+  prepend_preprompt: true,
+};
 
 // Picks the image model + Replicate input for a companion's gender. `input`
 // holds the model-specific fields (everything except prompt/negative_prompt),
@@ -31,27 +42,30 @@ export function imageModelForGender(gender?: string | null): {
   input: Record<string, unknown>;
 } {
   const g = (gender ?? "").toLowerCase();
+  const version = process.env.REPLICATE_IMAGE_VERSION_MALE || PONY_IMAGE_VERSION;
+
   if (g === "male" || g === "trans-male") {
     return {
-      version: process.env.REPLICATE_IMAGE_VERSION_MALE || MALE_IMAGE_VERSION,
+      version,
       // `1boy` + these negatives lock the gender; anatomy-quality terms keep
       // the genitals well-formed.
       negativePrompt:
         "1girl, female, multiple girls, breasts, nipples, pussy, vagina, vulva, woman, feminine body, anime, cartoon, 2d, 3d, sketch, monochrome, deformed penis, malformed genitals, mutated genitals, ambiguous genitalia, extra penis, bad anatomy, censored, mosaic, watermark, text, worst quality, low quality",
-      input: {
-        model: "ponyRealism21.safetensors",
-        width: 768,
-        height: 1024,
-        steps: 24,
-        cfg_scale: 6,
-        scheduler: "DPM++ 2M SDE Karras",
-        prepend_preprompt: true,
-      },
+      input: PONY_INPUT,
     };
   }
+  if (g === "non-binary") {
+    return {
+      version: process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION,
+      input: { width: 768, height: 1024 },
+    };
+  }
+  // female / trans-female / unset default
   return {
-    version: process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION,
-    input: { width: 768, height: 1024 },
+    version,
+    negativePrompt:
+      "1boy, male, man, penis, testicles, male body, anime, cartoon, 2d, 3d, sketch, monochrome, deformed, malformed genitals, extra limbs, bad anatomy, censored, mosaic, watermark, text, worst quality, low quality",
+    input: PONY_INPUT,
   };
 }
 

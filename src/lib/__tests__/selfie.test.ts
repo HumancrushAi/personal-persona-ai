@@ -34,17 +34,20 @@ describe("wantsSelfie", () => {
 describe("selfiePrompt", () => {
   const c = { name: "Amara", age: 23, ethnicity: "Latina", short_bio: "playful" };
 
-  it("puts the user's request as the main subject", () => {
+  it("builds a female 1girl booru prompt that follows an explicit pussy request", () => {
     const p = selfiePrompt(c, "show me your pussy", "flirty");
+    expect(p).toMatch(/1girl/);
     expect(p).toContain("show me your pussy");
-    expect(p).toMatch(/EXACTLY this/);
-    expect(p).toContain("23-year-old Latina");
+    // request keyword maps to explicit pose tags so the picture matches it
+    expect(p).toMatch(/spread pussy|presenting/i);
+    expect(p).toContain("Latina");
+    expect(p).not.toMatch(/1boy|\bpenis\b/i);
   });
 
   it("has a sensible default when no request is given", () => {
     const p = selfiePrompt(c, "", null);
-    expect(p).toMatch(/smiles seductively/i);
-    expect(p).toContain("Amara");
+    expect(p).toMatch(/1girl/);
+    expect(p).toMatch(/seductive/i);
   });
 
   it("builds a male booru prompt that includes the user's request and backstory", () => {
@@ -66,11 +69,12 @@ describe("selfiePrompt", () => {
     expect(p).not.toMatch(/vagina|vulva/i);
   });
 
-  it("anchors female genitalia for nude female companions", () => {
+  it("builds a nude female booru prompt without male parts", () => {
     const p = selfiePrompt(c, "send me a nude", "flirty");
-    expect(p).toMatch(/vulva/i);
-    // Same rule in reverse: the female prompt must never name male parts.
-    expect(p).not.toMatch(/\bpenis\b|testicles/i);
+    expect(p).toMatch(/1girl/);
+    expect(p).toMatch(/naked|nude/i);
+    // The female prompt must never name male parts.
+    expect(p).not.toMatch(/\bpenis\b|testicles|1boy/i);
   });
 
   it("does not force nudity on a clothed male request", () => {

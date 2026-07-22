@@ -36,7 +36,7 @@ const BANNERS: { reel: string; title: string; sub: string; gender: "m" | "f" }[]
     gender: "f",
   },
   { reel: reelUrlHelper("r11"), title: "Beach hunk", sub: "sunset stroll · shirt optional", gender: "m" },
-  { reel: reelUrlHelper("r2"), title: "Just woke up", sub: "come back to bed 💋", gender: "f" },
+  { reel: reelUrlHelper("r8"), title: "Just woke up", sub: "come back to bed 💋", gender: "f" },
   { reel: reelUrlHelper("r3"), title: "Sunset vibes", sub: "wish you were here 🌅", gender: "f" },
 ];
 

@@ -11,6 +11,9 @@ describe("wantsSelfie", () => {
       "take a selfie for me",
       "lemme see your ass",
       "I wanna see you naked",
+      "show mw your dick",
+      "send dick",
+      "give me cock",
     ]) {
       expect(wantsSelfie(t), t).toBe(true);
     }

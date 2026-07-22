@@ -45,8 +45,8 @@ export function selfiePrompt(
 // True when the user's message is asking her to send a picture/selfie/nude.
 export function wantsSelfie(t: string): boolean {
   const s = t.toLowerCase();
-  if (/\b(selfie|nudes?|send me a pic|send a pic|send pic|show me your)\b/.test(s)) return true;
-  return /(send|show|snap|take|lemme see|let me see|can i see|wanna see|i wanna see|i want to see|i want a)\b[^.]{0,30}\b(pic|picture|photo|image|body|tits|boobs|breasts|pussy|ass|butt|naked|nude|you)\b/.test(
+  if (/\b(selfie|nudes?|send me a pic|send a pic|send pic|show me your|show mw your|show m3 your|show ne your|show md your)\b/.test(s)) return true;
+  return /(send|show|snap|take|lemme see|let me see|can i see|wanna see|i wanna see|i want to see|i want a|give me|give)\b[^.]{0,30}\b(pic|picture|photo|image|body|tits|boobs|breasts|pussy|vagina|ass|butt|naked|nude|you|dick|cock|penis)\b/.test(
     s,
   );
 }

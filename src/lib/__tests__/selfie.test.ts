@@ -57,19 +57,27 @@ describe("selfiePrompt", () => {
     expect(p).not.toContain("Her");
   });
 
-  it("anchors male anatomy for male companions even without explicit keywords", () => {
+  it("anchors male genitalia for nude male companions", () => {
     const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
-    const p = selfiePrompt(maleC, "show me your body", "casual");
-    expect(p).toMatch(/penis and testicles/i);
+    const p = selfiePrompt(maleC, "send me a nude", "casual");
+    expect(p).toMatch(/penis/i);
+    expect(p).toMatch(/testicles/i);
     // Flux draws any anatomy word it sees — the male prompt must never name female parts.
     expect(p).not.toMatch(/vagina|vulva/i);
   });
 
-  it("anchors female anatomy for female companions", () => {
-    const p = selfiePrompt(c, "show me your body", "flirty");
+  it("anchors female genitalia for nude female companions", () => {
+    const p = selfiePrompt(c, "send me a nude", "flirty");
     expect(p).toMatch(/vulva/i);
     // Same rule in reverse: the female prompt must never name male parts.
     expect(p).not.toMatch(/\bpenis\b|testicles/i);
+  });
+
+  it("does not force nudity on a clothed male request", () => {
+    const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
+    const p = selfiePrompt(maleC, "wearing a suit at dinner", "casual");
+    expect(p).not.toMatch(/penis|testicles/i);
+    expect(p).toMatch(/masculine/i);
   });
 
   it("uses gender-neutral pronouns for non-binary companions", () => {

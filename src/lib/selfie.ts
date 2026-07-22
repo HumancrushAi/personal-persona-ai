@@ -23,18 +23,26 @@ export function selfiePrompt(
   const possessive = isMan ? "His" : isNb ? "Their" : "Her";
   const verb = isNb ? "smile" : "smiles";
 
-  // Anatomy anchor — ALWAYS present so any nude/exposed render matches the
-  // companion's gender. The image backend is Flux (nsfw-flux-dev), which has no
-  // negative prompt and will DRAW any body part it sees named — even a negated
-  // one ("no vagina" still produces a vagina). So this uses positive-only
-  // description and never names the wrong gender's anatomy.
+  // Whether the shot involves any nudity (so we force explicit genitalia only
+  // when the groin will actually be bare — a clothed selfie shouldn't be nuded).
+  const isNude =
+    /\b(nude|naked|nudes?|undress|stripped?|strip|no clothes|without clothes|topless|bottomless|pussy|vagina|clit|vulva|dick|cock|penis|balls|shaft|cum|hard|erect)\b/i.test(
+      req,
+    ) || !req; // default (no request) selfie in this app trends nude
+
+  // Anatomy anchor — the image backend is Flux (nsfw-flux-dev): no negative
+  // prompt, and it DRAWS any body part it sees named — even a negated one
+  // ("no vagina" still produces a vagina). So: positive-only, front-loaded
+  // strong tokens, and never name the wrong gender's anatomy.
   let anatomyAnchor = "";
   if (noun === "man") {
-    anatomyAnchor =
-      "Anatomically correct adult male body: masculine flat chest, defined abs, and a realistic adult male penis and testicles clearly visible between his legs at the groin whenever the crotch is nude or exposed.";
+    anatomyAnchor = isNude
+      ? "Male anatomy, masculine physique: flat muscular chest, defined abs, and a realistic adult male penis with a shaft and testicles hanging at the groin. Accurate male genitalia."
+      : "Masculine male physique, flat muscular chest, broad shoulders.";
   } else if (noun === "woman") {
-    anatomyAnchor =
-      "Anatomically correct adult female body: natural breasts, and a realistic vulva at the groin whenever the crotch is nude or exposed.";
+    anatomyAnchor = isNude
+      ? "Female anatomy: natural breasts and a realistic vulva at the groin. Accurate female genitalia."
+      : "Feminine female physique, natural breasts.";
   }
 
   // Enhancement for explicit anatomical requests
@@ -50,9 +58,9 @@ export function selfiePrompt(
   }
 
   return [
-    `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun} who clearly looks exactly ${c.age}.`,
-    `Soft warm lighting, intimate bedroom or apartment, shot on an iPhone, natural skin texture, highly detailed, realistic, not illustrated.`,
+    `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun}${isMan ? " (biologically male, masculine body)" : ""} who clearly looks exactly ${c.age}.`,
     anatomyAnchor,
+    `Soft warm lighting, intimate bedroom or apartment, shot on an iPhone, natural skin texture, highly detailed, realistic, not illustrated.`,
     styleBackstory ? `${possessive} look/vibe: ${styleBackstory}.` : "",
     req
       ? `${subject} is doing EXACTLY this — this is the MAIN subject of the photo, follow it precisely: ${req}.`

@@ -97,6 +97,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             data.content,
             p.style_backstory,
           ),
+          { gender: c.gender },
         );
         const { free: sf, paid: sp } = applyDeduction(
           bal.free_messages_remaining ?? 0,

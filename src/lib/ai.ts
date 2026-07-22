@@ -14,6 +14,33 @@ const REPLICATE_URL = "https://api.replicate.com/v1/predictions";
 // REPLICATE_IMAGE_VERSION to swap models without a code change.
 const DEFAULT_IMAGE_VERSION = "fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa";
 
+// Flux renders female anatomy well but was never trained on male genitalia (it
+// draws a vulva on any nude male) and has no negative prompt. Male companions
+// therefore use Juggernaut XL v7 (SDXL), which renders male anatomy and honors a
+// real negative_prompt to suppress female parts. Override with
+// REPLICATE_IMAGE_VERSION_MALE.
+const MALE_IMAGE_VERSION = "6a52feace43ce1f6bbc2cdabfc68423cb2319d7444a1a1dae529c5e88b976382";
+
+// Picks the image model + generation settings for a companion's gender.
+export function imageModelForGender(gender?: string | null): {
+  version: string;
+  negativePrompt?: string;
+  steps?: number;
+  guidance?: number;
+} {
+  const g = (gender ?? "").toLowerCase();
+  if (g === "male" || g === "trans-male") {
+    return {
+      version: process.env.REPLICATE_IMAGE_VERSION_MALE || MALE_IMAGE_VERSION,
+      negativePrompt:
+        "female genitalia, vagina, vulva, pussy, clitoris, breasts, cleavage, woman, feminine body, (worst quality, low quality, blurry:1.3), deformed, mutated, extra limbs, bad anatomy, censored, watermark, text",
+      steps: 40,
+      guidance: 5.5,
+    };
+  }
+  return { version: process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION };
+}
+
 // Uncensored default tuned for intimate girlfriend RP. Override with OPENROUTER_MODEL.
 // Alternatives: anthracite-org/magnum-v4-72b (softer/warmer), sao10k/l3-lunaris-8b (cheap).
 const DEFAULT_CHAT_MODEL = "sao10k/l3.1-euryale-70b";
@@ -96,9 +123,15 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Replicate (NSFW-capable). Uses Prefer: wait so the prediction resolves in one
 // request; downloads the result and inlines it as a data URL.
-async function generateImageReplicate(prompt: string): Promise<string> {
+async function generateImageReplicate(
+  prompt: string,
+  model: { version: string; negativePrompt?: string; steps?: number; guidance?: number },
+): Promise<string> {
   const token = process.env.REPLICATE_API_TOKEN!;
-  const version = process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION;
+  const input: Record<string, unknown> = { prompt, width: 768, height: 1024 };
+  if (model.negativePrompt) input.negative_prompt = model.negativePrompt;
+  if (model.steps) input.num_inference_steps = model.steps;
+  if (model.guidance) input.guidance_scale = model.guidance;
   const res = await fetch(REPLICATE_URL, {
     method: "POST",
     headers: {
@@ -106,7 +139,7 @@ async function generateImageReplicate(prompt: string): Promise<string> {
       "Content-Type": "application/json",
       Prefer: "wait",
     },
-    body: JSON.stringify({ version, input: { prompt, width: 768, height: 1024 } }),
+    body: JSON.stringify({ version: model.version, input }),
   });
   if (!res.ok) throw new Error(`Image error: ${res.status} ${(await res.text()).slice(0, 200)}`);
   let json = await res.json();
@@ -142,8 +175,12 @@ async function generateImageReplicate(prompt: string): Promise<string> {
 
 // Returns a data: URL (base64 PNG). Prefers Replicate (NSFW) when configured;
 // otherwise OpenAI (SFW only — gpt-image-1 then dall-e-3).
-export async function generateImage(prompt: string, opts?: { size?: string }): Promise<string> {
-  if (process.env.REPLICATE_API_TOKEN) return generateImageReplicate(prompt);
+export async function generateImage(
+  prompt: string,
+  opts?: { size?: string; gender?: string | null },
+): Promise<string> {
+  if (process.env.REPLICATE_API_TOKEN)
+    return generateImageReplicate(prompt, imageModelForGender(opts?.gender));
 
   const key = process.env.OPENAI_API_KEY;
   if (!key)

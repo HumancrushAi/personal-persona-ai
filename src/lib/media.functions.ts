@@ -96,7 +96,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
     );
 
     // Generate first; only charge if it actually succeeds.
-    const dataUrl = await generateImage(imagePrompt);
+    const dataUrl = await generateImage(imagePrompt, { gender: c.gender });
     const balance = await deductCredits(supabase, userId, SELFIE_COST, "selfie", free, paid);
 
     const caption = userPrompt ? `*sends a pic* ${userPrompt}` : "*sends you a selfie* 💋";

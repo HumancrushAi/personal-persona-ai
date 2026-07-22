@@ -33,7 +33,7 @@ export function imageModelForGender(gender?: string | null): {
     return {
       version: process.env.REPLICATE_IMAGE_VERSION_MALE || MALE_IMAGE_VERSION,
       negativePrompt:
-        "female genitalia, vagina, vulva, pussy, clitoris, breasts, cleavage, woman, feminine body, (worst quality, low quality, blurry:1.3), deformed, mutated, extra limbs, bad anatomy, censored, watermark, text",
+        "female genitalia, vagina, vulva, pussy, clitoris, breasts, cleavage, woman, feminine body, underwear, boxers, briefs, boxer briefs, shorts, waistband, censored crotch, covered groin, cropped above the waist, headshot, waist-up only, (worst quality, low quality, blurry:1.3), deformed, mutated, extra limbs, bad anatomy, censored, watermark, text",
       steps: 40,
       guidance: 5.5,
     };

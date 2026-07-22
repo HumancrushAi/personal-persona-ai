@@ -53,12 +53,20 @@ export function selfiePrompt(
     }
   } else if (noun === "man") {
     if (/\b(dick|cock|penis|balls|shaft)\b/i.test(req)) {
-      explicitEnhancement = "Explicit photo of his naked penis and cock, showing toned groin and abs, completely nude.";
+      explicitEnhancement =
+        "Explicit full-frontal nude photo: completely naked, no clothing and no underwear, his adult penis and testicles fully exposed and clearly visible at the groin, framed to show the groin and genitals centered, not cropped above the waist.";
     }
   }
 
+  const maleTag = isMan ? " (biologically male, masculine body)" : "";
+
   return [
-    `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun}${isMan ? " (biologically male, masculine body)" : ""} who clearly looks exactly ${c.age}.`,
+    // Nude shots lead with full-body framing so the model doesn't crop to a
+    // face/waist-up portrait and hide the genitals; clothed shots keep the
+    // normal selfie framing.
+    isNude
+      ? `Full-body nude mirror selfie photo, photorealistic, of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun}${maleTag} who clearly looks exactly ${c.age}. ${subject} stands back from the mirror so the ENTIRE body from head to at least mid-thigh is visible, groin centered in frame, completely naked with no clothing and no underwear.`
+      : `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun}${maleTag} who clearly looks exactly ${c.age}.`,
     anatomyAnchor,
     `Soft warm lighting, intimate bedroom or apartment, shot on an iPhone, natural skin texture, highly detailed, realistic, not illustrated.`,
     styleBackstory ? `${possessive} look/vibe: ${styleBackstory}.` : "",

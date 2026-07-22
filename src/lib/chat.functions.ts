@@ -5,7 +5,7 @@ import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 import { chatComplete, generateImage } from "./ai";
-import { selfiePrompt, wantsSelfie } from "./selfie";
+import { selfiePrompt, wantsSelfie, checkCrossGenderRequest } from "./selfie";
 
 const SELFIE_COST = 8;
 
@@ -37,7 +37,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { data: conv, error: convErr } = await supabase
       .from("conversations")
       .select(
-        "id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, tone, boundaries, interests, style_backstory, companions(name, ethnicity, age, base_personality))",
+        "id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, tone, boundaries, interests, style_backstory, companions(name, ethnicity, age, gender, base_personality, short_bio))",
       )
       .eq("id", data.conversationId)
       .eq("user_id", userId)
@@ -80,9 +80,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // to a normal text reply if they can't afford it or the image fails.
     if (wantsSelfie(data.content) && totalCredits(bal) >= SELFIE_COST) {
       try {
+        const crossGenderWarning = checkCrossGenderRequest(c.gender, data.content);
+        if (crossGenderWarning) {
+          await supabase.from("messages").insert({
+            conversation_id: data.conversationId,
+            user_id: userId,
+            role: "assistant",
+            content: crossGenderWarning,
+          });
+          return { reply: crossGenderWarning };
+        }
+
         const dataUrl = await generateImage(
           selfiePrompt(
-            { name: c.name, age: c.age, ethnicity: c.ethnicity, short_bio: c.short_bio },
+            { name: c.name, age: c.age, ethnicity: c.ethnicity, gender: c.gender, short_bio: c.short_bio },
             data.content,
             p.style_backstory,
           ),

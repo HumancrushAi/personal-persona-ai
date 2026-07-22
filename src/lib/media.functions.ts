@@ -4,7 +4,7 @@ import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
 import { generateImage, textToSpeech, chatComplete } from "./ai";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { selfiePrompt } from "./selfie";
+import { selfiePrompt, checkCrossGenderRequest } from "./selfie";
 
 const SELFIE_COST = 8;
 const VOICE_COST = 3;
@@ -68,7 +68,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
     const { data: conv } = await supabase
       .from("conversations")
       .select(
-        "scenario, user_personalities(nickname, identity, style_backstory, companions(name, ethnicity, age, base_personality, short_bio))",
+        "scenario, user_personalities(nickname, identity, style_backstory, companions(name, ethnicity, age, gender, base_personality, short_bio))",
       )
       .eq("id", data.conversationId)
       .eq("user_id", userId)
@@ -80,12 +80,17 @@ export const generateSelfie = createServerFn({ method: "POST" })
     const screen = screenUserMessage(userPrompt ?? "");
     if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
 
-    const { free, paid } = await ensureBalance(supabase, userId, SELFIE_COST);
-
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
+
+    // Cross-gender body part request check
+    const crossGenderWarning = checkCrossGenderRequest(c.gender, userPrompt ?? "");
+    if (crossGenderWarning) throw new Error(crossGenderWarning);
+
+    const { free, paid } = await ensureBalance(supabase, userId, SELFIE_COST);
+
     const imagePrompt = selfiePrompt(
-      { name: c.name, age: c.age, ethnicity: c.ethnicity, short_bio: c.short_bio },
+      { name: c.name, age: c.age, ethnicity: c.ethnicity, gender: c.gender, short_bio: c.short_bio },
       userPrompt,
       p.style_backstory,
     );

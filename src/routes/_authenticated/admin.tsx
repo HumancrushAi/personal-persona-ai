@@ -528,6 +528,31 @@ function PersonasPanel() {
     }
   }
 
+  const [regenAll, setRegenAll] = useState<{ done: number; total: number } | null>(null);
+
+  // Regenerate every model's photo one-by-one (gender-correct + sexy via the
+  // server's portrait prompt). Sequential so we don't hammer Replicate or hit a
+  // serverless timeout; failures are counted but don't stop the run.
+  async function regenerateAllPhotos() {
+    if (regenAll) return;
+    if (!window.confirm(`Regenerate photos for all ${personas.length} models? This can take a few minutes.`))
+      return;
+    const list = [...personas];
+    let failed = 0;
+    for (let i = 0; i < list.length; i++) {
+      setRegenAll({ done: i, total: list.length });
+      try {
+        await regenPhoto({ data: { companionId: list[i].id } });
+      } catch {
+        failed++;
+      }
+    }
+    setRegenAll(null);
+    await load();
+    if (failed) toast.error(`Done — ${failed} failed, retry those individually`);
+    else toast.success("All photos regenerated");
+  }
+
   async function load() {
     setLoading(true);
     try {
@@ -728,9 +753,21 @@ function PersonasPanel() {
       <section className="glass rounded-2xl p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-display text-lg">All personas ({personas.length})</h2>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={regenerateAllPhotos}
+              disabled={!!regenAll || loading || personas.length === 0}
+            >
+              {regenAll
+                ? `Regenerating ${regenAll.done + 1}/${regenAll.total}…`
+                : "Regenerate ALL photos"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={load} disabled={loading || !!regenAll}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+            </Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">

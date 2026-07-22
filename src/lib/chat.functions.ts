@@ -4,7 +4,10 @@ import { z } from "zod";
 import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { chatComplete } from "./ai";
+import { chatComplete, generateImage } from "./ai";
+import { selfiePrompt, wantsSelfie } from "./selfie";
+
+const SELFIE_COST = 8;
 
 const sendSchema = z.object({
   conversationId: z.string().uuid(),
@@ -71,6 +74,62 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
+
+    // Auto-selfie: if the user asks her for a pic/nude, actually send a generated
+    // photo that follows the request (charged like the 📷 button). Falls through
+    // to a normal text reply if they can't afford it or the image fails.
+    if (wantsSelfie(data.content) && totalCredits(bal) >= SELFIE_COST) {
+      try {
+        const dataUrl = await generateImage(
+          selfiePrompt(
+            { name: c.name, age: c.age, ethnicity: c.ethnicity, short_bio: c.short_bio },
+            data.content,
+            p.style_backstory,
+          ),
+        );
+        const { free: sf, paid: sp } = applyDeduction(
+          bal.free_messages_remaining ?? 0,
+          bal.paid_credits ?? 0,
+          SELFIE_COST,
+        );
+        await supabase.from("messages").insert({
+          conversation_id: data.conversationId,
+          user_id: userId,
+          role: "assistant",
+          content: "*sends you a pic* 😈",
+          kind: "image",
+          media_url: dataUrl,
+        });
+        await supabase
+          .from("credit_balances")
+          .update({ free_messages_remaining: sf, paid_credits: sp })
+          .eq("user_id", userId);
+        await supabase.from("credit_ledger").insert({
+          user_id: userId,
+          delta: -SELFIE_COST,
+          reason: "selfie",
+          balance_after: sf + sp,
+        });
+        await supabase
+          .from("conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", data.conversationId);
+        return {
+          reply: "",
+          mediaUrl: dataUrl,
+          kind: "image" as const,
+          balance: { free: sf, paid: sp },
+          relationship: {
+            xp: (conv as any).relationship_xp ?? 0,
+            level: (conv as any).relationship_level ?? 1,
+            leveledUp: false,
+          },
+        };
+      } catch {
+        // image failed — fall through to normal text reply
+      }
+    }
+
     const scenario = getScenario((conv as any).scenario);
     const level = (conv as any).relationship_level ?? 1;
     const memory = ((conv as any).memory ?? "").trim();

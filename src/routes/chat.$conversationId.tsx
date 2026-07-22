@@ -5,10 +5,25 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { sendChatMessage } from "@/lib/chat.functions";
-import { generateSelfie, generateVoiceNote } from "@/lib/media.functions";
+import {
+  generateSelfie,
+  generateVoiceNote,
+  videoScript,
+  saveVideoNote,
+} from "@/lib/media.functions";
+import { renderTalkingClip } from "@/lib/talking-clip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Coins, Image as ImageIcon, Mic, Heart, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Coins,
+  Image as ImageIcon,
+  Mic,
+  Video as VideoIcon,
+  Heart,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getScenario } from "@/lib/scenarios";
 
@@ -33,10 +48,12 @@ function ChatPage() {
   const send = useServerFn(sendChatMessage);
   const selfie = useServerFn(generateSelfie);
   const voiceFn = useServerFn(generateVoiceNote);
+  const videoScriptFn = useServerFn(videoScript);
+  const saveVideo = useServerFn(saveVideoNote);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [pendingUser, setPendingUser] = useState<string | null>(null);
-  const [mediaBusy, setMediaBusy] = useState<"selfie" | "voice" | null>(null);
+  const [mediaBusy, setMediaBusy] = useState<"selfie" | "voice" | "video" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -220,6 +237,40 @@ function ChatPage() {
     }
   }
 
+  async function handleVideo() {
+    if (mediaBusy) return;
+    const prompt =
+      window.prompt(`What should ${p?.nickname ?? "she"}'s video be about? (optional)`, "") ??
+      undefined;
+    setMediaBusy("video");
+    try {
+      // 1) server: flirty spoken line + her voice (not charged yet)
+      const { line, audioUrl, imageUrl } = await videoScriptFn({
+        data: { conversationId, prompt: prompt || undefined },
+      });
+      // 2) browser: assemble the 9:16 talking clip
+      const dataUrl = await renderTalkingClip({
+        imageUrl: companionImage(imageUrl),
+        caption: line,
+        audioUrl,
+      });
+      // 3) server: persist + charge (only now)
+      await saveVideo({ data: { conversationId, dataUrl, caption: line } });
+      qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+      qc.invalidateQueries({ queryKey: ["balance"] });
+    } catch (err: any) {
+      const msg = err?.message ?? "Error";
+      if (msg.includes("OUT_OF_CREDITS")) {
+        toast.error("Not enough credits — videos cost 15");
+        navigate({ to: "/credits" });
+      } else if (msg.includes("BLOCKED_CONTENT")) {
+        toast.error("She can't make that kind of video — no credits used.");
+      } else toast.error(msg);
+    } finally {
+      setMediaBusy(null);
+    }
+  }
+
   const total = (balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0);
   const level = (conv as any)?.relationship_level ?? 1;
   const xp = (conv as any)?.relationship_xp ?? 0;
@@ -341,6 +392,14 @@ function ChatPage() {
                       className="block aspect-square w-72 object-cover"
                     />
                   )}
+                  {m.kind === "video" && m.media_url && (
+                    <video
+                      controls
+                      playsInline
+                      src={m.media_url}
+                      className="block w-72 rounded-2xl"
+                    />
+                  )}
                   {m.kind === "voice" && m.media_url && (
                     <div className="p-2">
                       <audio controls src={m.media_url} className="w-64" />
@@ -366,6 +425,8 @@ function ChatPage() {
                     "taking a pic for you…"
                   ) : mediaBusy === "voice" ? (
                     "recording…"
+                  ) : mediaBusy === "video" ? (
+                    "filming a video for you…"
                   ) : (
                     <>
                       <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
@@ -403,6 +464,17 @@ function ChatPage() {
             >
               <Mic className="h-5 w-5 text-primary" />
             </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={handleVideo}
+              disabled={!!mediaBusy || sending}
+              className="rounded-full"
+              title="Request a video (15 credits)"
+            >
+              <VideoIcon className="h-5 w-5 text-primary" />
+            </Button>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -422,7 +494,7 @@ function ChatPage() {
           <div className="mx-auto mt-1.5 flex max-w-2xl items-center justify-center gap-3 text-[10px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-primary" />
-              Selfie 8 · Voice 3 · Text 1 credit
+              Selfie 8 · Voice 3 · Video 15 · Text 1 credit
             </span>
           </div>
         </form>

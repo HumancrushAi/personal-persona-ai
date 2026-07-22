@@ -2,11 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
-import { generateImage, textToSpeech } from "./ai";
+import { generateImage, textToSpeech, chatComplete } from "./ai";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
+import { selfiePrompt } from "./selfie";
 
 const SELFIE_COST = 8;
 const VOICE_COST = 3;
+const VIDEO_COST = 15;
 
 // Warmer, more natural voices first (alloy is the flattest, so it's last).
 const VOICES = ["shimmer", "coral", "sage", "nova", "verse", "alloy"];
@@ -82,16 +84,11 @@ export const generateSelfie = createServerFn({ method: "POST" })
 
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
-    const imagePrompt = [
-      `Photorealistic amateur selfie of a ${c.age}-year-old ${c.ethnicity} woman named ${c.name}.`,
-      `Soft warm lighting, shallow depth of field, shot on iPhone, slightly grainy, intimate bedroom or apartment setting.`,
-      `She looks: ${c.short_bio}.`,
-      p.style_backstory ? `Vibe: ${p.style_backstory}.` : "",
-      userPrompt ? `She is: ${userPrompt}.` : `She is smiling softly at the camera.`,
-      `Attractive, sensual, photographic, highly detailed, not illustrated.`,
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const imagePrompt = selfiePrompt(
+      { name: c.name, age: c.age, ethnicity: c.ethnicity, short_bio: c.short_bio },
+      userPrompt,
+      p.style_backstory,
+    );
 
     // Generate first; only charge if it actually succeeds.
     const dataUrl = await generateImage(imagePrompt);
@@ -151,4 +148,111 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
     });
 
     return { balance, mediaUrl: dataUrl };
+  });
+
+// Step 1 of a video request: pick a short spoken line (in-character, flirty) and
+// render her voice for it. The clip itself is assembled in the browser (canvas +
+// this audio) — no charge here; the user is only charged when the finished video
+// is saved (saveVideoNote), so a failed render never costs credits.
+export const videoScript = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        conversationId: z.string().uuid(),
+        prompt: z.string().max(300).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: conv } = await supabase
+      .from("conversations")
+      .select(
+        "user_personalities(nickname, style_backstory, companions(name, image_url, sort_order, age, ethnicity, base_personality))",
+      )
+      .eq("id", data.conversationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!conv) throw new Error("Conversation not found");
+
+    // Must be able to afford the video before we spend on TTS.
+    await ensureBalance(supabase, userId, VIDEO_COST);
+
+    const p: any = (conv as any).user_personalities;
+    const c = p.companions;
+    if (data.prompt) {
+      const screen = screenUserMessage(data.prompt);
+      if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
+    }
+
+    const line = (
+      await chatComplete(
+        [
+          {
+            role: "system",
+            content:
+              `You are ${p.nickname}, a ${c.age}-year-old ${c.ethnicity} woman recording a short, flirty, intimate video message for the person you're talking to. ` +
+              `Base personality: ${c.base_personality}. ${p.style_backstory ? `Vibe: ${p.style_backstory}. ` : ""}` +
+              `Write ONE or TWO short sentences she says out loud to the camera — playful, seductive, personal, spoken aloud (no stage directions, no asterisks, no quotes). Max 160 characters.`,
+          },
+          {
+            role: "user",
+            content: data.prompt
+              ? `Make the video about: ${data.prompt}`
+              : "Make a teasing hello video for me.",
+          },
+        ],
+        { maxTokens: 90 },
+      )
+    )
+      .replace(/^["'\s]+|["'\s]+$/g, "")
+      .slice(0, 200);
+
+    const sort: number = c.sort_order ?? 0;
+    const voice = VOICES[sort % VOICES.length];
+    const buf = await textToSpeech(line || `Hey you… I made this just for you.`, voice);
+    const audioUrl = `data:audio/mpeg;base64,${buf.toString("base64")}`;
+
+    return { line, audioUrl, imageUrl: c.image_url as string, name: c.name as string };
+  });
+
+// Step 2 of a video request: persist the finished clip (rendered in the browser)
+// and charge for it. Only now does the user pay — after a real video exists.
+export const saveVideoNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        conversationId: z.string().uuid(),
+        dataUrl: z.string().startsWith("data:video/").max(20_000_000),
+        caption: z.string().max(400).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: conv } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("id", data.conversationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!conv) throw new Error("Conversation not found");
+
+    const { free, paid } = await ensureBalance(supabase, userId, VIDEO_COST);
+    const balance = await deductCredits(supabase, userId, VIDEO_COST, "video_note", free, paid);
+
+    await supabase.from("messages").insert({
+      conversation_id: data.conversationId,
+      user_id: userId,
+      role: "assistant",
+      content: data.caption || "*sends you a video* 🎬",
+      kind: "video",
+      media_url: data.dataUrl,
+    });
+
+    return { balance };
   });

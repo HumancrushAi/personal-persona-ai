@@ -18,6 +18,19 @@ const DEFAULT_IMAGE_VERSION = "fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d23
 // Alternatives: anthracite-org/magnum-v4-72b (softer/warmer), sao10k/l3-lunaris-8b (cheap).
 const DEFAULT_CHAT_MODEL = "sao10k/l3.1-euryale-70b";
 
+// Strip model artifacts (leaked special tokens, stray tags, junk chars) so
+// replies never show things like <|reserved_special_token_0|> or <std/plane>.
+function sanitizeReply(s: string): string {
+  return s
+    .replace(/<\|[^|]*\|>/g, "") // <|reserved_special_token_0|>
+    .replace(/<\/?(std|p|s|e|reserved)[^>]*>/gi, "") // <std/plane>, <p ...>
+    .replace(/<[a-z/][a-z0-9 /_-]{0,30}>/gi, "") // stray html-ish tags
+    .replace(/�/g, "") // replacement char
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export async function chatComplete(
   messages: { role: string; content: string }[],
   opts?: { maxTokens?: number },
@@ -38,6 +51,9 @@ export async function chatComplete(
     body: JSON.stringify({
       model,
       messages,
+      temperature: 0.9,
+      frequency_penalty: 0.4,
+      presence_penalty: 0.3,
       ...(opts?.maxTokens ? { max_tokens: opts.maxTokens } : {}),
     }),
   });
@@ -46,7 +62,7 @@ export async function chatComplete(
     throw new Error(`AI error: ${res.status} ${text.slice(0, 200)}`);
   }
   const json = await res.json();
-  return (json.choices?.[0]?.message?.content ?? "").trim();
+  return sanitizeReply(json.choices?.[0]?.message?.content ?? "");
 }
 
 async function tryImageModel(

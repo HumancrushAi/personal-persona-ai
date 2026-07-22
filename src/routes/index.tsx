@@ -876,15 +876,25 @@ function BannerSlider({
             className="group relative block h-full w-full shrink-0 overflow-hidden text-left"
             aria-label={s.companion ? `Chat with ${s.companion.name}` : s.title}
           >
-            <video
-              src={s.reel}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-            />
+            {i === idx ? (
+              <video
+                src={s.reel}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover animate-in fade-in duration-300"
+              />
+            ) : s.companion ? (
+              <img
+                src={companionImage(s.companion.image_url)}
+                alt=""
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover brightness-[0.35]"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-neutral-950" />
+            )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-black/30" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 md:p-7">
               <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">

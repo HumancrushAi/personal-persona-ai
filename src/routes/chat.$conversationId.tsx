@@ -55,6 +55,7 @@ function ChatPage() {
   const [pendingUser, setPendingUser] = useState<string | null>(null);
   const [mediaBusy, setMediaBusy] = useState<"selfie" | "voice" | "video" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -389,7 +390,8 @@ function ChatPage() {
                     <img
                       src={m.media_url}
                       alt=""
-                      className="block aspect-square w-72 object-cover"
+                      onClick={() => setActiveImageUrl(m.media_url)}
+                      className="block aspect-square w-72 cursor-pointer object-cover transition-opacity hover:opacity-90"
                     />
                   )}
                   {m.kind === "video" && m.media_url && (
@@ -499,6 +501,28 @@ function ChatPage() {
           </div>
         </form>
       </div>
+
+      {activeImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 transition-all animate-in fade-in duration-200"
+          onClick={() => setActiveImageUrl(null)}
+        >
+          <button
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+            onClick={() => setActiveImageUrl(null)}
+          >
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={activeImageUrl}
+            alt="Full Screen Preview"
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

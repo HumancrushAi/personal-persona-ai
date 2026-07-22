@@ -23,6 +23,24 @@ import {
 import { companionImage } from "@/lib/companion-images";
 import { FAQSection } from "@/components/FAQSection";
 
+// Hero reels live in the Supabase Storage public `reels` bucket — a mix of guys
+// and girls. gender = who's in the clip, so the CTA opens a gender-matched model.
+const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
+const reelUrlHelper = (name: string) => `${REEL_BASE}/${name}.mp4`;
+const BANNERS: { reel: string; title: string; sub: string; gender: "m" | "f" }[] = [
+  { reel: reelUrlHelper("r10"), title: "Pool boy", sub: "abs, dripping wet, all yours 🔥", gender: "m" },
+  {
+    reel: reelUrlHelper("r1"),
+    title: "After hours",
+    sub: "still up… thinking about you 😏",
+    gender: "f",
+  },
+  { reel: reelUrlHelper("r11"), title: "Beach hunk", sub: "sunset stroll · shirt optional", gender: "m" },
+  { reel: reelUrlHelper("r2"), title: "Just woke up", sub: "come back to bed 💋", gender: "f" },
+  { reel: reelUrlHelper("r3"), title: "Sunset vibes", sub: "wish you were here 🌅", gender: "f" },
+];
+
+
 export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
@@ -159,6 +177,19 @@ function Landing() {
   const [storyView, setStoryView] = useState<Companion | null>(null);
   const [query, setQuery] = useState("");
 
+  // Match each hero reel to a gender-correct model to chat with.
+  const pickCompanion = (i: number, vid: "m" | "f"): Companion | null => {
+    const list = companions ?? [];
+    const pool = list.filter((c) =>
+      vid === "m"
+        ? c.gender === "male" || c.gender === "trans-male"
+        : c.gender === "female" || c.gender === "trans-female",
+    );
+    const from = pool.length ? pool : list;
+    return from.length ? from[i % from.length] : null;
+  };
+  const bannerSlides = BANNERS.map((b, i) => ({ ...b, companion: pickCompanion(i, b.gender) }));
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (companions ?? []).filter((c) => {
@@ -176,8 +207,9 @@ function Landing() {
 
       {/* BANNER SLIDER */}
       <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
-        <BannerSlider companions={companions ?? []} onPick={(c) => setTease(c)} />
+        <BannerSlider slides={bannerSlides} onPick={(c) => setTease(c)} />
       </section>
+
 
       {/* HERO STRIP */}
       <section className="relative mx-auto max-w-7xl px-4 pt-2 md:px-6">
@@ -763,15 +795,15 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
   );
 }
 
-/* ---------- Banner Slider (real models, animated) ---------- */
+/* ---------- Banner Slider (video reels, gender-matched model) ---------- */
+type BannerSlide = { reel: string; title: string; sub: string; companion: Companion | null };
 function BannerSlider({
-  companions,
+  slides,
   onPick,
 }: {
-  companions: Companion[];
+  slides: BannerSlide[];
   onPick: (c: Companion) => void;
 }) {
-  const slides = companions.slice(0, 6);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const n = slides.length;
@@ -825,18 +857,22 @@ function BannerSlider({
         className="flex h-[260px] transition-transform duration-700 ease-out md:h-[420px]"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
-        {slides.map((c) => (
+        {slides.map((s, i) => (
           <button
-            key={c.id}
+            key={i}
             type="button"
-            onClick={() => onPick(c)}
+            onClick={() => s.companion && onPick(s.companion)}
             className="group relative block h-full w-full shrink-0 overflow-hidden text-left"
-            aria-label={`Chat with ${c.name}`}
+            aria-label={s.companion ? `Chat with ${s.companion.name}` : s.title}
           >
-            <img
-              src={companionImage(c.image_url)}
-              alt={c.name}
-              className="animate-live pointer-events-none absolute inset-0 h-full w-full object-cover object-top"
+            <video
+              src={s.reel}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-black/30" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 md:p-7">
@@ -844,12 +880,16 @@ function BannerSlider({
                 <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live
               </span>
               <h2 className="mt-2 font-display text-2xl font-semibold text-white drop-shadow md:text-4xl">
-                {c.name}, {c.age}
+                {s.companion ? `${s.companion.name}, ${s.companion.age}` : s.title}
               </h2>
-              <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">{c.short_bio}</p>
-              <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
-                Chat with {c.name} →
-              </span>
+              <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">
+                {s.companion?.short_bio ?? s.sub}
+              </p>
+              {s.companion && (
+                <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
+                  Chat with {s.companion.name} →
+                </span>
+              )}
             </div>
           </button>
         ))}

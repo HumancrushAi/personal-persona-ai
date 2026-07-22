@@ -92,6 +92,8 @@ async function tryImageModel(
   throw new Error(`${model}: no image returned`);
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 // Replicate (NSFW-capable). Uses Prefer: wait so the prediction resolves in one
 // request; downloads the result and inlines it as a data URL.
 async function generateImageReplicate(prompt: string): Promise<string> {
@@ -107,7 +109,26 @@ async function generateImageReplicate(prompt: string): Promise<string> {
     body: JSON.stringify({ version, input: { prompt, width: 768, height: 1024 } }),
   });
   if (!res.ok) throw new Error(`Image error: ${res.status} ${(await res.text()).slice(0, 200)}`);
-  const json = await res.json();
+  let json = await res.json();
+  const getUrl = json.urls?.get;
+
+  let attempts = 0;
+  while (json.status !== "succeeded" && getUrl && attempts < 30) {
+    if (json.status === "failed" || json.status === "canceled") {
+      throw new Error(`Image error: ${json.status}${json.error ? ` ${json.error}` : ""}`);
+    }
+    await sleep(3000);
+    attempts++;
+    const pollRes = await fetch(getUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (pollRes.ok) {
+      json = await pollRes.json();
+    }
+  }
+
   if (json.status !== "succeeded") {
     throw new Error(`Image error: ${json.status}${json.error ? ` ${json.error}` : ""}`);
   }

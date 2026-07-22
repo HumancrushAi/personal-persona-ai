@@ -121,17 +121,14 @@ async function tryImageModel(
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Replicate (NSFW-capable). Uses Prefer: wait so the prediction resolves in one
-// request; downloads the result and inlines it as a data URL.
-async function generateImageReplicate(
-  prompt: string,
-  model: { version: string; negativePrompt?: string; steps?: number; guidance?: number },
-): Promise<string> {
+// cdingram/face-swap — swaps a source face onto a target image. Used to lock a
+// companion's face to their canonical profile picture across every selfie.
+const FACE_SWAP_VERSION = "d1d6ea8c8be89d664a07a457526f7128109dee7030fdac424788d762c71ed111";
+
+// Runs one Replicate prediction (Prefer: wait, then poll) and returns the output
+// URL — does not inline it, so the result can be chained into another model.
+async function runReplicate(version: string, input: Record<string, unknown>): Promise<string> {
   const token = process.env.REPLICATE_API_TOKEN!;
-  const input: Record<string, unknown> = { prompt, width: 768, height: 1024 };
-  if (model.negativePrompt) input.negative_prompt = model.negativePrompt;
-  if (model.steps) input.num_inference_steps = model.steps;
-  if (model.guidance) input.guidance_scale = model.guidance;
   const res = await fetch(REPLICATE_URL, {
     method: "POST",
     headers: {
@@ -139,7 +136,7 @@ async function generateImageReplicate(
       "Content-Type": "application/json",
       Prefer: "wait",
     },
-    body: JSON.stringify({ version: model.version, input }),
+    body: JSON.stringify({ version, input }),
   });
   if (!res.ok) throw new Error(`Image error: ${res.status} ${(await res.text()).slice(0, 200)}`);
   let json = await res.json();
@@ -152,14 +149,8 @@ async function generateImageReplicate(
     }
     await sleep(3000);
     attempts++;
-    const pollRes = await fetch(getUrl, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (pollRes.ok) {
-      json = await pollRes.json();
-    }
+    const pollRes = await fetch(getUrl, { headers: { Authorization: `Bearer ${token}` } });
+    if (pollRes.ok) json = await pollRes.json();
   }
 
   if (json.status !== "succeeded") {
@@ -167,7 +158,35 @@ async function generateImageReplicate(
   }
   const out = Array.isArray(json.output) ? json.output[0] : json.output;
   if (!out) throw new Error("No image returned");
-  const img = await fetch(out);
+  return out;
+}
+
+// Replicate (NSFW-capable). Generates the body, optionally swaps the companion's
+// canonical face onto it for identity consistency, then inlines as a data URL.
+async function generateImageReplicate(
+  prompt: string,
+  model: { version: string; negativePrompt?: string; steps?: number; guidance?: number },
+  faceUrl?: string,
+): Promise<string> {
+  const input: Record<string, unknown> = { prompt, width: 768, height: 1024 };
+  if (model.negativePrompt) input.negative_prompt = model.negativePrompt;
+  if (model.steps) input.num_inference_steps = model.steps;
+  if (model.guidance) input.guidance_scale = model.guidance;
+
+  let url = await runReplicate(model.version, input);
+
+  // Lock the face to the companion's profile image so every selfie looks like
+  // the same person. Only http(s)/data sources are fetchable by the swap model;
+  // a failed swap falls back to the generated face rather than erroring the pic.
+  if (faceUrl && /^(https?:|data:)/.test(faceUrl)) {
+    try {
+      url = await runReplicate(FACE_SWAP_VERSION, { swap_image: faceUrl, input_image: url });
+    } catch {
+      /* keep the un-swapped body */
+    }
+  }
+
+  const img = await fetch(url);
   if (!img.ok) throw new Error("Could not fetch generated image");
   const b64 = Buffer.from(await img.arrayBuffer()).toString("base64");
   return `data:image/png;base64,${b64}`;
@@ -177,10 +196,14 @@ async function generateImageReplicate(
 // otherwise OpenAI (SFW only — gpt-image-1 then dall-e-3).
 export async function generateImage(
   prompt: string,
-  opts?: { size?: string; gender?: string | null },
+  opts?: { size?: string; gender?: string | null; faceUrl?: string | null },
 ): Promise<string> {
   if (process.env.REPLICATE_API_TOKEN)
-    return generateImageReplicate(prompt, imageModelForGender(opts?.gender));
+    return generateImageReplicate(
+      prompt,
+      imageModelForGender(opts?.gender),
+      opts?.faceUrl ?? undefined,
+    );
 
   const key = process.env.OPENAI_API_KEY;
   if (!key)

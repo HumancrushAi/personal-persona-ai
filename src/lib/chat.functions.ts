@@ -37,7 +37,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { data: conv, error: convErr } = await supabase
       .from("conversations")
       .select(
-        "id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, tone, boundaries, interests, style_backstory, companions(name, ethnicity, age, gender, base_personality, short_bio))",
+        "id, personality_id, scenario, memory, relationship_level, relationship_xp, user_personalities(nickname, identity, personality_traits, tone, boundaries, interests, style_backstory, companions(name, ethnicity, age, gender, base_personality, short_bio, image_url))",
       )
       .eq("id", data.conversationId)
       .eq("user_id", userId)
@@ -97,7 +97,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             data.content,
             p.style_backstory,
           ),
-          { gender: c.gender },
+          { gender: c.gender, faceUrl: c.image_url },
         );
         const { free: sf, paid: sp } = applyDeduction(
           bal.free_messages_remaining ?? 0,

@@ -68,7 +68,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
     const { data: conv } = await supabase
       .from("conversations")
       .select(
-        "scenario, user_personalities(nickname, identity, style_backstory, companions(name, ethnicity, age, gender, base_personality, short_bio))",
+        "scenario, user_personalities(nickname, identity, style_backstory, companions(name, ethnicity, age, gender, base_personality, short_bio, image_url))",
       )
       .eq("id", data.conversationId)
       .eq("user_id", userId)
@@ -96,7 +96,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
     );
 
     // Generate first; only charge if it actually succeeds.
-    const dataUrl = await generateImage(imagePrompt, { gender: c.gender });
+    const dataUrl = await generateImage(imagePrompt, { gender: c.gender, faceUrl: c.image_url });
     const balance = await deductCredits(supabase, userId, SELFIE_COST, "selfie", free, paid);
 
     const caption = userPrompt ? `*sends a pic* ${userPrompt}` : "*sends you a selfie* 💋";

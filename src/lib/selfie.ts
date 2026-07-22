@@ -16,6 +16,13 @@ export function selfiePrompt(
   const req = (userPrompt ?? "").trim();
   const noun = genderNoun(c.gender);
 
+  const isMan = noun === "man";
+  const isNb = noun === "androgynous person";
+
+  const subject = isMan ? "He" : isNb ? "They" : "She";
+  const possessive = isMan ? "His" : isNb ? "Their" : "Her";
+  const verb = isNb ? "smile" : "smiles";
+
   // Enhancement for explicit anatomical requests
   let explicitEnhancement = "";
   if (noun === "woman") {
@@ -31,10 +38,10 @@ export function selfiePrompt(
   return [
     `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun} who clearly looks exactly ${c.age}.`,
     `Soft warm lighting, intimate bedroom or apartment, shot on an iPhone, natural skin texture, highly detailed, realistic, not illustrated.`,
-    styleBackstory ? `Her look/vibe: ${styleBackstory}.` : "",
+    styleBackstory ? `${possessive} look/vibe: ${styleBackstory}.` : "",
     req
-      ? `She is doing EXACTLY this — this is the MAIN subject of the photo, follow it precisely: ${req}.`
-      : "She smiles seductively at the camera, sexy and inviting.",
+      ? `${subject} is doing EXACTLY this — this is the MAIN subject of the photo, follow it precisely: ${req}.`
+      : `${subject} ${verb} seductively at the camera, sexy and inviting.`,
     explicitEnhancement,
     `Frame and pose to match the request (full body, close-up, or explicit as asked). Sexy and provocative; explicit nudity is allowed when the request calls for it.`,
   ]

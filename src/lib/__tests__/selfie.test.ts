@@ -46,4 +46,23 @@ describe("selfiePrompt", () => {
     expect(p).toMatch(/smiles seductively/i);
     expect(p).toContain("Amara");
   });
+
+  it("uses male pronouns for male companions", () => {
+    const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
+    const p = selfiePrompt(maleC, "flexing his muscles", "casual");
+    expect(p).toContain("His look/vibe");
+    expect(p).toContain("He is doing EXACTLY this");
+    expect(p).toContain("flexing his muscles");
+    expect(p).not.toContain("She");
+    expect(p).not.toContain("Her");
+  });
+
+  it("uses gender-neutral pronouns for non-binary companions", () => {
+    const nbC = { name: "Jordan", age: 22, ethnicity: "mixed", gender: "non-binary" };
+    const p = selfiePrompt(nbC, "", "alternative");
+    expect(p).toContain("Their look/vibe");
+    expect(p).toContain("They smile seductively");
+    expect(p).not.toContain("She");
+    expect(p).not.toContain("He");
+  });
 });

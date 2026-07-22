@@ -33,9 +33,9 @@ export function imageModelForGender(gender?: string | null): {
     return {
       version: process.env.REPLICATE_IMAGE_VERSION_MALE || MALE_IMAGE_VERSION,
       negativePrompt:
-        "female genitalia, vagina, vulva, pussy, clitoris, breasts, cleavage, woman, feminine body, underwear, boxers, briefs, boxer briefs, shorts, waistband, censored crotch, covered groin, cropped above the waist, headshot, waist-up only, (worst quality, low quality, blurry:1.3), deformed, mutated, extra limbs, bad anatomy, censored, watermark, text",
-      steps: 40,
-      guidance: 5.5,
+        "female genitalia, vagina, vulva, pussy, clitoris, breasts, cleavage, woman, feminine body, underwear, boxers, briefs, boxer briefs, shorts, waistband, censored crotch, covered groin, cropped above the waist, headshot, waist-up only, deformed penis, malformed genitals, mutated genitals, ambiguous genitalia, disfigured genitals, extra penis, two penises, melted anatomy, fused legs, ghost limb, double image, (worst quality, low quality, blurry:1.4), deformed, mutated, extra limbs, bad anatomy, censored, watermark, text",
+      steps: 45,
+      guidance: 6,
     };
   }
   return { version: process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION };

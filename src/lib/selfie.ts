@@ -37,7 +37,7 @@ export function selfiePrompt(
   let anatomyAnchor = "";
   if (noun === "man") {
     anatomyAnchor = isNude
-      ? "Male anatomy, masculine physique: flat muscular chest, defined abs, and a realistic adult male penis with a shaft and testicles hanging at the groin. Accurate male genitalia."
+      ? "Male anatomy, masculine physique: flat muscular chest, defined abs, and a realistic, anatomically accurate, correctly-formed adult male penis with a shaft and a scrotum with testicles hanging at the groin. Accurate, detailed, natural male genitalia."
       : "Masculine male physique, flat muscular chest, broad shoulders.";
   } else if (noun === "woman") {
     anatomyAnchor = isNude
@@ -54,7 +54,7 @@ export function selfiePrompt(
   } else if (noun === "man") {
     if (/\b(dick|cock|penis|balls|shaft)\b/i.test(req)) {
       explicitEnhancement =
-        "Explicit full-frontal nude photo: completely naked, no clothing and no underwear, his adult penis and testicles fully exposed and clearly visible at the groin, framed to show the groin and genitals centered, not cropped above the waist.";
+        "Explicit full-frontal nude photo: completely naked, no clothing and no underwear, his anatomically accurate, correctly-formed adult penis and scrotum with testicles fully exposed and clearly visible at the groin, framed to show the groin and genitals centered, not cropped above the waist.";
     }
   }
 

@@ -201,6 +201,17 @@ function Landing() {
     });
   }, [companions, activeCat, query]);
 
+  const searchedCompanions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q) {
+      return (companions ?? []).filter((c) => {
+        const hay = `${c.name} ${c.ethnicity} ${c.short_bio}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    return companions ?? [];
+  }, [companions, query]);
+
   return (
     <div className="min-h-screen overflow-x-hidden pb-24">
       <Nav />
@@ -255,7 +266,7 @@ function Landing() {
       <section className="mx-auto mt-6 max-w-7xl px-4 md:px-6">
         <SectionTitle title="Stories" subtitle="tap to peek" />
         <div className="-mx-2 mt-3 flex gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {companions?.map((c) => (
+          {searchedCompanions.map((c) => (
             <button
               key={c.id}
               onClick={() => setStoryView(c)}
@@ -307,7 +318,7 @@ function Landing() {
           }
         />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {(companions ?? []).slice(0, 14).map((c) => (
+          {searchedCompanions.slice(0, 14).map((c) => (
             <button
               key={c.id}
               type="button"

@@ -15,30 +15,44 @@ const REPLICATE_URL = "https://api.replicate.com/v1/predictions";
 const DEFAULT_IMAGE_VERSION = "fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa";
 
 // Flux renders female anatomy well but was never trained on male genitalia (it
-// draws a vulva on any nude male) and has no negative prompt. Male companions
-// therefore use Juggernaut XL v7 (SDXL), which renders male anatomy and honors a
-// real negative_prompt to suppress female parts. Override with
-// REPLICATE_IMAGE_VERSION_MALE.
-const MALE_IMAGE_VERSION = "6a52feace43ce1f6bbc2cdabfc68423cb2319d7444a1a1dae529c5e88b976382";
+// draws a vulva on any nude male). Juggernaut XL rendered male anatomy but
+// unreliably (some seeds still came out ambiguous). Male companions therefore
+// use Pony Realism (charlesmccarthy/pony-sdxl, ponyRealism21 checkpoint): with
+// booru tags (`1boy` + female negatives) it renders correct male anatomy
+// consistently. Override with REPLICATE_IMAGE_VERSION_MALE.
+const MALE_IMAGE_VERSION = "b070dedae81324788c3c933a5d9e1270093dc74636214b9815dae044b4b3a58a";
 
-// Picks the image model + generation settings for a companion's gender.
+// Picks the image model + Replicate input for a companion's gender. `input`
+// holds the model-specific fields (everything except prompt/negative_prompt),
+// which differ between Flux and Pony.
 export function imageModelForGender(gender?: string | null): {
   version: string;
   negativePrompt?: string;
-  steps?: number;
-  guidance?: number;
+  input: Record<string, unknown>;
 } {
   const g = (gender ?? "").toLowerCase();
   if (g === "male" || g === "trans-male") {
     return {
       version: process.env.REPLICATE_IMAGE_VERSION_MALE || MALE_IMAGE_VERSION,
+      // `1boy` + these negatives lock the gender; anatomy-quality terms keep
+      // the genitals well-formed.
       negativePrompt:
-        "female genitalia, vagina, vulva, pussy, clitoris, breasts, cleavage, woman, feminine body, underwear, boxers, briefs, boxer briefs, shorts, waistband, censored crotch, covered groin, cropped above the waist, headshot, waist-up only, deformed penis, malformed genitals, mutated genitals, ambiguous genitalia, disfigured genitals, extra penis, two penises, melted anatomy, fused legs, ghost limb, double image, (worst quality, low quality, blurry:1.4), deformed, mutated, extra limbs, bad anatomy, censored, watermark, text",
-      steps: 45,
-      guidance: 6,
+        "1girl, female, multiple girls, breasts, nipples, pussy, vagina, vulva, woman, feminine body, anime, cartoon, 2d, 3d, sketch, monochrome, deformed penis, malformed genitals, mutated genitals, ambiguous genitalia, extra penis, bad anatomy, censored, mosaic, watermark, text, worst quality, low quality",
+      input: {
+        model: "ponyRealism21.safetensors",
+        width: 768,
+        height: 1024,
+        steps: 30,
+        cfg_scale: 6,
+        scheduler: "DPM++ 2M SDE Karras",
+        prepend_preprompt: true,
+      },
     };
   }
-  return { version: process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION };
+  return {
+    version: process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION,
+    input: { width: 768, height: 1024 },
+  };
 }
 
 // Uncensored default tuned for intimate girlfriend RP. Override with OPENROUTER_MODEL.
@@ -165,13 +179,11 @@ async function runReplicate(version: string, input: Record<string, unknown>): Pr
 // canonical face onto it for identity consistency, then inlines as a data URL.
 async function generateImageReplicate(
   prompt: string,
-  model: { version: string; negativePrompt?: string; steps?: number; guidance?: number },
+  model: { version: string; negativePrompt?: string; input: Record<string, unknown> },
   faceUrl?: string,
 ): Promise<string> {
-  const input: Record<string, unknown> = { prompt, width: 768, height: 1024 };
+  const input: Record<string, unknown> = { prompt, ...model.input };
   if (model.negativePrompt) input.negative_prompt = model.negativePrompt;
-  if (model.steps) input.num_inference_steps = model.steps;
-  if (model.guidance) input.guidance_scale = model.guidance;
 
   let url = await runReplicate(model.version, input);
 

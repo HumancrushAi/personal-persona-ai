@@ -8,6 +8,41 @@ function genderNoun(gender?: string | null): string {
   return "woman";
 }
 
+// True when the request implies nudity (so we only force genitalia when the
+// groin will actually be bare — a clothed selfie shouldn't be nuded).
+function requestIsNude(req: string): boolean {
+  return (
+    /\b(nude|naked|nudes?|undress|stripped?|strip|no clothes|without clothes|topless|bottomless|pussy|vagina|clit|vulva|dick|cock|penis|balls|shaft|cum|hard|erect)\b/i.test(
+      req,
+    ) || !req // default (no request) selfie in this app trends nude
+  );
+}
+
+// Male companions render on Pony Realism (SDXL), which reliably produces
+// correct male anatomy — but only with booru-style tags. Natural-language
+// prose (what Flux wants for the female path) makes Pony ambiguous, so male
+// prompts are built as comma-separated tags instead. The `1boy` tag plus the
+// `1girl/female/breasts/pussy` negatives (in ai.ts) lock the gender.
+function malePonyPrompt(
+  c: { age: number; ethnicity: string },
+  req: string,
+  styleBackstory?: string | null,
+): string {
+  const isNude = requestIsNude(req);
+  const tags = [
+    "source_photo, realistic, photorealistic, raw photo",
+    "1boy, solo, male focus",
+    `mature adult ${c.ethnicity} man, ${c.age} years old`,
+    "muscular, abs, full body, mirror selfie, holding phone, indoor, detailed skin",
+    isNude
+      ? "nude, completely naked, no clothing, standing, penis, testicles, pubic hair, groin visible"
+      : "clothed",
+    req || "looking at viewer, confident",
+    styleBackstory || "",
+  ];
+  return tags.filter(Boolean).join(", ");
+}
+
 export function selfiePrompt(
   c: { name: string; age: number; ethnicity: string; gender?: string | null; short_bio?: string | null },
   userPrompt?: string | null,
@@ -19,27 +54,21 @@ export function selfiePrompt(
   const isMan = noun === "man";
   const isNb = noun === "androgynous person";
 
-  const subject = isMan ? "He" : isNb ? "They" : "She";
-  const possessive = isMan ? "His" : isNb ? "Their" : "Her";
+  // Male path uses a separate booru-tag prompt for the Pony model.
+  if (isMan) return malePonyPrompt(c, req, styleBackstory);
+
+  const subject = isNb ? "They" : "She";
+  const possessive = isNb ? "Their" : "Her";
   const verb = isNb ? "smile" : "smiles";
 
-  // Whether the shot involves any nudity (so we force explicit genitalia only
-  // when the groin will actually be bare — a clothed selfie shouldn't be nuded).
-  const isNude =
-    /\b(nude|naked|nudes?|undress|stripped?|strip|no clothes|without clothes|topless|bottomless|pussy|vagina|clit|vulva|dick|cock|penis|balls|shaft|cum|hard|erect)\b/i.test(
-      req,
-    ) || !req; // default (no request) selfie in this app trends nude
+  const isNude = requestIsNude(req);
 
   // Anatomy anchor — the image backend is Flux (nsfw-flux-dev): no negative
   // prompt, and it DRAWS any body part it sees named — even a negated one
   // ("no vagina" still produces a vagina). So: positive-only, front-loaded
   // strong tokens, and never name the wrong gender's anatomy.
   let anatomyAnchor = "";
-  if (noun === "man") {
-    anatomyAnchor = isNude
-      ? "Male anatomy, masculine physique: flat muscular chest, defined abs, and a realistic, anatomically accurate, correctly-formed adult male penis with a shaft and a scrotum with testicles hanging at the groin. Accurate, detailed, natural male genitalia."
-      : "Masculine male physique, flat muscular chest, broad shoulders.";
-  } else if (noun === "woman") {
+  if (noun === "woman") {
     anatomyAnchor = isNude
       ? "Female anatomy: natural breasts and a realistic vulva at the groin. Accurate female genitalia."
       : "Feminine female physique, natural breasts.";
@@ -51,22 +80,15 @@ export function selfiePrompt(
     if (/\b(pussy|vagina|clit|vulva|naked bottom|spread|panties off|naked down)\b/i.test(req)) {
       explicitEnhancement = "Explicit close-up photo of her naked, uncovered vagina and pussy, spread legs, fully visible exposed genitalia, completely nude, no underwear.";
     }
-  } else if (noun === "man") {
-    if (/\b(dick|cock|penis|balls|shaft)\b/i.test(req)) {
-      explicitEnhancement =
-        "Explicit full-frontal nude photo: completely naked, no clothing and no underwear, his anatomically accurate, correctly-formed adult penis and scrotum with testicles fully exposed and clearly visible at the groin, framed to show the groin and genitals centered, not cropped above the waist.";
-    }
   }
-
-  const maleTag = isMan ? " (biologically male, masculine body)" : "";
 
   return [
     // Nude shots lead with full-body framing so the model doesn't crop to a
     // face/waist-up portrait and hide the genitals; clothed shots keep the
     // normal selfie framing.
     isNude
-      ? `Full-body nude mirror selfie photo, photorealistic, of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun}${maleTag} who clearly looks exactly ${c.age}. ${subject} stands back from the mirror so the ENTIRE body from head to at least mid-thigh is visible, groin centered in frame, completely naked with no clothing and no underwear.`
-      : `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun}${maleTag} who clearly looks exactly ${c.age}.`,
+      ? `Full-body nude mirror selfie photo, photorealistic, of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun} who clearly looks exactly ${c.age}. ${subject} stands back from the mirror so the ENTIRE body from head to at least mid-thigh is visible, groin centered in frame, completely naked with no clothing and no underwear.`
+      : `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} ${noun} who clearly looks exactly ${c.age}.`,
     anatomyAnchor,
     `Soft warm lighting, intimate bedroom or apartment, shot on an iPhone, natural skin texture, highly detailed, realistic, not illustrated.`,
     styleBackstory ? `${possessive} look/vibe: ${styleBackstory}.` : "",

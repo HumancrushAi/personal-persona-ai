@@ -47,22 +47,22 @@ describe("selfiePrompt", () => {
     expect(p).toContain("Amara");
   });
 
-  it("uses male pronouns for male companions", () => {
+  it("builds a male booru prompt that includes the user's request and backstory", () => {
     const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
-    const p = selfiePrompt(maleC, "flexing his muscles", "casual");
-    expect(p).toContain("His look/vibe");
-    expect(p).toContain("He is doing EXACTLY this");
+    const p = selfiePrompt(maleC, "flexing his muscles", "gym rat");
+    expect(p).toMatch(/1boy/);
     expect(p).toContain("flexing his muscles");
-    expect(p).not.toContain("She");
-    expect(p).not.toContain("Her");
+    expect(p).toContain("gym rat");
+    expect(p).toContain("Japanese");
   });
 
-  it("anchors male genitalia for nude male companions", () => {
+  it("builds a booru 1boy prompt with genitalia for nude male companions", () => {
     const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
     const p = selfiePrompt(maleC, "send me a nude", "casual");
+    expect(p).toMatch(/1boy/);
     expect(p).toMatch(/penis/i);
     expect(p).toMatch(/testicles/i);
-    // Flux draws any anatomy word it sees — the male prompt must never name female parts.
+    // Pony draws any anatomy tag it sees — the male prompt must never name female parts.
     expect(p).not.toMatch(/vagina|vulva/i);
   });
 
@@ -77,7 +77,7 @@ describe("selfiePrompt", () => {
     const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
     const p = selfiePrompt(maleC, "wearing a suit at dinner", "casual");
     expect(p).not.toMatch(/penis|testicles/i);
-    expect(p).toMatch(/masculine/i);
+    expect(p).toMatch(/1boy/);
   });
 
   it("uses gender-neutral pronouns for non-binary companions", () => {

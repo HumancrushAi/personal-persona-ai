@@ -42,7 +42,7 @@ export function imageModelForGender(gender?: string | null): {
         model: "ponyRealism21.safetensors",
         width: 768,
         height: 1024,
-        steps: 30,
+        steps: 24,
         cfg_scale: 6,
         scheduler: "DPM++ 2M SDE Karras",
         prepend_preprompt: true,
@@ -156,8 +156,10 @@ async function runReplicate(version: string, input: Record<string, unknown>): Pr
   let json = await res.json();
   const getUrl = json.urls?.get;
 
+  // Up to ~4 min of polling — SDXL (Pony) male generations plus a cold model
+  // boot can run well past a minute; the serverless maxDuration is the real cap.
   let attempts = 0;
-  while (json.status !== "succeeded" && getUrl && attempts < 30) {
+  while (json.status !== "succeeded" && getUrl && attempts < 80) {
     if (json.status === "failed" || json.status === "canceled") {
       throw new Error(`Image error: ${json.status}${json.error ? ` ${json.error}` : ""}`);
     }

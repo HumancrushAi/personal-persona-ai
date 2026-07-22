@@ -32,7 +32,10 @@ export default defineConfig({
       // Redirect the bundled server entry to src/server.ts (SSR error wrapper).
       server: { entry: "server" },
     }),
-    nitro({ preset: "vercel" }),
+    // maxDuration: image selfies chain slow Replicate models (SDXL + face-swap)
+    // in one request; the default serverless timeout kills them. 300s is the
+    // Vercel Pro/Fluid max (capped down automatically on smaller plans).
+    nitro({ preset: "vercel", vercel: { functions: { maxDuration: 300 } } }),
     viteReact(),
   ],
 });

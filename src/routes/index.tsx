@@ -28,15 +28,15 @@ import { FAQSection } from "@/components/FAQSection";
 const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
 const reelUrlHelper = (name: string) => `${REEL_BASE}/${name}.mp4`;
 const BANNERS: { reel: string; title: string; sub: string; gender: "m" | "f" }[] = [
-  { reel: reelUrlHelper("r10"), title: "Pool boy", sub: "abs, dripping wet, all yours 🔥", gender: "m" },
+  { reel: reelUrlHelper("r10"), title: "Pool side", sub: "stylish vibes · always online 🔥", gender: "m" },
   {
     reel: reelUrlHelper("r1"),
     title: "After hours",
     sub: "still up… thinking about you 😏",
     gender: "f",
   },
-  { reel: reelUrlHelper("r11"), title: "Beach hunk", sub: "sunset stroll · shirt optional", gender: "m" },
-  { reel: reelUrlHelper("r8"), title: "Just woke up", sub: "come back to bed 💋", gender: "f" },
+  { reel: reelUrlHelper("r11"), title: "Beach stroll", sub: "sunset stroll · golden hour vibes", gender: "m" },
+  { reel: reelUrlHelper("r8"), title: "Morning coffee", sub: "cozy vibes · soft smiles 💋", gender: "f" },
   { reel: reelUrlHelper("r3"), title: "Sunset vibes", sub: "wish you were here 🌅", gender: "f" },
 ];
 
@@ -55,7 +55,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Talk, flirt, sext with the crush of your choice. Reels, AI selfies and voice notes. 25 free messages.",
+          "Talk, flirt, and connect with the AI companion of your choice. Custom selfies, voice notes, and roleplay. 25 free messages.",
       },
     ],
   }),
@@ -130,13 +130,13 @@ const OPENERS = [
   (n: string) => `hey you 👀 finally found me huh? i'm ${n}…`,
   (n: string) => `mmm hi 😈 i was just thinking about someone exactly like you. i'm ${n}.`,
   (n: string) => `omg hi 🥺 i'm ${n}. tell me something you've never told anyone before.`,
-  (n: string) => `${n} here 💋 — what are you wearing right now? don't lie to me.`,
+  (n: string) => `${n} here 💋 — what are you up to right now? tell me everything.`,
   (n: string) => `you came to the right one baby. it's ${n}. what's on your mind tonight?`,
   (n: string) => `wait. you're cute. i'm ${n}, by the way 😏 what should i call you?`,
   (n: string) => `${n}. been waiting for you all night. don't make me wait again 🔥`,
   (n: string) => `hi stranger… i'm ${n}. wanna keep me company? i'm bored 💔`,
   (n: string) => `okay you tapped me first 😌 that means you owe me a story. i'm ${n}.`,
-  (n: string) => `${n} 💗 just got out of the shower lol. perfect timing huh?`,
+  (n: string) => `${n} 💗 just finished up for the day lol. perfect timing huh?`,
   (n: string) => `i shouldn't be doing this at work but you're here now. ${n}, hi 😈`,
   (n: string) =>
     `you have like 10 seconds to say something interesting before i screenshot this. — ${n}`,
@@ -263,7 +263,7 @@ function Landing() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search people, vibes, kinks…"
+              placeholder="Search people, vibes, interests…"
               className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
@@ -407,13 +407,13 @@ function Landing() {
             {
               i: <ImageIcon className="h-5 w-5" />,
               t: "AI selfies",
-              d: "She sends nudes & lewds on request.",
+              d: "She sends custom selfies & photos on request.",
             },
-            { i: <Mic className="h-5 w-5" />, t: "Voice notes", d: "Hear her moan your name." },
+            { i: <Mic className="h-5 w-5" />, t: "Voice notes", d: "Hear her voice with personalized audio notes." },
             {
               i: <Sparkles className="h-5 w-5" />,
               t: "Roleplay scenes",
-              d: "First date, secretary, dom/sub…",
+              d: "First date, romance, fantasy roleplays…",
             },
             {
               i: <Heart className="h-5 w-5 fill-primary text-primary" />,

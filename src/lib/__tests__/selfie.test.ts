@@ -44,6 +44,20 @@ describe("selfiePrompt", () => {
     expect(p).not.toMatch(/1boy|\bpenis\b/i);
   });
 
+  it("renders described sexual acts (toy, anal, masturbation) as pose tags + nudity", () => {
+    const dildo = selfiePrompt(c, "show me a picture of you sticking a dildo in your ass", "");
+    expect(dildo).toMatch(/naked|nude/i);
+    expect(dildo).toMatch(/dildo/i);
+    expect(dildo).toMatch(/anal/i);
+
+    const play = selfiePrompt(c, "a pic of you playing with yourself", "");
+    expect(play).toMatch(/naked|nude/i); // must not stay clothed
+    expect(play).toMatch(/masturbation|fingering|pleasuring/i);
+
+    const touch = selfiePrompt(c, "touch yourself for me", "");
+    expect(touch).toMatch(/masturbation|fingering|pleasuring/i);
+  });
+
   it("has a sensible default when no request is given", () => {
     const p = selfiePrompt(c, "", null);
     expect(p).toMatch(/1girl/);

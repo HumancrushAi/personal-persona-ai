@@ -8,14 +8,52 @@ function genderNoun(gender?: string | null): string {
   return "woman";
 }
 
+// Explicit sexual acts/toys a request might describe. Kept separate so both the
+// nudity check and the pose-tag builder can use it — asking her to use a toy or
+// touch herself must both trigger nudity AND render the actual act.
+const ACT_RE =
+  /\b(masturbat\w*|finger\w*|rub\w*|touch\w*\s+(?:her|him|your|my)self|play\w*\s+with\s+(?:her|him|your|my)self|pleasur\w*|dildo|vibrator|sex\s*toy|butt\s*plug|anal|blow\s*job|blowjob|suck\w*|oral|deepthroat|cum|squirt\w*|spread\w*|bent?\s*over|from\s+behind|doggy|twerk\w*|riding|cowgirl)\b/i;
+
 // True when the request implies nudity (so we only force genitalia when the
 // groin will actually be bare — a clothed selfie shouldn't be nuded).
 function requestIsNude(req: string): boolean {
   return (
-    /\b(nude|naked|nudes?|undress|stripped?|strip|no clothes|without clothes|topless|bottomless|pussy|vagina|clit|vulva|dick|cock|penis|balls|shaft|cum|hard|erect)\b/i.test(
+    /\b(nude|naked|nudes?|undress|stripped?|strip|no clothes|without clothes|topless|bottomless|pussy|vagina|clit|vulva|dick|cock|penis|balls|shaft|hard|erect|tits|boobs|breasts|ass|butt)\b/i.test(
       req,
-    ) || !req // default (no request) selfie in this app trends nude
+    ) ||
+    ACT_RE.test(req) ||
+    !req // default (no request) selfie in this app trends nude
   );
+}
+
+// Maps request keywords to explicit booru pose/act tags so the picture actually
+// shows what was asked (a plain selfie otherwise ignores the described act).
+function actionTags(req: string, isMale: boolean): string {
+  const r = req.toLowerCase();
+  const ex: string[] = [];
+  const has = (re: RegExp) => re.test(r);
+
+  if (isMale && has(/\b(dick|cock|penis|balls|shaft|hard|erect)\b/))
+    ex.push("penis, testicles, full frontal nudity, groin visible");
+  if (!isMale && has(/\b(pussy|vagina|clit|vulva|labia)\b/))
+    ex.push("pussy, spread pussy, spread legs, presenting");
+
+  if (has(/\b(bent?\s*over|from\s+behind|doggy|twerk\w*|ass|butt|behind)\b/))
+    ex.push("bent over, presenting, ass, rear view");
+  if (has(/\bspread\w*\b/)) ex.push("spread legs");
+  if (has(/\b(masturbat\w*|finger\w*|rub\w*|touch\w*\s+(?:her|him|your|my)self|play\w*\s+with\s+(?:her|him|your|my)self|pleasur\w*)\b/))
+    ex.push(
+      isMale
+        ? "male masturbation, hand on penis, stroking"
+        : "female masturbation, fingering, hand between legs, spread legs, pleasuring herself",
+    );
+  if (has(/\b(dildo|vibrator|sex\s*toy)\b/)) ex.push("sex toy, dildo, holding a dildo, using sex toy");
+  if (has(/\b(anal|butt\s*plug|up\s+(?:her|your|my)\s+ass|in\s+(?:her|your|my)\s+ass)\b/))
+    ex.push("anal, dildo in ass, insertion, bent over, ass");
+  if (has(/\b(blow\s*job|blowjob|suck\w*|oral|deepthroat)\b/)) ex.push("oral, fellatio, open mouth, tongue out");
+  if (has(/\b(riding|cowgirl)\b/)) ex.push("straddling, riding pose");
+
+  return ex.join(", ");
 }
 
 // Both male and female companions render on Pony Realism (SDXL), which reliably
@@ -42,13 +80,7 @@ function booruPonyPrompt(
       : "nude, completely naked, bare breasts, nipples";
   }
 
-  // Map request keywords to explicit pose/anatomy tags so the shot follows it.
-  let explicit = "";
-  if (isMale && /\b(dick|cock|penis|balls|shaft|hard|erect)\b/i.test(req)) {
-    explicit = "penis, testicles, full frontal nudity, groin visible";
-  } else if (!isMale && /\b(pussy|vagina|clit|vulva|spread|bend|bent over|from behind|doggy|ass|butt|behind|twerk)\b/i.test(req)) {
-    explicit = "pussy, spread pussy, spread legs, presenting, ass, rear view";
-  }
+  const explicit = actionTags(req, isMale);
 
   const tags = [
     "source_photo, realistic, photorealistic, raw photo",

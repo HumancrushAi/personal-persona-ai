@@ -390,7 +390,7 @@ function ChatPage() {
                     <img
                       src={m.media_url}
                       alt=""
-                      onClick={() => setActiveImageUrl(m.media_url)}
+                      onClick={() => setActiveImageUrl(m.media_url ?? null)}
                       className="block aspect-square w-72 cursor-pointer object-cover transition-opacity hover:opacity-90"
                     />
                   )}

@@ -93,6 +93,30 @@ describe("selfiePrompt", () => {
     }
   });
 
+  it("covers a broad range of explicit vocabulary", () => {
+    const cases: [string, RegExp][] = [
+      ["send a pic sucking a cock", /oral|fellatio/i],
+      ["photo of you with a vibrator", /sex toy|dildo/i],
+      ["pic of you bent over", /bent over|rear view/i],
+      ["image of you squirting", /orgasm|fluids|ahegao/i],
+      ["a pic of your wet cunt", /pussy|spread pussy/i],
+      ["show me you riding on top", /straddling|riding/i],
+      ["send a pic of your tits out", /breasts|nipples/i],
+      ["pic of you fingering your clit", /masturbation|fingering|pleasuring/i],
+    ];
+    for (const [req, expected] of cases) {
+      const p = selfiePrompt(c, req, "");
+      expect(p, req).toMatch(expected);
+      expect(p, req).toMatch(/naked|nude/i);
+    }
+  });
+
+  it("keeps lingerie clothed (sexy, not forced nude)", () => {
+    const p = selfiePrompt(c, "pic of you in sexy lingerie", "");
+    expect(p).toMatch(/lingerie/i);
+    expect(p).toContain("clothed");
+  });
+
   it("has a sensible default when no request is given", () => {
     const p = selfiePrompt(c, "", null);
     expect(p).toMatch(/1girl/);

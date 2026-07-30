@@ -8,54 +8,87 @@ function genderNoun(gender?: string | null): string {
   return "woman";
 }
 
-// Explicit sexual acts/toys a request might describe. Kept separate so both the
-// nudity check and the pose-tag builder can use it — asking her to use a toy or
-// touch herself must both trigger nudity AND render the actual act.
-const ACT_RE =
-  /\b(masturbat\w*|finger\w*|rub\w*|touch\w*\s+(?:her|him|your|my)self|play\w*\s+with\s+(?:her|him|your|my)self|pleasur\w*|hand\s+(?:in|on|down|inside|between|up)|between\s+(?:her|his|your|my)\s+legs|down\s+there|fingers?\s+(?:in|inside|deep)|genital\w*|crotch|dildo|vibrator|sex\s*toy|butt\s*plug|anal|blow\s*job|blowjob|suck\w*|oral|deepthroat|cum|squirt\w*|spread\w*|bent?\s*over|from\s+behind|doggy|twerk\w*|riding|cowgirl)\b/i;
+// Explicit request vocabulary, grouped by category so the nudity gate and the
+// pose-tag builder share one source of truth. Add synonyms here and both the
+// "is this nude" check and the rendered booru tags pick them up. Adult fictional
+// characters only — screenUserMessage still hard-blocks minors, non-consent,
+// bestiality, and incest before any of this runs. Each entry is a regex source
+// string (no anchors — `kw()` adds word boundaries).
+const KW = {
+  undress:
+    "nude|nudes|naked|nakie|nekkid|unclothed|undress\\w*|strip\\w*|no clothes|without clothes|clothes off|take .{0,10}off|topless|bottomless|bare|exposed|full frontal|birthday suit|in the buff|show everything|show it all|show me all",
+  breasts:
+    "tits|titties|boobs|boobies|breasts?|nipples?|areolas?|cleavage|rack|knockers|melons|jugs",
+  pussy:
+    "pussy|pussies|vagina|vulvas?|clit\\w*|labia|cunt|snatch|coochie|cooch|slit|camel\\s*toe|genital\\w*|crotch|down there|between (?:her|your|my) legs|nether\\w*|privates|wet pussy|creamy",
+  penis:
+    "dick|cock|penis|balls|testicles?|nuts|shaft|hard[- ]?on|erect\\w*|erection|boner|member|bulge|manhood|package",
+  ass: "ass|asshole|butthole|butt|buttocks|booty|bum|cheeks|anus|rear end",
+  masturbation:
+    "masturbat\\w*|finger\\w*|rub\\w*|touch\\w*\\s+(?:her|him|your|my)self|touch\\w*\\s+(?:her|him|your|my)?\\s*(?:pussy|dick|cock|clit|genital\\w*|crotch|nipples?)|play\\w*\\s+with\\s+(?:her|him|your|my)self|play\\w*\\s+with\\s+(?:her|him|your|my)?\\s*(?:pussy|dick|clit|genital\\w*|nipples?)|pleasur\\w*|hand\\s+(?:in|on|down|inside|between|up)|fingers?\\s+(?:in|inside|deep)|jerk\\w*|jack\\w*\\s*off|strok\\w*|edg\\w*|grind\\w*",
+  toys: "dildo|vibrator|sex\\s*toy|butt\\s*plug|plug|magic wand|strap[- ]?on|anal beads|fleshlight",
+  oral:
+    "blow\\s*job|blowjob|bj|suck\\w*|oral|deep\\s*throat|fellati\\w*|lick\\w*|cunnilingus|rim\\w*|tongue|69",
+  anal: "anal|butt\\s*plug|up (?:her|your|my) ass|in (?:her|your|my) ass|ass\\s*fuck\\w*|sodom\\w*|butt stuff",
+  sex: "fuck\\w*|sex|penetrat\\w*|insert\\w*|creampie|gape|missionary|reverse cowgirl|gangbang|threesome|orgy",
+  cum: "cum\\w*|cream\\s*pie|squirt\\w*|orgasm\\w*|climax\\w*|ahegao|facial|jizz|dripping wet|precum|load",
+  fetish:
+    "bdsm|bondage|tied up|handcuff\\w*|collar|leash|spank\\w*|chok\\w*|dominat\\w*|submissive|latex|leather|fishnet|garter|corset|maid outfit|schoolgirl outfit|nurse outfit",
+  lingerie:
+    "lingerie|underwear|panties|thong|bra|bikini|see[- ]?through|sheer|negligee|teddy|babydoll|g[- ]?string|crotchless|stockings|nightie",
+};
+
+// Explicit presentation poses that imply the groin/chest will be bare.
+const POSES_NUDE =
+  "spread\\w*|legs (?:open|spread|apart|up)|on all fours|bent?\\s*over|from\\s+behind|doggy|riding|cowgirl|straddl\\w*|present\\w*|arch\\w*\\s+(?:her|your|my)?\\s*back";
+
+// Wrap a group's source string in word boundaries, case-insensitive.
+const kw = (src: string) => new RegExp(`\\b(?:${src})\\b`, "i");
+
+// Acts/anatomy that mean the picture should be explicit (force nudity).
+const ACT_RE = kw(
+  [KW.masturbation, KW.toys, KW.oral, KW.anal, KW.sex, KW.cum, POSES_NUDE].join("|"),
+);
 
 // True when the request implies nudity (so we only force genitalia when the
-// groin will actually be bare — a clothed selfie shouldn't be nuded).
+// groin will actually be bare — a clothed selfie shouldn't be nuded). Lingerie is
+// deliberately NOT here: it's clothed-sexy, handled as its own tag.
 function requestIsNude(req: string): boolean {
-  return (
-    /\b(nude|naked|nudes?|undress|stripped?|strip|no clothes|without clothes|topless|bottomless|pussy|vagina|clit|vulva|dick|cock|penis|balls|shaft|hard|erect|tits|boobs|breasts|ass|butt)\b/i.test(
-      req,
-    ) ||
-    ACT_RE.test(req) ||
-    !req // default (no request) selfie in this app trends nude
-  );
+  if (!req.trim()) return true; // default (no request) selfie in this app trends nude
+  return kw([KW.undress, KW.breasts, KW.pussy, KW.penis, KW.ass].join("|")).test(req) || ACT_RE.test(req);
 }
 
 // Maps request keywords to explicit booru pose/act tags so the picture actually
 // shows what was asked (a plain selfie otherwise ignores the described act).
 function actionTags(req: string, isMale: boolean): string {
-  const r = req.toLowerCase();
   const ex: string[] = [];
-  const has = (re: RegExp) => re.test(r);
+  const has = (src: string) => kw(src).test(req);
 
-  if (isMale && has(/\b(dick|cock|penis|balls|shaft|hard|erect|genital\w*|crotch)\b/))
-    ex.push("penis, testicles, full frontal nudity, groin visible");
-  if (!isMale && has(/\b(pussy|vagina|clit|vulva|labia|genital\w*|crotch)\b/))
-    ex.push("pussy, spread pussy, spread legs, presenting");
+  // Anatomy on display (gender-gated; cross-gender parts are blocked upstream).
+  if (isMale && has(KW.penis)) ex.push("penis, testicles, full frontal nudity, groin visible");
+  if (!isMale && has(KW.pussy)) ex.push("pussy, spread pussy, spread legs, presenting");
+  if (!isMale && has(KW.breasts)) ex.push("bare breasts, nipples");
 
-  if (has(/\b(bent?\s*over|from\s+behind|doggy|twerk\w*|ass|butt|behind)\b/))
+  // Poses.
+  if (has(KW.ass) || has("bent?\\s*over|from\\s+behind|doggy|twerk\\w*"))
     ex.push("bent over, presenting, ass, rear view");
-  if (has(/\bspread\w*\b/)) ex.push("spread legs");
-  if (
-    has(
-      /\b(masturbat\w*|finger\w*|rub\w*|touch\w*\s+(?:her|him|your|my)self|play\w*\s+with\s+(?:her|him|your|my)self|pleasur\w*|hand\s+(?:in|on|down|inside|between|up)|between\s+(?:her|his|your|my)\s+legs|down\s+there|fingers?\s+(?:in|inside|deep)|genital\w*|crotch)\b/,
-    )
-  )
+  if (has(POSES_NUDE)) ex.push("spread legs, presenting");
+  if (has("riding|cowgirl|straddl\\w*")) ex.push("straddling, riding pose");
+
+  // Acts.
+  if (has(KW.masturbation))
     ex.push(
       isMale
         ? "male masturbation, hand on penis, stroking, groin visible"
         : "female masturbation, fingering, hand between legs, spread legs, pleasuring herself, touching her pussy",
     );
-  if (has(/\b(dildo|vibrator|sex\s*toy)\b/)) ex.push("sex toy, dildo, holding a dildo, using sex toy");
-  if (has(/\b(anal|butt\s*plug|up\s+(?:her|your|my)\s+ass|in\s+(?:her|your|my)\s+ass)\b/))
-    ex.push("anal, dildo in ass, insertion, bent over, ass");
-  if (has(/\b(blow\s*job|blowjob|suck\w*|oral|deepthroat)\b/)) ex.push("oral, fellatio, open mouth, tongue out");
-  if (has(/\b(riding|cowgirl)\b/)) ex.push("straddling, riding pose");
+  if (has(KW.toys)) ex.push("sex toy, dildo, holding a dildo, using sex toy");
+  if (has(KW.anal)) ex.push("anal, insertion, bent over, ass, presenting");
+  if (has(KW.oral)) ex.push("oral, fellatio, open mouth, tongue out");
+  if (has(KW.sex)) ex.push("explicit, spread legs, presenting, penetration");
+  if (has(KW.cum)) ex.push("orgasm face, ahegao, fluids, wet");
+  if (has(KW.fetish)) ex.push("bondage, restraints, submissive pose, kinky");
+  if (has(KW.lingerie)) ex.push("wearing revealing lingerie, sexy lingerie");
 
   return ex.join(", ");
 }

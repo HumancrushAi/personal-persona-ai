@@ -98,12 +98,21 @@ describe("selfiePrompt", () => {
     expect(p).toMatch(/1boy/);
   });
 
-  it("uses gender-neutral pronouns for non-binary companions", () => {
+  it("renders non-binary companions on the androgynous Pony prompt (not gender-locked)", () => {
     const nbC = { name: "Jordan", age: 22, ethnicity: "mixed", gender: "non-binary" };
     const p = selfiePrompt(nbC, "", "alternative");
-    expect(p).toContain("Their look/vibe");
-    expect(p).toContain("They smile seductively");
-    expect(p).not.toContain("She");
-    expect(p).not.toContain("He");
+    // Now uses the booru Pony pipeline so explicit requests are followed,
+    // with an androgynous tag instead of the 1boy/1girl gender lock.
+    expect(p).toMatch(/androgynous/i);
+    expect(p).toMatch(/seductive/i);
+    expect(p).toContain("alternative");
+    expect(p).not.toMatch(/1girl|1boy/);
+  });
+
+  it("follows an explicit request for a non-binary companion", () => {
+    const nbC = { name: "Jordan", age: 22, ethnicity: "mixed", gender: "non-binary" };
+    const p = selfiePrompt(nbC, "touch yourself for me", "");
+    expect(p).toMatch(/naked|nude/i);
+    expect(p).toMatch(/masturbation|fingering|pleasuring/i);
   });
 });

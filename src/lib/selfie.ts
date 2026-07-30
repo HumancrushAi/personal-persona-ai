@@ -66,20 +66,26 @@ function booruPonyPrompt(
   c: { age: number; ethnicity: string },
   req: string,
   styleBackstory: string | null | undefined,
-  isMale: boolean,
+  kind: "male" | "female" | "nb",
 ): string {
+  const isMale = kind === "male";
   const isNude = requestIsNude(req);
-  const noun = isMale ? "man" : "woman";
-  const who = isMale ? "1boy, solo, male focus" : "1girl, solo";
-  const body = isMale ? "muscular, abs" : "curvy, feminine, attractive";
+  const noun = kind === "male" ? "man" : kind === "nb" ? "androgynous person" : "woman";
+  const who =
+    kind === "male" ? "1boy, solo, male focus" : kind === "nb" ? "androgynous, solo" : "1girl, solo";
+  const body =
+    kind === "male" ? "muscular, abs" : kind === "nb" ? "androgynous, lean" : "curvy, feminine, attractive";
 
   let nudeTags = "clothed";
   if (isNude) {
-    nudeTags = isMale
-      ? "nude, completely naked, no clothing, standing, penis, testicles, pubic hair, groin visible"
-      : "nude, completely naked, bare breasts, nipples";
+    nudeTags =
+      kind === "male"
+        ? "nude, completely naked, no clothing, standing, penis, testicles, pubic hair, groin visible"
+        : "nude, completely naked, bare chest, nipples";
   }
 
+  // Pose/act tags follow the request regardless of gender; anatomy in actionTags
+  // is keyed off the requested body parts, not the companion's kind.
   const explicit = actionTags(req, isMale);
 
   const tags = [
@@ -104,36 +110,35 @@ export function selfiePrompt(
   const req = (userPrompt ?? "").trim();
   const noun = genderNoun(c.gender);
 
-  const isMan = noun === "man";
-  const isNb = noun === "androgynous person";
-
-  // Male and female both use the booru-tag Pony prompt (reliable anatomy +
-  // follows explicit requests). Only non-binary falls back to Flux prose.
-  if (!isNb) return booruPonyPrompt(c, req, styleBackstory, isMan);
-
-  const isNude = requestIsNude(req);
-  return [
-    isNude
-      ? `Full-body nude mirror selfie photo, photorealistic, of ${c.name}, a ${c.age}-year-old ${c.ethnicity} androgynous person who clearly looks exactly ${c.age}. They stand back from the mirror so the ENTIRE body from head to at least mid-thigh is visible.`
-      : `Photorealistic amateur selfie photo of ${c.name}, a ${c.age}-year-old ${c.ethnicity} androgynous person who clearly looks exactly ${c.age}.`,
-    `Soft warm lighting, intimate bedroom or apartment, shot on an iPhone, natural skin texture, highly detailed, realistic, not illustrated.`,
-    styleBackstory ? `Their look/vibe: ${styleBackstory}.` : "",
-    req
-      ? `They are doing EXACTLY this — this is the MAIN subject of the photo, follow it precisely: ${req}.`
-      : `They smile seductively at the camera, sexy and inviting.`,
-    `Frame and pose to match the request (full body, close-up, or explicit as asked). Sexy and provocative; explicit nudity is allowed when the request calls for it.`,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  // Every gender now renders on the booru-tag Pony prompt so explicit pose
+  // requests are followed reliably (non-binary previously used Flux prose,
+  // which ignored the request).
+  const kind = noun === "man" ? "male" : noun === "androgynous person" ? "nb" : "female";
+  return booruPonyPrompt(c, req, styleBackstory, kind);
 }
 
 // True when the user's message is asking her to send a picture/selfie/nude.
+// Precision matters: a false positive redirects a normal text message into a
+// paid (8-credit) image generation, so the object must be an actual
+// picture/body noun — bare "you" is deliberately NOT a trigger ("see you
+// tomorrow", "show you how I feel" must stay text).
+const SELFIE_OBJECT =
+  "pic|pics|picture|pictures|photo|photos|image|images|selfie|selfies|nude|nudes|naked|topless|body|tits|boobs|breasts|cleavage|pussy|vagina|ass|butt|booty|dick|cock|penis|lingerie|underwear|bra|panties|thong|bikini";
+
 export function wantsSelfie(t: string): boolean {
   const s = t.toLowerCase();
-  if (/\b(selfie|nudes?|send me a pic|send a pic|send pic|show me your|show mw your|show m3 your|show ne your|show md your)\b/.test(s)) return true;
-  return /(send|show|snap|take|lemme see|let me see|can i see|wanna see|i wanna see|i want to see|i want a|give me|give)\b[^.]{0,30}\b(pic|picture|photo|image|body|tits|boobs|breasts|pussy|vagina|ass|butt|naked|nude|you|dick|cock|penis)\b/.test(
-    s,
-  );
+  // Direct, unambiguous phrasings.
+  if (
+    /\b(selfie|nudes?|send me a pic|send a pic|send pic|show me your|show me some|lemme see your|let me see your|can i see your|wanna see your|i wanna see your)\b/.test(
+      s,
+    )
+  )
+    return true;
+  // Verb + (within ~30 chars) a concrete picture/body object.
+  const verbs =
+    "send|show|snap|take|lemme see|let me see|can i see|could i see|wanna see|i wanna see|i want to see|i'?d love to see|i want a|i want some|give me";
+  const re = new RegExp(`\\b(?:${verbs})\\b[^.?!]{0,30}\\b(?:${SELFIE_OBJECT})\\b`, "i");
+  return re.test(s);
 }
 
 // Checks if the user is requesting a cross-gender body part from the companion

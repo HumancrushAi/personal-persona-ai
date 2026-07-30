@@ -10,17 +10,14 @@ const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations";
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
 const REPLICATE_URL = "https://api.replicate.com/v1/predictions";
 
-// nsfw-flux-dev (aisha-ai-official) — photorealistic, uncensored. Override with
-// REPLICATE_IMAGE_VERSION to swap models without a code change.
-const DEFAULT_IMAGE_VERSION = "fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa";
-
-// Flux (DEFAULT_IMAGE_VERSION) can't render male genitalia and ignores negative
-// prompts, and it won't follow explicit pose requests. Pony Realism
-// (charlesmccarthy/pony-sdxl, ponyRealism21 checkpoint) renders correct anatomy
-// for BOTH sexes and follows booru pose tags reliably, so male and female
-// companions both use it — the `1boy`/`1girl` tag plus opposite-sex negatives
-// lock the gender. Only non-binary stays on Flux. Override with
-// REPLICATE_IMAGE_VERSION_MALE. Flux is kept only as the non-binary fallback.
+// Pony Realism (charlesmccarthy/pony-sdxl, ponyRealism21 checkpoint) renders
+// correct anatomy for every gender and follows explicit booru pose tags
+// reliably, so male, female, AND non-binary companions all use it — the
+// `1boy`/`1girl` tag plus opposite-sex negatives lock the gender; non-binary
+// uses neutral negatives. Flux (nsfw-flux-dev) can't render male genitalia,
+// ignores negative prompts, and won't follow explicit pose requests, so it's
+// no longer a default — pin it per-gender via REPLICATE_IMAGE_VERSION /
+// REPLICATE_IMAGE_VERSION_MALE only if ever needed.
 const PONY_IMAGE_VERSION = "b070dedae81324788c3c933a5d9e1270093dc74636214b9815dae044b4b3a58a";
 
 const PONY_INPUT = {
@@ -55,9 +52,14 @@ export function imageModelForGender(gender?: string | null): {
     };
   }
   if (g === "non-binary") {
+    // Pony (like male/female) so explicit pose requests actually render.
+    // Neutral negatives — don't hard-negate either sex for an androgynous body.
+    // Pin Flux instead via REPLICATE_IMAGE_VERSION if ever needed.
     return {
-      version: process.env.REPLICATE_IMAGE_VERSION || DEFAULT_IMAGE_VERSION,
-      input: { width: 768, height: 1024 },
+      version: process.env.REPLICATE_IMAGE_VERSION || PONY_IMAGE_VERSION,
+      negativePrompt:
+        "anime, cartoon, 2d, 3d, sketch, monochrome, deformed, malformed genitals, extra limbs, bad anatomy, censored, mosaic, watermark, text, worst quality, low quality",
+      input: PONY_INPUT,
     };
   }
   // female / trans-female / unset default
@@ -270,6 +272,16 @@ export async function generateImage(
       return `data:image/png;base64,${b64}`;
     }
   }
+
+  // Async job pipeline (selfies/videos) only works with Replicate — its webhook
+  // reports completion. Reaching here means Replicate is unconfigured; the
+  // OpenAI fallback is a synchronous SFW model that also can't fulfill the
+  // explicit prompt. Fail loudly so the job is marked failed and the user is
+  // refunded, instead of silently hanging or returning a censored image.
+  if (opts?.webhookUrl)
+    throw new Error(
+      "Image generation unavailable: REPLICATE_API_TOKEN is required for photo/video requests.",
+    );
 
   const key = process.env.OPENAI_API_KEY;
   if (!key)

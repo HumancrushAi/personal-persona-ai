@@ -23,9 +23,11 @@ describe("imageModelForGender", () => {
     expect(imageModelForGender("trans-male").negativePrompt).toMatch(/1girl|female/i);
   });
 
-  it("leaves non-binary on the Flux fallback with no negative prompt", () => {
+  it("routes non-binary to Pony Realism with gender-neutral negatives so explicit requests render", () => {
     const m = imageModelForGender("non-binary");
-    expect(m.negativePrompt).toBeUndefined();
-    expect(m.input.model).toBeUndefined();
+    expect(m.version).toBe("b070dedae81324788c3c933a5d9e1270093dc74636214b9815dae044b4b3a58a");
+    expect(m.input.model).toBe("ponyRealism21.safetensors");
+    // Neutral negatives — must not hard-suppress either sex for an androgynous body.
+    expect(m.negativePrompt).not.toMatch(/1girl|1boy/);
   });
 });

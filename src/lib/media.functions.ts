@@ -241,67 +241,109 @@ export const requestVideo = createServerFn({ method: "POST" })
     const { free, paid } = await ensureBalance(supabase, userId, VIDEO_COST);
     const balance = await deductCredits(supabase, userId, VIDEO_COST, "video_debit", free, paid);
 
-    const videoPrompt = `Stunning ${c.ethnicity} model named ${c.name}, age ${c.age}. Base personality: ${c.base_personality}. ${p.style_backstory ? `Vibe: ${p.style_backstory}.` : ""} Prompt: ${userPrompt || "Teasing, smiling directly at camera"}. SFW, age-appropriate, photorealistic.`;
+    const jobId = await startVideoJob(
+      supabase,
+      userId,
+      data.conversationId,
+      { name: c.name, age: c.age, ethnicity: c.ethnicity, base_personality: c.base_personality },
+      p.style_backstory,
+      userPrompt,
+      balance,
+    );
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: job, error: jobErr } = await supabaseAdmin
-      .from("media_jobs")
-      .insert({
-        user_id: userId,
-        conversation_id: data.conversationId,
-        kind: "video",
-        status: "pending",
-        prompt: videoPrompt,
-        provider: "replicate",
-        cost: VIDEO_COST,
-      })
-      .select("id")
-      .single();
-
-    if (jobErr || !job) {
-      await refundCredits(supabase, userId, VIDEO_COST, `refund-nojob-${userId}-${Date.now()}`, balance);
-      throw new Error("Failed to create video generation job");
-    }
-
-    const webhookUrl = `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`;
-    const videoModel = process.env.REPLICATE_VIDEO_MODEL || "lucataco/wan-2.1-t2v-1.3b:1b11b51e03a948e898bf0d8ac9387a3b3cc4cfb5d79679f22c6c06a0cdffea2c";
-    // "owner/name:version" — the predictions API only needs the version hash.
-    const modelVersion = videoModel.split(":").pop()!;
-
-    try {
-      const { triggerReplicate } = await import("./ai");
-      const result = await triggerReplicate(
-        modelVersion,
-        {
-          prompt: videoPrompt,
-          aspect_ratio: "9:16",
-        },
-        webhookUrl
-      );
-
-      await supabaseAdmin
-        .from("media_jobs")
-        .update({
-          replicate_id: result.id,
-          status: "processing",
-        })
-        .eq("id", job.id);
-    } catch (err: any) {
-      await supabaseAdmin
-        .from("media_jobs")
-        .update({
-          status: "failed",
-          error: err.message || "Failed to trigger video Replicate model",
-        })
-        .eq("id", job.id);
-
-      await refundCredits(supabase, userId, VIDEO_COST, `refund-${job.id}`, balance);
-      throw err;
-    }
-
-    return { jobId: job.id, status: "pending", balance };
+    return { jobId, status: "pending", balance };
   });
+
+// Build a text-to-video prompt that follows the user's request. Unlike the old
+// path this does NOT force "SFW" — the safety screen (run by the caller) already
+// blocks illegal content, and clamping every request to SFW is why asking her to
+// do something explicit on video never matched what was asked.
+function videoPromptFor(
+  c: { name: string; age: number; ethnicity: string; base_personality?: string | null },
+  styleBackstory: string | null | undefined,
+  userReq: string | undefined,
+): string {
+  const action = (userReq ?? "").trim() || "smiling and teasing directly at the camera";
+  return [
+    `Photorealistic vertical (9:16) selfie-style video of ${c.name}, a ${c.age}-year-old ${c.ethnicity}.`,
+    c.base_personality ? `Personality: ${c.base_personality}.` : "",
+    styleBackstory ? `Vibe: ${styleBackstory}.` : "",
+    `In the video ${c.name} is ${action}.`,
+    `Intimate handheld phone footage, natural skin texture, realistic lighting, cinematic, not illustrated.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+// Create a media_jobs row and fire the async Replicate text-to-video prediction.
+// Caller must have ALREADY charged VIDEO_COST; on any launch failure this marks
+// the job failed, refunds, and rethrows. Shared by the 🎬 button (requestVideo)
+// and the in-chat auto-video (sendChatMessage).
+export async function startVideoJob(
+  supabase: any,
+  userId: string,
+  conversationId: string,
+  companion: { name: string; age: number; ethnicity: string; base_personality?: string | null },
+  styleBackstory: string | null | undefined,
+  userReq: string | undefined,
+  balance: { free: number; paid: number },
+): Promise<string> {
+  const videoPrompt = videoPromptFor(companion, styleBackstory, userReq);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: job, error: jobErr } = await supabaseAdmin
+    .from("media_jobs")
+    .insert({
+      user_id: userId,
+      conversation_id: conversationId,
+      kind: "video",
+      status: "pending",
+      prompt: videoPrompt,
+      provider: "replicate",
+      cost: VIDEO_COST,
+    })
+    .select("id")
+    .single();
+
+  if (jobErr || !job) {
+    await refundCredits(supabase, userId, VIDEO_COST, `refund-nojob-${userId}-${Date.now()}`, balance);
+    throw new Error("Failed to create video generation job");
+  }
+
+  const webhookUrl = `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`;
+  const videoModel =
+    process.env.REPLICATE_VIDEO_MODEL ||
+    "lucataco/wan-2.1-t2v-1.3b:1b11b51e03a948e898bf0d8ac9387a3b3cc4cfb5d79679f22c6c06a0cdffea2c";
+  // "owner/name:version" — the predictions API only needs the version hash.
+  const modelVersion = videoModel.split(":").pop()!;
+
+  try {
+    const { triggerReplicate } = await import("./ai");
+    const result = await triggerReplicate(
+      modelVersion,
+      { prompt: videoPrompt, aspect_ratio: "9:16" },
+      webhookUrl,
+    );
+
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({ replicate_id: result.id, status: "processing" })
+      .eq("id", job.id);
+  } catch (err: any) {
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({
+        status: "failed",
+        error: err.message || "Failed to trigger video Replicate model",
+      })
+      .eq("id", job.id);
+
+    await refundCredits(supabase, userId, VIDEO_COST, `refund-${job.id}`, balance);
+    throw err;
+  }
+
+  return job.id;
+}
 
 export const generateVoiceNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

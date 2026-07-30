@@ -5,13 +5,14 @@ import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 import { chatComplete } from "./ai";
-import { selfiePrompt, wantsSelfie, checkCrossGenderRequest } from "./selfie";
+import { selfiePrompt, wantsSelfie, wantsVideo, checkCrossGenderRequest } from "./selfie";
 import { deductCredits } from "./credit-wallet";
-import { startImageJob } from "./media.functions";
+import { startImageJob, startVideoJob } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 import { getAppSetting, settingNumber } from "./app-settings.server";
 
 const SELFIE_COST = 8;
+const VIDEO_COST = 15;
 
 const sendSchema = z.object({
   conversationId: z.string().uuid(),
@@ -80,6 +81,65 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
+
+    // Auto-video: if the user asks her to send/make a video, queue it through
+    // the same async job pipeline as the 🎬 button. Checked BEFORE the selfie
+    // path so "send me a video of you…" doesn't get answered with a photo.
+    if (wantsVideo(data.content) && totalCredits(bal) >= VIDEO_COST) {
+      const balAfter = await deductCredits(
+        supabase,
+        userId,
+        VIDEO_COST,
+        "video_debit",
+        bal.free_messages_remaining ?? 0,
+        bal.paid_credits ?? 0,
+      );
+      try {
+        const jobId = await startVideoJob(
+          supabase,
+          userId,
+          data.conversationId,
+          { name: c.name, age: c.age, ethnicity: c.ethnicity, base_personality: c.base_personality },
+          p.style_backstory,
+          data.content,
+          balAfter,
+        );
+
+        const teaser = "mmm okay… hold on, recording something just for you 🎬";
+        await supabase.from("messages").insert({
+          conversation_id: data.conversationId,
+          user_id: userId,
+          role: "assistant",
+          content: teaser,
+          kind: "text",
+        });
+        await supabase
+          .from("conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", data.conversationId);
+        return {
+          reply: teaser,
+          jobId,
+          kind: "video_pending" as const,
+          balance: balAfter,
+          relationship: {
+            xp: (conv as any).relationship_xp ?? 0,
+            level: (conv as any).relationship_level ?? 1,
+            leveledUp: false,
+          },
+        };
+      } catch {
+        // Job never launched — startVideoJob already refunded. Refresh the
+        // snapshot so the text-reply path below deducts from real numbers.
+        const { data: fresh } = await supabase
+          .from("credit_balances")
+          .select("free_messages_remaining, paid_credits")
+          .eq("user_id", userId)
+          .maybeSingle();
+        bal.free_messages_remaining = fresh?.free_messages_remaining ?? 0;
+        bal.paid_credits = fresh?.paid_credits ?? 0;
+      }
+    }
 
     // Auto-selfie: if the user asks her for a pic/nude, queue a generated photo
     // that follows the request through the async job pipeline (same as the 📷

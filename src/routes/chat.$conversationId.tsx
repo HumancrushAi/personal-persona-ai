@@ -132,12 +132,13 @@ function ChatPage() {
       if (res?.relationship?.leveledUp) {
         toast.success(`💖 Relationship level up — now level ${res.relationship.level}`);
       }
-      // Auto-selfie queued from the message itself — watch the job in the
-      // background; the photo lands in the chat via the webhook.
+      // Auto photo/video queued from the message itself — watch the job in the
+      // background; the media lands in the chat via the webhook.
       const autoJobId = (res as any)?.jobId;
       if (autoJobId) {
-        pollMediaJob(autoJobId, "photo").catch((e: any) =>
-          toast.error(e?.message ?? "Photo generation failed"),
+        const label = (res as any)?.kind === "video_pending" ? "video" : "photo";
+        pollMediaJob(autoJobId, label).catch((e: any) =>
+          toast.error(e?.message ?? `${label === "video" ? "Video" : "Photo"} generation failed`),
         );
       }
     } catch (err: any) {

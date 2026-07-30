@@ -1,5 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { selfiePrompt, wantsSelfie } from "../selfie";
+import { selfiePrompt, wantsSelfie, wantsVideo } from "../selfie";
+
+describe("wantsVideo", () => {
+  it("detects video requests", () => {
+    for (const t of [
+      "send me a video",
+      "can you make me a video of you dancing",
+      "record a clip for me",
+      "show me a video of you",
+      "i wanna see a video",
+      "take a video of yourself",
+    ]) {
+      expect(wantsVideo(t), t).toBe(true);
+    }
+  });
+
+  it("does not trigger on normal chat or plain photo requests", () => {
+    for (const t of ["i watched a video today", "send me a pic", "how was your day"]) {
+      expect(wantsVideo(t), t).toBe(false);
+    }
+  });
+});
 
 describe("wantsSelfie", () => {
   it("detects explicit pic requests", () => {

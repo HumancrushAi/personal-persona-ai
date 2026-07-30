@@ -141,6 +141,22 @@ export function wantsSelfie(t: string): boolean {
   return re.test(s);
 }
 
+// True when the user's message is asking her to send/make a video or clip.
+// Checked BEFORE wantsSelfie so "send me a video of you dancing" routes to the
+// video pipeline instead of matching the photo detector.
+export function wantsVideo(t: string): boolean {
+  const s = t.toLowerCase();
+  const verbs =
+    "send|show|make|record|film|take|do|shoot|lemme see|let me see|can i see|wanna see|i wanna see|i want to see|i want a|i want|give me";
+  const noun = "video|videos|vid|vids|clip|clips";
+  // verb + (within ~30 chars) a video noun — "make me a video", "send a clip"
+  if (new RegExp(`\\b(?:${verbs})\\b[^.?!]{0,30}\\b(?:${noun})\\b`, "i").test(s)) return true;
+  // "a video of you", "video for me", "record yourself on video"
+  if (new RegExp(`\\b(?:${noun})\\b[^.?!]{0,20}\\b(?:of you|for me|yourself|of yourself)\\b`, "i").test(s))
+    return true;
+  return false;
+}
+
 // Checks if the user is requesting a cross-gender body part from the companion
 export function checkCrossGenderRequest(gender: string | null | undefined, prompt: string): string | null {
   const g = (gender ?? "female").toLowerCase();

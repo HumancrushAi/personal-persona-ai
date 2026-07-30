@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { sendChatMessage } from "@/lib/chat.functions";
-import { generateSelfie, generateVoiceNote, requestVideo } from "@/lib/media.functions";
+import { generateSelfie, generateVoiceNote, requestVideo, checkMediaJob } from "@/lib/media.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,6 +43,7 @@ function ChatPage() {
   const selfie = useServerFn(generateSelfie);
   const voiceFn = useServerFn(generateVoiceNote);
   const requestVideoFn = useServerFn(requestVideo);
+  const checkJob = useServerFn(checkMediaJob);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [pendingUser, setPendingUser] = useState<string | null>(null);
@@ -187,27 +188,26 @@ function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balance]);
 
-  // Poll an async media job until the Replicate webhook finishes it, then
-  // refresh the chat. Resolves on completion/timeout; throws on failure.
+  // Drive an async media job to completion by asking the server to reconcile it
+  // against Replicate each tick — completion does NOT rely on the webhook.
+  // Resolves on completion/timeout; throws on failure.
   async function pollMediaJob(jobId: string, label: "photo" | "video") {
     let attempts = 0;
     while (attempts < 90) {
-      const { data: job } = await supabase
-        .from("media_jobs")
-        .select("status, error")
-        .eq("id", jobId)
-        .maybeSingle();
-
-      if (job) {
-        if (job.status === "completed") {
-          await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
-          await qc.invalidateQueries({ queryKey: ["balance"] });
-          toast.success(label === "video" ? "Video received!" : "Photo received!");
-          return;
-        }
-        if (job.status === "failed") {
-          throw new Error(job.error || "Generation failed");
-        }
+      let res: any;
+      try {
+        res = await checkJob({ data: { jobId } });
+      } catch {
+        res = null; // transient — keep polling
+      }
+      if (res?.status === "completed") {
+        await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+        await qc.invalidateQueries({ queryKey: ["balance"] });
+        toast.success(label === "video" ? "Video received!" : "Photo received!");
+        return;
+      }
+      if (res?.status === "failed") {
+        throw new Error("Generation failed");
       }
       await new Promise((r) => setTimeout(r, 2000));
       attempts++;

@@ -49,7 +49,9 @@ export const Route = createFileRoute("/api/public/replicate-webhook")({
 
           if (!outputUrl) {
             // Treat as failed if output is missing
-            return await handleFailure(job, "No output URL received from generation model");
+            const { failMediaJob } = await import("@/lib/media-finalize.server");
+            await failMediaJob(job, "No output URL received from generation model");
+            return new Response("Failed status processed", { status: 200 });
           }
 
           // If this was the initial image generation (not face swap) AND a face URL is configured,
@@ -90,65 +92,20 @@ export const Route = createFileRoute("/api/public/replicate-webhook")({
           }
 
           try {
-            // Securely store the completed media in Supabase Storage avatars bucket
-            const response = await fetch(outputUrl);
-            if (!response.ok) throw new Error("Could not fetch Replicate output image");
-            const buf = Buffer.from(await response.arrayBuffer());
-
-            const fileExt = job.kind === "video" ? "mp4" : "png";
-            const mimeType = job.kind === "video" ? "video/mp4" : "image/png";
-            const path = `generated/${job.user_id}/${job.id}.${fileExt}`;
-
-            // Ensure bucket exists
-            try {
-              await supabaseAdmin.storage.createBucket("avatars", { public: true });
-            } catch {
-              /* ignore */
-            }
-
-            const { error: upErr } = await supabaseAdmin.storage
-              .from("avatars")
-              .upload(path, buf, { contentType: mimeType, upsert: true });
-
-            if (upErr) throw upErr;
-
-            const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
-            const mediaUrl = pub.publicUrl;
-
-            // Update Job Status
-            await supabaseAdmin
-              .from("media_jobs")
-              .update({
-                status: "completed",
-                media_url: mediaUrl,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", job.id);
-
-            // Append completed message to conversation history
-            if (job.conversation_id) {
-              const messageContent =
-                job.kind === "video"
-                  ? "*sends you a video* 🎬"
-                  : "*sends you a photo* 😈";
-              await supabaseAdmin.from("messages").insert({
-                conversation_id: job.conversation_id,
-                user_id: job.user_id,
-                role: "assistant",
-                content: messageContent,
-                kind: job.kind,
-                media_url: mediaUrl,
-              });
-            }
-
+            const { completeMediaJob } = await import("@/lib/media-finalize.server");
+            await completeMediaJob(job, outputUrl);
             return new Response("Success", { status: 200 });
           } catch (e: any) {
-            return await handleFailure(job, `Storage upload failed: ${e.message}`);
+            const { failMediaJob } = await import("@/lib/media-finalize.server");
+            await failMediaJob(job, `Storage upload failed: ${e.message}`);
+            return new Response("Failed status processed", { status: 200 });
           }
         }
 
         if (status === "failed" || status === "canceled") {
-          return await handleFailure(job, body.error || `Prediction ended with status: ${status}`);
+          const { failMediaJob } = await import("@/lib/media-finalize.server");
+          await failMediaJob(job, body.error || `Prediction ended with status: ${status}`);
+          return new Response("Failed status processed", { status: 200 });
         }
 
         return new Response("Unknown status", { status: 200 });
@@ -156,58 +113,3 @@ export const Route = createFileRoute("/api/public/replicate-webhook")({
     },
   },
 });
-
-async function handleFailure(job: any, errorMsg: string) {
-  // Update job record
-  await supabaseAdmin
-    .from("media_jobs")
-    .update({
-      status: "failed",
-      error: errorMsg,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", job.id);
-
-  // Refund credits to user's wallet
-  try {
-    const { data: bal } = await supabaseAdmin
-      .from("credit_balances")
-      .select("free_messages_remaining, paid_credits")
-      .eq("user_id", job.user_id)
-      .maybeSingle();
-
-    const free = bal?.free_messages_remaining ?? 0;
-    const paid = bal?.paid_credits ?? 0;
-    const newPaid = paid + job.cost;
-
-    await supabaseAdmin
-      .from("credit_balances")
-      .update({ paid_credits: newPaid })
-      .eq("user_id", job.user_id);
-
-    // Write to ledger
-    await supabaseAdmin.from("credit_ledger").insert({
-      user_id: job.user_id,
-      delta: job.cost,
-      reason: "refund_credit",
-      balance_after: free + newPaid,
-      idempotency_key: `refund-${job.id}`,
-    });
-
-    // Notify user in chat
-    if (job.conversation_id) {
-      const kindStr = job.kind === "video" ? "video" : "photo";
-      await supabaseAdmin.from("messages").insert({
-        conversation_id: job.conversation_id,
-        user_id: job.user_id,
-        role: "assistant",
-        content: `Sorry, I had trouble generating that ${kindStr}. Your credits have been refunded! 🥺❤️`,
-        kind: "text",
-      });
-    }
-  } catch (e: any) {
-    console.error("Refund failed in webhook callback", e);
-  }
-
-  return new Response("Failed status processed", { status: 200 });
-}

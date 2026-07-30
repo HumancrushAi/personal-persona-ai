@@ -155,6 +155,28 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // companion's face to their canonical profile picture across every selfie.
 export const FACE_SWAP_VERSION = "d1d6ea8c8be89d664a07a457526f7128109dee7030fdac424788d762c71ed111";
 
+// Read a prediction's current status directly. Lets the app finalize a media job
+// by polling Replicate instead of depending on the webhook callback landing.
+export async function getReplicatePrediction(
+  id: string,
+): Promise<{ status: string; output?: any; error?: any; version?: string }> {
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) throw new Error("REPLICATE_API_TOKEN not configured");
+  const res = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Replicate get error: ${res.status}`);
+  const json = await res.json();
+  return { status: json.status, output: json.output, error: json.error, version: json.version };
+}
+
+// Synchronous face swap (locks the companion's face onto a generated body). Used
+// by the reconcile poll, which finalizes in one shot rather than chaining a
+// second async prediction. Returns the swapped image URL.
+export async function faceSwapSync(faceUrl: string, inputUrl: string): Promise<string> {
+  return runReplicateSync(FACE_SWAP_VERSION, { swap_image: faceUrl, input_image: inputUrl });
+}
+
 // Official Replicate models (owner/name) have a stable, versionless API — call
 // them via the models endpoint so there's no version hash to go stale. Used for
 // video generation (e.g. wan-video/wan-2.5-i2v-fast).

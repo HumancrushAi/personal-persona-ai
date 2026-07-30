@@ -360,6 +360,81 @@ export async function startVideoJob(
   return job.id;
 }
 
+// Reconcile a media job against Replicate directly, so completion does NOT
+// depend on the webhook callback landing (serverless webhooks are unreliable).
+// The client's status poll calls this; it checks the prediction, does the face
+// swap synchronously if needed, stores the result, and finalizes the job.
+export const checkMediaJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ jobId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: job } = await supabase
+      .from("media_jobs")
+      .select("id, user_id, conversation_id, kind, cost, status, replicate_id, media_url")
+      .eq("id", data.jobId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!job) throw new Error("Job not found");
+
+    if (job.status === "completed") return { status: "completed", mediaUrl: (job as any).media_url };
+    if (job.status === "failed") return { status: "failed" };
+    if (!(job as any).replicate_id) return { status: job.status };
+
+    const { getReplicatePrediction, faceSwapSync, FACE_SWAP_VERSION } = await import("./ai");
+    let pred: { status: string; output?: any; error?: any; version?: string };
+    try {
+      pred = await getReplicatePrediction((job as any).replicate_id);
+    } catch {
+      return { status: job.status }; // transient — keep polling
+    }
+
+    const { completeMediaJob, failMediaJob } = await import("./media-finalize.server");
+
+    if (pred.status === "succeeded") {
+      let outputUrl = Array.isArray(pred.output) ? pred.output[0] : pred.output;
+      if (!outputUrl) {
+        await failMediaJob(job as any, "No output from generation model");
+        return { status: "failed" };
+      }
+
+      // Lock the companion's face onto the generated body (skip if this
+      // prediction is already the face-swap, e.g. a legacy webhook-chained job).
+      if (job.kind === "image" && pred.version !== FACE_SWAP_VERSION && job.conversation_id) {
+        try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { data: conv } = await supabaseAdmin
+            .from("conversations")
+            .select("user_personalities(companions(image_url))")
+            .eq("id", job.conversation_id)
+            .maybeSingle();
+          const faceUrl = (conv as any)?.user_personalities?.companions?.image_url;
+          if (faceUrl && /^(https?:|data:)/.test(faceUrl)) {
+            outputUrl = await faceSwapSync(faceUrl, outputUrl);
+          }
+        } catch {
+          /* keep the unswapped body */
+        }
+      }
+
+      try {
+        const mediaUrl = await completeMediaJob(job as any, outputUrl);
+        return { status: "completed", mediaUrl };
+      } catch (e: any) {
+        await failMediaJob(job as any, `Storage failed: ${e.message}`);
+        return { status: "failed" };
+      }
+    }
+
+    if (pred.status === "failed" || pred.status === "canceled") {
+      await failMediaJob(job as any, pred.error ? String(pred.error) : `Prediction ${pred.status}`);
+      return { status: "failed" };
+    }
+
+    return { status: "processing" };
+  });
+
 export const generateVoiceNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>

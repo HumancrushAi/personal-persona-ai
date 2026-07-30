@@ -177,6 +177,21 @@ function Landing() {
   const [storyView, setStoryView] = useState<Companion | null>(null);
   const [query, setQuery] = useState("");
 
+  // Admin-configured announcement (Platform Content tab); hidden when empty.
+  const { data: bannerText } = useQuery({
+    queryKey: ["platform-banner"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "platform_banner_text")
+        .maybeSingle();
+      const v = data?.value;
+      return typeof v === "string" ? v.trim() : "";
+    },
+    staleTime: 60_000,
+  });
+
   // Match each hero reel to its exact companion by filename to prevent mismatched chat redirection.
   const pickCompanion = (reelName: string): Companion | null => {
     const list = companions ?? [];
@@ -223,6 +238,12 @@ function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden pb-24">
       <Nav />
+
+      {bannerText ? (
+        <div className="bg-primary/15 px-4 py-2 text-center text-sm font-medium text-primary">
+          {bannerText}
+        </div>
+      ) : null}
 
       {/* BANNER SLIDER */}
       <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">

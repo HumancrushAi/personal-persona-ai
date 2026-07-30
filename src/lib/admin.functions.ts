@@ -74,7 +74,7 @@ export const listUsers = createServerFn({ method: "GET" })
       supabaseAdmin
         .from("profiles")
         .select(
-          "id, display_name, subscription_tier, subscription_status, subscription_renews_at, authnet_subscription_id",
+          "id, display_name, subscription_tier, subscription_status, subscription_renews_at, authnet_subscription_id, is_suspended",
         )
         .in("id", ids),
       supabaseAdmin
@@ -102,6 +102,7 @@ export const listUsers = createServerFn({ method: "GET" })
           freeCredits: b?.free_messages_remaining ?? 0,
           paidCredits: b?.paid_credits ?? 0,
           roles: r,
+          isSuspended: p?.is_suspended ?? false,
         };
       })
       .filter((row) =>
@@ -126,7 +127,7 @@ export const adminAddCredits = createServerFn({ method: "POST" })
 
     const { data: bal } = await supabaseAdmin
       .from("credit_balances")
-      .select("paid_credits")
+      .select("free_messages_remaining, paid_credits")
       .eq("user_id", data.userId)
       .maybeSingle();
     const newPaid = Math.max(0, (bal?.paid_credits ?? 0) + data.credits);
@@ -134,6 +135,14 @@ export const adminAddCredits = createServerFn({ method: "POST" })
       .from("credit_balances")
       .upsert({ user_id: data.userId, paid_credits: newPaid }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
+
+    await supabaseAdmin.from("credit_ledger").insert({
+      user_id: data.userId,
+      delta: data.credits,
+      reason: "admin_credit",
+      balance_after: (bal?.free_messages_remaining ?? 0) + newPaid,
+      idempotency_key: `admin-${data.userId}-${Date.now()}-${Math.random()}`,
+    });
 
     await supabaseAdmin.from("transactions").insert({
       user_id: data.userId,
@@ -249,7 +258,7 @@ export const adminListPersonas = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("companions")
       .select(
-        "id, name, image_url, short_bio, base_personality, tags, language, status, is_adult, age, ethnicity, gender, art_style, sort_order",
+        "id, name, image_url, short_bio, base_personality, tags, language, status, is_adult, age, ethnicity, gender, art_style, sort_order, speaking_style, vocabulary_level, boundaries, greeting, voice_id",
       )
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
@@ -269,6 +278,11 @@ const personaSchema = z.object({
   ethnicity: z.string().min(1).max(60),
   gender: z.string().min(1).max(30),
   art_style: z.string().min(1).max(30),
+  speaking_style: z.string().optional().default(""),
+  vocabulary_level: z.string().optional().default("casual"),
+  boundaries: z.string().optional().default(""),
+  greeting: z.string().optional().default(""),
+  voice_id: z.string().optional().default("alloy"),
 });
 
 export const adminUpsertPersona = createServerFn({ method: "POST" })
@@ -292,20 +306,43 @@ export const adminUpsertPersona = createServerFn({ method: "POST" })
       gender: data.gender,
       art_style: data.art_style,
       is_adult: true,
+      speaking_style: data.speaking_style,
+      vocabulary_level: data.vocabulary_level,
+      boundaries: data.boundaries,
+      greeting: data.greeting,
+      voice_id: data.voice_id,
     };
+
+    let targetId: string;
+    let actionType: string;
 
     if (data.id) {
       const { error } = await supabaseAdmin.from("companions").update(row).eq("id", data.id);
       if (error) throw new Error(error.message);
-      return { ok: true, id: data.id };
+      targetId = data.id;
+      actionType = "update_companion";
+    } else {
+      const { data: created, error } = await supabaseAdmin
+        .from("companions")
+        .insert(row)
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      targetId = created.id;
+      actionType = "create_companion";
     }
-    const { data: created, error } = await supabaseAdmin
-      .from("companions")
-      .insert(row)
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    return { ok: true, id: created.id };
+
+    // Write audit log entry
+    await supabaseAdmin.from("audit_logs").insert({
+      user_id: context.userId,
+      action: actionType,
+      details: {
+        target_id: targetId,
+        name: data.name,
+      },
+    });
+
+    return { ok: true, id: targetId };
   });
 
 // Regenerate a persona's photo with Replicate and store it in Supabase Storage
@@ -479,4 +516,131 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { ok: true, userId: created.user?.id };
+  });
+
+export const adminGetSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("app_settings")
+      .select("key, value");
+    if (error) throw new Error(error.message);
+    return { settings: data ?? [] };
+  });
+
+export const adminUpdateSetting = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ key: z.string(), value: z.any() }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error } = await supabaseAdmin
+      .from("app_settings")
+      .upsert({ key: data.key, value: data.value, updated_at: new Date().toISOString() });
+
+    if (error) throw new Error(error.message);
+
+    // Audit log
+    await supabaseAdmin.from("audit_logs").insert({
+      user_id: context.userId,
+      action: "update_setting",
+      details: {
+        key: data.key,
+        value: data.value,
+      },
+    });
+
+    return { ok: true };
+  });
+
+export const adminSetSuspended = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ userId: z.string().uuid(), suspended: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ is_suspended: data.suspended })
+      .eq("id", data.userId);
+    if (error) throw new Error(error.message);
+
+    await supabaseAdmin.from("audit_logs").insert({
+      user_id: context.userId,
+      action: data.suspended ? "suspend_user" : "unsuspend_user",
+      details: { target_id: data.userId },
+    });
+    return { ok: true };
+  });
+
+export const adminListCompanionMedia = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ companionId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("companion_media")
+      .select("id, media_url, sort_order")
+      .eq("companion_id", data.companionId)
+      .order("sort_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    return { media: rows ?? [] };
+  });
+
+export const adminAddCompanionMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        companionId: z.string().uuid(),
+        mediaUrl: z.string().url(),
+        sortOrder: z.number().int().optional().default(0),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("companion_media")
+      .insert({
+        companion_id: data.companionId,
+        media_url: data.mediaUrl,
+        sort_order: data.sortOrder,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { ok: true, id: row.id };
+  });
+
+export const adminDeleteCompanionMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("companion_media").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// Run one persona-eval test case. The admin UI iterates index 0..total-1 so a
+// full suite run never hits a single serverless timeout.
+export const adminRunEvalCase = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ index: z.number().int().min(0) }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { runEvalCase, EVAL_TEST_CASES } = await import("./eval-suite");
+    const result = await runEvalCase(data.index);
+    return { result, total: EVAL_TEST_CASES.length };
   });

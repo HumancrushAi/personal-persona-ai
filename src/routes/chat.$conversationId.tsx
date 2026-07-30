@@ -5,13 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { sendChatMessage } from "@/lib/chat.functions";
-import {
-  generateSelfie,
-  generateVoiceNote,
-  videoScript,
-  saveVideoNote,
-} from "@/lib/media.functions";
-import { renderTalkingClip } from "@/lib/talking-clip";
+import { generateSelfie, generateVoiceNote, requestVideo } from "@/lib/media.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,8 +42,7 @@ function ChatPage() {
   const send = useServerFn(sendChatMessage);
   const selfie = useServerFn(generateSelfie);
   const voiceFn = useServerFn(generateVoiceNote);
-  const videoScriptFn = useServerFn(videoScript);
-  const saveVideo = useServerFn(saveVideoNote);
+  const requestVideoFn = useServerFn(requestVideo);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [pendingUser, setPendingUser] = useState<string | null>(null);
@@ -128,10 +121,7 @@ function ChatPage() {
     try {
       const res = await send({ data: { conversationId, content } });
 
-      // Human-feeling typing pause: aim for a total "typing" time based on how
-      // long the reply is, but don't add time the AI call already used up.
-      // ~55ms/char ≈ a fast texter; a full paragraph takes several seconds.
-      const target = Math.min(2000 + (res?.reply?.length ?? 0) * 55, 14000);
+      const target = (res as any)?.typingDelayMs ?? 3000;
       const elapsed = Date.now() - start;
       if (elapsed < target) await new Promise((r) => setTimeout(r, target - elapsed));
 
@@ -141,6 +131,14 @@ function ChatPage() {
       setPendingUser(null); // real messages are loaded now — drop the optimistic bubble
       if (res?.relationship?.leveledUp) {
         toast.success(`💖 Relationship level up — now level ${res.relationship.level}`);
+      }
+      // Auto-selfie queued from the message itself — watch the job in the
+      // background; the photo lands in the chat via the webhook.
+      const autoJobId = (res as any)?.jobId;
+      if (autoJobId) {
+        pollMediaJob(autoJobId, "photo").catch((e: any) =>
+          toast.error(e?.message ?? "Photo generation failed"),
+        );
       }
     } catch (err: any) {
       const msg = err?.message ?? "Error";
@@ -188,6 +186,34 @@ function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balance]);
 
+  // Poll an async media job until the Replicate webhook finishes it, then
+  // refresh the chat. Resolves on completion/timeout; throws on failure.
+  async function pollMediaJob(jobId: string, label: "photo" | "video") {
+    let attempts = 0;
+    while (attempts < 90) {
+      const { data: job } = await supabase
+        .from("media_jobs")
+        .select("status, error")
+        .eq("id", jobId)
+        .maybeSingle();
+
+      if (job) {
+        if (job.status === "completed") {
+          await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+          await qc.invalidateQueries({ queryKey: ["balance"] });
+          toast.success(label === "video" ? "Video received!" : "Photo received!");
+          return;
+        }
+        if (job.status === "failed") {
+          throw new Error(job.error || "Generation failed");
+        }
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+      attempts++;
+    }
+    toast.info(`She is still working on that ${label}. It'll show up in the chat soon!`);
+  }
+
   async function handleSelfie() {
     if (mediaBusy) return;
     const prompt =
@@ -195,9 +221,8 @@ function ChatPage() {
       undefined;
     setMediaBusy("selfie");
     try {
-      await selfie({ data: { conversationId, prompt } });
-      qc.invalidateQueries({ queryKey: ["messages", conversationId] });
-      qc.invalidateQueries({ queryKey: ["balance"] });
+      const res = await selfie({ data: { conversationId, prompt } });
+      await pollMediaJob((res as any).jobId, "photo");
     } catch (err: any) {
       const msg = err?.message ?? "Error";
       if (msg.includes("OUT_OF_CREDITS")) {
@@ -245,20 +270,8 @@ function ChatPage() {
       undefined;
     setMediaBusy("video");
     try {
-      // 1) server: flirty spoken line + her voice (not charged yet)
-      const { line, audioUrl, imageUrl } = await videoScriptFn({
-        data: { conversationId, prompt: prompt || undefined },
-      });
-      // 2) browser: assemble the 9:16 talking clip
-      const dataUrl = await renderTalkingClip({
-        imageUrl: companionImage(imageUrl),
-        caption: line,
-        audioUrl,
-      });
-      // 3) server: persist + charge (only now)
-      await saveVideo({ data: { conversationId, dataUrl, caption: line } });
-      qc.invalidateQueries({ queryKey: ["messages", conversationId] });
-      qc.invalidateQueries({ queryKey: ["balance"] });
+      const res = await requestVideoFn({ data: { conversationId, prompt } });
+      await pollMediaJob((res as any).jobId, "video");
     } catch (err: any) {
       const msg = err?.message ?? "Error";
       if (msg.includes("OUT_OF_CREDITS")) {

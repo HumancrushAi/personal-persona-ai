@@ -4,8 +4,12 @@ import { z } from "zod";
 import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { chatComplete, generateImage } from "./ai";
+import { chatComplete } from "./ai";
 import { selfiePrompt, wantsSelfie, checkCrossGenderRequest } from "./selfie";
+import { deductCredits } from "./credit-wallet";
+import { startImageJob } from "./media.functions";
+import { assertNotSuspended, assertRateLimit } from "./account.server";
+import { getAppSetting, settingNumber } from "./app-settings.server";
 
 const SELFIE_COST = 8;
 
@@ -33,6 +37,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => sendSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertNotSuspended(supabase, userId);
+    await assertRateLimit(supabase, "messages", userId, 60, 20);
 
     const { data: conv, error: convErr } = await supabase
       .from("conversations")
@@ -75,62 +81,60 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
 
-    // Auto-selfie: if the user asks her for a pic/nude, actually send a generated
-    // photo that follows the request (charged like the 📷 button). Falls through
-    // to a normal text reply if they can't afford it or the image fails.
+    // Auto-selfie: if the user asks her for a pic/nude, queue a generated photo
+    // that follows the request through the async job pipeline (same as the 📷
+    // button — charged up front, auto-refunded if the job fails to launch).
+    // Falls through to a normal text reply if the job can't start.
     if (wantsSelfie(data.content) && totalCredits(bal) >= SELFIE_COST) {
-      try {
-        const crossGenderWarning = checkCrossGenderRequest(c.gender, data.content);
-        if (crossGenderWarning) {
-          await supabase.from("messages").insert({
-            conversation_id: data.conversationId,
-            user_id: userId,
-            role: "assistant",
-            content: crossGenderWarning,
-          });
-          return { reply: crossGenderWarning };
-        }
+      const crossGenderWarning = checkCrossGenderRequest(c.gender, data.content);
+      if (crossGenderWarning) {
+        await supabase.from("messages").insert({
+          conversation_id: data.conversationId,
+          user_id: userId,
+          role: "assistant",
+          content: crossGenderWarning,
+        });
+        return { reply: crossGenderWarning };
+      }
 
-        const dataUrl = await generateImage(
+      const balAfter = await deductCredits(
+        supabase,
+        userId,
+        SELFIE_COST,
+        "image_debit",
+        bal.free_messages_remaining ?? 0,
+        bal.paid_credits ?? 0,
+      );
+      try {
+        const jobId = await startImageJob(
+          supabase,
+          userId,
+          data.conversationId,
           selfiePrompt(
             { name: c.name, age: c.age, ethnicity: c.ethnicity, gender: c.gender, short_bio: c.short_bio },
             data.content,
             p.style_backstory,
           ),
-          { gender: c.gender, faceUrl: c.image_url },
+          { gender: c.gender, faceUrl: c.image_url, balance: balAfter },
         );
-        const { free: sf, paid: sp } = applyDeduction(
-          bal.free_messages_remaining ?? 0,
-          bal.paid_credits ?? 0,
-          SELFIE_COST,
-        );
+
+        const teaser = "mmm okay… give me a sec, taking one just for you 📸";
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
           user_id: userId,
           role: "assistant",
-          content: "*sends you a pic* 😈",
-          kind: "image",
-          media_url: dataUrl,
-        });
-        await supabase
-          .from("credit_balances")
-          .update({ free_messages_remaining: sf, paid_credits: sp })
-          .eq("user_id", userId);
-        await supabase.from("credit_ledger").insert({
-          user_id: userId,
-          delta: -SELFIE_COST,
-          reason: "selfie",
-          balance_after: sf + sp,
+          content: teaser,
+          kind: "text",
         });
         await supabase
           .from("conversations")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", data.conversationId);
         return {
-          reply: "",
-          mediaUrl: dataUrl,
-          kind: "image" as const,
-          balance: { free: sf, paid: sp },
+          reply: teaser,
+          jobId,
+          kind: "image_pending" as const,
+          balance: balAfter,
           relationship: {
             xp: (conv as any).relationship_xp ?? 0,
             level: (conv as any).relationship_level ?? 1,
@@ -138,13 +142,23 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           },
         };
       } catch {
-        // image failed — fall through to normal text reply
+        // Job never launched — the charge was already refunded inside
+        // startImageJob. Refresh the balance snapshot so the normal text-reply
+        // path below deducts from real numbers, not the stale pre-charge ones.
+        const { data: fresh } = await supabase
+          .from("credit_balances")
+          .select("free_messages_remaining, paid_credits")
+          .eq("user_id", userId)
+          .maybeSingle();
+        bal.free_messages_remaining = fresh?.free_messages_remaining ?? 0;
+        bal.paid_credits = fresh?.paid_credits ?? 0;
       }
     }
 
     const scenario = getScenario((conv as any).scenario);
     const level = (conv as any).relationship_level ?? 1;
     const memory = ((conv as any).memory ?? "").trim();
+    const summary = ((conv as any).summary ?? "").trim();
 
     const systemPrompt = [
       `You are ${p.nickname}, the user's adult (18+) AI girlfriend in an explicit, consenting roleplay. Stay in character at all times. Never break the fourth wall. Never say you are an AI, a model, a chatbot, or "just" anything.`,
@@ -159,6 +173,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         : "",
       scenario ? scenario.systemAdd : "",
       `Relationship level ${level}/10. ${relationshipTone(level)}`,
+      summary ? `Conversation summary so far (compressed history):\n${summary}` : "",
       memory ? `Long-term memory about the user (do not contradict):\n${memory}` : "",
       `Both participants are consenting adults. Explicit sexual content, dirty talk, kink, and erotic roleplay are allowed when invited by the user. Refuse only: minors, real-person impersonation, non-consent, bestiality, incest, or anything illegal. When refusing, redirect back into the roleplay warmly.`,
       `Style: reply like a real text message — short, casual, lowercase-ok, 1-3 sentences. Keep *asterisk actions* rare and short; only use one when it truly adds something, otherwise just talk. Speak with warmth, desire, and humor.`,
@@ -168,9 +183,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join("\n\n");
 
+    // Immediate memory: last 10 messages only
+    const immediateHistory = (history ?? []).slice(-10);
+
     const messages = [
       { role: "system", content: systemPrompt },
-      ...((history ?? []) as any[]).map((m) => ({
+      ...((immediateHistory ?? []) as any[]).map((m) => ({
         role: m.role as "user" | "assistant",
         content:
           m.kind === "image"
@@ -181,7 +199,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       })),
     ];
 
-    const reply = await chatComplete(messages);
+    // Admin-tunable sampling temperature (AI Config tab), clamped to sane range.
+    const temperature = Math.min(
+      2,
+      settingNumber(await getAppSetting("default_temperature"), 0.9),
+    );
+    const reply = await chatComplete(messages, { temperature });
 
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,
@@ -204,7 +227,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     await supabase.from("credit_ledger").insert({
       user_id: userId,
       delta: -1,
-      reason: "chat_message",
+      reason: "chat_debit",
       balance_after: newFree + newPaid,
     });
 
@@ -212,6 +235,34 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const newXp = ((conv as any).relationship_xp ?? 0) + 1;
     const newLevel = Math.min(10, Math.floor(newXp / 15) + 1);
     const leveledUp = newLevel > level;
+
+    // Summarize older messages or update conversation summary every 5 messages
+    let newSummary = summary;
+    if (newXp % 5 === 0 && history && history.length > 5) {
+      try {
+        const textToSummarize = history
+          .slice(-12)
+          .map((m) => `${m.role === "user" ? "User" : p.nickname}: ${m.content}`)
+          .join("\n");
+        const summaryPrompt = [
+          {
+            role: "system",
+            content:
+              "You are an assistant summarizing a conversation between the user and their companion. " +
+              "Write a very short, concise paragraph summarizing what has happened so far and their current situation/topic. " +
+              "Keep it under 300 characters. Focus on key topics discussed.",
+          },
+          {
+            role: "user",
+            content: `Previous Summary: ${summary}\n\nRecent exchange:\n${textToSummarize}`,
+          },
+        ];
+        const summaryReply = await chatComplete(summaryPrompt, { maxTokens: 100 });
+        if (summaryReply) newSummary = summaryReply.trim();
+      } catch (err) {
+        console.error("Summary extraction failed", err);
+      }
+    }
 
     // Memory extraction: every 4 user messages do a cheap extraction
     let newMemory = memory;
@@ -247,13 +298,22 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         relationship_xp: newXp,
         relationship_level: newLevel,
         memory: newMemory,
+        summary: newSummary,
       })
       .eq("id", data.conversationId);
+
+    // Delay formula calculation
+    const baseDelay = 1000;
+    const userReadTime = data.content.length * 15;
+    const replyTime = reply.length * 40;
+    const randomVariation = Math.random() * 1500;
+    const totalDelay = Math.min(baseDelay + userReadTime + replyTime + randomVariation, 8000);
 
     return {
       reply,
       balance: { free: newFree, paid: newPaid },
       relationship: { xp: newXp, level: newLevel, leveledUp },
+      typingDelayMs: totalDelay,
     };
   });
 
@@ -264,7 +324,7 @@ export const startConversation = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: p } = await supabase
       .from("user_personalities")
-      .select("id, nickname")
+      .select("id, nickname, companions(greeting)")
       .eq("id", data.personalityId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -275,6 +335,7 @@ export const startConversation = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw error;
+    await insertGreeting(supabase, conv.id, userId, (p as any).companions?.greeting);
     return { conversationId: conv.id };
   });
 
@@ -288,7 +349,7 @@ export const startChat = createServerFn({ method: "POST" })
 
     const { data: comp } = await supabase
       .from("companions")
-      .select("id, name")
+      .select("id, name, greeting")
       .eq("id", data.companionId)
       .maybeSingle();
     if (!comp) throw new Error("Model not found");
@@ -330,5 +391,25 @@ export const startChat = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (cErr) throw cErr;
+    await insertGreeting(supabase, conv.id, userId, comp.greeting);
     return { conversationId: conv.id };
   });
+
+// Seed a brand-new conversation with the companion's admin-configured greeting
+// so the chat doesn't open on an empty screen. Free — no credit charge.
+async function insertGreeting(
+  supabase: any,
+  conversationId: string,
+  userId: string,
+  greeting: string | null | undefined,
+) {
+  const text = greeting?.trim();
+  if (!text) return;
+  await supabase.from("messages").insert({
+    conversation_id: conversationId,
+    user_id: userId,
+    role: "assistant",
+    content: text,
+    kind: "text",
+  });
+}

@@ -1,8 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { CREDIT_PACKS, SUBSCRIPTION_TIERS } from "./credit-packs";
+import { SUBSCRIPTION_TIERS } from "./credit-packs";
 import { transactionResult, subscriptionResult } from "./authnet";
+import { getEffectivePacks } from "./app-settings.server";
+import { assertNotSuspended } from "./account.server";
+
+// Public pricing with admin overrides applied — the client renders from this so
+// the displayed price always matches what purchaseCredits will charge.
+export const getPricing = createServerFn({ method: "GET" }).handler(async () => {
+  return { packs: await getEffectivePacks(), tiers: SUBSCRIPTION_TIERS };
+});
 
 const schema = z.object({
   packId: z.string(),
@@ -49,8 +57,9 @@ export const purchaseCredits = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => schema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertNotSuspended(supabase, userId);
 
-    const pack = CREDIT_PACKS.find((p) => p.id === data.packId);
+    const pack = (await getEffectivePacks()).find((p) => p.id === data.packId);
     const tier = SUBSCRIPTION_TIERS.find((t) => t.id === data.packId);
     const item = pack ?? tier;
     if (!item) throw new Error("Invalid pack");
@@ -113,8 +122,9 @@ export const purchaseCredits = createServerFn({ method: "POST" })
       await supabase.from("credit_ledger").insert({
         user_id: userId,
         delta: credits,
-        reason: "subscription_grant",
+        reason: "subscription_credit",
         balance_after: (bal?.free_messages_remaining ?? 0) + newPaid,
+        idempotency_key: `authnet-sub-${subscriptionId}`,
       });
 
       const renews = new Date();
@@ -185,8 +195,9 @@ export const purchaseCredits = createServerFn({ method: "POST" })
     await supabase.from("credit_ledger").insert({
       user_id: userId,
       delta: credits,
-      reason: "pack_purchase",
+      reason: "purchase_credit",
       balance_after: (bal?.free_messages_remaining ?? 0) + newPaid,
+      idempotency_key: `authnet-pack-${transId}`,
     });
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

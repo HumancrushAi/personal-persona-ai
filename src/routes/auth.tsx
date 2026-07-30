@@ -91,6 +91,27 @@ function AuthPage() {
     }
   }
 
+  async function handleResendConfirmation() {
+    if (!email) {
+      toast.error("Enter your email first, then tap “Resend verification?”");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) throw error;
+      toast.success("Verification link resent — check your email.");
+    } catch (err: any) {
+      toast.error(err.message ?? "Could not resend verification email");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleGoogle() {
     setLoading(true);
     try {
@@ -127,8 +148,8 @@ function AuthPage() {
         </h1>
         <p className="mt-1 text-center text-sm text-muted-foreground">
           {mode === "signin"
-            ? "Sign in to keep your chats and credits."
-            : "25 free messages, no card needed. 18+ only."}
+             ? "Sign in to keep your chats and credits."
+             : "25 free messages, no card needed. 18+ only."}
         </p>
 
         {googleEnabled && (
@@ -193,8 +214,8 @@ function AuthPage() {
           </Button>
         </form>
 
-        {mode === "signin" && (
-          <p className="mt-3 text-center text-sm">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+          {mode === "signin" && (
             <button
               type="button"
               onClick={handleForgot}
@@ -203,8 +224,16 @@ function AuthPage() {
             >
               Forgot password?
             </button>
-          </p>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={handleResendConfirmation}
+            disabled={loading}
+            className="text-muted-foreground hover:text-primary hover:underline"
+          >
+            Resend verification?
+          </button>
+        </div>
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
           {mode === "signin" ? "New here?" : "Already have an account?"}{" "}

@@ -13,14 +13,23 @@ export const Route = createFileRoute("/history")({
 });
 
 const REASON_LABELS: Record<string, string> = {
+  // Current reason codes
+  chat_debit: "Message sent",
+  image_debit: "AI selfie",
+  video_debit: "AI video",
+  voice_note: "Voice note",
+  purchase_credit: "Credit pack",
+  subscription_credit: "Subscription credits",
+  refund_credit: "Refund",
+  admin_credit: "Credits added by support",
+  tip: "Tip sent",
+  private_show: "Private show",
+  // Legacy codes kept so old ledger rows still render nicely
   chat_message: "Message sent",
   selfie: "AI selfie",
-  voice_note: "Voice note",
   pack_purchase: "Credit pack",
   subscription_grant: "Subscription — first month",
   recurring_grant: "Subscription renewal",
-  tip: "Tip sent",
-  private_show: "Private show",
 };
 
 function HistoryPage() {

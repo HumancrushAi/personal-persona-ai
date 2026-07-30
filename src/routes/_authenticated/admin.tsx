@@ -15,7 +15,15 @@ import {
   adminRegeneratePersonaPhoto,
   adminBroadcast,
   adminUploadImage,
+  adminGetSettings,
+  adminUpdateSetting,
+  adminRunEvalCase,
+  adminSetSuspended,
+  adminListCompanionMedia,
+  adminAddCompanionMedia,
+  adminDeleteCompanionMedia,
 } from "@/lib/admin.functions";
+import type { EvalResult } from "@/lib/eval-suite";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +41,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [{ title: "Admin — HumanCrush.com" }, { name: "robots", content: "noindex" }],
   }),
+  // No beforeLoad guard: the router context has no user, and on SSR the browser
+  // Supabase client has no session — the component's amIAdmin check (plus
+  // assertAdmin in every server fn) is the real gate.
   component: AdminPage,
 });
 
@@ -46,6 +57,7 @@ function AdminPage() {
   const setRole = useServerFn(adminSetRole);
   const createUser = useServerFn(adminCreateUser);
   const fetchPayments = useServerFn(adminListUserPayments);
+  const setSuspended = useServerFn(adminSetSuspended);
 
   const [ready, setReady] = useState(false);
   const [allowed, setAllowed] = useState(false);
@@ -119,6 +131,16 @@ function AdminPage() {
     );
   }
 
+  async function doSuspend(userId: string, suspended: boolean) {
+    try {
+      await setSuspended({ data: { userId, suspended } });
+      toast.success(suspended ? "Account suspended" : "Account reinstated");
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }
+
   async function doCredits(userId: string, delta: number) {
     try {
       await addCredits({ data: { userId, credits: delta } });
@@ -183,6 +205,9 @@ function AdminPage() {
           <TabsTrigger value="personas">Personas</TabsTrigger>
           <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
           <TabsTrigger value="clips">Clips</TabsTrigger>
+          <TabsTrigger value="pricing">Plans & Pricing</TabsTrigger>
+          <TabsTrigger value="aiconfig">AI Config</TabsTrigger>
+          <TabsTrigger value="content">Platform Content</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -261,6 +286,7 @@ function AdminPage() {
                         <div className="text-[10px] text-muted-foreground/70">
                           {new Date(u.createdAt).toLocaleDateString()}
                         </div>
+                        {u.isSuspended && <Badge variant="destructive">suspended</Badge>}
                       </td>
                       <td className="p-2">
                         <div>Free: {u.freeCredits}</div>
@@ -372,6 +398,14 @@ function AdminPage() {
                             <Receipt className="mr-1 h-3 w-3" />{" "}
                             {payFor === u.id ? "Hide" : "Payments"}
                           </Button>
+                          <Button
+                            size="sm"
+                            variant={u.isSuspended ? "outline" : "destructive"}
+                            className="h-7 px-2 text-xs"
+                            onClick={() => doSuspend(u.id, !u.isSuspended)}
+                          >
+                            {u.isSuspended ? "Unsuspend" : "Suspend"}
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -457,6 +491,18 @@ function AdminPage() {
         <TabsContent value="clips">
           <ClipMaker />
         </TabsContent>
+
+        <TabsContent value="pricing">
+          <SettingsPanel category="pricing" />
+        </TabsContent>
+
+        <TabsContent value="aiconfig">
+          <SettingsPanel category="aiconfig" />
+        </TabsContent>
+
+        <TabsContent value="content">
+          <SettingsPanel category="content" />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -477,6 +523,11 @@ const EMPTY_FORM = {
   ethnicity: "",
   gender: "female",
   art_style: "realistic",
+  speaking_style: "",
+  vocabulary_level: "casual",
+  boundaries: "",
+  greeting: "",
+  voice_id: "alloy",
 };
 
 function PersonasPanel() {
@@ -581,6 +632,11 @@ function PersonasPanel() {
       ethnicity: p.ethnicity,
       gender: p.gender,
       art_style: p.art_style,
+      speaking_style: p.speaking_style ?? "",
+      vocabulary_level: p.vocabulary_level ?? "casual",
+      boundaries: p.boundaries ?? "",
+      greeting: p.greeting ?? "",
+      voice_id: p.voice_id ?? "alloy",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -606,6 +662,11 @@ function PersonasPanel() {
           ethnicity: form.ethnicity,
           gender: form.gender,
           art_style: form.art_style,
+          speaking_style: form.speaking_style,
+          vocabulary_level: form.vocabulary_level,
+          boundaries: form.boundaries,
+          greeting: form.greeting,
+          voice_id: form.voice_id,
         },
       });
       toast.success(form.id ? "Persona updated" : "Persona created");
@@ -737,6 +798,47 @@ function PersonasPanel() {
               </option>
             </select>
           </div>
+          <div>
+            <Label className="text-xs">Speaking style</Label>
+            <Input value={form.speaking_style} onChange={set("speaking_style")} placeholder="e.g. casual, flirty, uses emojis" />
+          </div>
+          <div>
+            <Label className="text-xs">Vocabulary level</Label>
+            <select
+              className="h-9 w-full rounded-md border border-white/10 bg-transparent px-2 text-sm"
+              value={form.vocabulary_level}
+              onChange={(e) => setForm((f) => ({ ...f, vocabulary_level: e.target.value }))}
+            >
+              <option value="casual" className="bg-background">Casual / Texting</option>
+              <option value="intellectual" className="bg-background">Intellectual / Formal</option>
+              <option value="slang" className="bg-background">Slang / Gen Z</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs">Boundaries (topics she avoids)</Label>
+            <Input value={form.boundaries} onChange={set("boundaries")} placeholder="e.g. political discussion, excessive violence" />
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs">Greeting message (first chat message)</Label>
+            <Input value={form.greeting} onChange={set("greeting")} placeholder="e.g. Hey babe! So glad you're here. 💖" />
+          </div>
+          <div>
+            <Label className="text-xs">Voice (OpenAI TTS)</Label>
+            <select
+              className="h-9 w-full rounded-md border border-white/10 bg-transparent px-2 text-sm"
+              value={form.voice_id}
+              onChange={(e) => setForm((f) => ({ ...f, voice_id: e.target.value }))}
+            >
+              <option value="alloy" className="bg-background">Alloy</option>
+              <option value="echo" className="bg-background">Echo</option>
+              <option value="fable" className="bg-background">Fable</option>
+              <option value="onyx" className="bg-background">Onyx</option>
+              <option value="nova" className="bg-background">Nova</option>
+              <option value="shimmer" className="bg-background">Shimmer</option>
+              <option value="sage" className="bg-background">Sage</option>
+              <option value="coral" className="bg-background">Coral</option>
+            </select>
+          </div>
           <div className="flex items-end gap-2 md:col-span-2">
             <Button type="submit" disabled={saving}>
               {form.id ? "Save changes" : "Create persona"}
@@ -748,6 +850,8 @@ function PersonasPanel() {
             )}
           </div>
         </form>
+
+        {form.id && <GalleryManager companionId={form.id} />}
       </section>
 
       <section className="glass rounded-2xl p-4">
@@ -927,6 +1031,355 @@ function BroadcastPanel() {
           {sending ? "Sending…" : "Send broadcast"}
         </Button>
       </form>
+    </section>
+  );
+}
+
+function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "content" }) {
+  const getSettings = useServerFn(adminGetSettings);
+  const updateSetting = useServerFn(adminUpdateSetting);
+
+  const [settings, setSettings] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await getSettings();
+      const obj: Record<string, any> = {};
+      res.settings.forEach((s) => {
+        obj[s.key] = s.value;
+      });
+      setSettings(obj);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handleSave(key: string, value: any) {
+    setSaving(key);
+    try {
+      await updateSetting({ data: { key, value } });
+      toast.success(`Saved setting: ${key}`);
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  if (loading) return <div className="p-4 text-center text-muted-foreground">Loading settings…</div>;
+
+  return (
+    <div className="space-y-6">
+      <section className="glass rounded-2xl p-4">
+        <h2 className="mb-4 font-display text-lg capitalize">
+          {category === "pricing" ? "Plans & Pricing" : category === "aiconfig" ? "AI Configuration" : "Platform Content"} Settings
+        </h2>
+        <div className="space-y-4">
+          {category === "pricing" && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label className="text-xs mb-1 block">Standard Token Pack Price (Cents)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={settings["price_pack_1_cents"] ?? "1999"}
+                      onChange={(e) => setSettings({ ...settings, price_pack_1_cents: e.target.value })}
+                    />
+                    <Button onClick={() => handleSave("price_pack_1_cents", settings["price_pack_1_cents"] ?? "1999")} disabled={saving === "price_pack_1_cents"}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Standard Token Pack Credits</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={settings["price_pack_1_credits"] ?? "150"}
+                      onChange={(e) => setSettings({ ...settings, price_pack_1_credits: e.target.value })}
+                    />
+                    <Button onClick={() => handleSave("price_pack_1_credits", settings["price_pack_1_credits"] ?? "150")} disabled={saving === "price_pack_1_credits"}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {category === "aiconfig" && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label className="text-xs mb-1 block">Image Fallback Provider</Label>
+                  <div className="flex gap-2">
+                    <select
+                      className="h-9 w-full rounded-md border border-white/10 bg-transparent px-2 text-sm"
+                      value={settings["image_fallback_provider"] ?? "replicate"}
+                      onChange={(e) => setSettings({ ...settings, image_fallback_provider: e.target.value })}
+                    >
+                      <option value="replicate" className="bg-background">Replicate (NSFW/Realistic)</option>
+                      <option value="openai" className="bg-background">OpenAI (DALL-E SFW)</option>
+                    </select>
+                    <Button onClick={() => handleSave("image_fallback_provider", settings["image_fallback_provider"] ?? "replicate")} disabled={saving === "image_fallback_provider"}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Default Model Temperature</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={settings["default_temperature"] ?? "0.9"}
+                      onChange={(e) => setSettings({ ...settings, default_temperature: e.target.value })}
+                    />
+                    <Button onClick={() => handleSave("default_temperature", settings["default_temperature"] ?? "0.9")} disabled={saving === "default_temperature"}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {category === "aiconfig" && <EvalPanel />}
+
+          {category === "content" && (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-xs mb-1 block">Top Banner Announcement Text</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={settings["platform_banner_text"] ?? ""}
+                      onChange={(e) => setSettings({ ...settings, platform_banner_text: e.target.value })}
+                      placeholder="e.g. 🔥 Summer Special: Double tokens on all subscription tiers!"
+                    />
+                    <Button onClick={() => handleSave("platform_banner_text", settings["platform_banner_text"] ?? "")} disabled={saving === "platform_banner_text"}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">System Status Message</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={settings["system_status_message"] ?? ""}
+                      onChange={(e) => setSettings({ ...settings, system_status_message: e.target.value })}
+                      placeholder="e.g. All systems operational"
+                    />
+                    <Button onClick={() => handleSave("system_status_message", settings["system_status_message"] ?? "")} disabled={saving === "system_status_message"}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// Admin-managed public gallery for a companion (shown while editing a persona).
+function GalleryManager({ companionId }: { companionId: string }) {
+  const listMedia = useServerFn(adminListCompanionMedia);
+  const addMedia = useServerFn(adminAddCompanionMedia);
+  const deleteMedia = useServerFn(adminDeleteCompanionMedia);
+  const uploadImg = useServerFn(adminUploadImage);
+
+  const [media, setMedia] = useState<{ id: string; media_url: string; sort_order: number }[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    try {
+      const res = await listMedia({ data: { companionId } });
+      setMedia(res.media);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companionId]);
+
+  function onPickGalleryFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const { imageUrl } = await uploadImg({ data: { dataUrl: String(reader.result) } });
+        await addMedia({ data: { companionId, mediaUrl: imageUrl, sortOrder: media.length } });
+        toast.success("Added to gallery");
+        await load();
+      } catch (err: any) {
+        toast.error(err.message ?? "Upload failed");
+      } finally {
+        setBusy(false);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  async function remove(id: string) {
+    setBusy(true);
+    try {
+      await deleteMedia({ data: { id } });
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-white/10 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-display text-base">Gallery ({media.length})</h3>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={onPickGalleryFile}
+          disabled={busy}
+          className="text-xs file:mr-2 file:rounded-full file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-xs file:text-primary"
+        />
+      </div>
+      {media.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No gallery images yet — upload a few for this companion's public profile.
+        </p>
+      ) : (
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+          {media.map((m) => (
+            <div key={m.id} className="group relative overflow-hidden rounded-xl">
+              <img src={m.media_url} alt="" className="aspect-[3/4] w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => remove(m.id)}
+                disabled={busy}
+                className="absolute right-1 top-1 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white opacity-0 transition group-hover:opacity-100"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Runs the persona eval suite one case at a time (each case is its own
+// server-fn call so long suites can't hit a serverless timeout).
+function EvalPanel() {
+  const runCase = useServerFn(adminRunEvalCase);
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [results, setResults] = useState<EvalResult[]>([]);
+
+  async function runAll() {
+    setRunning(true);
+    setResults([]);
+    setProgress(null);
+    try {
+      let index = 0;
+      let total = Infinity;
+      const acc: EvalResult[] = [];
+      while (index < total) {
+        const res = await runCase({ data: { index } });
+        total = res.total;
+        acc.push(res.result);
+        setResults([...acc]);
+        setProgress({ done: index + 1, total });
+        index++;
+      }
+      const passed = acc.filter((r) => r.passed).length;
+      toast.success(`Evals done: ${passed}/${acc.length} passed`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <section className="mt-6 rounded-2xl border border-white/10 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h3 className="font-display text-base">Persona Eval Suite</h3>
+          <p className="text-xs text-muted-foreground">
+            Runs scripted chat scenarios against the live model and scores persona
+            consistency, naturalness, repetition, and safety.
+          </p>
+        </div>
+        <Button onClick={runAll} disabled={running}>
+          {running
+            ? progress
+              ? `Running ${progress.done}/${progress.total}…`
+              : "Running…"
+            : "Run evals"}
+        </Button>
+      </div>
+
+      {results.length > 0 && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-muted-foreground">
+              <tr>
+                <th className="py-1 pr-3">Test</th>
+                <th className="py-1 pr-3">Latency</th>
+                <th className="py-1 pr-3">Persona</th>
+                <th className="py-1 pr-3">Natural</th>
+                <th className="py-1 pr-3">No-repeat</th>
+                <th className="py-1 pr-3">Safety</th>
+                <th className="py-1">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((r) => (
+                <tr key={r.testName} className="border-t border-white/5 align-top">
+                  <td className="py-2 pr-3">
+                    <div className="font-medium">{r.testName}</div>
+                    <div className="mt-0.5 max-w-md text-muted-foreground line-clamp-2">
+                      {r.response}
+                    </div>
+                  </td>
+                  <td className="py-2 pr-3">{(r.latencyMs / 1000).toFixed(1)}s</td>
+                  <td className="py-2 pr-3">{r.scores.personaConsistency}/5</td>
+                  <td className="py-2 pr-3">{r.scores.naturalness}/5</td>
+                  <td className="py-2 pr-3">{r.scores.repetitionAvoidance}/5</td>
+                  <td className="py-2 pr-3">{r.scores.safetyCompliance}/5</td>
+                  <td className="py-2">
+                    <Badge variant={r.passed ? "default" : "destructive"}>
+                      {r.passed ? "pass" : "fail"}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

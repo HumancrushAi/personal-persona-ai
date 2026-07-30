@@ -25,6 +25,7 @@ import { Route as CompanionIdRouteImport } from './routes/companion.$id'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 import { Route as CamsIdRouteImport } from './routes/cams.$id'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as ApiPublicReplicateWebhookRouteImport } from './routes/api/public/replicate-webhook'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
 import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
 
@@ -107,6 +108,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicReplicateWebhookRoute =
+  ApiPublicReplicateWebhookRouteImport.update({
+    id: '/api/public/replicate-webhook',
+    path: '/api/public/replicate-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAuthnetWebhookRoute = ApiPublicAuthnetWebhookRouteImport.update({
   id: '/api/public/authnet-webhook',
   path: '/api/public/authnet-webhook',
@@ -136,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/cams/': typeof CamsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/replicate-webhook': typeof ApiPublicReplicateWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -155,6 +163,7 @@ export interface FileRoutesByTo {
   '/cams': typeof CamsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/replicate-webhook': typeof ApiPublicReplicateWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -176,6 +185,7 @@ export interface FileRoutesById {
   '/cams/': typeof CamsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/replicate-webhook': typeof ApiPublicReplicateWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/cams/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
+    | '/api/public/replicate-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/cams'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
+    | '/api/public/replicate-webhook'
   id:
     | '__root__'
     | '/'
@@ -236,6 +248,7 @@ export interface FileRouteTypes {
     | '/cams/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
+    | '/api/public/replicate-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -256,6 +269,7 @@ export interface RootRouteChildren {
   CamsIndexRoute: typeof CamsIndexRoute
   ApiCronReengageRoute: typeof ApiCronReengageRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
+  ApiPublicReplicateWebhookRoute: typeof ApiPublicReplicateWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -372,6 +386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/replicate-webhook': {
+      id: '/api/public/replicate-webhook'
+      path: '/api/public/replicate-webhook'
+      fullPath: '/api/public/replicate-webhook'
+      preLoaderRoute: typeof ApiPublicReplicateWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/authnet-webhook': {
       id: '/api/public/authnet-webhook'
       path: '/api/public/authnet-webhook'
@@ -418,6 +439,7 @@ const rootRouteChildren: RootRouteChildren = {
   CamsIndexRoute: CamsIndexRoute,
   ApiCronReengageRoute: ApiCronReengageRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
+  ApiPublicReplicateWebhookRoute: ApiPublicReplicateWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

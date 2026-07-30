@@ -5,6 +5,7 @@ import { applyDeduction, hasEnough } from "./credits";
 import { generateImage, textToSpeech, chatComplete } from "./ai";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 import { selfiePrompt, checkCrossGenderRequest } from "./selfie";
+import { assertNotSuspended, assertRateLimit } from "./account.server";
 
 const SELFIE_COST = 8;
 const VOICE_COST = 3;
@@ -52,6 +53,30 @@ async function deductCredits(
   return { free: newFree, paid: newPaid };
 }
 
+// Undo an upfront media charge when the job never launched. `balance` must be
+// the POST-deduction balance returned by deductCredits — refunding from the
+// pre-deduction snapshot would over-credit the user.
+export async function refundCredits(
+  supabase: any,
+  userId: string,
+  cost: number,
+  refundKey: string,
+  balance: { free: number; paid: number },
+) {
+  const newPaid = balance.paid + cost;
+  await supabase
+    .from("credit_balances")
+    .update({ paid_credits: newPaid })
+    .eq("user_id", userId);
+  await supabase.from("credit_ledger").insert({
+    user_id: userId,
+    delta: cost,
+    reason: "refund_credit",
+    balance_after: balance.free + newPaid,
+    idempotency_key: refundKey,
+  });
+}
+
 export const generateSelfie = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -64,6 +89,8 @@ export const generateSelfie = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertNotSuspended(supabase, userId);
+    await assertRateLimit(supabase, "media_jobs", userId, 300, 10);
 
     const { data: conv } = await supabase
       .from("conversations")
@@ -88,6 +115,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
     if (crossGenderWarning) throw new Error(crossGenderWarning);
 
     const { free, paid } = await ensureBalance(supabase, userId, SELFIE_COST);
+    const balance = await deductCredits(supabase, userId, SELFIE_COST, "image_debit", free, paid);
 
     const imagePrompt = selfiePrompt(
       { name: c.name, age: c.age, ethnicity: c.ethnicity, gender: c.gender, short_bio: c.short_bio },
@@ -95,21 +123,184 @@ export const generateSelfie = createServerFn({ method: "POST" })
       p.style_backstory,
     );
 
-    // Generate first; only charge if it actually succeeds.
-    const dataUrl = await generateImage(imagePrompt, { gender: c.gender, faceUrl: c.image_url });
-    const balance = await deductCredits(supabase, userId, SELFIE_COST, "selfie", free, paid);
-
-    const caption = userPrompt ? `*sends a pic* ${userPrompt}` : "*sends you a selfie* 💋";
-    await supabase.from("messages").insert({
-      conversation_id: data.conversationId,
-      user_id: userId,
-      role: "assistant",
-      content: caption,
-      kind: "image",
-      media_url: dataUrl,
+    const jobId = await startImageJob(supabase, userId, data.conversationId, imagePrompt, {
+      gender: c.gender,
+      faceUrl: c.image_url,
+      balance,
     });
 
-    return { balance, mediaUrl: dataUrl };
+    return { jobId, status: "pending", balance };
+  });
+
+// Create a media_jobs row and fire the async Replicate prediction for a selfie.
+// The caller must have ALREADY charged SELFIE_COST; on any launch failure this
+// marks the job failed, refunds, and rethrows. Shared by the 📷 button
+// (generateSelfie) and the in-chat auto-selfie (sendChatMessage).
+export async function startImageJob(
+  supabase: any,
+  userId: string,
+  conversationId: string,
+  imagePrompt: string,
+  opts: {
+    gender?: string | null;
+    faceUrl?: string | null;
+    balance: { free: number; paid: number };
+  },
+): Promise<string> {
+  // media_jobs is only writable by the service role (users can just read
+  // their own rows), so job bookkeeping goes through the admin client.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: job, error: jobErr } = await supabaseAdmin
+    .from("media_jobs")
+    .insert({
+      user_id: userId,
+      conversation_id: conversationId,
+      kind: "image",
+      status: "pending",
+      prompt: imagePrompt,
+      provider: "replicate",
+      cost: SELFIE_COST,
+    })
+    .select("id")
+    .single();
+
+  if (jobErr || !job) {
+    await refundCredits(supabase, userId, SELFIE_COST, `refund-nojob-${userId}-${Date.now()}`, opts.balance);
+    throw new Error("Failed to create image generation job");
+  }
+
+  const webhookUrl = `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`;
+
+  try {
+    const result = await generateImage(imagePrompt, {
+      gender: opts.gender,
+      faceUrl: opts.faceUrl,
+      webhookUrl,
+    });
+
+    if (typeof result === "object" && "replicateId" in result) {
+      await supabaseAdmin
+        .from("media_jobs")
+        .update({
+          replicate_id: result.replicateId,
+          status: "processing",
+        })
+        .eq("id", job.id);
+    }
+  } catch (err: any) {
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({
+        status: "failed",
+        error: err.message || "Failed to trigger Replicate",
+      })
+      .eq("id", job.id);
+
+    await refundCredits(supabase, userId, SELFIE_COST, `refund-${job.id}`, opts.balance);
+    throw err;
+  }
+
+  return job.id;
+}
+
+export const requestVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        conversationId: z.string().uuid(),
+        prompt: z.string().max(300).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertNotSuspended(supabase, userId);
+    await assertRateLimit(supabase, "media_jobs", userId, 300, 10);
+
+    const { data: conv } = await supabase
+      .from("conversations")
+      .select(
+        "user_personalities(nickname, style_backstory, companions(name, image_url, sort_order, age, ethnicity, base_personality))",
+      )
+      .eq("id", data.conversationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!conv) throw new Error("Conversation not found");
+
+    const userPrompt = data.prompt?.trim();
+    if (userPrompt) {
+      const screen = screenUserMessage(userPrompt);
+      if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
+    }
+
+    const p: any = (conv as any).user_personalities;
+    const c = p.companions;
+
+    const { free, paid } = await ensureBalance(supabase, userId, VIDEO_COST);
+    const balance = await deductCredits(supabase, userId, VIDEO_COST, "video_debit", free, paid);
+
+    const videoPrompt = `Stunning ${c.ethnicity} model named ${c.name}, age ${c.age}. Base personality: ${c.base_personality}. ${p.style_backstory ? `Vibe: ${p.style_backstory}.` : ""} Prompt: ${userPrompt || "Teasing, smiling directly at camera"}. SFW, age-appropriate, photorealistic.`;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: job, error: jobErr } = await supabaseAdmin
+      .from("media_jobs")
+      .insert({
+        user_id: userId,
+        conversation_id: data.conversationId,
+        kind: "video",
+        status: "pending",
+        prompt: videoPrompt,
+        provider: "replicate",
+        cost: VIDEO_COST,
+      })
+      .select("id")
+      .single();
+
+    if (jobErr || !job) {
+      await refundCredits(supabase, userId, VIDEO_COST, `refund-nojob-${userId}-${Date.now()}`, balance);
+      throw new Error("Failed to create video generation job");
+    }
+
+    const webhookUrl = `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`;
+    const videoModel = process.env.REPLICATE_VIDEO_MODEL || "lucataco/wan-2.1-t2v-1.3b:1b11b51e03a948e898bf0d8ac9387a3b3cc4cfb5d79679f22c6c06a0cdffea2c";
+    // "owner/name:version" — the predictions API only needs the version hash.
+    const modelVersion = videoModel.split(":").pop()!;
+
+    try {
+      const { triggerReplicate } = await import("./ai");
+      const result = await triggerReplicate(
+        modelVersion,
+        {
+          prompt: videoPrompt,
+          aspect_ratio: "9:16",
+        },
+        webhookUrl
+      );
+
+      await supabaseAdmin
+        .from("media_jobs")
+        .update({
+          replicate_id: result.id,
+          status: "processing",
+        })
+        .eq("id", job.id);
+    } catch (err: any) {
+      await supabaseAdmin
+        .from("media_jobs")
+        .update({
+          status: "failed",
+          error: err.message || "Failed to trigger video Replicate model",
+        })
+        .eq("id", job.id);
+
+      await refundCredits(supabase, userId, VIDEO_COST, `refund-${job.id}`, balance);
+      throw err;
+    }
+
+    return { jobId: job.id, status: "pending", balance };
   });
 
 export const generateVoiceNote = createServerFn({ method: "POST" })
@@ -124,10 +315,11 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertNotSuspended(supabase, userId);
 
     const { data: conv } = await supabase
       .from("conversations")
-      .select("user_personalities(companions(sort_order))")
+      .select("user_personalities(companions(sort_order, voice_id))")
       .eq("id", data.conversationId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -135,8 +327,10 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
 
     const { free, paid } = await ensureBalance(supabase, userId, VOICE_COST);
 
-    const sort: number = (conv as any).user_personalities?.companions?.sort_order ?? 0;
-    const voice = VOICES[sort % VOICES.length];
+    const comp = (conv as any).user_personalities?.companions;
+    const sort: number = comp?.sort_order ?? 0;
+    // Admin-assigned voice wins; otherwise rotate through the roster.
+    const voice = comp?.voice_id || VOICES[sort % VOICES.length];
 
     // Generate first; only charge if it actually succeeds.
     const buf = await textToSpeech(data.text, voice);
@@ -175,7 +369,7 @@ export const videoScript = createServerFn({ method: "POST" })
     const { data: conv } = await supabase
       .from("conversations")
       .select(
-        "user_personalities(nickname, style_backstory, companions(name, image_url, sort_order, age, ethnicity, base_personality))",
+        "user_personalities(nickname, style_backstory, companions(name, image_url, sort_order, age, ethnicity, base_personality, voice_id))",
       )
       .eq("id", data.conversationId)
       .eq("user_id", userId)
@@ -216,7 +410,7 @@ export const videoScript = createServerFn({ method: "POST" })
       .slice(0, 200);
 
     const sort: number = c.sort_order ?? 0;
-    const voice = VOICES[sort % VOICES.length];
+    const voice = c.voice_id || VOICES[sort % VOICES.length];
     const buf = await textToSpeech(line || `Hey you… I made this just for you.`, voice);
     const audioUrl = `data:audio/mpeg;base64,${buf.toString("base64")}`;
 

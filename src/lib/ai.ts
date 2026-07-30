@@ -88,7 +88,7 @@ function sanitizeReply(s: string): string {
 
 export async function chatComplete(
   messages: { role: string; content: string }[],
-  opts?: { maxTokens?: number },
+  opts?: { maxTokens?: number; temperature?: number },
 ): Promise<string> {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) throw new Error("Chat AI not configured (OPENROUTER_API_KEY missing)");
@@ -106,7 +106,7 @@ export async function chatComplete(
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.9,
+      temperature: opts?.temperature ?? 0.9,
       frequency_penalty: 0.4,
       presence_penalty: 0.3,
       ...(opts?.maxTokens ? { max_tokens: opts.maxTokens } : {}),
@@ -151,11 +151,46 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // cdingram/face-swap — swaps a source face onto a target image. Used to lock a
 // companion's face to their canonical profile picture across every selfie.
-const FACE_SWAP_VERSION = "d1d6ea8c8be89d664a07a457526f7128109dee7030fdac424788d762c71ed111";
+export const FACE_SWAP_VERSION = "d1d6ea8c8be89d664a07a457526f7128109dee7030fdac424788d762c71ed111";
 
-// Runs one Replicate prediction (Prefer: wait, then poll) and returns the output
-// URL — does not inline it, so the result can be chained into another model.
-async function runReplicate(version: string, input: Record<string, unknown>): Promise<string> {
+export async function triggerReplicate(
+  version: string,
+  input: Record<string, unknown>,
+  webhookUrl?: string,
+): Promise<{ id: string; status: string; output?: any }> {
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) throw new Error("REPLICATE_API_TOKEN not configured");
+
+  const body: any = { version, input };
+  if (webhookUrl) {
+    body.webhook = webhookUrl;
+    body.webhook_events_filter = ["start", "completed"];
+  }
+
+  const res = await fetch(REPLICATE_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(!webhookUrl ? { Prefer: "wait" } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Replicate error: ${res.status} ${text.slice(0, 200)}`);
+  }
+
+  const json = await res.json();
+  return {
+    id: json.id,
+    status: json.status,
+    output: json.output,
+  };
+}
+
+async function runReplicateSync(version: string, input: Record<string, unknown>): Promise<string> {
   const token = process.env.REPLICATE_API_TOKEN!;
   const res = await fetch(REPLICATE_URL, {
     method: "POST",
@@ -170,8 +205,6 @@ async function runReplicate(version: string, input: Record<string, unknown>): Pr
   let json = await res.json();
   const getUrl = json.urls?.get;
 
-  // Up to ~4 min of polling — SDXL (Pony) male generations plus a cold model
-  // boot can run well past a minute; the serverless maxDuration is the real cap.
   let attempts = 0;
   while (json.status !== "succeeded" && getUrl && attempts < 80) {
     if (json.status === "failed" || json.status === "canceled") {
@@ -191,47 +224,52 @@ async function runReplicate(version: string, input: Record<string, unknown>): Pr
   return out;
 }
 
-// Replicate (NSFW-capable). Generates the body, optionally swaps the companion's
-// canonical face onto it for identity consistency, then inlines as a data URL.
-async function generateImageReplicate(
-  prompt: string,
-  model: { version: string; negativePrompt?: string; input: Record<string, unknown> },
-  faceUrl?: string,
-): Promise<string> {
-  const input: Record<string, unknown> = { prompt, ...model.input };
-  if (model.negativePrompt) input.negative_prompt = model.negativePrompt;
-
-  let url = await runReplicate(model.version, input);
-
-  // Lock the face to the companion's profile image so every selfie looks like
-  // the same person. Only http(s)/data sources are fetchable by the swap model;
-  // a failed swap falls back to the generated face rather than erroring the pic.
-  if (faceUrl && /^(https?:|data:)/.test(faceUrl)) {
-    try {
-      url = await runReplicate(FACE_SWAP_VERSION, { swap_image: faceUrl, input_image: url });
-    } catch {
-      /* keep the un-swapped body */
-    }
-  }
-
-  const img = await fetch(url);
-  if (!img.ok) throw new Error("Could not fetch generated image");
-  const b64 = Buffer.from(await img.arrayBuffer()).toString("base64");
-  return `data:image/png;base64,${b64}`;
-}
-
-// Returns a data: URL (base64 PNG). Prefers Replicate (NSFW) when configured;
+// Returns a data: URL (base64 PNG) or trigger status. Prefers Replicate (NSFW) when configured;
 // otherwise OpenAI (SFW only — gpt-image-1 then dall-e-3).
+// With webhookUrl set the Replicate path returns a { replicateId } handle instead
+// of waiting; without it callers always get the finished image string.
+type GenerateImageOpts = {
+  size?: string;
+  gender?: string | null;
+  faceUrl?: string | null;
+};
 export async function generateImage(
   prompt: string,
-  opts?: { size?: string; gender?: string | null; faceUrl?: string | null },
-): Promise<string> {
-  if (process.env.REPLICATE_API_TOKEN)
-    return generateImageReplicate(
-      prompt,
-      imageModelForGender(opts?.gender),
-      opts?.faceUrl ?? undefined,
-    );
+  opts?: GenerateImageOpts & { webhookUrl?: undefined },
+): Promise<string>;
+export async function generateImage(
+  prompt: string,
+  opts: GenerateImageOpts & { webhookUrl: string },
+): Promise<string | { replicateId: string; status: string }>;
+export async function generateImage(
+  prompt: string,
+  opts?: GenerateImageOpts & { webhookUrl?: string },
+): Promise<string | { replicateId: string; status: string }> {
+  if (process.env.REPLICATE_API_TOKEN) {
+    const model = imageModelForGender(opts?.gender);
+    const input: Record<string, unknown> = { prompt, ...model.input };
+    if (model.negativePrompt) input.negative_prompt = model.negativePrompt;
+
+    if (opts?.webhookUrl) {
+      // Async webhook mode
+      const prediction = await triggerReplicate(model.version, input, opts.webhookUrl);
+      return { replicateId: prediction.id, status: prediction.status };
+    } else {
+      // Sync fallback mode (e.g. for Admin avatar generator)
+      let url = await runReplicateSync(model.version, input);
+      if (opts?.faceUrl && /^(https?:|data:)/.test(opts.faceUrl)) {
+        try {
+          url = await runReplicateSync(FACE_SWAP_VERSION, { swap_image: opts.faceUrl, input_image: url });
+        } catch {
+          /* keep un-swapped */
+        }
+      }
+      const img = await fetch(url);
+      if (!img.ok) throw new Error("Could not fetch generated image");
+      const b64 = Buffer.from(await img.arrayBuffer()).toString("base64");
+      return `data:image/png;base64,${b64}`;
+    }
+  }
 
   const key = process.env.OPENAI_API_KEY;
   if (!key)

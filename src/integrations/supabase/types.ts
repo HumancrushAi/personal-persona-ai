@@ -28,6 +28,19 @@ export type Database = {
           status: string;
           tags: string[];
           video_url: string | null;
+          background: string | null;
+          speaking_style: string | null;
+          interests: string | null;
+          relationship_context: string | null;
+          vocabulary_level: string | null;
+          emotional_tone: string | null;
+          boundaries: string | null;
+          supported_languages: string[] | null;
+          greeting_style: string | null;
+          greeting: string | null;
+          voice_id: string | null;
+          response_length: string | null;
+          prompt_version: string | null;
         };
         Insert: {
           age: number;
@@ -48,6 +61,19 @@ export type Database = {
           status?: string;
           tags?: string[];
           video_url?: string | null;
+          background?: string | null;
+          speaking_style?: string | null;
+          interests?: string | null;
+          relationship_context?: string | null;
+          vocabulary_level?: string | null;
+          emotional_tone?: string | null;
+          boundaries?: string | null;
+          supported_languages?: string[] | null;
+          greeting_style?: string | null;
+          greeting?: string | null;
+          voice_id?: string | null;
+          response_length?: string | null;
+          prompt_version?: string | null;
         };
         Update: {
           age?: number;
@@ -68,6 +94,19 @@ export type Database = {
           status?: string;
           tags?: string[];
           video_url?: string | null;
+          background?: string | null;
+          speaking_style?: string | null;
+          interests?: string | null;
+          relationship_context?: string | null;
+          vocabulary_level?: string | null;
+          emotional_tone?: string | null;
+          boundaries?: string | null;
+          supported_languages?: string[] | null;
+          greeting_style?: string | null;
+          greeting?: string | null;
+          voice_id?: string | null;
+          response_length?: string | null;
+          prompt_version?: string | null;
         };
         Relationships: [];
       };
@@ -83,6 +122,7 @@ export type Database = {
           title: string | null;
           updated_at: string;
           user_id: string;
+          summary: string | null;
         };
         Insert: {
           created_at?: string;
@@ -95,6 +135,7 @@ export type Database = {
           title?: string | null;
           updated_at?: string;
           user_id: string;
+          summary?: string | null;
         };
         Update: {
           created_at?: string;
@@ -107,6 +148,7 @@ export type Database = {
           title?: string | null;
           updated_at?: string;
           user_id?: string;
+          summary?: string | null;
         };
         Relationships: [
           {
@@ -147,6 +189,7 @@ export type Database = {
           id: string;
           reason: string;
           user_id: string;
+          idempotency_key: string | null;
         };
         Insert: {
           balance_after: number;
@@ -155,6 +198,7 @@ export type Database = {
           id?: string;
           reason: string;
           user_id: string;
+          idempotency_key?: string | null;
         };
         Update: {
           balance_after?: number;
@@ -163,6 +207,7 @@ export type Database = {
           id?: string;
           reason?: string;
           user_id?: string;
+          idempotency_key?: string | null;
         };
         Relationships: [];
       };
@@ -248,6 +293,7 @@ export type Database = {
           subscription_status: string | null;
           subscription_tier: string | null;
           updated_at: string;
+          is_suspended: boolean;
         };
         Insert: {
           age_confirmed?: boolean;
@@ -262,6 +308,7 @@ export type Database = {
           subscription_status?: string | null;
           subscription_tier?: string | null;
           updated_at?: string;
+          is_suspended?: boolean;
         };
         Update: {
           age_confirmed?: boolean;
@@ -276,8 +323,41 @@ export type Database = {
           subscription_status?: string | null;
           subscription_tier?: string | null;
           updated_at?: string;
+          is_suspended?: boolean;
         };
         Relationships: [];
+      };
+      companion_media: {
+        Row: {
+          id: string;
+          companion_id: string;
+          media_url: string;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          companion_id: string;
+          media_url: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          companion_id?: string;
+          media_url?: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "companion_media_companion_id_fkey";
+            columns: ["companion_id"];
+            isOneToOne: false;
+            referencedRelation: "companions";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       subscription_events: {
         Row: {
@@ -419,6 +499,104 @@ export type Database = {
           id?: string;
           role?: Database["public"]["Enums"]["app_role"];
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      media_jobs: {
+        Row: {
+          id: string;
+          user_id: string;
+          conversation_id: string | null;
+          kind: "image" | "video" | "voice";
+          status: "pending" | "processing" | "completed" | "failed";
+          prompt: string;
+          provider: string;
+          replicate_id: string | null;
+          media_url: string | null;
+          error: string | null;
+          cost: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          conversation_id?: string | null;
+          kind: "image" | "video" | "voice";
+          status?: "pending" | "processing" | "completed" | "failed";
+          prompt: string;
+          provider: string;
+          replicate_id?: string | null;
+          media_url?: string | null;
+          error?: string | null;
+          cost: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          conversation_id?: string | null;
+          kind?: "image" | "video" | "voice";
+          status?: "pending" | "processing" | "completed" | "failed";
+          prompt?: string;
+          provider?: string;
+          replicate_id?: string | null;
+          media_url?: string | null;
+          error?: string | null;
+          cost?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "media_jobs_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "conversations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      app_settings: {
+        Row: {
+          key: string;
+          value: Json;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value: Json;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          value?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      audit_logs: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          action: string;
+          details: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          action: string;
+          details?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          action?: string;
+          details?: Json | null;
+          created_at?: string;
         };
         Relationships: [];
       };

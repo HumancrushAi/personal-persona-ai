@@ -78,8 +78,9 @@ export const Route = createFileRoute("/api/public/authnet-webhook")({
               await supabaseAdmin.from("credit_ledger").insert({
                 user_id: userId,
                 delta: tier.monthlyCredits,
-                reason: "recurring_grant",
+                reason: "subscription_credit",
                 balance_after: (bal?.free_messages_remaining ?? 0) + newPaid,
+                idempotency_key: `authnet-webhook-${transactionId}`,
               });
 
               const renews = new Date();

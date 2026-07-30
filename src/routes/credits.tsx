@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Check, Crown } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
-import { CREDIT_PACKS, SUBSCRIPTION_TIERS, formatPrice, findPurchasable } from "@/lib/credit-packs";
-import { purchaseCredits, cancelSubscription } from "@/lib/payments.functions";
+import { CREDIT_PACKS, SUBSCRIPTION_TIERS, formatPrice } from "@/lib/credit-packs";
+import { purchaseCredits, cancelSubscription, getPricing } from "@/lib/payments.functions";
 import { getPaymentConfig } from "@/lib/payment-config.functions";
 import { toast } from "sonner";
 
@@ -103,7 +103,10 @@ function CreditsPage() {
   const [processing, setProcessing] = useState(false);
 
   const { data: payCfg } = useQuery({ queryKey: ["pay-cfg"], queryFn: () => getPaymentConfig() });
-  const item = findPurchasable(selected);
+  // Server-priced packs (admin overrides applied) so display matches the charge.
+  const { data: pricing } = useQuery({ queryKey: ["pricing"], queryFn: () => getPricing() });
+  const packs = pricing?.packs ?? CREDIT_PACKS;
+  const item = packs.find((p) => p.id === selected) ?? SUBSCRIPTION_TIERS.find((t) => t.id === selected);
 
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();
@@ -233,7 +236,7 @@ function CreditsPage() {
 
         {tab === "packs" && (
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {CREDIT_PACKS.map((p) => (
+            {packs.map((p) => (
               <button
                 key={p.id}
                 onClick={() => setSelected(p.id)}

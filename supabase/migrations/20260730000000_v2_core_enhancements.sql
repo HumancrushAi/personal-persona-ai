@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.media_jobs (
 
 ALTER TABLE public.media_jobs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users read own media jobs" ON public.media_jobs;
 CREATE POLICY "Users read own media jobs" ON public.media_jobs
   FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
 
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read of app settings" ON public.app_settings;
 CREATE POLICY "Allow public read of app settings" ON public.app_settings
   FOR SELECT TO anon, authenticated
   USING (true);
@@ -90,6 +92,7 @@ CREATE TABLE IF NOT EXISTS public.companion_media (
 
 ALTER TABLE public.companion_media ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public read companion media" ON public.companion_media;
 CREATE POLICY "Public read companion media" ON public.companion_media
   FOR SELECT TO anon, authenticated
   USING (true);
@@ -108,6 +111,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins view audit logs" ON public.audit_logs;
 CREATE POLICY "Admins view audit logs" ON public.audit_logs
   FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));

@@ -245,8 +245,7 @@ export const requestVideo = createServerFn({ method: "POST" })
       supabase,
       userId,
       data.conversationId,
-      { name: c.name, age: c.age, ethnicity: c.ethnicity, base_personality: c.base_personality },
-      p.style_backstory,
+      { name: c.name, imageUrl: c.image_url },
       userPrompt,
       balance,
     );
@@ -254,28 +253,33 @@ export const requestVideo = createServerFn({ method: "POST" })
     return { jobId, status: "pending", balance };
   });
 
-// Build a text-to-video prompt that follows the user's request. Unlike the old
-// path this does NOT force "SFW" — the safety screen (run by the caller) already
-// blocks illegal content, and clamping every request to SFW is why asking her to
-// do something explicit on video never matched what was asked.
+// Build the motion prompt for image-to-video. The companion's appearance comes
+// from the start-frame image, so the prompt describes MOTION/ACTION, not looks.
+// No forced "SFW" — the safety screen (run by the caller) blocks illegal content;
+// clamping to SFW is why asking her to do something explicit never matched.
 function videoPromptFor(
-  c: { name: string; age: number; ethnicity: string; base_personality?: string | null },
-  styleBackstory: string | null | undefined,
+  c: { name: string },
   userReq: string | undefined,
 ): string {
-  const action = (userReq ?? "").trim() || "smiling and teasing directly at the camera";
-  return [
-    `Photorealistic vertical (9:16) selfie-style video of ${c.name}, a ${c.age}-year-old ${c.ethnicity}.`,
-    c.base_personality ? `Personality: ${c.base_personality}.` : "",
-    styleBackstory ? `Vibe: ${styleBackstory}.` : "",
-    `In the video ${c.name} is ${action}.`,
-    `Intimate handheld phone footage, natural skin texture, realistic lighting, cinematic, not illustrated.`,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const action = (userReq ?? "").trim() || "smiling and blowing a kiss to the camera";
+  return `The person in the image is ${action}. Smooth natural motion, realistic lifelike movement, steady handheld selfie video, consistent face and body.`;
 }
 
-// Create a media_jobs row and fire the async Replicate text-to-video prediction.
+// Turn a companion's stored image into a URL Replicate can fetch. i2v needs a
+// remotely-fetchable start frame: http(s) and data: URIs work as-is; a
+// site-relative path is resolved against PUBLIC_SITE_URL. A bare bundled
+// filename isn't reachable by Replicate, so it returns null (caller errors +
+// refunds, prompting the admin to upload/regenerate a hosted photo).
+function resolveStartImage(imageUrl?: string | null): string | null {
+  const u = (imageUrl ?? "").trim();
+  if (!u) return null;
+  if (/^(https?:|data:)/i.test(u)) return u;
+  if (u.startsWith("/")) return `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}${u}`;
+  return null;
+}
+
+// Create a media_jobs row and fire the async Replicate image-to-video prediction,
+// using the companion's photo as the start frame so the clip looks like HER.
 // Caller must have ALREADY charged VIDEO_COST; on any launch failure this marks
 // the job failed, refunds, and rethrows. Shared by the 🎬 button (requestVideo)
 // and the in-chat auto-video (sendChatMessage).
@@ -283,12 +287,12 @@ export async function startVideoJob(
   supabase: any,
   userId: string,
   conversationId: string,
-  companion: { name: string; age: number; ethnicity: string; base_personality?: string | null },
-  styleBackstory: string | null | undefined,
+  companion: { name: string; imageUrl?: string | null },
   userReq: string | undefined,
   balance: { free: number; paid: number },
 ): Promise<string> {
-  const videoPrompt = videoPromptFor(companion, styleBackstory, userReq);
+  const startImage = resolveStartImage(companion.imageUrl);
+  const videoPrompt = videoPromptFor(companion, userReq);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const { data: job, error: jobErr } = await supabaseAdmin
@@ -310,18 +314,37 @@ export async function startVideoJob(
     throw new Error("Failed to create video generation job");
   }
 
+  const fail = async (message: string) => {
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({ status: "failed", error: message })
+      .eq("id", job.id);
+    await refundCredits(supabase, userId, VIDEO_COST, `refund-${job.id}`, balance);
+  };
+
+  if (!startImage) {
+    await fail("Video needs a hosted companion photo — upload or regenerate this companion's image in the admin panel.");
+    throw new Error("No fetchable companion image for video generation");
+  }
+
   const webhookUrl = `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`;
-  const videoModel =
-    process.env.REPLICATE_VIDEO_MODEL ||
-    "lucataco/wan-2.1-t2v-1.3b:1b11b51e03a948e898bf0d8ac9387a3b3cc4cfb5d79679f22c6c06a0cdffea2c";
-  // "owner/name:version" — the predictions API only needs the version hash.
-  const modelVersion = videoModel.split(":").pop()!;
+  // Official model, called by name (versionless, stable API). Override with an
+  // owner/name slug. i2v params: image (start frame), prompt (motion), resolution,
+  // duration. Aspect ratio follows the input image, so a portrait photo -> portrait clip.
+  const videoModel = process.env.REPLICATE_VIDEO_MODEL || "wan-video/wan-2.5-i2v-fast";
+  const resolution = process.env.REPLICATE_VIDEO_RESOLUTION || "720p";
+  const duration = Number(process.env.REPLICATE_VIDEO_DURATION || "5");
 
   try {
-    const { triggerReplicate } = await import("./ai");
-    const result = await triggerReplicate(
-      modelVersion,
-      { prompt: videoPrompt, aspect_ratio: "9:16" },
+    const { triggerReplicateModel } = await import("./ai");
+    const result = await triggerReplicateModel(
+      videoModel,
+      {
+        image: startImage,
+        prompt: videoPrompt,
+        resolution,
+        duration,
+      },
       webhookUrl,
     );
 
@@ -330,15 +353,7 @@ export async function startVideoJob(
       .update({ replicate_id: result.id, status: "processing" })
       .eq("id", job.id);
   } catch (err: any) {
-    await supabaseAdmin
-      .from("media_jobs")
-      .update({
-        status: "failed",
-        error: err.message || "Failed to trigger video Replicate model",
-      })
-      .eq("id", job.id);
-
-    await refundCredits(supabase, userId, VIDEO_COST, `refund-${job.id}`, balance);
+    await fail(err.message || "Failed to trigger video model");
     throw err;
   }
 

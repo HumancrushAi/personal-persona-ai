@@ -155,6 +155,42 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // companion's face to their canonical profile picture across every selfie.
 export const FACE_SWAP_VERSION = "d1d6ea8c8be89d664a07a457526f7128109dee7030fdac424788d762c71ed111";
 
+// Official Replicate models (owner/name) have a stable, versionless API — call
+// them via the models endpoint so there's no version hash to go stale. Used for
+// video generation (e.g. wan-video/wan-2.5-i2v-fast).
+export async function triggerReplicateModel(
+  model: string, // "owner/name"
+  input: Record<string, unknown>,
+  webhookUrl?: string,
+): Promise<{ id: string; status: string; output?: any }> {
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) throw new Error("REPLICATE_API_TOKEN not configured");
+
+  const body: any = { input };
+  if (webhookUrl) {
+    body.webhook = webhookUrl;
+    body.webhook_events_filter = ["start", "completed"];
+  }
+
+  const res = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(!webhookUrl ? { Prefer: "wait" } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Replicate video error: ${res.status} ${text.slice(0, 300)}`);
+  }
+
+  const json = await res.json();
+  return { id: json.id, status: json.status, output: json.output };
+}
+
 export async function triggerReplicate(
   version: string,
   input: Record<string, unknown>,

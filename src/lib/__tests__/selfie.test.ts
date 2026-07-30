@@ -79,6 +79,20 @@ describe("selfiePrompt", () => {
     expect(touch).toMatch(/masturbation|fingering|pleasuring/i);
   });
 
+  it("renders natural-language genital-touch requests as explicit acts + nudity", () => {
+    // Phrasings that don't use the literal keywords "masturbate"/"pussy".
+    for (const req of [
+      "image of her hand in her genitals",
+      "a pic of you touching yourself down there",
+      "photo of her with her hand between her legs",
+      "picture of you rubbing your crotch",
+    ]) {
+      const p = selfiePrompt(c, req, "");
+      expect(p, req).toMatch(/naked|nude/i);
+      expect(p, req).toMatch(/masturbation|fingering|pleasuring|spread pussy|presenting/i);
+    }
+  });
+
   it("has a sensible default when no request is given", () => {
     const p = selfiePrompt(c, "", null);
     expect(p).toMatch(/1girl/);

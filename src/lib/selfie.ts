@@ -12,7 +12,7 @@ function genderNoun(gender?: string | null): string {
 // nudity check and the pose-tag builder can use it — asking her to use a toy or
 // touch herself must both trigger nudity AND render the actual act.
 const ACT_RE =
-  /\b(masturbat\w*|finger\w*|rub\w*|touch\w*\s+(?:her|him|your|my)self|play\w*\s+with\s+(?:her|him|your|my)self|pleasur\w*|dildo|vibrator|sex\s*toy|butt\s*plug|anal|blow\s*job|blowjob|suck\w*|oral|deepthroat|cum|squirt\w*|spread\w*|bent?\s*over|from\s+behind|doggy|twerk\w*|riding|cowgirl)\b/i;
+  /\b(masturbat\w*|finger\w*|rub\w*|touch\w*\s+(?:her|him|your|my)self|play\w*\s+with\s+(?:her|him|your|my)self|pleasur\w*|hand\s+(?:in|on|down|inside|between|up)|between\s+(?:her|his|your|my)\s+legs|down\s+there|fingers?\s+(?:in|inside|deep)|genital\w*|crotch|dildo|vibrator|sex\s*toy|butt\s*plug|anal|blow\s*job|blowjob|suck\w*|oral|deepthroat|cum|squirt\w*|spread\w*|bent?\s*over|from\s+behind|doggy|twerk\w*|riding|cowgirl)\b/i;
 
 // True when the request implies nudity (so we only force genitalia when the
 // groin will actually be bare — a clothed selfie shouldn't be nuded).
@@ -33,19 +33,23 @@ function actionTags(req: string, isMale: boolean): string {
   const ex: string[] = [];
   const has = (re: RegExp) => re.test(r);
 
-  if (isMale && has(/\b(dick|cock|penis|balls|shaft|hard|erect)\b/))
+  if (isMale && has(/\b(dick|cock|penis|balls|shaft|hard|erect|genital\w*|crotch)\b/))
     ex.push("penis, testicles, full frontal nudity, groin visible");
-  if (!isMale && has(/\b(pussy|vagina|clit|vulva|labia)\b/))
+  if (!isMale && has(/\b(pussy|vagina|clit|vulva|labia|genital\w*|crotch)\b/))
     ex.push("pussy, spread pussy, spread legs, presenting");
 
   if (has(/\b(bent?\s*over|from\s+behind|doggy|twerk\w*|ass|butt|behind)\b/))
     ex.push("bent over, presenting, ass, rear view");
   if (has(/\bspread\w*\b/)) ex.push("spread legs");
-  if (has(/\b(masturbat\w*|finger\w*|rub\w*|touch\w*\s+(?:her|him|your|my)self|play\w*\s+with\s+(?:her|him|your|my)self|pleasur\w*)\b/))
+  if (
+    has(
+      /\b(masturbat\w*|finger\w*|rub\w*|touch\w*\s+(?:her|him|your|my)self|play\w*\s+with\s+(?:her|him|your|my)self|pleasur\w*|hand\s+(?:in|on|down|inside|between|up)|between\s+(?:her|his|your|my)\s+legs|down\s+there|fingers?\s+(?:in|inside|deep)|genital\w*|crotch)\b/,
+    )
+  )
     ex.push(
       isMale
-        ? "male masturbation, hand on penis, stroking"
-        : "female masturbation, fingering, hand between legs, spread legs, pleasuring herself",
+        ? "male masturbation, hand on penis, stroking, groin visible"
+        : "female masturbation, fingering, hand between legs, spread legs, pleasuring herself, touching her pussy",
     );
   if (has(/\b(dildo|vibrator|sex\s*toy)\b/)) ex.push("sex toy, dildo, holding a dildo, using sex toy");
   if (has(/\b(anal|butt\s*plug|up\s+(?:her|your|my)\s+ass|in\s+(?:her|your|my)\s+ass)\b/))

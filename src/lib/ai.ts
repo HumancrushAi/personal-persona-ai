@@ -170,16 +170,9 @@ export async function getReplicatePrediction(
   return { status: json.status, output: json.output, error: json.error, version: json.version };
 }
 
-// Synchronous face swap (locks the companion's face onto a generated body). Used
-// by the reconcile poll, which finalizes in one shot rather than chaining a
-// second async prediction. Returns the swapped image URL.
-export async function faceSwapSync(faceUrl: string, inputUrl: string): Promise<string> {
-  return runReplicateSync(FACE_SWAP_VERSION, { swap_image: faceUrl, input_image: inputUrl });
-}
-
 // Official Replicate models (owner/name) have a stable, versionless API — call
 // them via the models endpoint so there's no version hash to go stale. Used for
-// video generation (e.g. wan-video/wan-2.5-i2v-fast).
+// video generation (e.g. wan-video/wan-2.2-i2v-fast).
 export async function triggerReplicateModel(
   model: string, // "owner/name"
   input: Record<string, unknown>,

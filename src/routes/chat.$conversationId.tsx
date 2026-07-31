@@ -215,6 +215,30 @@ function ChatPage() {
     toast.info(`She is still working on that ${label}. It'll show up in the chat soon!`);
   }
 
+  // Pick up jobs left mid-flight. A closed tab, a dropped connection, or a
+  // generation slower than the window above strands a job in "processing"
+  // forever otherwise: the poll is what finalizes jobs now, the webhook is only
+  // a best-effort fast path, and nothing else sweeps them. Re-polling here also
+  // triggers the refund path for jobs whose prediction failed while away.
+  const resumedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (resumedFor.current === conversationId) return;
+    resumedFor.current = conversationId;
+    (async () => {
+      const { data: unfinished } = await supabase
+        .from("media_jobs")
+        .select("id, kind")
+        .eq("conversation_id", conversationId)
+        .in("status", ["pending", "processing"]);
+      for (const job of unfinished ?? []) {
+        pollMediaJob(job.id, job.kind === "video" ? "video" : "photo").catch(() => {
+          /* already recorded on the job row — don't toast on load */
+        });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
+
   async function handleSelfie() {
     if (mediaBusy) return;
     const prompt =

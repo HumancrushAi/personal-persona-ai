@@ -329,10 +329,15 @@ export async function startVideoJob(
 
   const webhookUrl = `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`;
   // Official model, called by name (versionless, stable API). Override with an
-  // owner/name slug. i2v params: image (start frame), prompt (motion), resolution,
-  // duration. Aspect ratio follows the input image, so a portrait photo -> portrait clip.
-  const videoModel = process.env.REPLICATE_VIDEO_MODEL || "wan-video/wan-2.5-i2v-fast";
+  // owner/name slug. wan-2.5 is a proxy to Alibaba's hosted API and rejects this
+  // app's content server-side — every prediction failed in under a second with
+  // ModelError E002 — so run the open-weight 2.2 build, which executes on
+  // Replicate and exposes disable_safety_checker. Clip length is num_frames /
+  // frames_per_second here; 2.5's `duration` input does not exist. Aspect ratio
+  // follows the input image, so a portrait photo -> portrait clip.
+  const videoModel = process.env.REPLICATE_VIDEO_MODEL || "wan-video/wan-2.2-i2v-fast";
   const resolution = process.env.REPLICATE_VIDEO_RESOLUTION || "720p";
+  const fps = Number(process.env.REPLICATE_VIDEO_FPS || "16");
   const duration = Number(process.env.REPLICATE_VIDEO_DURATION || "5");
 
   try {
@@ -343,7 +348,9 @@ export async function startVideoJob(
         image: startImage,
         prompt: videoPrompt,
         resolution,
-        duration,
+        num_frames: Math.round(duration * fps) + 1,
+        frames_per_second: fps,
+        disable_safety_checker: true,
       },
       webhookUrl,
     );
@@ -362,8 +369,8 @@ export async function startVideoJob(
 
 // Reconcile a media job against Replicate directly, so completion does NOT
 // depend on the webhook callback landing (serverless webhooks are unreliable).
-// The client's status poll calls this; it checks the prediction, does the face
-// swap synchronously if needed, stores the result, and finalizes the job.
+// The client's status poll calls this; it checks the prediction, chains the face
+// swap when one is needed, stores the result, and finalizes the job.
 export const checkMediaJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ jobId: z.string().uuid() }).parse(d))
@@ -382,7 +389,7 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     if (job.status === "failed") return { status: "failed" };
     if (!(job as any).replicate_id) return { status: job.status };
 
-    const { getReplicatePrediction, faceSwapSync, FACE_SWAP_VERSION } = await import("./ai");
+    const { getReplicatePrediction, triggerReplicate, FACE_SWAP_VERSION } = await import("./ai");
     let pred: { status: string; output?: any; error?: any; version?: string };
     try {
       pred = await getReplicatePrediction((job as any).replicate_id);
@@ -393,14 +400,19 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     const { completeMediaJob, failMediaJob } = await import("./media-finalize.server");
 
     if (pred.status === "succeeded") {
-      let outputUrl = Array.isArray(pred.output) ? pred.output[0] : pred.output;
+      const outputUrl = Array.isArray(pred.output) ? pred.output[0] : pred.output;
       if (!outputUrl) {
         await failMediaJob(job as any, "No output from generation model");
         return { status: "failed" };
       }
 
-      // Lock the companion's face onto the generated body (skip if this
-      // prediction is already the face-swap, e.g. a legacy webhook-chained job).
+      // Lock the companion's face onto the generated body. The swap runs as a
+      // second prediction that replicate_id is re-pointed at, so the next poll
+      // tick finalizes the swapped result — same chaining the webhook does, so
+      // the two paths stay identical. Swapping inline instead would hold this
+      // request open for minutes and blow the serverless timeout, and the client
+      // would retry and pay for another swap. Skipped when this prediction IS
+      // the swap.
       if (job.kind === "image" && pred.version !== FACE_SWAP_VERSION && job.conversation_id) {
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -411,10 +423,21 @@ export const checkMediaJob = createServerFn({ method: "POST" })
             .maybeSingle();
           const faceUrl = (conv as any)?.user_personalities?.companions?.image_url;
           if (faceUrl && /^(https?:|data:)/.test(faceUrl)) {
-            outputUrl = await faceSwapSync(faceUrl, outputUrl);
+            // A webhook URL keeps Replicate from holding the create call open
+            // (the Prefer: wait path), so this returns as soon as it's queued.
+            const swap = await triggerReplicate(
+              FACE_SWAP_VERSION,
+              { swap_image: faceUrl, input_image: outputUrl },
+              `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`,
+            );
+            await supabaseAdmin
+              .from("media_jobs")
+              .update({ replicate_id: swap.id, updated_at: new Date().toISOString() })
+              .eq("id", job.id);
+            return { status: "processing" };
           }
         } catch {
-          /* keep the unswapped body */
+          /* swap unavailable — fall through and keep the unswapped body */
         }
       }
 

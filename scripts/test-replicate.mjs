@@ -100,9 +100,14 @@ async function main() {
   console.log(`Token: ...${TOKEN.slice(-6)}\n`);
 
   // ---- TEST 1: image (pony) — proves the reconcile core ----
+  // The defaults are deliberately tame. To check how the models handle the
+  // content this app actually generates, pass your own:
+  //   TEST_IMAGE_PROMPT="..." TEST_VIDEO_PROMPT="..." node scripts/test-replicate.mjs
   console.log("① IMAGE (pony-sdxl) — trigger, then poll it back:");
   const imgId = await createByVersion(PONY_VERSION, {
-    prompt: "photorealistic portrait of a woman, mirror selfie, detailed skin",
+    prompt:
+      process.env.TEST_IMAGE_PROMPT ||
+      "photorealistic portrait of a woman, mirror selfie, detailed skin",
     negative_prompt: "anime, cartoon, deformed, watermark, text",
     ...PONY_INPUT,
   });
@@ -116,7 +121,7 @@ async function main() {
   try {
     vidId = await createByModel(VIDEO_MODEL, {
       image: imgUrl,
-      prompt: "she smiles and waves at the camera, natural motion",
+      prompt: process.env.TEST_VIDEO_PROMPT || "she smiles and waves at the camera, natural motion",
       resolution: process.env.REPLICATE_VIDEO_RESOLUTION || "720p",
       num_frames: Math.round(VIDEO_DURATION * VIDEO_FPS) + 1,
       frames_per_second: VIDEO_FPS,
@@ -137,5 +142,13 @@ async function main() {
 
 main().catch((e) => {
   console.error(`\n❌ ${e.message}`);
+  // A moderation refusal is a different problem from a broken pipeline: the model
+  // is proxying to a third-party API that screens content before inference, and no
+  // input tweak fixes it. Swap to a model that runs the weights on Replicate.
+  if (/flagged|E002/i.test(e.message)) {
+    console.error(
+      "   ^ that's a content-moderation refusal, not a pipeline bug — this model screens upstream.",
+    );
+  }
   process.exit(1);
 });

@@ -3,12 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { viewerCount, getCompanionReel } from "@/lib/reels";
+import { viewerCount, getCompanionReel, companionReelUrl } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
 import { sendTip, startPrivateShow, TIP_AMOUNTS, PRIVATE_ENTRY_COST } from "@/lib/cams.functions";
 import { startChat } from "@/lib/chat.functions";
 import { Button } from "@/components/ui/button";
-import { X, Circle, Coins, Gift, Lock, Heart, MessageCircle } from "lucide-react";
+import { X, Circle, Coins, Gift, Lock, Heart, MessageCircle, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/cams/$id")({
@@ -57,7 +57,16 @@ function CamView() {
     },
   });
 
-  const reel = model ? getCompanionReel(model.name) : null;
+  // Her own generated clip first; the old name-pinned stock reel is only a
+  // fallback for companions whose clip hasn't been generated yet, and a failed
+  // load drops through to the portrait.
+  const [reelFailed, setReelFailed] = useState(false);
+  const reel = reelFailed
+    ? model
+      ? getCompanionReel(model.name)
+      : null
+    : companionReelUrl(id);
+  useEffect(() => setReelFailed(false), [id]);
 
   const { data: balance } = useQuery({
     queryKey: ["balance"],
@@ -96,6 +105,7 @@ function CamView() {
   }, [chat]);
 
   const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState("");
   const [burst, setBurst] = useState(0); // tip animation trigger
 
   function requireLogin(): boolean {
@@ -130,6 +140,14 @@ function CamView() {
     if (!requireLogin() || busy) return;
     setBusy(true);
     try {
+      // Carry whatever was typed on the stream into the real chat, where it is
+      // auto-sent — same handoff the homepage tease uses.
+      const msg = draft.trim();
+      try {
+        if (msg) sessionStorage.setItem("hc_pending_msg", msg);
+      } catch {
+        /* private mode */
+      }
       const res = await openChat({ data: { companionId: id } });
       navigate({ to: "/chat/$conversationId", params: { conversationId: res.conversationId } });
     } catch (e: any) {
@@ -168,12 +186,13 @@ function CamView() {
       <div className="relative h-full w-full max-w-[460px] overflow-hidden shadow-2xl">
         {reel ? (
           <video
-            key={id}
+            key={reel}
             src={reel}
             autoPlay
             muted
             loop
             playsInline
+            onError={() => setReelFailed(true)}
             className="absolute inset-0 h-full w-full object-cover object-top"
           />
         ) : (
@@ -189,6 +208,13 @@ function CamView() {
         {/* Top bar */}
         <div className="absolute inset-x-0 top-0 flex items-center justify-between p-3">
           <div className="flex items-center gap-2">
+            {/* Her portrait sits on the stream header, same as the reference —
+                the face on the badge is the face in the clip. */}
+            <img
+              src={companionImage(model?.image_url ?? "")}
+              alt=""
+              className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/80"
+            />
             <div className="rounded-full bg-black/55 px-3 py-1 backdrop-blur">
               <div className="flex items-center gap-2 text-sm font-semibold text-white">
                 {model?.name ?? "…"}
@@ -242,6 +268,30 @@ function CamView() {
 
         {/* Controls */}
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-lg space-y-3 p-4">
+          {/* Message composer — talking to her from the stream is the main
+              action on the reference sites, so it sits above the tip row. */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              doChat();
+            }}
+            className="flex items-center gap-2 rounded-full border border-white/15 bg-black/55 px-2 py-1.5 backdrop-blur"
+          >
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={`Message ${model?.name ?? "her"}…`}
+              className="h-8 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-white/50"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={busy}
+              className="h-8 w-8 shrink-0 rounded-full bg-grad-primary text-primary-foreground"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
           <div className="flex items-center justify-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {TIP_AMOUNTS.map((a) => (
               <button

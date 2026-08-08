@@ -23,6 +23,14 @@ export const getCompanionReel = (name: string | null | undefined): string | null
 export const companionForReel = (reelName: string): string | null =>
   Object.entries(REEL_MAP).find(([, reel]) => reel === reelName)?.[0] ?? null;
 
+// Her OWN looping clip, generated image-to-video from her portrait by
+// scripts/generate-reels.ts. Addressed by companion id rather than tracked in a
+// column, so no schema change is needed and the file is the source of truth.
+// Missing clips 404, which the players treat as "fall back to the portrait" —
+// so this is safe for companions whose clip hasn't been generated yet.
+export const companionReelUrl = (id: string | null | undefined): string | null =>
+  id ? `${BASE}/companion-${id}.mp4` : null;
+
 function hash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;

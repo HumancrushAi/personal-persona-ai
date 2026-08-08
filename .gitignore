@@ -36,3 +36,4 @@ dist-ssr
 
 # Vercel
 .vercel
+.gstack/

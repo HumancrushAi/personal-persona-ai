@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { viewerCount, getCompanionReel } from "@/lib/reels";
+import { viewerCount, getCompanionReel, companionReelUrl } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Circle } from "lucide-react";
@@ -69,7 +69,10 @@ function CamsPage() {
 function CamCard({ c }: { c: any }) {
   const [hovered, setHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const reel = getCompanionReel(c.name);
+  // Her own generated clip; the name-pinned stock reel is only a fallback for
+  // companions whose clip doesn't exist yet, and a 404 falls back to the photo.
+  const [reelFailed, setReelFailed] = useState(false);
+  const reel = reelFailed ? getCompanionReel(c.name) : companionReelUrl(c.id);
 
   useEffect(() => {
     if (hovered && reel) {
@@ -104,6 +107,7 @@ function CamCard({ c }: { c: any }) {
           loop
           playsInline
           preload="none"
+          onError={() => setReelFailed(true)}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
             hovered ? "opacity-100" : "opacity-0"
           }`}

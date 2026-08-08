@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startChat } from "@/lib/chat.functions";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
 import { companionForReel } from "@/lib/reels";
+import { useCloseOnBack } from "@/hooks/use-close-on-back";
 import { FAQSection } from "@/components/FAQSection";
 
 // Hero reels live in the Supabase Storage public `reels` bucket — a mix of guys
@@ -177,6 +178,14 @@ function Landing() {
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
   const [query, setQuery] = useState("");
+
+  // One entry covers both overlays, so handing off story -> tease doesn't churn
+  // the history stack mid-transition.
+  const closeOverlays = useCallback(() => {
+    setTease(null);
+    setStoryView(null);
+  }, []);
+  useCloseOnBack(Boolean(tease || storyView), closeOverlays);
 
   // Admin-configured announcement (Platform Content tab); hidden when empty.
   const { data: bannerText } = useQuery({

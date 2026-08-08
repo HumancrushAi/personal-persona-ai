@@ -30,24 +30,41 @@ const PONY_INPUT = {
   prepend_preprompt: true,
 };
 
+// Nudity suppression for PUBLIC-FACING portraits (homepage cards, profile
+// avatars, browse grid). Pony ignores prose negation — writing "NOT nude" in the
+// prompt does nothing, the terms have to be in the NEGATIVE prompt or the model
+// happily returns a nude. Chat selfies deliberately do NOT use this: explicit is
+// the point there, and it's gated behind an in-chat request.
+// "shirtless / bare chest / no shirt" matter as much as "nude" here: the first
+// male portrait regenerated with only the nudity terms still came back
+// bare-chested, because "topless" barely associates with a male subject.
+const NUDITY_NEGATIVE =
+  "nude, naked, nudity, topless, bottomless, undressed, unclothed, shirtless, bare chest, no shirt, no clothes, exposed breasts, bare breasts, nipples, areola, pussy, vulva, vagina, genitals, penis, testicles, pubic hair, explicit, sex, spread legs, presenting";
+
 // Picks the image model + Replicate input for a companion's gender. `input`
 // holds the model-specific fields (everything except prompt/negative_prompt),
-// which differ between Flux and Pony.
-export function imageModelForGender(gender?: string | null): {
+// which differ between Flux and Pony. `noNudity` appends the nudity negatives
+// for public-facing portraits.
+export function imageModelForGender(
+  gender?: string | null,
+  opts?: { noNudity?: boolean },
+): {
   version: string;
   negativePrompt?: string;
   input: Record<string, unknown>;
 } {
   const g = (gender ?? "").toLowerCase();
   const version = process.env.REPLICATE_IMAGE_VERSION_MALE || PONY_IMAGE_VERSION;
+  const clothed = (neg: string) => (opts?.noNudity ? `${NUDITY_NEGATIVE}, ${neg}` : neg);
 
   if (g === "male" || g === "trans-male") {
     return {
       version,
       // `1boy` + these negatives lock the gender; anatomy-quality terms keep
       // the genitals well-formed.
-      negativePrompt:
+      negativePrompt: clothed(
         "1girl, female, multiple girls, breasts, nipples, pussy, vagina, vulva, woman, feminine body, anime, cartoon, 2d, 3d, sketch, monochrome, deformed penis, malformed genitals, mutated genitals, ambiguous genitalia, extra penis, bad anatomy, censored, mosaic, watermark, text, worst quality, low quality",
+      ),
       input: PONY_INPUT,
     };
   }
@@ -57,16 +74,18 @@ export function imageModelForGender(gender?: string | null): {
     // Pin Flux instead via REPLICATE_IMAGE_VERSION if ever needed.
     return {
       version: process.env.REPLICATE_IMAGE_VERSION || PONY_IMAGE_VERSION,
-      negativePrompt:
+      negativePrompt: clothed(
         "anime, cartoon, 2d, 3d, sketch, monochrome, deformed, malformed genitals, extra limbs, bad anatomy, censored, mosaic, watermark, text, worst quality, low quality",
+      ),
       input: PONY_INPUT,
     };
   }
   // female / trans-female / unset default
   return {
     version,
-    negativePrompt:
+    negativePrompt: clothed(
       "1boy, male, man, penis, testicles, male body, anime, cartoon, 2d, 3d, sketch, monochrome, deformed, malformed genitals, extra limbs, bad anatomy, censored, mosaic, watermark, text, worst quality, low quality",
+    ),
     input: PONY_INPUT,
   };
 }
@@ -285,6 +304,9 @@ type GenerateImageOpts = {
   size?: string;
   gender?: string | null;
   faceUrl?: string | null;
+  // Public-facing portrait: suppress nudity in the negative prompt. Off for
+  // chat selfies, where explicit output is the whole point.
+  noNudity?: boolean;
 };
 export async function generateImage(
   prompt: string,
@@ -299,7 +321,7 @@ export async function generateImage(
   opts?: GenerateImageOpts & { webhookUrl?: string },
 ): Promise<string | { replicateId: string; status: string }> {
   if (process.env.REPLICATE_API_TOKEN) {
-    const model = imageModelForGender(opts?.gender);
+    const model = imageModelForGender(opts?.gender, { noNudity: opts?.noNudity });
     const input: Record<string, unknown> = { prompt, ...model.input };
     if (model.negativePrompt) input.negative_prompt = model.negativePrompt;
 

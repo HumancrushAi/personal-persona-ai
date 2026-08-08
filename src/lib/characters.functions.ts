@@ -37,7 +37,17 @@ export const generateCharacter = createServerFn({ method: "POST" })
         ? "Stylized anime/manga illustration, cel shaded, expressive eyes, soft gradients, Studio Ghibli x modern anime style, vertical portrait."
         : "Hyper-realistic photograph, shot on 85mm, soft natural lighting, shallow depth of field, vertical portrait, magazine quality.";
 
+    // Pony is tag-driven — this booru tag is what actually locks the rendered
+    // sex; the prose "a man named X" below is not enough on its own.
+    const genderTag =
+      genderWord === "man"
+        ? "1boy, solo, male focus"
+        : genderWord === "androgynous person"
+          ? "androgynous, solo"
+          : "1girl, solo";
+
     const prompt = [
+      genderTag,
       style,
       `Subject: a ${data.ethnicity} ${genderWord} named ${data.name} who is exactly ${data.age} years old and clearly looks ${data.age} — age-appropriate face, skin, and body for a ${data.age}-year-old.`,
       data.bodyType ? `Body type: ${data.bodyType}.` : "",
@@ -52,12 +62,16 @@ export const generateCharacter = createServerFn({ method: "POST" })
           ? "Outfit fit: relaxed and loose, oversized silhouette."
           : "Outfit fit: regular, true-to-size.",
       data.vibe ? `Vibe: ${data.vibe}.` : "",
-      "Sultry, seductive, flirty eye contact with the camera, confident alluring pose, form-fitting stylish outfit, intimate warm lighting. Provocative and sexy but NOT nude. Centered, head and shoulders to waist.",
+      // Skimpy but clothed — this portrait becomes the model's public face.
+      // The real guarantee is the noNudity negative prompt below.
+      "Sultry, seductive, flirty eye contact with the camera, confident alluring pose, revealing form-fitting outfit, sexy but fully covered with nothing exposed, intimate warm lighting. Centered, head and shoulders to waist.",
     ]
       .filter(Boolean)
       .join(" ");
 
-    const dataUrl = await generateImage(prompt);
+    // Pass gender so the render uses the matching negative prompt — omitting it
+    // defaulted every model to the female negatives.
+    const dataUrl = await generateImage(prompt, { gender: data.gender, noNudity: true });
 
     const bio = data.vibe
       ? data.vibe.slice(0, 140)

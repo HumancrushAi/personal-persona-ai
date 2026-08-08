@@ -17,6 +17,12 @@ export const getCompanionReel = (name: string | null | undefined): string | null
   return reel ? `${BASE}/${reel}.mp4` : null;
 };
 
+// Which companion a given reel advertises ("r8" -> "aria"). Derived from
+// REEL_MAP so the home banner and the cams pages can't drift apart — they used
+// to keep separate hardcoded copies of the same pairing.
+export const companionForReel = (reelName: string): string | null =>
+  Object.entries(REEL_MAP).find(([, reel]) => reel === reelName)?.[0] ?? null;
+
 function hash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;

@@ -2,40 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateImage } from "./ai";
-
-function genderNoun(gender: string): string {
-  if (gender === "male" || gender === "trans-male") return "man";
-  if (gender === "non-binary") return "androgynous person";
-  return "woman";
-}
-
-// Build a photorealistic portrait prompt from a persona's attributes.
-function portraitPrompt(
-  c: {
-    name: string;
-    age: number;
-    ethnicity: string;
-    gender: string;
-    art_style: string;
-    short_bio: string;
-  },
-  extra?: string,
-): string {
-  const noun = genderNoun(c.gender);
-  const style =
-    c.art_style === "anime"
-      ? "Stylized high-quality anime illustration, cel shaded, expressive, alluring, vertical portrait."
-      : "Ultra photorealistic glamour portrait photograph, natural skin texture and pores, soft warm lighting, shot on a 50mm DSLR, shallow depth of field, sharp focus, high detail, vertical portrait.";
-  return [
-    style,
-    `A stunning, sexy ${c.ethnicity} ${noun} named ${c.name} who is exactly ${c.age} years old and clearly looks ${c.age} — age-appropriate face, skin, and body.`,
-    c.short_bio ? `Vibe: ${c.short_bio}.` : "",
-    extra ? `${extra}.` : "",
-    "Sultry seductive expression, flirty eye contact with the camera, confident and alluring, subtle curves, form-fitting stylish outfit, intimate bedroom/boudoir setting. Tasteful and provocative but NOT nude. Realistic, not illustrated (unless anime).",
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
+import { portraitPrompt } from "./portrait";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data, error } = await ctx.supabase.rpc("has_role", {
@@ -365,7 +332,12 @@ export const adminRegeneratePersonaPhoto = createServerFn({ method: "POST" })
     if (!c) throw new Error("Model not found");
 
     // Generate (data URL) then decode to bytes.
-    const dataUrl = await generateImage(portraitPrompt(c as any, data.prompt));
+    // gender drives the model's negative prompt — without it every companion
+    // rendered with the female negatives, so male models came out as women.
+    const dataUrl = await generateImage(portraitPrompt(c as any, data.prompt), {
+      gender: (c as any).gender,
+      noNudity: true,
+    });
     const b64 = dataUrl.split(",")[1] ?? "";
     const bytes = Buffer.from(b64, "base64");
 

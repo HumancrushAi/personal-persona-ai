@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
+import { companionForReel } from "@/lib/reels";
 import { FAQSection } from "@/components/FAQSection";
 
 // Hero reels live in the Supabase Storage public `reels` bucket — a mix of guys
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "36 stunning AI companions — women, men, trans, non-binary. Stories, real reels, voice notes, selfies. 25 free messages, no card. 18+ only.",
+          "Stunning AI companions — women and men. Stories, real reels, voice notes, selfies. 25 free messages, no card. 18+ only.",
       },
       { property: "og:title", content: "HumanCrush.com — Your AI Crush" },
       {
@@ -192,25 +193,23 @@ function Landing() {
     staleTime: 60_000,
   });
 
-  // Match each hero reel to its exact companion by filename to prevent mismatched chat redirection.
-  const pickCompanion = (reelName: string): Companion | null => {
+  // Pin each hero reel to a specific companion. The pin is validated against the
+  // banner's own gender, and falls back to any companion of that gender if the
+  // pinned name was renamed or removed — so a slide can never advertise a woman
+  // and open a man (or point at a companion that no longer exists).
+  const pickCompanion = (reelName: string, gender: "m" | "f"): Companion | null => {
     const list = companions ?? [];
-    const mapping: Record<string, string> = {
-      "r10": "kaito",
-      "r1": "sofia",
-      "r11": "akira",
-      "r8": "aria",
-      "r3": "priya",
-    };
-    const targetName = mapping[reelName];
-    if (targetName) {
-      return list.find((c) => c.name.toLowerCase() === targetName) || null;
-    }
-    return null;
+    const wanted = gender === "m" ? ["male", "trans-male"] : ["female", "trans-female"];
+    const matchesGender = (c: Companion) => wanted.includes(c.gender);
+
+    const target = companionForReel(reelName);
+    const exact = target ? list.find((c) => c.name.toLowerCase() === target) : undefined;
+    if (exact && matchesGender(exact)) return exact;
+    return list.find(matchesGender) ?? null;
   };
   const bannerSlides = BANNERS.map((b) => {
     const filename = b.reel.split("/").pop()?.replace(".mp4", "") || "";
-    return { ...b, companion: pickCompanion(filename) };
+    return { ...b, companion: pickCompanion(filename, b.gender) };
   }).filter((s) => s.companion !== null);
 
   const filtered = useMemo(() => {
@@ -223,6 +222,19 @@ function Landing() {
       return matchesCategory(c, activeCat);
     });
   }, [companions, activeCat, query]);
+
+  // Only offer categories that actually have someone in them — tapping "Trans"
+  // or "Non-binary" and landing on an empty grid reads as a broken site.
+  const visibleCategories = useMemo(() => {
+    const list = companions ?? [];
+    if (!list.length) return CATEGORIES;
+    return CATEGORIES.filter((cat) => list.some((c) => matchesCategory(c, cat)));
+  }, [companions]);
+
+  // If the active chip disappears (data changed), fall back to the default tab.
+  useEffect(() => {
+    if (!visibleCategories.includes(activeCat)) setActiveCat("For you");
+  }, [visibleCategories, activeCat]);
 
   const searchedCompanions = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -319,7 +331,7 @@ function Landing() {
       {/* CATEGORIES */}
       <section className="mx-auto mt-4 max-w-7xl px-4 md:px-6">
         <div className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {CATEGORIES.map((cat) => (
+          {visibleCategories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCat(cat)}
@@ -929,9 +941,21 @@ function BannerSlider({
               <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live
               </span>
-              <h2 className="mt-2 font-display text-2xl font-semibold text-white drop-shadow md:text-4xl">
-                {s.companion ? `${s.companion.name}, ${s.companion.age}` : s.title}
-              </h2>
+              {/* Her REAL portrait sits next to her name. The reel behind is
+                  ambient stock footage, not her — showing the actual face here
+                  is what stops "tapped one girl, got another". */}
+              <div className="mt-2 flex items-center gap-3">
+                {s.companion && (
+                  <img
+                    src={companionImage(s.companion.image_url)}
+                    alt={s.companion.name}
+                    className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white/80 shadow-lg md:h-16 md:w-16"
+                  />
+                )}
+                <h2 className="font-display text-2xl font-semibold text-white drop-shadow md:text-4xl">
+                  {s.companion ? `${s.companion.name}, ${s.companion.age}` : s.title}
+                </h2>
+              </div>
               <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">
                 {s.companion?.short_bio ?? s.sub}
               </p>

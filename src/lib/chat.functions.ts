@@ -5,7 +5,7 @@ import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 import { chatComplete } from "./ai";
-import { selfiePrompt, wantsSelfie, wantsVideo, checkCrossGenderRequest } from "./selfie";
+import { wantsSelfie, wantsVideo, checkCrossGenderRequest } from "./selfie";
 import { deductCredits } from "./credit-wallet";
 import { startImageJob, startVideoJob } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
@@ -169,12 +169,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           supabase,
           userId,
           data.conversationId,
-          selfiePrompt(
-            { name: c.name, age: c.age, ethnicity: c.ethnicity, gender: c.gender, short_bio: c.short_bio },
-            data.content,
-            p.style_backstory,
-          ),
-          { gender: c.gender, faceUrl: c.image_url, balance: balAfter },
+          {
+            name: c.name,
+            age: c.age,
+            ethnicity: c.ethnicity,
+            gender: c.gender,
+            short_bio: c.short_bio,
+            imageUrl: c.image_url,
+          },
+          data.content,
+          p.style_backstory,
+          balAfter,
         );
 
         const teaser = "mmm okay… give me a sec, taking one just for you 📸";

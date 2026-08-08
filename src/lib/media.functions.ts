@@ -4,7 +4,8 @@ import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
 import { generateImage, textToSpeech, chatComplete } from "./ai";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { selfiePrompt, checkCrossGenderRequest } from "./selfie";
+import { selfiePrompt, kontextSelfiePrompt, checkCrossGenderRequest } from "./selfie";
+import { runpodEndpoint, runpodRun } from "./runpod";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
 const SELFIE_COST = 8;
@@ -117,36 +118,63 @@ export const generateSelfie = createServerFn({ method: "POST" })
     const { free, paid } = await ensureBalance(supabase, userId, SELFIE_COST);
     const balance = await deductCredits(supabase, userId, SELFIE_COST, "image_debit", free, paid);
 
-    const imagePrompt = selfiePrompt(
-      { name: c.name, age: c.age, ethnicity: c.ethnicity, gender: c.gender, short_bio: c.short_bio },
+    const jobId = await startImageJob(
+      supabase,
+      userId,
+      data.conversationId,
+      {
+        name: c.name,
+        age: c.age,
+        ethnicity: c.ethnicity,
+        gender: c.gender,
+        short_bio: c.short_bio,
+        imageUrl: c.image_url,
+      },
       userPrompt,
       p.style_backstory,
-    );
-
-    const jobId = await startImageJob(supabase, userId, data.conversationId, imagePrompt, {
-      gender: c.gender,
-      faceUrl: c.image_url,
       balance,
-    });
+    );
 
     return { jobId, status: "pending", balance };
   });
 
-// Create a media_jobs row and fire the async Replicate prediction for a selfie.
-// The caller must have ALREADY charged SELFIE_COST; on any launch failure this
-// marks the job failed, refunds, and rethrows. Shared by the 📷 button
-// (generateSelfie) and the in-chat auto-selfie (sendChatMessage).
+// Create a media_jobs row and fire the async selfie generation. The caller must
+// have ALREADY charged SELFIE_COST; on any launch failure this marks the job
+// failed, refunds, and rethrows. Shared by the 📷 button (generateSelfie) and
+// the in-chat auto-selfie (sendChatMessage).
+//
+// Provider is picked here, because each one needs a differently-written prompt:
+//   RunPod  — FLUX.1 Kontext edits her actual photo, so identity is preserved by
+//             the model and no face-swap pass is needed. Needs a hosted photo.
+//   Replicate — Pony generates a body from booru tags, then a second prediction
+//             swaps her face on. Used when RunPod isn't configured or she has no
+//             hosted photo to edit.
 export async function startImageJob(
   supabase: any,
   userId: string,
   conversationId: string,
-  imagePrompt: string,
-  opts: {
+  companion: {
+    name: string;
+    age: number;
+    ethnicity: string;
     gender?: string | null;
-    faceUrl?: string | null;
-    balance: { free: number; paid: number };
+    short_bio?: string | null;
+    imageUrl?: string | null;
   },
+  userRequest: string | undefined,
+  styleBackstory: string | null | undefined,
+  balance: { free: number; paid: number },
 ): Promise<string> {
+  const runpodImage = runpodEndpoint("image");
+  const sourceImage = resolveHostedImage(companion.imageUrl);
+  // A RunPod worker fetches the source frame over the network, so only a real
+  // http(s) URL works — an inline data: photo stays on the Replicate path.
+  const useRunpod = Boolean(runpodImage && sourceImage && /^https?:/i.test(sourceImage));
+
+  const imagePrompt = useRunpod
+    ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
+    : selfiePrompt(companion, userRequest, styleBackstory);
+
   // media_jobs is only writable by the service role (users can just read
   // their own rows), so job bookkeeping goes through the admin client.
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -159,45 +187,68 @@ export async function startImageJob(
       kind: "image",
       status: "pending",
       prompt: imagePrompt,
-      provider: "replicate",
+      provider: useRunpod ? "runpod" : "replicate",
       cost: SELFIE_COST,
     })
     .select("id")
     .single();
 
   if (jobErr || !job) {
-    await refundCredits(supabase, userId, SELFIE_COST, `refund-nojob-${userId}-${Date.now()}`, opts.balance);
+    await refundCredits(supabase, userId, SELFIE_COST, `refund-nojob-${userId}-${Date.now()}`, balance);
     throw new Error("Failed to create image generation job");
   }
 
-  const webhookUrl = `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`;
-
   try {
-    const result = await generateImage(imagePrompt, {
-      gender: opts.gender,
-      faceUrl: opts.faceUrl,
-      webhookUrl,
-    });
-
-    if (typeof result === "object" && "replicateId" in result) {
+    if (useRunpod) {
+      const result = await runpodRun(
+        runpodImage!,
+        {
+          prompt: imagePrompt,
+          negative_prompt:
+            "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
+          seed: -1,
+          num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
+          guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
+          image: sourceImage,
+          size: process.env.RUNPOD_IMAGE_SIZE || "1024*1024",
+          output_format: "png",
+          // This app's whole purpose is explicit; the safety checker would blank
+          // the output. screenUserMessage already blocked the illegal requests.
+          enable_safety_checker: false,
+        },
+        webhookFor("runpod"),
+      );
       await supabaseAdmin
         .from("media_jobs")
-        .update({
-          replicate_id: result.replicateId,
-          status: "processing",
-        })
+        .update({ replicate_id: result.id, status: "processing" })
         .eq("id", job.id);
+    } else {
+      const result = await generateImage(imagePrompt, {
+        gender: companion.gender,
+        faceUrl: companion.imageUrl,
+        webhookUrl: webhookFor("replicate"),
+      });
+
+      if (typeof result === "object" && "replicateId" in result) {
+        await supabaseAdmin
+          .from("media_jobs")
+          .update({
+            replicate_id: result.replicateId,
+            status: "processing",
+          })
+          .eq("id", job.id);
+      }
     }
   } catch (err: any) {
     await supabaseAdmin
       .from("media_jobs")
       .update({
         status: "failed",
-        error: err.message || "Failed to trigger Replicate",
+        error: err.message || "Failed to trigger image generation",
       })
       .eq("id", job.id);
 
-    await refundCredits(supabase, userId, SELFIE_COST, `refund-${job.id}`, opts.balance);
+    await refundCredits(supabase, userId, SELFIE_COST, `refund-${job.id}`, balance);
     throw err;
   }
 
@@ -265,12 +316,13 @@ function videoPromptFor(
   return `The person in the image is ${action}. Smooth natural motion, realistic lifelike movement, steady handheld selfie video, consistent face and body.`;
 }
 
-// Turn a companion's stored image into a URL Replicate can fetch. i2v needs a
-// remotely-fetchable start frame: http(s) and data: URIs work as-is; a
-// site-relative path is resolved against PUBLIC_SITE_URL. A bare bundled
-// filename isn't reachable by Replicate, so it returns null (caller errors +
-// refunds, prompting the admin to upload/regenerate a hosted photo).
-function resolveStartImage(imageUrl?: string | null): string | null {
+// Turn a companion's stored image into a URL a generation worker can fetch.
+// Image-to-image and image-to-video both need a remotely-fetchable source frame:
+// http(s) and data: URIs work as-is; a site-relative path is resolved against
+// PUBLIC_SITE_URL. A bare bundled filename isn't reachable from outside, so it
+// returns null (caller errors + refunds, prompting the admin to upload or
+// regenerate a hosted photo).
+function resolveHostedImage(imageUrl?: string | null): string | null {
   const u = (imageUrl ?? "").trim();
   if (!u) return null;
   if (/^(https?:|data:)/i.test(u)) return u;
@@ -278,8 +330,21 @@ function resolveStartImage(imageUrl?: string | null): string | null {
   return null;
 }
 
-// Create a media_jobs row and fire the async Replicate image-to-video prediction,
-// using the companion's photo as the start frame so the clip looks like HER.
+// Each provider posts completions to its own receiver route.
+function webhookFor(provider: "replicate" | "runpod"): string {
+  const base = process.env.PUBLIC_SITE_URL || "https://humancrush.com";
+  return `${base}/api/public/${provider}-webhook`;
+}
+
+// Motion negative prompt for the RunPod WAN endpoint — the "static/frozen" terms
+// are what stop it returning a near-still clip.
+const VIDEO_NEGATIVE =
+  "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, low quality";
+
+// Create a media_jobs row and fire the async image-to-video job, using the
+// companion's photo as the start frame so the clip looks like HER. Prefers the
+// RunPod WAN endpoint (runs the weights on RunPod, nothing screened upstream)
+// and falls back to Replicate when RUNPOD_VIDEO_ENDPOINT isn't configured.
 // Caller must have ALREADY charged VIDEO_COST; on any launch failure this marks
 // the job failed, refunds, and rethrows. Shared by the 🎬 button (requestVideo)
 // and the in-chat auto-video (sendChatMessage).
@@ -291,8 +356,10 @@ export async function startVideoJob(
   userReq: string | undefined,
   balance: { free: number; paid: number },
 ): Promise<string> {
-  const startImage = resolveStartImage(companion.imageUrl);
+  const startImage = resolveHostedImage(companion.imageUrl);
   const videoPrompt = videoPromptFor(companion, userReq);
+  const runpodVideo = runpodEndpoint("video");
+  const useRunpod = Boolean(runpodVideo && startImage && /^https?:/i.test(startImage));
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const { data: job, error: jobErr } = await supabaseAdmin
@@ -303,7 +370,7 @@ export async function startVideoJob(
       kind: "video",
       status: "pending",
       prompt: videoPrompt,
-      provider: "replicate",
+      provider: useRunpod ? "runpod" : "replicate",
       cost: VIDEO_COST,
     })
     .select("id")
@@ -327,7 +394,36 @@ export async function startVideoJob(
     throw new Error("No fetchable companion image for video generation");
   }
 
-  const webhookUrl = `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`;
+  if (useRunpod) {
+    // fps * frames is the clip length: 82 frames @ 16fps ≈ 5s, the endpoint's
+    // tuned default. num_scenes stays 1 — one prompt, one continuous shot.
+    const fps = Number(process.env.RUNPOD_VIDEO_FPS || "16");
+    try {
+      const result = await runpodRun(
+        runpodVideo!,
+        {
+          image_url: startImage,
+          fps,
+          frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
+          num_scenes: 1,
+          sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
+          prompts: [videoPrompt],
+          negative_prompt: VIDEO_NEGATIVE,
+        },
+        webhookFor("runpod"),
+      );
+      await supabaseAdmin
+        .from("media_jobs")
+        .update({ replicate_id: result.id, status: "processing" })
+        .eq("id", job.id);
+    } catch (err: any) {
+      await fail(err.message || "Failed to trigger video model");
+      throw err;
+    }
+    return job.id;
+  }
+
+  const webhookUrl = webhookFor("replicate");
   // Official model, called by name (versionless, stable API). Override with an
   // owner/name slug. wan-2.5 is a proxy to Alibaba's hosted API and rejects this
   // app's content server-side — every prediction failed in under a second with
@@ -367,9 +463,9 @@ export async function startVideoJob(
   return job.id;
 }
 
-// Reconcile a media job against Replicate directly, so completion does NOT
+// Reconcile a media job against its provider directly, so completion does NOT
 // depend on the webhook callback landing (serverless webhooks are unreliable).
-// The client's status poll calls this; it checks the prediction, chains the face
+// The client's status poll calls this; it checks the job, chains the face
 // swap when one is needed, stores the result, and finalizes the job.
 export const checkMediaJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -379,7 +475,7 @@ export const checkMediaJob = createServerFn({ method: "POST" })
 
     const { data: job } = await supabase
       .from("media_jobs")
-      .select("id, user_id, conversation_id, kind, cost, status, replicate_id, media_url")
+      .select("id, user_id, conversation_id, kind, cost, status, provider, replicate_id, media_url")
       .eq("id", data.jobId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -389,6 +485,52 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     if (job.status === "failed") return { status: "failed" };
     if (!(job as any).replicate_id) return { status: job.status };
 
+    const { completeMediaJob: complete, failMediaJob: fail } = await import(
+      "./media-finalize.server"
+    );
+
+    // RunPod jobs need no face-swap chaining: the image path edits her real
+    // photo and the video path animates it, so identity is already hers.
+    if ((job as any).provider === "runpod") {
+      const endpoint = runpodEndpoint(job.kind);
+      if (!endpoint) return { status: job.status };
+
+      const { runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } = await import(
+        "./runpod"
+      );
+      let res: { status: string; output?: any; error?: any };
+      try {
+        res = await runpodGet(endpoint, (job as any).replicate_id);
+      } catch {
+        return { status: job.status }; // transient — keep polling
+      }
+
+      const state = runpodStatusOf(res.status);
+      if (state === "failed") {
+        await fail(job as any, runpodOutputError(res.output, res.error) || `Job ${res.status}`);
+        return { status: "failed" };
+      }
+      if (state === "processing") return { status: "processing" };
+
+      const err = runpodOutputError(res.output, res.error);
+      if (err) {
+        await fail(job as any, err);
+        return { status: "failed" };
+      }
+      const url = runpodOutputUrl(res.output);
+      if (!url) {
+        await fail(job as any, "No output from generation model");
+        return { status: "failed" };
+      }
+      try {
+        const mediaUrl = await complete(job as any, url);
+        return { status: "completed", mediaUrl };
+      } catch (e: any) {
+        await fail(job as any, `Storage failed: ${e.message}`);
+        return { status: "failed" };
+      }
+    }
+
     const { getReplicatePrediction, triggerReplicate, FACE_SWAP_VERSION } = await import("./ai");
     let pred: { status: string; output?: any; error?: any; version?: string };
     try {
@@ -397,12 +539,10 @@ export const checkMediaJob = createServerFn({ method: "POST" })
       return { status: job.status }; // transient — keep polling
     }
 
-    const { completeMediaJob, failMediaJob } = await import("./media-finalize.server");
-
     if (pred.status === "succeeded") {
       const outputUrl = Array.isArray(pred.output) ? pred.output[0] : pred.output;
       if (!outputUrl) {
-        await failMediaJob(job as any, "No output from generation model");
+        await fail(job as any, "No output from generation model");
         return { status: "failed" };
       }
 
@@ -442,16 +582,16 @@ export const checkMediaJob = createServerFn({ method: "POST" })
       }
 
       try {
-        const mediaUrl = await completeMediaJob(job as any, outputUrl);
+        const mediaUrl = await complete(job as any, outputUrl);
         return { status: "completed", mediaUrl };
       } catch (e: any) {
-        await failMediaJob(job as any, `Storage failed: ${e.message}`);
+        await fail(job as any, `Storage failed: ${e.message}`);
         return { status: "failed" };
       }
     }
 
     if (pred.status === "failed" || pred.status === "canceled") {
-      await failMediaJob(job as any, pred.error ? String(pred.error) : `Prediction ${pred.status}`);
+      await fail(job as any, pred.error ? String(pred.error) : `Prediction ${pred.status}`);
       return { status: "failed" };
     }
 

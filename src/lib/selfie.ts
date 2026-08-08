@@ -139,6 +139,44 @@ function booruPonyPrompt(
   return tags.filter(Boolean).join(", ");
 }
 
+// FLUX.1 Kontext (RunPod) EDITS the companion's own photo instead of generating
+// a body from scratch, so identity comes from the input frame and the prompt is
+// an instruction, not a tag salad — booru tags make Kontext repaint the whole
+// picture and lose the face. The explicit vocabulary from actionTags is still
+// appended so requested acts actually render; it reads fine as comma phrases.
+export function kontextSelfiePrompt(
+  c: { age: number; ethnicity: string; gender?: string | null },
+  userPrompt?: string | null,
+  styleBackstory?: string | null,
+): string {
+  const req = (userPrompt ?? "").trim();
+  const noun = genderNoun(c.gender);
+  const isMale = noun === "man";
+  const [subject, object] = isMale
+    ? ["he", "him"]
+    : noun === "woman"
+      ? ["she", "her"]
+      : ["they", "them"];
+  const explicit = actionTags(req, isMale);
+
+  const state = requestIsNude(req)
+    ? isMale
+      ? "completely naked, no clothing, penis and groin visible"
+      : "completely naked, no clothing, bare breasts and nipples visible"
+    : `wearing what ${subject} has on`;
+
+  return [
+    `Keep the exact same ${noun} from the photo — identical face, hair, skin tone and body. Do not change who ${subject} is.`,
+    `${subject[0].toUpperCase()}${subject.slice(1)} is a ${c.age}-year-old ${c.ethnicity} ${noun}.`,
+    `Now show ${object} ${req || "taking a seductive selfie, looking at the camera"}, ${state}.`,
+    explicit,
+    styleBackstory || "",
+    "Photorealistic amateur selfie, full body in frame, natural indoor lighting, detailed skin, sharp focus, no text, no watermark.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function selfiePrompt(
   c: { name: string; age: number; ethnicity: string; gender?: string | null; short_bio?: string | null },
   userPrompt?: string | null,

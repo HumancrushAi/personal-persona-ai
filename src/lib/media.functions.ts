@@ -341,6 +341,23 @@ function webhookFor(provider: "replicate" | "runpod"): string {
 const VIDEO_NEGATIVE =
   "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, low quality";
 
+// The endpoint's tuned LoRA weights, exactly as its operator specified them.
+// These are what the endpoint is tuned WITH; leaving the key out runs it at
+// whatever defaults the worker falls back to, which is not what the endpoint was
+// built and tested against. The public cams clips (scripts/generate-reels.ts)
+// deliberately omit these — those are SFW idle loops, and they render fine
+// without, so the key is optional rather than required.
+const VIDEO_LORA_STRENGTHS = {
+  "HIGH Lora 3": 1,
+  "HIGH Lora 4": 0.6,
+  "HIGH Lora 5": 0.6,
+  "HIGH Lora 6": 0.6,
+  "LOW Lora 3": 0.6,
+  "LOW Lora 4": 0.6,
+  "LOW Lora 5": 0.6,
+  "LOW Lora 6": 0.6,
+};
+
 // Create a media_jobs row and fire the async image-to-video job, using the
 // companion's photo as the start frame so the clip looks like HER. Prefers the
 // RunPod WAN endpoint (runs the weights on RunPod, nothing screened upstream)
@@ -409,6 +426,7 @@ export async function startVideoJob(
           sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
           prompts: [videoPrompt],
           negative_prompt: VIDEO_NEGATIVE,
+          lora_strengths: VIDEO_LORA_STRENGTHS,
         },
         webhookFor("runpod"),
       );

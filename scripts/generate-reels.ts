@@ -14,6 +14,7 @@
 // skipped unless --force, so an interrupted run resumes safely.
 
 import { readFileSync } from "node:fs";
+import sharp from "sharp";
 import { createClient } from "@supabase/supabase-js";
 import { runpodRun, runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } from "../src/lib/runpod";
 
@@ -61,6 +62,44 @@ const MOTION =
   "she breathes softly and shifts her weight, small natural head movement, blinking, a slight smile, looking at the camera, subtle idle motion, seamless loop";
 const NEGATIVE =
   "blurry, low quality, deformed, extra limbs, watermark, text, static, still, frozen, no movement, bad anatomy, cartoon, nudity, naked, topless";
+
+// The video endpoint returns a 640x640 square, and it gets there by centre-
+// cropping whatever you send it — feeding it the 768x1024 portrait directly
+// sliced the top of the head off (the first clip of Aria opened at her
+// eyebrows). So square the portrait ourselves first, anchored at the TOP, which
+// keeps head and torso and drops the legs. That's the framing the reference cam
+// sites use anyway.
+//
+// The squared frame is uploaded alongside the clip so RunPod has a public URL to
+// fetch, and so a failed run can be inspected afterwards.
+async function squareStartFrame(portraitUrl: string, id: string): Promise<string> {
+  const res = await withRetry(() => fetch(portraitUrl), "portrait");
+  if (!res.ok) throw new Error(`could not fetch portrait (${res.status})`);
+  const src = Buffer.from(await res.arrayBuffer());
+
+  const meta = await sharp(src).metadata();
+  const w = meta.width ?? 0;
+  const h = meta.height ?? 0;
+  if (!w || !h) throw new Error("portrait has no dimensions");
+
+  const side = Math.min(w, h);
+  const squared = await sharp(src)
+    // top: 0 is the whole point — a centred crop is what cut the head off.
+    .extract({ left: Math.round((w - side) / 2), top: 0, width: side, height: side })
+    .resize(768, 768)
+    .png()
+    .toBuffer();
+
+  // Lives in `avatars`, not `reels` — the reels bucket only accepts video mime
+  // types and rejects a PNG outright.
+  const path = `startframes/${id}.png`;
+  const { error } = await db.storage
+    .from("avatars")
+    .upload(path, squared, { contentType: "image/png", upsert: true });
+  if (error) throw error;
+
+  return db.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+}
 
 // A single network blip used to kill the whole remaining batch: one `fetch
 // failed` took out 18 companions in a row while RunPod itself was healthy.
@@ -140,12 +179,15 @@ async function main() {
       continue;
     }
 
-    process.stdout.write(`${label} … queueing`);
+    process.stdout.write(`${label} … framing`);
     try {
+      const startFrame = await squareStartFrame(c.image_url, c.id);
+
+      process.stdout.write(`${label} … queueing `);
       const job = await withRetry(
         () =>
           runpodRun(endpoint!, {
-            image_url: c.image_url,
+            image_url: startFrame,
             fps: Number(process.env.RUNPOD_VIDEO_FPS || "16"),
             frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
             num_scenes: 1,

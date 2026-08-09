@@ -29,8 +29,11 @@ function Browse() {
 
       <section className="mx-auto max-w-6xl px-6 py-8 pb-20">
         <h1 className="font-display text-4xl font-semibold md:text-6xl">Pick your crush.</h1>
+        {/* Counted from the roster rather than hardcoded — the copy claimed 36
+            companions (and trans/non-binary ones, which don't exist) long after
+            the real number drifted. */}
         <p className="mt-2 text-muted-foreground">
-          36 hand-crafted companions — women, men, trans, non-binary. Customize anyone you tap.
+          {data?.length ?? ""} hand-crafted companions. Customize anyone you tap.
         </p>
 
         {isLoading && <div className="mt-10 text-muted-foreground">Loading…</div>}

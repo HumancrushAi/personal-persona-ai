@@ -62,11 +62,32 @@ const MOTION =
 const NEGATIVE =
   "blurry, low quality, deformed, extra limbs, watermark, text, static, still, frozen, no movement, bad anatomy, cartoon, nudity, naked, topless";
 
+// A single network blip used to kill the whole remaining batch: one `fetch
+// failed` took out 18 companions in a row while RunPod itself was healthy.
+// Transient errors get retried with backoff instead.
+async function withRetry<T>(fn: () => Promise<T>, what: string, attempts = 4): Promise<T> {
+  let lastErr: any;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      lastErr = e;
+      const msg = e?.message ?? String(e);
+      const transient = /fetch failed|ECONN|ETIMEDOUT|EAI_AGAIN|socket|network|502|503|504/i.test(msg);
+      if (!transient || i === attempts - 1) throw e;
+      const wait = 10_000 * (i + 1);
+      process.stdout.write(` (${what} failed, retrying in ${wait / 1000}s)`);
+      await sleep(wait);
+    }
+  }
+  throw lastErr;
+}
+
 async function waitForClip(jobId: string, label: string): Promise<string> {
   const deadline = Date.now() + 10 * 60_000;
   while (Date.now() < deadline) {
     await sleep(6000);
-    const res = await runpodGet(endpoint!, jobId);
+    const res = await withRetry(() => runpodGet(endpoint!, jobId), "poll");
     const state = runpodStatusOf(res.status);
     if (state === "succeeded") {
       const out = runpodOutputUrl(res.output);
@@ -121,18 +142,22 @@ async function main() {
 
     process.stdout.write(`${label} … queueing`);
     try {
-      const job = await runpodRun(endpoint!, {
-        image_url: c.image_url,
-        fps: Number(process.env.RUNPOD_VIDEO_FPS || "16"),
-        frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
-        num_scenes: 1,
-        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
-        prompts: [MOTION],
-        negative_prompt: NEGATIVE,
-      });
+      const job = await withRetry(
+        () =>
+          runpodRun(endpoint!, {
+            image_url: c.image_url,
+            fps: Number(process.env.RUNPOD_VIDEO_FPS || "16"),
+            frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
+            num_scenes: 1,
+            sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
+            prompts: [MOTION],
+            negative_prompt: NEGATIVE,
+          }),
+        "submit",
+      );
 
       const clipUrl = await waitForClip(job.id, label);
-      const res = await fetch(clipUrl);
+      const res = await withRetry(() => fetch(clipUrl), "download");
       if (!res.ok) throw new Error(`could not fetch clip (${res.status})`);
       const bytes = Buffer.from(await res.arrayBuffer());
 

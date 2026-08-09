@@ -13,10 +13,23 @@
 
 const RUNPOD_BASE = "https://api.runpod.ai/v2";
 
-// The image endpoint is one of RunPod's public hosted models, so the slug is the
-// same for every account. The video endpoint is account-private and has no
-// sensible default — without RUNPOD_VIDEO_ENDPOINT set, video stays on Replicate.
-const IMAGE_ENDPOINT = process.env.RUNPOD_IMAGE_ENDPOINT || "black-forest-labs-flux-1-kontext-dev";
+// Both endpoints are opt-in by env var, with NO default.
+//
+// There used to be a default of "black-forest-labs-flux-1-kontext-dev" (RunPod's
+// public hosted FLUX.1 Kontext). Do not put it back. That model is aligned
+// against nudity at the weights level: asked to "remove her top, bare breasts
+// exposed" with `clothing, shirt, top, bra` negated and enable_safety_checker
+// off, it returns the subject in the same top. It obeys every other edit in the
+// same prompt — pose, scene, framing — so it is a selective refusal, not a bad
+// prompt. enable_safety_checker only disables the post-hoc NSFW filter; it
+// cannot unalign the model.
+//
+// The failure mode was silent and expensive: the job reports COMPLETED with no
+// error, so the app charged the user, stored a clothed photo, and looked broken.
+// An explicit-image endpoint must run uncensored weights (e.g. a ComfyUI
+// serverless endpoint with a Pony/SDXL NSFW checkpoint). Until RUNPOD_IMAGE_
+// ENDPOINT points at one, images stay on Replicate, which does render explicit.
+const IMAGE_ENDPOINT = process.env.RUNPOD_IMAGE_ENDPOINT || "";
 const VIDEO_ENDPOINT = process.env.RUNPOD_VIDEO_ENDPOINT || "";
 
 export function runpodEndpoint(kind: string): string | null {

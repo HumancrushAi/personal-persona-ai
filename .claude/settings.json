@@ -6,7 +6,16 @@
       "Read(//c/Users/hp/personal-persona-ai/src/routes/**)",
       "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\('sharp:',p.dependencies.sharp||p.devDependencies?.sharp||'ABSENT'\\)\")",
       "Bash(grep -n \"activeImageUrl\" src/routes/chat.\\\\$conversationId.tsx | head -8)",
-      "Bash('C:\\\\Users\\\\hp/.claude/skills/gstack/browse/dist/browse' stop *)"
+      "Bash('C:\\\\Users\\\\hp/.claude/skills/gstack/browse/dist/browse' stop *)",
+      "Bash(node -e \"const p=require\\('ffmpeg-static'\\);const fs=require\\('fs'\\);console.log\\('bin:',p\\);console.log\\('size MB:',\\(fs.statSync\\(p\\).size/1048576\\).toFixed\\(1\\)\\)\")",
+      "Bash(curl -s -o .tmp-verify/clip.mp4 \"https://zcpyipwqlssqdbyjoolb.supabase.co/storage/v1/object/public/videos/20a804ba-0cc0-4517-ad97-fc27d4f7dc85-e2_batch01.mp4\")",
+      "Bash(node -e ' *)",
+      "Bash(npx tsc --noEmit 2>&1 | head -10; echo TSC_DONE *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/nitro/package.json'\\).version\\)\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\('ffmpeg-static in deps:',!!p.dependencies['ffmpeg-static']\\)\")"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

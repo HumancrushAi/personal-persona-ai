@@ -425,27 +425,12 @@ function ChatPage() {
                   }`}
                 >
                   {m.kind === "image" && m.media_url && (
-                    /\.mp4(\?|$)/i.test(m.media_url) ? (
-                      // A photo generated on the image-to-video endpoint. It is
-                      // still a photo to the user: paused, no controls, seeked to
-                      // the end via the media fragment because that's where the
-                      // requested pose has fully resolved.
-                      <video
-                        src={`${m.media_url}#t=2.9`}
-                        muted
-                        playsInline
-                        preload="metadata"
-                        onClick={() => setActiveImageUrl(m.media_url ?? null)}
-                        className="block aspect-square w-72 cursor-pointer object-cover transition-opacity hover:opacity-90"
-                      />
-                    ) : (
-                      <img
-                        src={m.media_url}
-                        alt=""
-                        onClick={() => setActiveImageUrl(m.media_url ?? null)}
-                        className="block aspect-square w-72 cursor-pointer object-cover transition-opacity hover:opacity-90"
-                      />
-                    )
+                    <img
+                      src={m.media_url}
+                      alt=""
+                      onClick={() => setActiveImageUrl(m.media_url ?? null)}
+                      className="block aspect-square w-72 cursor-pointer object-cover transition-opacity hover:opacity-90"
+                    />
                   )}
                   {m.kind === "video" && m.media_url && (
                     <video
@@ -568,27 +553,12 @@ function ChatPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          {/* Photos rendered on the video endpoint open as a playable clip here —
-              the full-screen view is where seeing it move is a feature, not a
-              surprise. */}
-          {/\.mp4(\?|$)/i.test(activeImageUrl) ? (
-            <video
-              src={activeImageUrl}
-              controls
-              autoPlay
-              loop
-              playsInline
-              className="max-h-full max-w-full rounded-lg object-contain shadow-2xl animate-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <img
-              src={activeImageUrl}
-              alt="Full Screen Preview"
-              className="max-h-full max-w-full rounded-lg object-contain shadow-2xl animate-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
+          <img
+            src={activeImageUrl}
+            alt="Full Screen Preview"
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

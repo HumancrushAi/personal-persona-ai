@@ -20,8 +20,16 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
   if (!response.ok) throw new Error("Could not fetch generation output");
   const buf = Buffer.from(await response.arrayBuffer());
 
-  const fileExt = job.kind === "video" ? "mp4" : "png";
-  const mimeType = job.kind === "video" ? "video/mp4" : "image/png";
+  // Derive the type from what actually came back, not from job.kind. A photo is
+  // currently rendered on the image-to-video endpoint (the only uncensored model
+  // available), so an "image" job legitimately produces an mp4 whose end frame is
+  // the still — storing that as .png served a video with the wrong content type
+  // and nothing would display it.
+  const looksVideo =
+    /video\//i.test(response.headers.get("content-type") ?? "") ||
+    /\.(mp4|webm|mov)(\?|$)/i.test(outputUrl);
+  const fileExt = looksVideo ? "mp4" : "png";
+  const mimeType = looksVideo ? "video/mp4" : "image/png";
   const path = `generated/${job.user_id}/${job.id}.${fileExt}`;
 
   try {

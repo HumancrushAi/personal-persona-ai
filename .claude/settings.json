@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(echo \"BUILD=$?\")"
+      "Bash(echo \"BUILD=$?\")",
+      "Bash(grep -n \"kind === \\\\\"image\\\\\"\\\\|kind === \\\\\"video\\\\\"\\\\|media_url\" src/routes/chat.\\\\$conversationId.tsx | head -20)",
+      "Read(//c/Users/hp/personal-persona-ai/src/routes/**)",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\('sharp:',p.dependencies.sharp||p.devDependencies?.sharp||'ABSENT'\\)\")",
+      "Bash(grep -n \"activeImageUrl\" src/routes/chat.\\\\$conversationId.tsx | head -8)",
+      "Bash('C:\\\\Users\\\\hp/.claude/skills/gstack/browse/dist/browse' stop *)"
     ]
   }
 }

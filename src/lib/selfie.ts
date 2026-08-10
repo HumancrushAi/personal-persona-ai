@@ -144,6 +144,40 @@ function booruPonyPrompt(
 // an instruction, not a tag salad — booru tags make Kontext repaint the whole
 // picture and lose the face. The explicit vocabulary from actionTags is still
 // appended so requested acts actually render; it reads fine as comma phrases.
+// Prompt for a photo produced on the image-TO-VIDEO endpoint.
+//
+// That endpoint is the only uncensored model on the account — the shared FLUX
+// Kontext image model returns her clothed no matter how the request is phrased.
+// So a photo is generated as a short clip and a frame of it is shown as the
+// still. The prompt therefore has to describe a MOVE INTO the explicit state
+// (the clip starts from her clothed portrait), and end there, because the frame
+// we display is taken from the end of the clip.
+export function videoStillPrompt(
+  c: { gender?: string | null },
+  userPrompt?: string | null,
+): string {
+  const req = (userPrompt ?? "").trim();
+  const noun = genderNoun(c.gender);
+  const isMale = noun === "man";
+  const subject = isMale ? "he" : noun === "woman" ? "she" : "they";
+  const explicit = actionTags(req, isMale);
+
+  const undress = requestIsNude(req)
+    ? isMale
+      ? `${subject} removes all clothing and ends fully naked, penis and groin visible, holding still`
+      : `${subject} removes all clothing and ends fully naked, bare breasts and nipples visible, holding still`
+    : `${subject} holds the pose steadily`;
+
+  return [
+    `The person in the image ${req || "poses seductively for the camera"}.`,
+    `${undress}.`,
+    explicit,
+    "Smooth natural motion, consistent face and body, settles into a still held pose at the end, sharp focus, no text, no watermark.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function kontextSelfiePrompt(
   c: { age: number; ethnicity: string; gender?: string | null },
   userPrompt?: string | null,

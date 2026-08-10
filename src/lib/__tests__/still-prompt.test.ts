@@ -1,0 +1,29 @@
+import { describe, it, expect } from "vitest";
+import { videoStillPrompt } from "../selfie";
+
+// Photos run on the image-to-video endpoint, so the prompt has to drive the
+// clip INTO the explicit state and hold it — the frame shown is near the end.
+describe("videoStillPrompt", () => {
+  it("undresses on an explicit request and ends held still", () => {
+    const p = videoStillPrompt({ gender: "female" }, "take your top off and show me your tits");
+    expect(p).toMatch(/removes all clothing/i);
+    expect(p).toMatch(/bare breasts/i);
+    expect(p).toMatch(/holding still/i);
+  });
+
+  it("uses male anatomy for male companions", () => {
+    const p = videoStillPrompt({ gender: "male" }, "get naked");
+    expect(p).toMatch(/penis and groin/i);
+    expect(p).not.toMatch(/bare breasts/i);
+  });
+
+  it("keeps a clothed request clothed", () => {
+    const p = videoStillPrompt({ gender: "female" }, "wearing your red dress at dinner");
+    expect(p).not.toMatch(/removes all clothing/i);
+    expect(p).toMatch(/holds the pose/i);
+  });
+
+  it("defaults to explicit when nothing is asked for", () => {
+    expect(videoStillPrompt({ gender: "female" }, "")).toMatch(/removes all clothing/i);
+  });
+});

@@ -14,7 +14,7 @@ import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
 import { textToSpeech, chatComplete } from "./ai";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { kontextSelfiePrompt, checkCrossGenderRequest } from "./selfie";
+import { kontextSelfiePrompt, videoStillPrompt, checkCrossGenderRequest } from "./selfie";
 import { runpodEndpoint, runpodRun } from "./runpod";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
@@ -175,7 +175,14 @@ export async function startImageJob(
   styleBackstory: string | null | undefined,
   balance: { free: number; paid: number },
 ): Promise<string> {
-  const runpodImage = runpodEndpoint("image");
+  // Photos are generated on the VIDEO endpoint, and a frame of the result is
+  // shown as the still. That endpoint is the only uncensored model on the
+  // account: the shared FLUX Kontext image model follows every other instruction
+  // but returns her clothed for any nudity request, which is a property of its
+  // weights and not something a flag turns off. Set RUNPOD_IMAGE_ENDPOINT to a
+  // real (uncensored) image endpoint and photos move back to a one-shot render.
+  const imageEndpoint = process.env.RUNPOD_IMAGE_ENDPOINT;
+  const runpodImage = imageEndpoint ? runpodEndpoint("image") : runpodEndpoint("video");
   if (!runpodImage) {
     await refundCredits(supabase, userId, SELFIE_COST, `refund-nocfg-${userId}-${Date.now()}`, balance);
     throw new Error("Photo generation is not configured (RUNPOD_API_KEY missing).");
@@ -191,7 +198,9 @@ export async function startImageJob(
     );
   }
 
-  const imagePrompt = kontextSelfiePrompt(companion, userRequest, styleBackstory);
+  const imagePrompt = imageEndpoint
+    ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
+    : videoStillPrompt(companion, userRequest);
 
   // media_jobs is only writable by the service role (users can just read
   // their own rows), so job bookkeeping goes through the admin client.
@@ -217,24 +226,37 @@ export async function startImageJob(
   }
 
   try {
-    const result = await runpodRun(
-      runpodImage,
-      {
-        prompt: imagePrompt,
-        negative_prompt:
-          "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
-        seed: -1,
-        num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
-        guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
-        image: sourceImage,
-        size: process.env.RUNPOD_IMAGE_SIZE || "1024*1024",
-        output_format: "png",
-        // This app's whole purpose is explicit; the safety checker would blank
-        // the output. screenUserMessage already blocked the illegal requests.
-        enable_safety_checker: false,
-      },
-      webhookFor("runpod"),
-    );
+    // The two endpoints take completely different inputs, so the body is built
+    // per endpoint rather than shared.
+    const input = imageEndpoint
+      ? {
+          prompt: imagePrompt,
+          negative_prompt:
+            "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
+          seed: -1,
+          num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
+          guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
+          image: sourceImage,
+          size: process.env.RUNPOD_IMAGE_SIZE || "1024*1024",
+          output_format: "png",
+          // This app's whole purpose is explicit; the safety checker would blank
+          // the output. screenUserMessage already blocked the illegal requests.
+          enable_safety_checker: false,
+        }
+      : {
+          // Shorter than a real clip — only the end frame is shown, so the extra
+          // frames are wasted generation time.
+          image_url: sourceImage,
+          fps: 16,
+          frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "49"),
+          num_scenes: 1,
+          sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
+          prompts: [imagePrompt],
+          negative_prompt: VIDEO_NEGATIVE,
+          lora_strengths: VIDEO_LORA_STRENGTHS,
+        };
+
+    const result = await runpodRun(runpodImage, input, webhookFor("runpod"));
     await supabaseAdmin
       .from("media_jobs")
       .update({ replicate_id: result.id, status: "processing" })

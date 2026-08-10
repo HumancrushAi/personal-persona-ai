@@ -1,10 +1,20 @@
+// Chat media (photos, videos, voice notes).
+//
+// Photos and videos both run on RunPod, and only on RunPod — there is no
+// Replicate fallback in this file any more. A misconfigured or unreachable
+// endpoint fails the job and refunds rather than quietly rendering somewhere
+// else, because a silent fallback is what previously hid a broken image path.
+//
+// checkMediaJob still reconciles provider="replicate" rows: jobs created before
+// the switch are potentially still in flight, and dropping that branch would
+// strand them unfinished and unrefunded.
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
-import { generateImage, textToSpeech, chatComplete } from "./ai";
+import { textToSpeech, chatComplete } from "./ai";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { selfiePrompt, kontextSelfiePrompt, checkCrossGenderRequest } from "./selfie";
+import { kontextSelfiePrompt, checkCrossGenderRequest } from "./selfie";
 import { runpodEndpoint, runpodRun } from "./runpod";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
@@ -143,12 +153,12 @@ export const generateSelfie = createServerFn({ method: "POST" })
 // failed, refunds, and rethrows. Shared by the 📷 button (generateSelfie) and
 // the in-chat auto-selfie (sendChatMessage).
 //
-// Provider is picked here, because each one needs a differently-written prompt:
-//   RunPod  — FLUX.1 Kontext edits her actual photo, so identity is preserved by
-//             the model and no face-swap pass is needed. Needs a hosted photo.
-//   Replicate — Pony generates a body from booru tags, then a second prediction
-//             swaps her face on. Used when RunPod isn't configured or she has no
-//             hosted photo to edit.
+// Chat photos run on RunPod only. FLUX.1 Kontext edits her actual photo, so
+// identity carries over natively and there's no face-swap pass to chain.
+//
+// It is image-TO-image, so it needs a hosted photo to edit: a companion with no
+// fetchable image_url fails here and refunds rather than silently falling back.
+// There is no Replicate path any more — see the header comment on this file.
 export async function startImageJob(
   supabase: any,
   userId: string,
@@ -166,14 +176,22 @@ export async function startImageJob(
   balance: { free: number; paid: number },
 ): Promise<string> {
   const runpodImage = runpodEndpoint("image");
-  const sourceImage = resolveHostedImage(companion.imageUrl);
-  // A RunPod worker fetches the source frame over the network, so only a real
-  // http(s) URL works — an inline data: photo stays on the Replicate path.
-  const useRunpod = Boolean(runpodImage && sourceImage && /^https?:/i.test(sourceImage));
+  if (!runpodImage) {
+    await refundCredits(supabase, userId, SELFIE_COST, `refund-nocfg-${userId}-${Date.now()}`, balance);
+    throw new Error("Photo generation is not configured (RUNPOD_API_KEY missing).");
+  }
 
-  const imagePrompt = useRunpod
-    ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
-    : selfiePrompt(companion, userRequest, styleBackstory);
+  // A RunPod worker fetches the source frame over the network, so only a real
+  // http(s) URL works — an inline data: photo can't be reached from outside.
+  const sourceImage = resolveHostedImage(companion.imageUrl);
+  if (!sourceImage || !/^https?:/i.test(sourceImage)) {
+    await refundCredits(supabase, userId, SELFIE_COST, `refund-nosrc-${userId}-${Date.now()}`, balance);
+    throw new Error(
+      "This companion has no hosted photo to edit — regenerate her image in the admin panel first.",
+    );
+  }
+
+  const imagePrompt = kontextSelfiePrompt(companion, userRequest, styleBackstory);
 
   // media_jobs is only writable by the service role (users can just read
   // their own rows), so job bookkeeping goes through the admin client.
@@ -187,7 +205,7 @@ export async function startImageJob(
       kind: "image",
       status: "pending",
       prompt: imagePrompt,
-      provider: useRunpod ? "runpod" : "replicate",
+      provider: "runpod",
       cost: SELFIE_COST,
     })
     .select("id")
@@ -199,46 +217,28 @@ export async function startImageJob(
   }
 
   try {
-    if (useRunpod) {
-      const result = await runpodRun(
-        runpodImage!,
-        {
-          prompt: imagePrompt,
-          negative_prompt:
-            "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
-          seed: -1,
-          num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
-          guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
-          image: sourceImage,
-          size: process.env.RUNPOD_IMAGE_SIZE || "1024*1024",
-          output_format: "png",
-          // This app's whole purpose is explicit; the safety checker would blank
-          // the output. screenUserMessage already blocked the illegal requests.
-          enable_safety_checker: false,
-        },
-        webhookFor("runpod"),
-      );
-      await supabaseAdmin
-        .from("media_jobs")
-        .update({ replicate_id: result.id, status: "processing" })
-        .eq("id", job.id);
-    } else {
-      const result = await generateImage(imagePrompt, {
-        gender: companion.gender,
-        faceUrl: companion.imageUrl,
-        webhookUrl: webhookFor("replicate"),
-      });
-
-      if (typeof result === "object" && "replicateId" in result) {
-        await supabaseAdmin
-          .from("media_jobs")
-          .update({
-            replicate_id: result.replicateId,
-            status: "processing",
-          })
-          .eq("id", job.id);
-      }
-    }
+    const result = await runpodRun(
+      runpodImage,
+      {
+        prompt: imagePrompt,
+        negative_prompt:
+          "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
+        seed: -1,
+        num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
+        guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
+        image: sourceImage,
+        size: process.env.RUNPOD_IMAGE_SIZE || "1024*1024",
+        output_format: "png",
+        // This app's whole purpose is explicit; the safety checker would blank
+        // the output. screenUserMessage already blocked the illegal requests.
+        enable_safety_checker: false,
+      },
+      webhookFor("runpod"),
+    );
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({ replicate_id: result.id, status: "processing" })
+      .eq("id", job.id);
   } catch (err: any) {
     await supabaseAdmin
       .from("media_jobs")
@@ -376,7 +376,10 @@ export async function startVideoJob(
   const startImage = resolveHostedImage(companion.imageUrl);
   const videoPrompt = videoPromptFor(companion, userReq);
   const runpodVideo = runpodEndpoint("video");
-  const useRunpod = Boolean(runpodVideo && startImage && /^https?:/i.test(startImage));
+  if (!runpodVideo) {
+    await refundCredits(supabase, userId, VIDEO_COST, `refund-nocfg-${userId}-${Date.now()}`, balance);
+    throw new Error("Video generation is not configured (RUNPOD_API_KEY / RUNPOD_VIDEO_ENDPOINT missing).");
+  }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const { data: job, error: jobErr } = await supabaseAdmin
@@ -387,7 +390,7 @@ export async function startVideoJob(
       kind: "video",
       status: "pending",
       prompt: videoPrompt,
-      provider: useRunpod ? "runpod" : "replicate",
+      provider: "runpod",
       cost: VIDEO_COST,
     })
     .select("id")
@@ -411,64 +414,24 @@ export async function startVideoJob(
     throw new Error("No fetchable companion image for video generation");
   }
 
-  if (useRunpod) {
-    // fps * frames is the clip length: 82 frames @ 16fps ≈ 5s, the endpoint's
-    // tuned default. num_scenes stays 1 — one prompt, one continuous shot.
-    const fps = Number(process.env.RUNPOD_VIDEO_FPS || "16");
-    try {
-      const result = await runpodRun(
-        runpodVideo!,
-        {
-          image_url: startImage,
-          fps,
-          frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
-          num_scenes: 1,
-          sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
-          prompts: [videoPrompt],
-          negative_prompt: VIDEO_NEGATIVE,
-          lora_strengths: VIDEO_LORA_STRENGTHS,
-        },
-        webhookFor("runpod"),
-      );
-      await supabaseAdmin
-        .from("media_jobs")
-        .update({ replicate_id: result.id, status: "processing" })
-        .eq("id", job.id);
-    } catch (err: any) {
-      await fail(err.message || "Failed to trigger video model");
-      throw err;
-    }
-    return job.id;
-  }
-
-  const webhookUrl = webhookFor("replicate");
-  // Official model, called by name (versionless, stable API). Override with an
-  // owner/name slug. wan-2.5 is a proxy to Alibaba's hosted API and rejects this
-  // app's content server-side — every prediction failed in under a second with
-  // ModelError E002 — so run the open-weight 2.2 build, which executes on
-  // Replicate and exposes disable_safety_checker. Clip length is num_frames /
-  // frames_per_second here; 2.5's `duration` input does not exist. Aspect ratio
-  // follows the input image, so a portrait photo -> portrait clip.
-  const videoModel = process.env.REPLICATE_VIDEO_MODEL || "wan-video/wan-2.2-i2v-fast";
-  const resolution = process.env.REPLICATE_VIDEO_RESOLUTION || "720p";
-  const fps = Number(process.env.REPLICATE_VIDEO_FPS || "16");
-  const duration = Number(process.env.REPLICATE_VIDEO_DURATION || "5");
-
+  // fps * frames is the clip length: 82 frames @ 16fps ≈ 5s, the endpoint's
+  // tuned default. num_scenes stays 1 — one prompt, one continuous shot.
+  const fps = Number(process.env.RUNPOD_VIDEO_FPS || "16");
   try {
-    const { triggerReplicateModel } = await import("./ai");
-    const result = await triggerReplicateModel(
-      videoModel,
+    const result = await runpodRun(
+      runpodVideo,
       {
-        image: startImage,
-        prompt: videoPrompt,
-        resolution,
-        num_frames: Math.round(duration * fps) + 1,
-        frames_per_second: fps,
-        disable_safety_checker: true,
+        image_url: startImage,
+        fps,
+        frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
+        num_scenes: 1,
+        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
+        prompts: [videoPrompt],
+        negative_prompt: VIDEO_NEGATIVE,
+        lora_strengths: VIDEO_LORA_STRENGTHS,
       },
-      webhookUrl,
+      webhookFor("runpod"),
     );
-
     await supabaseAdmin
       .from("media_jobs")
       .update({ replicate_id: result.id, status: "processing" })

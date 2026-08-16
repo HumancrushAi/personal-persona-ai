@@ -58,6 +58,33 @@ type Row = PortraitSubject & { id: string; image_url: string; sort_order: number
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Uploading ~900KB to Supabase over a long batch hits transient network errors
+// as readily as the generate call does, and a bare "fetch failed" there used to
+// discard a portrait that had already been paid for and rendered.
+async function withRetry<T>(fn: () => Promise<T>, what: string, attempts = 4): Promise<T> {
+  let lastErr: any;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      lastErr = e;
+      const msg = e?.message ?? String(e);
+      if (!isRetryable(msg) || i === attempts - 1) throw e;
+      const wait = 10_000 * (i + 1);
+      process.stdout.write(` (${what}: ${msg.slice(0, 30)}, retry in ${wait / 1000}s)`);
+      await sleep(wait);
+    }
+  }
+  throw lastErr;
+}
+
+function isRetryable(msg: string): boolean {
+  return (
+    /429|throttl/i.test(msg) ||
+    /fetch failed|ECONN|ETIMEDOUT|EAI_AGAIN|socket|network|50[234]/i.test(msg)
+  );
+}
+
 // Replicate throttles hard (6 predictions/min, burst 1) whenever the account
 // balance is under $5, and a throttled create returns instantly — so a failure
 // makes the NEXT create fire immediately and get throttled too. Back off and
@@ -73,10 +100,16 @@ async function generateWithRetry(
       return (await generateImage(prompt, { gender, noNudity: true })) as string;
     } catch (e: any) {
       lastErr = e;
-      const throttled = /\b429\b|throttl/i.test(e?.message ?? "");
-      if (!throttled || i === attempts - 1) throw e;
+      const msg = e?.message ?? String(e);
+      // Throttling is the expected failure on a low-balance account, but a bare
+      // "fetch failed" network blip is just as common over a long batch and used
+      // to kill the companion outright. Both are worth another go.
+      const retryable =
+        /\b429\b|throttl/i.test(msg) ||
+        /fetch failed|ECONN|ETIMEDOUT|EAI_AGAIN|socket|network|50[234]/i.test(msg);
+      if (!retryable || i === attempts - 1) throw e;
       const wait = 20_000 * (i + 1);
-      process.stdout.write(` (throttled, retrying in ${wait / 1000}s)`);
+      process.stdout.write(` (${msg.slice(0, 40)}, retrying in ${wait / 1000}s)`);
       await sleep(wait);
     }
   }
@@ -116,17 +149,21 @@ async function main() {
       if (!bytes.length) throw new Error("empty image");
 
       const path = `companions/${c.id}-${Date.now()}.png`;
-      const { error: upErr } = await db.storage
-        .from("avatars")
-        .upload(path, bytes, { contentType: "image/png", upsert: true });
-      if (upErr) throw upErr;
+      await withRetry(async () => {
+        const { error: upErr } = await db.storage
+          .from("avatars")
+          .upload(path, bytes, { contentType: "image/png", upsert: true });
+        if (upErr) throw upErr;
+      }, "upload");
 
       const { data: pub } = db.storage.from("avatars").getPublicUrl(path);
-      const { error: updErr } = await db
-        .from("companions")
-        .update({ image_url: pub.publicUrl })
-        .eq("id", c.id);
-      if (updErr) throw updErr;
+      await withRetry(async () => {
+        const { error: updErr } = await db
+          .from("companions")
+          .update({ image_url: pub.publicUrl })
+          .eq("id", c.id);
+        if (updErr) throw updErr;
+      }, "db");
 
       ok++;
       console.log(`\r${label} … ✅ ${Math.round(bytes.length / 1024)}KB`);

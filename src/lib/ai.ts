@@ -41,6 +41,13 @@ const PONY_INPUT = {
 const NUDITY_NEGATIVE =
   "nude, naked, nudity, topless, bottomless, undressed, unclothed, shirtless, bare chest, no shirt, no clothes, exposed breasts, bare breasts, nipples, areola, pussy, vulva, vagina, genitals, penis, testicles, pubic hair, explicit, sex, spread legs, presenting";
 
+// The tells that make a render read as AI. These matter as much as the anatomy
+// negatives: a picture can have perfect proportions and still be obviously
+// generated because the skin is plastic and the face is a doll's. Applied to
+// every image, explicit or not — nobody wants the AI look either way.
+const AI_LOOK_NEGATIVE =
+  "3d render, cgi, video game, illustration, painting, drawing, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, oversharpened, hdr, beauty filter, instagram filter, heavy makeup, distorted hands, extra fingers, fused fingers";
+
 // Picks the image model + Replicate input for a companion's gender. `input`
 // holds the model-specific fields (everything except prompt/negative_prompt),
 // which differ between Flux and Pony. `noNudity` appends the nudity negatives
@@ -55,7 +62,8 @@ export function imageModelForGender(
 } {
   const g = (gender ?? "").toLowerCase();
   const version = process.env.REPLICATE_IMAGE_VERSION_MALE || PONY_IMAGE_VERSION;
-  const clothed = (neg: string) => (opts?.noNudity ? `${NUDITY_NEGATIVE}, ${neg}` : neg);
+  const clothed = (neg: string) =>
+    [opts?.noNudity ? NUDITY_NEGATIVE : "", AI_LOOK_NEGATIVE, neg].filter(Boolean).join(", ");
 
   if (g === "male" || g === "trans-male") {
     return {

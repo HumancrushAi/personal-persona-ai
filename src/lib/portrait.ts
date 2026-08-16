@@ -137,10 +137,15 @@ export function portraitPrompt(c: PortraitSubject, extra?: string): string {
       : g === "non-binary"
         ? "androgynous, solo"
         : "1girl, solo";
+  // Photographic language, not render language. "Ultra photorealistic glamour"
+  // steers Pony toward the airbrushed CG look that reads as AI on sight; naming
+  // a camera and asking for untouched skin is what actually buys realism.
+  // Everything downstream starts from this image — chat photos and the cams
+  // clips are image-to-video off it — so the realism ceiling is set right here.
   const style =
     c.art_style === "anime"
       ? "Stylized high-quality anime illustration, cel shaded, expressive, alluring, vertical portrait."
-      : "Ultra photorealistic glamour portrait photograph, natural skin texture and pores, soft warm lighting, shot on a 50mm DSLR, shallow depth of field, sharp focus, high detail, vertical portrait.";
+      : "Candid photo taken on a Sony A7 IV with an 85mm f/1.4 lens, natural available light, true-to-life colour, subtle film grain, vertical full-body portrait. Real untouched skin with visible pores, fine texture, faint blemishes and freckles, uneven natural tone, flyaway strands of hair, natural asymmetry, no airbrushing, no smoothing, no retouching. Looks like a real photo of a real person, not a render.";
 
   return [
     genderTag,

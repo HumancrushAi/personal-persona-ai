@@ -199,14 +199,6 @@ const FRAMING =
 const QUALITY =
   "Ultra realistic photorealistic 8k, professional cinematic lighting, glossy glowing skin with detailed pores, soft shadows highlighting her curves, realistic anatomy and natural proportions, luxury interior setting, shallow depth of field, premium editorial boudoir photography, intimate sensual atmosphere, no text, no watermark.";
 
-// A scene the user wrote themselves in the video studio. Their text is the
-// point, so it is used verbatim and only gains the house framing/quality tail —
-// no undressing vocabulary is bolted on, because the whole reason to write a
-// scene by hand is to say exactly what happens in it.
-export function scenePrompt(scene: string): string {
-  return [scene.trim(), FRAMING, QUALITY].filter(Boolean).join(" ");
-}
-
 // Motion prompt for a real video. Same explicit vocabulary as the still, but it
 // keeps MOVING instead of settling — and it undresses when asked, which is what
 // was missing: the old builder pasted the raw request into a sentence, so "send

@@ -27,3 +27,21 @@ describe("videoStillPrompt", () => {
     expect(videoStillPrompt({ gender: "female" }, "")).toMatch(/removes all clothing/i);
   });
 });
+
+// Realism regression. "8k masterpiece ultra detailed" pushes the render toward
+// the glossy CG look people read instantly as AI; camera language plus explicit
+// permission for real skin texture is what actually buys photorealism.
+describe("realism tail", () => {
+  it("asks for camera and real skin, not render vocabulary", () => {
+    const p = videoStillPrompt({ gender: "female" }, "");
+    expect(p).toMatch(/85mm|Sony A7/i);
+    expect(p).toMatch(/pores/i);
+    expect(p).toMatch(/no airbrushing|no retouching/i);
+  });
+
+  it("does not use the AI-slop quality words", () => {
+    const p = videoStillPrompt({ gender: "female" }, "");
+    expect(p).not.toMatch(/\b8k\b/i);
+    expect(p).not.toMatch(/masterpiece/i);
+  });
+});

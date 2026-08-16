@@ -282,7 +282,7 @@ export async function startImageJob(
           fps: 16,
           frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "49"),
           num_scenes: 1,
-          sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
+          sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
           prompts: [imagePrompt],
           negative_prompt: VIDEO_NEGATIVE,
           lora_strengths: VIDEO_LORA_STRENGTHS,
@@ -384,8 +384,11 @@ function webhookFor(provider: "replicate" | "runpod"): string {
 
 // Motion negative prompt for the RunPod WAN endpoint — the "static/frozen" terms
 // are what stop it returning a near-still clip.
+// The "looks AI-generated" half of this list matters as much as the anatomy
+// half: plastic/waxy/airbrushed skin, CGI and doll-like faces, and the
+// oversaturated over-sharpened HDR look are what give a generated clip away.
 const VIDEO_NEGATIVE =
-  "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, low quality";
+  "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, watermark text overlay, distorted hands, extra fingers, fused fingers, malformed breasts, asymmetric eyes";
 
 // The endpoint's tuned LoRA weights, exactly as its operator specified them.
 // These are what the endpoint is tuned WITH; leaving the key out runs it at
@@ -488,7 +491,7 @@ export async function startVideoJob(
         fps,
         frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
         num_scenes: 1,
-        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
+        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
         prompts: [videoPrompt],
         negative_prompt: VIDEO_NEGATIVE,
         lora_strengths: VIDEO_LORA_STRENGTHS,

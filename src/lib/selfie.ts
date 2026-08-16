@@ -196,8 +196,13 @@ export function videoStillPrompt(
 // cinematic light, real skin detail.
 const FRAMING =
   "Full body visible head to toe, whole figure in frame, wide framing with the entire body inside the shot, nothing cropped out.";
+// Written as a photograph, not as a render. "8k masterpiece ultra detailed"
+// pushes toward the glossy airbrushed CG look people read instantly as AI, so
+// it's gone. What actually buys realism is camera language plus permission for
+// skin to be skin: pores, stray hairs, faint blemishes, uneven tone, the small
+// asymmetries a real body has and a generated one smooths away.
 const QUALITY =
-  "Ultra realistic photorealistic 8k, professional cinematic lighting, glossy glowing skin with detailed pores, soft shadows highlighting her curves, realistic anatomy and natural proportions, luxury interior setting, shallow depth of field, premium editorial boudoir photography, intimate sensual atmosphere, no text, no watermark.";
+  "Candid photograph shot on a Sony A7 IV with an 85mm f/1.4 lens, natural available light, true-to-life colour, natural film grain. Real untouched skin with visible pores, fine texture, faint blemishes and uneven tone, subtle tan lines, natural subsurface skin translucency, flyaway strands of hair, natural asymmetry, no airbrushing, no smoothing, no retouching. Relaxed believable pose and expression, natural body proportions, sharp focus on the eyes, soft natural depth of field. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
 
 // Motion prompt for a real video. Same explicit vocabulary as the still, but it
 // keeps MOVING instead of settling — and it undresses when asked, which is what

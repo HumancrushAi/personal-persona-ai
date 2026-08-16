@@ -59,7 +59,9 @@ export function VideoStudio({
 
   const filled = scenes.map((s) => s.trim()).filter(Boolean);
   const cost = perSceneCost * Math.max(1, filled.length);
-  const seconds = ((settings.framesPerScene / settings.fps) * Math.max(1, filled.length)).toFixed(0);
+  const seconds = ((settings.framesPerScene / settings.fps) * Math.max(1, filled.length)).toFixed(
+    0,
+  );
 
   function setScene(i: number, value: string) {
     setScenes((prev) => prev.map((s, idx) => (idx === i ? value : s)));
@@ -77,7 +79,11 @@ export function VideoStudio({
               One prompt per scene — they play in order.
             </p>
           </div>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-white/10" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 hover:bg-white/10"
+            aria-label="Close"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>

@@ -27,8 +27,7 @@ const KW = {
   masturbation:
     "masturbat\\w*|finger\\w*|rub\\w*|touch\\w*\\s+(?:her|him|your|my)self|touch\\w*\\s+(?:her|him|your|my)?\\s*(?:pussy|dick|cock|clit|genital\\w*|crotch|nipples?)|play\\w*\\s+with\\s+(?:her|him|your|my)self|play\\w*\\s+with\\s+(?:her|him|your|my)?\\s*(?:pussy|dick|clit|genital\\w*|nipples?)|pleasur\\w*|hand\\s+(?:in|on|down|inside|between|up)|fingers?\\s+(?:in|inside|deep)|jerk\\w*|jack\\w*\\s*off|strok\\w*|edg\\w*|grind\\w*",
   toys: "dildo|vibrator|sex\\s*toy|butt\\s*plug|plug|magic wand|strap[- ]?on|anal beads|fleshlight",
-  oral:
-    "blow\\s*job|blowjob|bj|suck\\w*|oral|deep\\s*throat|fellati\\w*|lick\\w*|cunnilingus|rim\\w*|tongue|69",
+  oral: "blow\\s*job|blowjob|bj|suck\\w*|oral|deep\\s*throat|fellati\\w*|lick\\w*|cunnilingus|rim\\w*|tongue|69",
   anal: "anal|butt\\s*plug|up (?:her|your|my) ass|in (?:her|your|my) ass|ass\\s*fuck\\w*|sodom\\w*|butt stuff",
   sex: "fuck\\w*|sex|penetrat\\w*|insert\\w*|creampie|gape|missionary|reverse cowgirl|gangbang|threesome|orgy",
   cum: "cum\\w*|cream\\s*pie|squirt\\w*|orgasm\\w*|climax\\w*|ahegao|facial|jizz|dripping wet|precum|load",
@@ -55,7 +54,9 @@ const ACT_RE = kw(
 // deliberately NOT here: it's clothed-sexy, handled as its own tag.
 function requestIsNude(req: string): boolean {
   if (!req.trim()) return true; // default (no request) selfie in this app trends nude
-  return kw([KW.undress, KW.breasts, KW.pussy, KW.penis, KW.ass].join("|")).test(req) || ACT_RE.test(req);
+  return (
+    kw([KW.undress, KW.breasts, KW.pussy, KW.penis, KW.ass].join("|")).test(req) || ACT_RE.test(req)
+  );
 }
 
 // Maps request keywords to explicit booru pose/act tags so the picture actually
@@ -109,9 +110,17 @@ function booruPonyPrompt(
   const isNude = requestIsNude(req);
   const noun = kind === "male" ? "man" : kind === "nb" ? "androgynous person" : "woman";
   const who =
-    kind === "male" ? "1boy, solo, male focus" : kind === "nb" ? "androgynous, solo" : "1girl, solo";
+    kind === "male"
+      ? "1boy, solo, male focus"
+      : kind === "nb"
+        ? "androgynous, solo"
+        : "1girl, solo";
   const body =
-    kind === "male" ? "muscular, abs" : kind === "nb" ? "androgynous, lean" : "curvy, feminine, attractive";
+    kind === "male"
+      ? "muscular, abs"
+      : kind === "nb"
+        ? "androgynous, lean"
+        : "curvy, feminine, attractive";
 
   let nudeTags = "clothed";
   if (isNude) {
@@ -264,7 +273,13 @@ export function kontextSelfiePrompt(
 }
 
 export function selfiePrompt(
-  c: { name: string; age: number; ethnicity: string; gender?: string | null; short_bio?: string | null },
+  c: {
+    name: string;
+    age: number;
+    ethnicity: string;
+    gender?: string | null;
+    short_bio?: string | null;
+  },
   userPrompt?: string | null,
   styleBackstory?: string | null,
 ): string {
@@ -313,16 +328,24 @@ export function wantsVideo(t: string): boolean {
   // verb + (within ~30 chars) a video noun — "make me a video", "send a clip"
   if (new RegExp(`\\b(?:${verbs})\\b[^.?!]{0,30}\\b(?:${noun})\\b`, "i").test(s)) return true;
   // "a video of you", "video for me", "record yourself on video"
-  if (new RegExp(`\\b(?:${noun})\\b[^.?!]{0,20}\\b(?:of you|for me|yourself|of yourself)\\b`, "i").test(s))
+  if (
+    new RegExp(
+      `\\b(?:${noun})\\b[^.?!]{0,20}\\b(?:of you|for me|yourself|of yourself)\\b`,
+      "i",
+    ).test(s)
+  )
     return true;
   return false;
 }
 
 // Checks if the user is requesting a cross-gender body part from the companion
-export function checkCrossGenderRequest(gender: string | null | undefined, prompt: string): string | null {
+export function checkCrossGenderRequest(
+  gender: string | null | undefined,
+  prompt: string,
+): string | null {
   const g = (gender ?? "female").toLowerCase();
   const p = prompt.toLowerCase();
-  
+
   const maleTerms = /\b(dick|cock|penis|balls|male chest|man chest|guy chest|male body)\b/;
   const femaleTerms = /\b(pussy|vagina|clit|vulva|female body|breasts|tits|boobs)\b/;
 

@@ -5,7 +5,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { sendChatMessage } from "@/lib/chat.functions";
-import { generateSelfie, generateVoiceNote, requestVideo, checkMediaJob } from "@/lib/media.functions";
+import {
+  generateSelfie,
+  generateVoiceNote,
+  requestVideo,
+  checkMediaJob,
+} from "@/lib/media.functions";
 import { VideoStudio, type VideoSettings } from "@/components/VideoStudio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -565,7 +570,12 @@ function ChatPage() {
             onClick={() => setActiveImageUrl(null)}
           >
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
           <img

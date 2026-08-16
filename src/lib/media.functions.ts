@@ -81,10 +81,7 @@ export async function refundCredits(
   balance: { free: number; paid: number },
 ) {
   const newPaid = balance.paid + cost;
-  await supabase
-    .from("credit_balances")
-    .update({ paid_credits: newPaid })
-    .eq("user_id", userId);
+  await supabase.from("credit_balances").update({ paid_credits: newPaid }).eq("user_id", userId);
   await supabase.from("credit_ledger").insert({
     user_id: userId,
     delta: cost,
@@ -190,7 +187,13 @@ export async function startImageJob(
   const imageEndpoint = process.env.RUNPOD_IMAGE_ENDPOINT;
   const runpodImage = imageEndpoint ? runpodEndpoint("image") : runpodEndpoint("video");
   if (!runpodImage) {
-    await refundCredits(supabase, userId, SELFIE_COST, `refund-nocfg-${userId}-${Date.now()}`, balance);
+    await refundCredits(
+      supabase,
+      userId,
+      SELFIE_COST,
+      `refund-nocfg-${userId}-${Date.now()}`,
+      balance,
+    );
     throw new Error("Photo generation is not configured (RUNPOD_API_KEY missing).");
   }
 
@@ -198,7 +201,13 @@ export async function startImageJob(
   // http(s) URL works — an inline data: photo can't be reached from outside.
   const sourceImage = resolveHostedImage(companion.imageUrl);
   if (!sourceImage || !/^https?:/i.test(sourceImage)) {
-    await refundCredits(supabase, userId, SELFIE_COST, `refund-nosrc-${userId}-${Date.now()}`, balance);
+    await refundCredits(
+      supabase,
+      userId,
+      SELFIE_COST,
+      `refund-nosrc-${userId}-${Date.now()}`,
+      balance,
+    );
     throw new Error(
       "This companion has no hosted photo to edit — regenerate her image in the admin panel first.",
     );
@@ -239,7 +248,13 @@ export async function startImageJob(
     .single();
 
   if (jobErr || !job) {
-    await refundCredits(supabase, userId, SELFIE_COST, `refund-nojob-${userId}-${Date.now()}`, balance);
+    await refundCredits(
+      supabase,
+      userId,
+      SELFIE_COST,
+      `refund-nojob-${userId}-${Date.now()}`,
+      balance,
+    );
     throw new Error("Failed to create image generation job");
   }
 
@@ -452,7 +467,9 @@ export async function startVideoJob(
   const runpodVideo = runpodEndpoint("video");
   if (!runpodVideo) {
     await refundCredits(supabase, userId, cost, `refund-nocfg-${userId}-${Date.now()}`, balance);
-    throw new Error("Video generation is not configured (RUNPOD_API_KEY / RUNPOD_VIDEO_ENDPOINT missing).");
+    throw new Error(
+      "Video generation is not configured (RUNPOD_API_KEY / RUNPOD_VIDEO_ENDPOINT missing).",
+    );
   }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -484,7 +501,9 @@ export async function startVideoJob(
   };
 
   if (!startImage) {
-    await fail("Video needs a hosted companion photo — upload or regenerate this companion's image in the admin panel.");
+    await fail(
+      "Video needs a hosted companion photo — upload or regenerate this companion's image in the admin panel.",
+    );
     throw new Error("No fetchable companion image for video generation");
   }
 
@@ -548,13 +567,13 @@ export const checkMediaJob = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!job) throw new Error("Job not found");
 
-    if (job.status === "completed") return { status: "completed", mediaUrl: (job as any).media_url };
+    if (job.status === "completed")
+      return { status: "completed", mediaUrl: (job as any).media_url };
     if (job.status === "failed") return { status: "failed" };
     if (!(job as any).replicate_id) return { status: job.status };
 
-    const { completeMediaJob: complete, failMediaJob: fail } = await import(
-      "./media-finalize.server"
-    );
+    const { completeMediaJob: complete, failMediaJob: fail } =
+      await import("./media-finalize.server");
 
     // RunPod jobs need no face-swap chaining: the image path edits her real
     // photo and the video path animates it, so identity is already hers.
@@ -562,9 +581,8 @@ export const checkMediaJob = createServerFn({ method: "POST" })
       const endpoint = runpodEndpoint(job.kind);
       if (!endpoint) return { status: job.status };
 
-      const { runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } = await import(
-        "./runpod"
-      );
+      const { runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } =
+        await import("./runpod");
       let res: { status: string; output?: any; error?: any };
       try {
         res = await runpodGet(endpoint, (job as any).replicate_id);

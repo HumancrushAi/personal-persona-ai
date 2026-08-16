@@ -18,6 +18,7 @@ import {
   kontextSelfiePrompt,
   videoStillPrompt,
   videoActionPrompt,
+  scenePrompt,
   checkCrossGenderRequest,
 } from "./selfie";
 import { runpodEndpoint, runpodRun } from "./runpod";
@@ -301,6 +302,17 @@ export const requestVideo = createServerFn({ method: "POST" })
       .object({
         conversationId: z.string().uuid(),
         prompt: z.string().max(300).optional(),
+        // Scene-by-scene mode: one prompt per shot. The endpoint renders each
+        // scene and stitches them, so this is its own native feature rather
+        // than several separate jobs fired in sequence.
+        scenes: z.array(z.string().max(1200)).min(1).max(10).optional(),
+        settings: z
+          .object({
+            fps: z.number().int().min(8).max(30).optional(),
+            framesPerScene: z.number().int().min(16).max(160).optional(),
+            samplingSteps: z.number().int().min(4).max(40).optional(),
+          })
+          .optional(),
       })
       .parse(d),
   )
@@ -328,8 +340,20 @@ export const requestVideo = createServerFn({ method: "POST" })
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
 
-    const { free, paid } = await ensureBalance(supabase, userId, VIDEO_COST);
-    const balance = await deductCredits(supabase, userId, VIDEO_COST, "video_debit", free, paid);
+    // Every scene is a separate render on the endpoint, so a 10-scene video is
+    // 10x the compute of a 1-scene one and is priced accordingly.
+    const scenes = data.scenes?.map((t) => t.trim()).filter(Boolean);
+    const cost = VIDEO_COST * Math.max(1, scenes?.length ?? 1);
+
+    // Screen each scene, not just the single prompt — otherwise the per-scene
+    // fields would be an unchecked way around the safety gate.
+    for (const scene of scenes ?? []) {
+      const sceneScreen = screenUserMessage(scene);
+      if (!sceneScreen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${sceneScreen.reason}`);
+    }
+
+    const { free, paid } = await ensureBalance(supabase, userId, cost);
+    const balance = await deductCredits(supabase, userId, cost, "video_debit", free, paid);
 
     const jobId = await startVideoJob(
       supabase,
@@ -338,6 +362,7 @@ export const requestVideo = createServerFn({ method: "POST" })
       { name: c.name, gender: c.gender, imageUrl: c.image_url },
       userPrompt,
       balance,
+      { scenes, settings: data.settings, cost },
     );
 
     return { jobId, status: "pending", balance };
@@ -403,12 +428,30 @@ export async function startVideoJob(
   companion: { name: string; gender?: string | null; imageUrl?: string | null },
   userReq: string | undefined,
   balance: { free: number; paid: number },
+  opts?: {
+    scenes?: string[];
+    settings?: { fps?: number; framesPerScene?: number; samplingSteps?: number };
+    cost?: number;
+  },
 ): Promise<string> {
   const startImage = resolveHostedImage(companion.imageUrl);
-  const videoPrompt = videoActionPrompt(companion, userReq);
+
+  // Scene mode: the user wrote a prompt per shot, so those are used verbatim
+  // (they are the whole point of the studio) with only the house framing and
+  // quality tail appended. Otherwise it's a single generated action prompt.
+  const scenes = opts?.scenes?.filter(Boolean) ?? [];
+  const prompts = scenes.length
+    ? scenes.map((scene) => scenePrompt(scene))
+    : [videoActionPrompt(companion, userReq)];
+  const videoPrompt = prompts.join("\n\n");
+
+  // Refunds must return what was actually charged: a 10-scene video costs 10x,
+  // so refunding the flat VIDEO_COST would quietly rob the user of 9/10ths.
+  const cost = opts?.cost ?? VIDEO_COST;
+
   const runpodVideo = runpodEndpoint("video");
   if (!runpodVideo) {
-    await refundCredits(supabase, userId, VIDEO_COST, `refund-nocfg-${userId}-${Date.now()}`, balance);
+    await refundCredits(supabase, userId, cost, `refund-nocfg-${userId}-${Date.now()}`, balance);
     throw new Error("Video generation is not configured (RUNPOD_API_KEY / RUNPOD_VIDEO_ENDPOINT missing).");
   }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -422,13 +465,13 @@ export async function startVideoJob(
       status: "pending",
       prompt: videoPrompt,
       provider: "runpod",
-      cost: VIDEO_COST,
+      cost,
     })
     .select("id")
     .single();
 
   if (jobErr || !job) {
-    await refundCredits(supabase, userId, VIDEO_COST, `refund-nojob-${userId}-${Date.now()}`, balance);
+    await refundCredits(supabase, userId, cost, `refund-nojob-${userId}-${Date.now()}`, balance);
     throw new Error("Failed to create video generation job");
   }
 
@@ -437,7 +480,7 @@ export async function startVideoJob(
       .from("media_jobs")
       .update({ status: "failed", error: message })
       .eq("id", job.id);
-    await refundCredits(supabase, userId, VIDEO_COST, `refund-${job.id}`, balance);
+    await refundCredits(supabase, userId, cost, `refund-${job.id}`, balance);
   };
 
   if (!startImage) {
@@ -457,17 +500,19 @@ export async function startVideoJob(
 
   // fps * frames is the clip length: 82 frames @ 16fps ≈ 5s, the endpoint's
   // tuned default. num_scenes stays 1 — one prompt, one continuous shot.
-  const fps = Number(process.env.RUNPOD_VIDEO_FPS || "16");
+  const fps = opts?.settings?.fps ?? Number(process.env.RUNPOD_VIDEO_FPS || "16");
   try {
     const result = await runpodRun(
       runpodVideo,
       {
         image_url: startFrame,
         fps,
-        frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
-        num_scenes: 1,
-        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
-        prompts: [videoPrompt],
+        frames_per_scene:
+          opts?.settings?.framesPerScene ?? Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
+        num_scenes: prompts.length,
+        sampling_steps:
+          opts?.settings?.samplingSteps ?? Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
+        prompts,
         negative_prompt: VIDEO_NEGATIVE,
         lora_strengths: VIDEO_LORA_STRENGTHS,
       },

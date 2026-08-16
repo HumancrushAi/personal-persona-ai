@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { sendChatMessage } from "@/lib/chat.functions";
 import { generateSelfie, generateVoiceNote, requestVideo, checkMediaJob } from "@/lib/media.functions";
+import { VideoStudio, type VideoSettings } from "@/components/VideoStudio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,6 +51,7 @@ function ChatPage() {
   const [mediaBusy, setMediaBusy] = useState<"selfie" | "voice" | "video" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
+  const [studioOpen, setStudioOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -288,19 +290,23 @@ function ChatPage() {
     }
   }
 
+  // The button opens the studio; generation happens from there so the user can
+  // write a prompt per scene instead of squeezing everything into one line.
   async function handleVideo() {
     if (mediaBusy) return;
-    const prompt =
-      window.prompt(`What should ${p?.nickname ?? "she"}'s video be about? (optional)`, "") ??
-      undefined;
+    setStudioOpen(true);
+  }
+
+  async function runVideo(scenes: string[], settings: VideoSettings) {
+    setStudioOpen(false);
     setMediaBusy("video");
     try {
-      const res = await requestVideoFn({ data: { conversationId, prompt } });
+      const res = await requestVideoFn({ data: { conversationId, scenes, settings } });
       await pollMediaJob((res as any).jobId, "video");
     } catch (err: any) {
       const msg = err?.message ?? "Error";
       if (msg.includes("OUT_OF_CREDITS")) {
-        toast.error("Not enough credits — videos cost 15");
+        toast.error("Not enough credits for that many scenes");
         navigate({ to: "/credits" });
       } else if (msg.includes("BLOCKED_CONTENT")) {
         toast.error("She can't make that kind of video — no credits used.");
@@ -511,7 +517,7 @@ function ChatPage() {
               onClick={handleVideo}
               disabled={!!mediaBusy || sending}
               className="rounded-full"
-              title="Request a video (15 credits)"
+              title="Make a video (15 credits per scene)"
             >
               <VideoIcon className="h-5 w-5 text-primary" />
             </Button>
@@ -534,11 +540,20 @@ function ChatPage() {
           <div className="mx-auto mt-1.5 flex max-w-2xl items-center justify-center gap-3 text-[10px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-primary" />
-              Selfie 8 · Voice 3 · Video 15 · Text 1 credit
+              Selfie 8 · Voice 3 · Video 15/scene · Text 1 credit
             </span>
           </div>
         </form>
       </div>
+
+      {studioOpen && (
+        <VideoStudio
+          name={p?.nickname ?? "her"}
+          perSceneCost={15}
+          onClose={() => setStudioOpen(false)}
+          onGenerate={runVideo}
+        />
+      )}
 
       {activeImageUrl && (
         <div

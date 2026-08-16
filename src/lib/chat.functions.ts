@@ -99,7 +99,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           supabase,
           userId,
           data.conversationId,
-          { name: c.name, imageUrl: c.image_url },
+          { name: c.name, gender: c.gender, imageUrl: c.image_url },
           data.content,
           balAfter,
         );

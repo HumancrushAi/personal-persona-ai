@@ -14,7 +14,12 @@ import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
 import { textToSpeech, chatComplete } from "./ai";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { kontextSelfiePrompt, videoStillPrompt, checkCrossGenderRequest } from "./selfie";
+import {
+  kontextSelfiePrompt,
+  videoStillPrompt,
+  videoActionPrompt,
+  checkCrossGenderRequest,
+} from "./selfie";
 import { runpodEndpoint, runpodRun } from "./runpod";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
@@ -202,6 +207,18 @@ export async function startImageJob(
     ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
     : videoStillPrompt(companion, userRequest);
 
+  // The endpoint centre-crops to a square, which decapitated the result. Square
+  // it ourselves, keeping the whole figure, before handing it over.
+  let startFrame = sourceImage;
+  if (!imageEndpoint) {
+    try {
+      const { squareStartFrame } = await import("./start-frame.server");
+      startFrame = await squareStartFrame(sourceImage, `img-${userId}-${Date.now()}`);
+    } catch {
+      /* fall back to the raw portrait rather than failing the whole request */
+    }
+  }
+
   // media_jobs is only writable by the service role (users can just read
   // their own rows), so job bookkeeping goes through the admin client.
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -246,7 +263,7 @@ export async function startImageJob(
       : {
           // Shorter than a real clip — only the end frame is shown, so the extra
           // frames are wasted generation time.
-          image_url: sourceImage,
+          image_url: startFrame,
           fps: 16,
           frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "49"),
           num_scenes: 1,
@@ -318,7 +335,7 @@ export const requestVideo = createServerFn({ method: "POST" })
       supabase,
       userId,
       data.conversationId,
-      { name: c.name, imageUrl: c.image_url },
+      { name: c.name, gender: c.gender, imageUrl: c.image_url },
       userPrompt,
       balance,
     );
@@ -330,14 +347,6 @@ export const requestVideo = createServerFn({ method: "POST" })
 // from the start-frame image, so the prompt describes MOTION/ACTION, not looks.
 // No forced "SFW" — the safety screen (run by the caller) blocks illegal content;
 // clamping to SFW is why asking her to do something explicit never matched.
-function videoPromptFor(
-  c: { name: string },
-  userReq: string | undefined,
-): string {
-  const action = (userReq ?? "").trim() || "smiling and blowing a kiss to the camera";
-  return `The person in the image is ${action}. Smooth natural motion, realistic lifelike movement, steady handheld selfie video, consistent face and body.`;
-}
-
 // Turn a companion's stored image into a URL a generation worker can fetch.
 // Image-to-image and image-to-video both need a remotely-fetchable source frame:
 // http(s) and data: URIs work as-is; a site-relative path is resolved against
@@ -391,12 +400,12 @@ export async function startVideoJob(
   supabase: any,
   userId: string,
   conversationId: string,
-  companion: { name: string; imageUrl?: string | null },
+  companion: { name: string; gender?: string | null; imageUrl?: string | null },
   userReq: string | undefined,
   balance: { free: number; paid: number },
 ): Promise<string> {
   const startImage = resolveHostedImage(companion.imageUrl);
-  const videoPrompt = videoPromptFor(companion, userReq);
+  const videoPrompt = videoActionPrompt(companion, userReq);
   const runpodVideo = runpodEndpoint("video");
   if (!runpodVideo) {
     await refundCredits(supabase, userId, VIDEO_COST, `refund-nocfg-${userId}-${Date.now()}`, balance);
@@ -436,6 +445,16 @@ export async function startVideoJob(
     throw new Error("No fetchable companion image for video generation");
   }
 
+  // Same centre-crop problem as photos: hand the endpoint a square that keeps
+  // her whole body rather than letting it slice the frame down to a torso.
+  let startFrame = startImage;
+  try {
+    const { squareStartFrame } = await import("./start-frame.server");
+    startFrame = await squareStartFrame(startImage, `vid-${userId}-${Date.now()}`);
+  } catch {
+    /* fall back to the raw portrait rather than failing the whole request */
+  }
+
   // fps * frames is the clip length: 82 frames @ 16fps ≈ 5s, the endpoint's
   // tuned default. num_scenes stays 1 — one prompt, one continuous shot.
   const fps = Number(process.env.RUNPOD_VIDEO_FPS || "16");
@@ -443,7 +462,7 @@ export async function startVideoJob(
     const result = await runpodRun(
       runpodVideo,
       {
-        image_url: startImage,
+        image_url: startFrame,
         fps,
         frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
         num_scenes: 1,

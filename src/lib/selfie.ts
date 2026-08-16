@@ -172,7 +172,51 @@ export function videoStillPrompt(
     `The person in the image ${req || "poses seductively for the camera"}.`,
     `${undress}.`,
     explicit,
-    "Smooth natural motion, consistent face and body, settles into a still held pose at the end, sharp focus, no text, no watermark.",
+    // Framing first: generated photos were coming back as a headless torso
+    // crop, so the shot has to be described as a whole-body one explicitly.
+    FRAMING,
+    QUALITY,
+    "Settles into a still held pose at the end.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+// Shared tail for anything the user sees as a finished photo/clip. The house
+// style is the glossy editorial look of the reference prompts: luxury setting,
+// cinematic light, real skin detail.
+const FRAMING =
+  "Full body visible head to toe, whole figure in frame, wide framing with the entire body inside the shot, nothing cropped out.";
+const QUALITY =
+  "Ultra realistic photorealistic 8k, professional cinematic lighting, glossy glowing skin with detailed pores, soft shadows highlighting her curves, realistic anatomy and natural proportions, luxury interior setting, shallow depth of field, premium editorial boudoir photography, intimate sensual atmosphere, no text, no watermark.";
+
+// Motion prompt for a real video. Same explicit vocabulary as the still, but it
+// keeps MOVING instead of settling — and it undresses when asked, which is what
+// was missing: the old builder pasted the raw request into a sentence, so "send
+// me a sexy video" produced a clothed clip of her standing in her portrait.
+export function videoActionPrompt(
+  c: { gender?: string | null },
+  userPrompt?: string | null,
+): string {
+  const req = (userPrompt ?? "").trim();
+  const noun = genderNoun(c.gender);
+  const isMale = noun === "man";
+  const subject = isMale ? "he" : noun === "woman" ? "she" : "they";
+  const explicit = actionTags(req, isMale);
+
+  const undress = requestIsNude(req)
+    ? isMale
+      ? `${subject} strips off all clothing until fully naked, penis and groin visible`
+      : `${subject} strips off all clothing until fully naked, bare breasts and nipples visible`
+    : `${subject} moves seductively for the camera`;
+
+  return [
+    `The person in the image ${req || "performs a slow seductive striptease for the camera"}.`,
+    `${undress}.`,
+    explicit,
+    FRAMING,
+    QUALITY,
+    "Smooth natural lifelike motion, continuous movement throughout, consistent face and body.",
   ]
     .filter(Boolean)
     .join(" ");

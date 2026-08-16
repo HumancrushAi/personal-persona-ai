@@ -61,7 +61,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Uploading ~900KB to Supabase over a long batch hits transient network errors
 // as readily as the generate call does, and a bare "fetch failed" there used to
 // discard a portrait that had already been paid for and rendered.
-async function withRetry<T>(fn: () => Promise<T>, what: string, attempts = 4): Promise<T> {
+// Six attempts backing off 10s..60s covers about three and a half minutes of
+// downtime. Four attempts (one minute) was not enough: a single outage mid-batch
+// burned through the retries on companion 14 and then failed the remaining 17
+// back to back, because every one of them hit the same dead network and gave up
+// after a minute of its own.
+async function withRetry<T>(fn: () => Promise<T>, what: string, attempts = 6): Promise<T> {
   let lastErr: any;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -70,7 +75,7 @@ async function withRetry<T>(fn: () => Promise<T>, what: string, attempts = 4): P
       lastErr = e;
       const msg = e?.message ?? String(e);
       if (!isRetryable(msg) || i === attempts - 1) throw e;
-      const wait = 10_000 * (i + 1);
+      const wait = Math.min(60_000, 10_000 * (i + 1));
       process.stdout.write(` (${what}: ${msg.slice(0, 30)}, retry in ${wait / 1000}s)`);
       await sleep(wait);
     }

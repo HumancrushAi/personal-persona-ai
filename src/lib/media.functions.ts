@@ -5,9 +5,9 @@
 // endpoint fails the job and refunds rather than quietly rendering somewhere
 // else, because a silent fallback is what previously hid a broken image path.
 //
-// checkMediaJob still reconciles provider="replicate" rows: jobs created before
-// the switch are potentially still in flight, and dropping that branch would
-// strand them unfinished and unrefunded.
+// Rows still marked provider="replicate" are pre-switch jobs that can never
+// finish now the provider is gone; checkMediaJob fails and refunds them rather
+// than leaving the user on a spinner forever.
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
@@ -377,7 +377,7 @@ function resolveHostedImage(imageUrl?: string | null): string | null {
 }
 
 // Each provider posts completions to its own receiver route.
-function webhookFor(provider: "replicate" | "runpod"): string {
+function webhookFor(provider: "runpod"): string {
   const base = process.env.PUBLIC_SITE_URL || "https://humancrush.com";
   return `${base}/api/public/${provider}-webhook`;
 }
@@ -388,7 +388,7 @@ function webhookFor(provider: "replicate" | "runpod"): string {
 // half: plastic/waxy/airbrushed skin, CGI and doll-like faces, and the
 // oversaturated over-sharpened HDR look are what give a generated clip away.
 const VIDEO_NEGATIVE =
-  "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, watermark text overlay, distorted hands, extra fingers, fused fingers, malformed breasts, asymmetric eyes";
+  "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, watermark text overlay, distorted hands, extra fingers, fused fingers, malformed breasts, asymmetric eyes, close-up, extreme close-up, cropped head, headless, head out of frame, face cut off, torso only, tight crop, zoomed in";
 
 // The endpoint's tuned LoRA weights, exactly as its operator specified them.
 // These are what the endpoint is tuned WITH; leaving the key out runs it at
@@ -577,70 +577,12 @@ export const checkMediaJob = createServerFn({ method: "POST" })
       }
     }
 
-    const { getReplicatePrediction, triggerReplicate, FACE_SWAP_VERSION } = await import("./ai");
-    let pred: { status: string; output?: any; error?: any; version?: string };
-    try {
-      pred = await getReplicatePrediction((job as any).replicate_id);
-    } catch {
-      return { status: job.status }; // transient — keep polling
-    }
-
-    if (pred.status === "succeeded") {
-      const outputUrl = Array.isArray(pred.output) ? pred.output[0] : pred.output;
-      if (!outputUrl) {
-        await fail(job as any, "No output from generation model");
-        return { status: "failed" };
-      }
-
-      // Lock the companion's face onto the generated body. The swap runs as a
-      // second prediction that replicate_id is re-pointed at, so the next poll
-      // tick finalizes the swapped result — same chaining the webhook does, so
-      // the two paths stay identical. Swapping inline instead would hold this
-      // request open for minutes and blow the serverless timeout, and the client
-      // would retry and pay for another swap. Skipped when this prediction IS
-      // the swap.
-      if (job.kind === "image" && pred.version !== FACE_SWAP_VERSION && job.conversation_id) {
-        try {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { data: conv } = await supabaseAdmin
-            .from("conversations")
-            .select("user_personalities(companions(image_url))")
-            .eq("id", job.conversation_id)
-            .maybeSingle();
-          const faceUrl = (conv as any)?.user_personalities?.companions?.image_url;
-          if (faceUrl && /^(https?:|data:)/.test(faceUrl)) {
-            // A webhook URL keeps Replicate from holding the create call open
-            // (the Prefer: wait path), so this returns as soon as it's queued.
-            const swap = await triggerReplicate(
-              FACE_SWAP_VERSION,
-              { swap_image: faceUrl, input_image: outputUrl },
-              `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}/api/public/replicate-webhook`,
-            );
-            await supabaseAdmin
-              .from("media_jobs")
-              .update({ replicate_id: swap.id, updated_at: new Date().toISOString() })
-              .eq("id", job.id);
-            return { status: "processing" };
-          }
-        } catch {
-          /* swap unavailable — fall through and keep the unswapped body */
-        }
-      }
-
-      try {
-        const mediaUrl = await complete(job as any, outputUrl);
-        return { status: "completed", mediaUrl };
-      } catch (e: any) {
-        await fail(job as any, `Storage failed: ${e.message}`);
-        return { status: "failed" };
-      }
-    }
-
-    if (pred.status === "failed" || pred.status === "canceled") {
-      await fail(job as any, pred.error ? String(pred.error) : `Prediction ${pred.status}`);
-      return { status: "failed" };
-    }
-
+    // Anything still marked provider="replicate" is a job from before the switch.
+    // Replicate is gone (its credentials have been removed), so those can never
+    // finish — fail them and give the credits back rather than leaving the user
+    // staring at a spinner forever.
+    await fail(job as any, "Generation provider was retired before this job finished.");
+    return { status: "failed" };
     return { status: "processing" };
   });
 

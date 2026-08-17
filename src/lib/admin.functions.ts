@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { generateImage } from "./ai";
+import { generateCompanionPortrait } from "./portrait.server";
 import { portraitPrompt } from "./portrait";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
@@ -334,7 +334,7 @@ export const adminRegeneratePersonaPhoto = createServerFn({ method: "POST" })
     // Generate (data URL) then decode to bytes.
     // gender drives the model's negative prompt — without it every companion
     // rendered with the female negatives, so male models came out as women.
-    const dataUrl = await generateImage(portraitPrompt(c as any, data.prompt), {
+    const dataUrl = await generateCompanionPortrait(portraitPrompt(c as any, data.prompt), {
       gender: (c as any).gender,
       noNudity: true,
     });

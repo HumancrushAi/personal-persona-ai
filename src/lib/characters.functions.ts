@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { generateImage } from "./ai";
+import { generateCompanionPortrait } from "./portrait.server";
 
 const Input = z.object({
   name: z.string().min(1).max(40),
@@ -71,7 +71,7 @@ export const generateCharacter = createServerFn({ method: "POST" })
 
     // Pass gender so the render uses the matching negative prompt — omitting it
     // defaulted every model to the female negatives.
-    const dataUrl = await generateImage(prompt, { gender: data.gender, noNudity: true });
+    const dataUrl = await generateCompanionPortrait(prompt, { gender: data.gender, noNudity: true });
 
     const bio = data.vibe
       ? data.vibe.slice(0, 140)

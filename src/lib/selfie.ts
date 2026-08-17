@@ -161,6 +161,17 @@ function booruPonyPrompt(
 // still. The prompt therefore has to describe a MOVE INTO the explicit state
 // (the clip starts from her clothed portrait), and end there, because the frame
 // we display is taken from the end of the clip.
+// Deliberately the FIRST thing in every media prompt. It used to sit after the
+// explicit tags, and the model weights early tokens hardest, so an act-heavy
+// request pulled the camera down into the act and the head fell out of frame.
+const FRAMING =
+  "Wide full body shot, the entire figure from head to feet inside the frame, face and head clearly visible, camera at a distance. Not a close-up, not cropped.";
+
+// Photographic language, not render language. "8k masterpiece" vocabulary is
+// what produces the airbrushed CG look that reads as AI on sight.
+const QUALITY =
+  "Candid photograph, natural available light, true-to-life colour, real untouched skin with visible pores and natural texture, natural asymmetry, no airbrushing or smoothing. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
+
 export function videoStillPrompt(
   c: { gender?: string | null },
   userPrompt?: string | null,
@@ -169,40 +180,31 @@ export function videoStillPrompt(
   const noun = genderNoun(c.gender);
   const isMale = noun === "man";
   const subject = isMale ? "he" : noun === "woman" ? "she" : "they";
-  const explicit = actionTags(req, isMale);
 
   const undress = requestIsNude(req)
     ? isMale
-      ? `${subject} removes all clothing and ends fully naked, penis and groin visible, holding still`
-      : `${subject} removes all clothing and ends fully naked, bare breasts and nipples visible, holding still`
-    : `${subject} holds the pose steadily`;
+      ? `${subject} is completely naked, penis and groin visible`
+      : `${subject} is completely naked, bare breasts and nipples visible`
+    : `${subject} holds the pose`;
+
+  // NOTE: deliberately no actionTags here. Those are booru tags ("bent over,
+  // presenting, ass, rear view") written for the Pony IMAGE model, and feeding
+  // them to WAN made it compose a tight crop around the act — photos came back
+  // as a headless torso, and at higher tag density as an extreme close-up, no
+  // matter what the framing text said. The user's own words in plain language
+  // render the same act and keep the camera wide.
+  const action = req || "poses seductively for the camera";
 
   return [
-    `The person in the image ${req || "poses seductively for the camera"}.`,
-    `${undress}.`,
-    explicit,
-    // Framing first: generated photos were coming back as a headless torso
-    // crop, so the shot has to be described as a whole-body one explicitly.
     FRAMING,
+    `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
+    `${undress}.`,
     QUALITY,
-    "Settles into a still held pose at the end.",
+    "The camera stays wide and does not move closer. Settles into a still held pose at the end.",
   ]
     .filter(Boolean)
     .join(" ");
 }
-
-// Shared tail for anything the user sees as a finished photo/clip. The house
-// style is the glossy editorial look of the reference prompts: luxury setting,
-// cinematic light, real skin detail.
-const FRAMING =
-  "Full body visible head to toe, whole figure in frame, wide framing with the entire body inside the shot, nothing cropped out.";
-// Written as a photograph, not as a render. "8k masterpiece ultra detailed"
-// pushes toward the glossy airbrushed CG look people read instantly as AI, so
-// it's gone. What actually buys realism is camera language plus permission for
-// skin to be skin: pores, stray hairs, faint blemishes, uneven tone, the small
-// asymmetries a real body has and a generated one smooths away.
-const QUALITY =
-  "Candid photograph shot on a Sony A7 IV with an 85mm f/1.4 lens, natural available light, true-to-life colour, natural film grain. Real untouched skin with visible pores, fine texture, faint blemishes and uneven tone, subtle tan lines, natural subsurface skin translucency, flyaway strands of hair, natural asymmetry, no airbrushing, no smoothing, no retouching. Relaxed believable pose and expression, natural body proportions, sharp focus on the eyes, soft natural depth of field. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
 
 // Motion prompt for a real video. Same explicit vocabulary as the still, but it
 // keeps MOVING instead of settling — and it undresses when asked, which is what
@@ -216,21 +218,22 @@ export function videoActionPrompt(
   const noun = genderNoun(c.gender);
   const isMale = noun === "man";
   const subject = isMale ? "he" : noun === "woman" ? "she" : "they";
-  const explicit = actionTags(req, isMale);
 
   const undress = requestIsNude(req)
     ? isMale
-      ? `${subject} strips off all clothing until fully naked, penis and groin visible`
-      : `${subject} strips off all clothing until fully naked, bare breasts and nipples visible`
+      ? `${subject} strips off all clothing until completely naked, penis and groin visible`
+      : `${subject} strips off all clothing until completely naked, bare breasts and nipples visible`
     : `${subject} moves seductively for the camera`;
 
+  // Same reason as videoStillPrompt: no booru tags for this model.
+  const action = req || "performs a slow seductive striptease for the camera";
+
   return [
-    `The person in the image ${req || "performs a slow seductive striptease for the camera"}.`,
-    `${undress}.`,
-    explicit,
     FRAMING,
+    `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
+    `${undress}.`,
     QUALITY,
-    "Smooth natural lifelike motion, continuous movement throughout, consistent face and body.",
+    "Smooth natural lifelike motion throughout, consistent face and body. The camera stays wide and does not move closer.",
   ]
     .filter(Boolean)
     .join(" ");

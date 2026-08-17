@@ -1122,22 +1122,6 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label className="text-xs mb-1 block">Image Fallback Provider</Label>
-                  <div className="flex gap-2">
-                    <select
-                      className="h-9 w-full rounded-md border border-white/10 bg-transparent px-2 text-sm"
-                      value={settings["image_fallback_provider"] ?? "replicate"}
-                      onChange={(e) => setSettings({ ...settings, image_fallback_provider: e.target.value })}
-                    >
-                      <option value="replicate" className="bg-background">Replicate (NSFW/Realistic)</option>
-                      <option value="openai" className="bg-background">OpenAI (DALL-E SFW)</option>
-                    </select>
-                    <Button onClick={() => handleSave("image_fallback_provider", settings["image_fallback_provider"] ?? "replicate")} disabled={saving === "image_fallback_provider"}>
-                      Save
-                    </Button>
-                  </div>
-                </div>
-                <div>
                   <Label className="text-xs mb-1 block">Default Model Temperature</Label>
                   <div className="flex gap-2">
                     <Input

@@ -6,9 +6,9 @@ import { videoStillPrompt } from "../selfie";
 describe("videoStillPrompt", () => {
   it("undresses on an explicit request and ends held still", () => {
     const p = videoStillPrompt({ gender: "female" }, "take your top off and show me your tits");
-    expect(p).toMatch(/removes all clothing/i);
+    expect(p).toMatch(/completely naked/i);
     expect(p).toMatch(/bare breasts/i);
-    expect(p).toMatch(/holding still/i);
+    expect(p).toMatch(/still held pose/i);
   });
 
   it("uses male anatomy for male companions", () => {
@@ -19,12 +19,12 @@ describe("videoStillPrompt", () => {
 
   it("keeps a clothed request clothed", () => {
     const p = videoStillPrompt({ gender: "female" }, "wearing your red dress at dinner");
-    expect(p).not.toMatch(/removes all clothing/i);
+    expect(p).not.toMatch(/completely naked/i);
     expect(p).toMatch(/holds the pose/i);
   });
 
   it("defaults to explicit when nothing is asked for", () => {
-    expect(videoStillPrompt({ gender: "female" }, "")).toMatch(/removes all clothing/i);
+    expect(videoStillPrompt({ gender: "female" }, "")).toMatch(/completely naked/i);
   });
 });
 
@@ -34,7 +34,7 @@ describe("videoStillPrompt", () => {
 describe("realism tail", () => {
   it("asks for camera and real skin, not render vocabulary", () => {
     const p = videoStillPrompt({ gender: "female" }, "");
-    expect(p).toMatch(/85mm|Sony A7/i);
+    expect(p).toMatch(/candid photograph/i);
     expect(p).toMatch(/pores/i);
     expect(p).toMatch(/no airbrushing|no retouching/i);
   });

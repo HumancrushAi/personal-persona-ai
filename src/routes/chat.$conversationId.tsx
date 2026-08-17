@@ -215,7 +215,11 @@ function ChatPage() {
   // Resolves on completion/timeout; throws on failure.
   async function pollMediaJob(jobId: string, label: "photo" | "video") {
     let attempts = 0;
-    while (attempts < 90) {
+    // 90 ticks was three minutes, which a 10s clip plus queue time runs past —
+    // the poll gave up while the job was still healthy and the media only
+    // arrived if the webhook happened to land. Videos get eight minutes.
+    const maxAttempts = label === "video" ? 240 : 150;
+    while (attempts < maxAttempts) {
       let res: any;
       try {
         res = await checkJob({ data: { jobId } });
@@ -345,7 +349,7 @@ function ChatPage() {
   const showOpener = scenario && messages && messages.length === 0;
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-dvh">
       {/* Persistent model image (candy.ai-style) — desktop */}
       <aside className="relative hidden w-80 shrink-0 md:block lg:w-96">
         {p?.companions?.image_url && (
@@ -370,7 +374,7 @@ function ChatPage() {
       </aside>
 
       {/* Chat column */}
-      <div className="flex h-screen flex-1 flex-col min-w-0">
+      <div className="flex h-dvh flex-1 flex-col min-w-0">
         <header className="glass flex items-center gap-3 px-4 py-3">
           <Button asChild size="icon" variant="ghost" className="rounded-full">
             <Link to="/me">
@@ -508,7 +512,12 @@ function ChatPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSend} className="glass px-3 py-3">
+        {/* pb-[env(safe-area-inset-bottom)] keeps the composer clear of the iPhone
+            home indicator, which otherwise sits on top of the buttons. */}
+        <form
+          onSubmit={handleSend}
+          className="glass px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        >
           <div className="mx-auto flex max-w-2xl items-center gap-2">
             <Button
               type="button"

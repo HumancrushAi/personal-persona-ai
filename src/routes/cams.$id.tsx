@@ -61,11 +61,7 @@ function CamView() {
   // fallback for companions whose clip hasn't been generated yet, and a failed
   // load drops through to the portrait.
   const [reelFailed, setReelFailed] = useState(false);
-  const reel = reelFailed
-    ? model
-      ? getCompanionReel(model.name)
-      : null
-    : companionReelUrl(id);
+  const reel = reelFailed ? (model ? getCompanionReel(model.name) : null) : companionReelUrl(id);
   useEffect(() => setReelFailed(false), [id]);
 
   const { data: balance } = useQuery({
@@ -174,7 +170,7 @@ function CamView() {
   }
 
   return (
-    <div className="relative flex h-screen w-full items-stretch justify-center overflow-hidden bg-black">
+    <div className="relative flex h-dvh w-full items-stretch justify-center overflow-hidden bg-black">
       {/* Blurred backdrop fills the wide desktop screen behind the portrait stage */}
       <img
         aria-hidden

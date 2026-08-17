@@ -27,6 +27,11 @@ const SELFIE_COST = 8;
 const VOICE_COST = 3;
 const VIDEO_COST = 15;
 
+// How long a job may sit unfinished before it is written off and refunded.
+// A 10s clip plus queue time runs past four minutes, so this has to be well
+// clear of a slow-but-healthy job while still not leaving a hung one open.
+const STALE_JOB_MS = 15 * 60_000;
+
 // Warmer, more natural voices first (alloy is the flattest, so it's last).
 const VOICES = ["shimmer", "coral", "sage", "nova", "verse", "alloy"];
 
@@ -522,7 +527,9 @@ export const checkMediaJob = createServerFn({ method: "POST" })
 
     const { data: job } = await supabase
       .from("media_jobs")
-      .select("id, user_id, conversation_id, kind, cost, status, provider, replicate_id, media_url")
+      .select(
+        "id, user_id, conversation_id, kind, cost, status, provider, replicate_id, media_url, created_at",
+      )
       .eq("id", data.jobId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -535,6 +542,16 @@ export const checkMediaJob = createServerFn({ method: "POST" })
 
     const { completeMediaJob: complete, failMediaJob: fail } =
       await import("./media-finalize.server");
+
+    // A worker can hang: one video job sat IN_PROGRESS on RunPod overnight, so
+    // the row stayed "processing" forever, nothing was ever posted to the chat,
+    // and the credits were never returned. Nothing else would ever have closed
+    // it out — the webhook only fires on a terminal state, which never came.
+    const ageMs = Date.now() - new Date((job as any).created_at).getTime();
+    if (ageMs > STALE_JOB_MS) {
+      await fail(job as any, "Generation timed out — the provider never finished this job.");
+      return { status: "failed" };
+    }
 
     // RunPod jobs need no face-swap chaining: the image path edits her real
     // photo and the video path animates it, so identity is already hers.

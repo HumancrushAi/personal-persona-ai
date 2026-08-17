@@ -188,11 +188,19 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   return s.replace(/^[\s,.:;-]+/, "").trim();
 }
 
-// Deliberately the FIRST thing in every media prompt. It used to sit after the
-// explicit tags, and the model weights early tokens hardest, so an act-heavy
-// request pulled the camera down into the act and the head fell out of frame.
-const FRAMING =
-  "Wide full body shot, the entire figure from head to feet inside the frame, face and head clearly visible, camera at a distance. Not a close-up, not cropped.";
+// The opening sentence of every media prompt, and the only thing that reliably
+// stops the crop.
+//
+// An abstract instruction ("Wide full body shot, nothing cropped") does NOT
+// work: tested against the live endpoint, an act-heavy request still came back
+// with the head cut off at the mouth. What works is describing a PHOTOGRAPH OF A
+// PERSON STANDING IN A ROOM — naming the subject and a standing posture gives
+// the model a composition to build, instead of a rule to obey. Same request,
+// same start frame, same negatives: subject-anchored framing produced head to
+// feet with the face in shot.
+function framingFor(noun: string, poss: string): string {
+  return `Wide full body photograph of a ${noun} standing in a room, ${poss} whole body visible from head to feet, ${poss} face clearly visible at the top of the frame, camera far away across the room. Not a close-up, not cropped.`;
+}
 
 // Photographic language, not render language. "8k masterpiece" vocabulary is
 // what produces the airbrushed CG look that reads as AI on sight.
@@ -221,9 +229,10 @@ export function videoStillPrompt(
   // matter what the framing text said. The user's own words in plain language
   // render the same act and keep the camera wide.
   const action = normalizeRequest(req, subject) || "posing seductively for the camera";
+  const poss = isMale ? "his" : noun === "woman" ? "her" : "their";
 
   return [
-    FRAMING,
+    framingFor(noun, poss),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
     QUALITY,
@@ -255,9 +264,10 @@ export function videoActionPrompt(
   // Same reason as videoStillPrompt: no booru tags for this model.
   const action =
     normalizeRequest(req, subject) || "performing a slow seductive striptease for the camera";
+  const poss = isMale ? "his" : noun === "woman" ? "her" : "their";
 
   return [
-    FRAMING,
+    framingFor(noun, poss),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
     QUALITY,

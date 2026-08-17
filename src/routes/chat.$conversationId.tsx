@@ -11,6 +11,7 @@ import {
   requestVideo,
   checkMediaJob,
 } from "@/lib/media.functions";
+import { MediaRequestModal, type MediaKind } from "@/components/MediaRequestModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -55,6 +56,22 @@ function ChatPage() {
   const [mediaBusy, setMediaBusy] = useState<"selfie" | "voice" | "video" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
+  // Which media request dialog is open, if any.
+  const [asking, setAsking] = useState<MediaKind | null>(null);
+  // Seconds elapsed on the running job. Generation takes 90s+, and a static
+  // "taking a pic for you…" with no movement reads as a hang — people gave up
+  // and assumed it was broken while the job was in fact still running.
+  const [waited, setWaited] = useState(0);
+
+  useEffect(() => {
+    if (!mediaBusy) {
+      setWaited(0);
+      return;
+    }
+    const started = Date.now();
+    const t = setInterval(() => setWaited(Math.round((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [mediaBusy]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -248,9 +265,11 @@ function ChatPage() {
   // you want — chat.functions reads the request and fires the job with it — and
   // this button is the wordless version of the same thing. A browser prompt in
   // the middle of a conversation breaks the illusion of talking to a person.
-  async function handleSelfie() {
-    if (mediaBusy) return;
-    const prompt = undefined;
+  // Both media buttons ask what you want first. Firing straight into a
+  // generation meant the model picked the subject itself, which is how people
+  // ended up paying 8 credits for "whatever it felt like".
+  async function runSelfie(prompt: string) {
+    setAsking(null);
     setMediaBusy("selfie");
     try {
       const res = await selfie({ data: { conversationId, prompt } });
@@ -260,10 +279,8 @@ function ChatPage() {
       if (msg.includes("OUT_OF_CREDITS")) {
         toast.error("Not enough credits — selfies cost 8");
         navigate({ to: "/credits" });
-      } else if (/safety|rejected|Image error|content/i.test(msg)) {
-        toast.error(
-          "She can't take that kind of pic yet 😅 try a softer request — no credits used.",
-        );
+      } else if (msg.includes("BLOCKED_CONTENT")) {
+        toast.error("She can't take that kind of pic — no credits used.");
       } else toast.error(msg);
     } finally {
       setMediaBusy(null);
@@ -298,11 +315,15 @@ function ChatPage() {
   // No dialog: this is a chat product. Asking her for a video in the message box
   // already generates one (chat.functions detects the request and fires the job
   // with whatever was said), and this button is the same thing without typing.
-  async function handleVideo() {
-    if (mediaBusy) return;
+  async function runVideo(prompt: string, seconds: number) {
+    setAsking(null);
     setMediaBusy("video");
     try {
-      const res = await requestVideoFn({ data: { conversationId } });
+      // Clip length is frames / fps on the endpoint, and 16 is its tuned fps,
+      // so the chosen duration is expressed as a frame count.
+      const res = await requestVideoFn({
+        data: { conversationId, prompt, settings: { fps: 16, framesPerScene: seconds * 16 } },
+      });
       await pollMediaJob((res as any).jobId, "video");
     } catch (err: any) {
       const msg = err?.message ?? "Error";
@@ -469,11 +490,11 @@ function ChatPage() {
               <div className="flex justify-start">
                 <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground">
                   {mediaBusy === "selfie" ? (
-                    "taking a pic for you…"
+                    `taking a pic for you… ${waited}s`
                   ) : mediaBusy === "voice" ? (
                     "recording…"
                   ) : mediaBusy === "video" ? (
-                    "filming a video for you…"
+                    `filming a video for you… ${waited}s`
                   ) : (
                     <>
                       <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
@@ -493,7 +514,7 @@ function ChatPage() {
               type="button"
               size="icon"
               variant="ghost"
-              onClick={handleSelfie}
+              onClick={() => !mediaBusy && setAsking("photo")}
               disabled={!!mediaBusy || sending}
               className="rounded-full"
               title="Ask for a selfie (8 credits)"
@@ -515,7 +536,7 @@ function ChatPage() {
               type="button"
               size="icon"
               variant="ghost"
-              onClick={handleVideo}
+              onClick={() => !mediaBusy && setAsking("video")}
               disabled={!!mediaBusy || sending}
               className="rounded-full"
               title="Ask her for a video (15 credits)"
@@ -546,6 +567,18 @@ function ChatPage() {
           </div>
         </form>
       </div>
+
+      {asking && (
+        <MediaRequestModal
+          kind={asking}
+          name={p?.nickname ?? "her"}
+          cost={asking === "photo" ? 8 : 15}
+          onClose={() => setAsking(null)}
+          onSubmit={(prompt, seconds) =>
+            asking === "photo" ? runSelfie(prompt) : runVideo(prompt, seconds)
+          }
+        />
+      )}
 
       {activeImageUrl && (
         <div

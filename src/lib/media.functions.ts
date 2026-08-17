@@ -315,7 +315,7 @@ export const requestVideo = createServerFn({ method: "POST" })
     z
       .object({
         conversationId: z.string().uuid(),
-        prompt: z.string().max(300).optional(),
+        prompt: z.string().max(500).optional(),
       })
       .parse(d),
   )
@@ -642,7 +642,7 @@ export const videoScript = createServerFn({ method: "POST" })
     z
       .object({
         conversationId: z.string().uuid(),
-        prompt: z.string().max(300).optional(),
+        prompt: z.string().max(500).optional(),
       })
       .parse(d),
   )

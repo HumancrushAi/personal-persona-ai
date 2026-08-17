@@ -244,11 +244,13 @@ function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
+  // No dialog. Asking her for something in the message box is how you say what
+  // you want — chat.functions reads the request and fires the job with it — and
+  // this button is the wordless version of the same thing. A browser prompt in
+  // the middle of a conversation breaks the illusion of talking to a person.
   async function handleSelfie() {
     if (mediaBusy) return;
-    const prompt =
-      window.prompt(`What should ${p?.nickname ?? "she"} send a pic of? (optional)`, "") ??
-      undefined;
+    const prompt = undefined;
     setMediaBusy("selfie");
     try {
       const res = await selfie({ data: { conversationId, prompt } });

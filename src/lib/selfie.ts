@@ -161,6 +161,33 @@ function booruPonyPrompt(
 // still. The prompt therefore has to describe a MOVE INTO the explicit state
 // (the clip starts from her clothed portrait), and end there, because the frame
 // we display is taken from the end of the clip.
+// The request arrives as the raw chat message ("send me a pic of you sticking a
+// dildo in your ass") and gets dropped straight into "She is ___." — which reads
+// as broken grammar to the model and costs prompt adherence. Strip the ask and
+// flip second person to third so the sentence describes HER doing the thing.
+export function normalizeRequest(req: string, subject: "she" | "he" | "they"): string {
+  let s = req.trim();
+
+  // "send me a pic of", "show me", "can you take a photo of", "i wanna see"...
+  s = s.replace(
+    /^\s*(?:hey|hi|yo|please|pls|plz)?[,\s]*(?:can|could|will|would)?\s*(?:you|u)?\s*(?:please|pls)?\s*(?:send|show|take|snap|give|make|do|shoot|film|record)\s*(?:me|us)?\s*(?:a|an|some|the|another)?\s*(?:new|quick|sexy|hot|nice)?\s*(?:pic(?:ture)?s?|photos?|selfies?|images?|shots?|vids?|videos?|clips?|nudes?)?\s*(?:of|with|where)?\s*/i,
+    "",
+  );
+  s = s.replace(/^\s*(?:i\s*(?:wanna|want\s*to|would\s*like\s*to|'?d\s*like\s*to)\s*see)\s*/i, "");
+  s = s.replace(/^\s*(?:lemme|let\s*me)\s*see\s*/i, "");
+
+  const poss = subject === "he" ? "his" : subject === "they" ? "their" : "her";
+  const refl = subject === "he" ? "himself" : subject === "they" ? "themselves" : "herself";
+  s = s.replace(/\byourself\b/gi, refl);
+  s = s.replace(/\byour\b/gi, poss);
+  // A leading "you" is the subject of the sentence being built, so translating
+  // it would double up ("She is she naked") — drop it instead.
+  s = s.replace(/^\s*you\b\s*/i, "");
+  s = s.replace(/\byou\b/gi, subject);
+
+  return s.replace(/^[\s,.:;-]+/, "").trim();
+}
+
 // Deliberately the FIRST thing in every media prompt. It used to sit after the
 // explicit tags, and the model weights early tokens hardest, so an act-heavy
 // request pulled the camera down into the act and the head fell out of frame.
@@ -193,7 +220,7 @@ export function videoStillPrompt(
   // as a headless torso, and at higher tag density as an extreme close-up, no
   // matter what the framing text said. The user's own words in plain language
   // render the same act and keep the camera wide.
-  const action = req || "poses seductively for the camera";
+  const action = normalizeRequest(req, subject) || "posing seductively for the camera";
 
   return [
     FRAMING,
@@ -226,7 +253,8 @@ export function videoActionPrompt(
     : `${subject} moves seductively for the camera`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
-  const action = req || "performs a slow seductive striptease for the camera";
+  const action =
+    normalizeRequest(req, subject) || "performing a slow seductive striptease for the camera";
 
   return [
     FRAMING,

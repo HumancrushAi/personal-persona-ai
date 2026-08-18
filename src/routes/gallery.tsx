@@ -86,7 +86,7 @@ function GalleryPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium transition ${
+              className={`min-h-11 shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition ${
                 tab === t
                   ? "border-primary/60 bg-grad-primary text-primary-foreground shadow-glow"
                   : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"

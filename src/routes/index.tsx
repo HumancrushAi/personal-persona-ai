@@ -1015,7 +1015,7 @@ function BannerSlider({
           go(-1);
         }}
         aria-label="Previous"
-        className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white backdrop-blur hover:bg-black/75 md:left-4"
+        className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-3 text-white backdrop-blur hover:bg-black/75 md:left-4"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
@@ -1025,7 +1025,7 @@ function BannerSlider({
           go(1);
         }}
         aria-label="Next"
-        className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white backdrop-blur hover:bg-black/75 md:right-4"
+        className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-3 text-white backdrop-blur hover:bg-black/75 md:right-4"
       >
         <ChevronRight className="h-5 w-5" />
       </button>
@@ -1040,7 +1040,7 @@ function BannerSlider({
               setIdx(i);
             }}
             aria-label={`Slide ${i + 1}`}
-            className={`h-1.5 rounded-full transition-all ${
+            className={`my-3 h-1.5 rounded-full transition-all ${
               i === idx ? "w-6 bg-white" : "w-1.5 bg-white/50 hover:bg-white/80"
             }`}
           />

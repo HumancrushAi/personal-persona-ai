@@ -286,9 +286,9 @@ export async function startImageJob(
           // frames are wasted generation time.
           image_url: startFrame,
           fps: 16,
-          frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "25"),
+          frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "49"),
           num_scenes: 1,
-          sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "20"),
+          sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "24"),
           prompts: [imagePrompt],
           negative_prompt: negativeFor(userRequest),
           lora_strengths: VIDEO_LORA_STRENGTHS,

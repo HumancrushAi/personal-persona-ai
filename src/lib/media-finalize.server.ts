@@ -19,7 +19,10 @@ type Job = {
 // image job must produce an image file, not a video the UI pretends is a photo.
 //
 // -sseof seeks relative to the END, which is where the requested pose has fully
-// resolved (the clip starts from her clothed portrait and moves into it).
+// resolved (the clip starts from her clothed portrait and moves into it). Pulling
+// the frame earlier was tried to dodge the camera drift that crops her head on
+// act-heavy prompts; on a test clip the drift had already happened by then, so
+// it bought nothing and the offset stayed where it was.
 async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
   const { execFile } = await import("node:child_process");
   const { promisify } = await import("node:util");

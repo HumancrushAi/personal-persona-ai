@@ -220,6 +220,16 @@ const POSTURE_RE =
 
 // Photographic language, not render language. "8k masterpiece" vocabulary is
 // what produces the airbrushed CG look that reads as AI on sight.
+// Props are the weakest thing this model renders: asked for a dildo it fused the
+// toy into the hand holding it, so the result read as a fist. Naming it as a
+// separate solid object with its own material and edges, and saying explicitly
+// that it is not part of her hand, is the only lever available from the prompt
+// side. It helps; it does not fully solve it.
+function objectClause(req: string): string {
+  if (!kw(KW.toys).test(req)) return "";
+  return "The sex toy is a separate solid object with smooth silicone material and clean defined edges, held in her hand but clearly distinct from it, correct proportions, fingers wrapped around it and still countable as fingers. The toy is not merged into her hand or body.";
+}
+
 const QUALITY =
   "Candid photograph, natural available light, true-to-life colour, real untouched skin with visible pores and natural texture, natural asymmetry, no airbrushing or smoothing. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
 
@@ -251,6 +261,7 @@ export function videoStillPrompt(
     framingFor(noun, poss, POSTURE_RE.test(req)),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
+    objectClause(req),
     QUALITY,
     "The camera stays wide and does not move closer. Settles into a still held pose at the end.",
   ]
@@ -286,6 +297,7 @@ export function videoActionPrompt(
     framingFor(noun, poss, POSTURE_RE.test(req)),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
+    objectClause(req),
     QUALITY,
     "Smooth natural lifelike motion throughout, consistent face and body. The camera stays wide and does not move closer.",
   ]

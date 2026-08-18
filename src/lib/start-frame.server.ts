@@ -28,12 +28,19 @@ export async function squareStartFrame(portraitUrl: string, key: string): Promis
     .modulate({ brightness: 0.75 })
     .toBuffer();
 
+  // The subject sits at 62% of the frame rather than filling it, anchored to the
+  // top. The model reframes toward whatever act was requested, and when she
+  // filled the square that reframing pushed her head out — every prompt-side
+  // attempt to stop it failed (framing first, crop negatives, lower LoRA
+  // strengths). Giving the shot headroom to travel into is what actually kept
+  // the face in frame on the request that used to come back headless.
+  const inner = Math.round(SIDE * 0.62);
   const subject = await sharp(src)
-    .resize(SIDE, SIDE, { fit: "inside", withoutEnlargement: false })
+    .resize(inner, inner, { fit: "inside", withoutEnlargement: false })
     .toBuffer();
 
   const squared = await sharp(backdrop)
-    .composite([{ input: subject, gravity: "center" }])
+    .composite([{ input: subject, gravity: "north" }])
     .png()
     .toBuffer();
 

@@ -572,7 +572,7 @@ function Nav() {
         <Link to="/" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Heart className="h-5 w-5 shrink-0 fill-primary text-primary md:h-6 md:w-6" />
           <span className="truncate font-display text-base font-semibold tracking-tight sm:text-lg md:text-2xl">
-            HumanCrush.com
+            HumanCrush<span className="hidden sm:inline">.com</span>
           </span>
         </Link>
         <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
@@ -580,7 +580,7 @@ function Nav() {
             asChild
             variant="ghost"
             size="sm"
-            className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
+            className="h-10 rounded-full px-2.5 text-xs sm:px-3 sm:text-sm"
           >
             <Link to="/cams">
               <Circle className="mr-1 h-2 w-2 fill-red-500 text-red-500" /> Live
@@ -590,7 +590,7 @@ function Nav() {
             asChild
             variant="ghost"
             size="sm"
-            className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
+            className="h-10 rounded-full px-2.5 text-xs sm:px-3 sm:text-sm"
           >
             <Link to="/gallery">Gallery</Link>
           </Button>
@@ -600,14 +600,14 @@ function Nav() {
                 asChild
                 variant="ghost"
                 size="sm"
-                className="h-8 rounded-full px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                className="h-10 rounded-full px-2.5 text-xs sm:px-3 sm:text-sm"
               >
                 <Link to="/me">My chats</Link>
               </Button>
               <Button
                 asChild
                 size="sm"
-                className="h-8 rounded-full bg-grad-primary px-2.5 text-xs text-primary-foreground sm:h-9 sm:px-3.5 sm:text-sm"
+                className="h-10 rounded-full bg-grad-primary px-3 text-xs text-primary-foreground sm:px-3.5 sm:text-sm"
               >
                 <Link to="/browse">
                   <Sparkles className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" /> Enter
@@ -618,7 +618,7 @@ function Nav() {
             <Button
               asChild
               size="sm"
-              className="h-8 rounded-full bg-grad-primary px-2.5 text-xs text-primary-foreground sm:h-9 sm:px-3.5 sm:text-sm"
+              className="h-10 rounded-full bg-grad-primary px-3 text-xs text-primary-foreground sm:px-3.5 sm:text-sm"
             >
               <Link to="/auth">Sign in</Link>
             </Button>

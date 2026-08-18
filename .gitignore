@@ -39,3 +39,8 @@ dist-ssr
 .gstack/
 
 .env*
+
+# local screenshots from browser QA
+*.png
+!public/**/*.png
+!src/**/*.png

@@ -288,7 +288,7 @@ export async function startImageJob(
           fps: 16,
           frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "25"),
           num_scenes: 1,
-          sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "30"),
+          sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "20"),
           prompts: [imagePrompt],
           negative_prompt: negativeFor(userRequest),
           lora_strengths: VIDEO_LORA_STRENGTHS,
@@ -517,7 +517,7 @@ export async function startVideoJob(
           ? Math.round(seconds * fps)
           : Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
         num_scenes: 1,
-        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "30"),
+        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "22"),
         prompts: [videoPrompt],
         negative_prompt: negativeFor(userReq),
         lora_strengths: VIDEO_LORA_STRENGTHS,

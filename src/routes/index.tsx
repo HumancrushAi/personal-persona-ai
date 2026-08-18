@@ -352,7 +352,10 @@ function Landing() {
 
       {/* CATEGORIES */}
       <section className="mx-auto mt-4 max-w-7xl px-4 md:px-6">
-        <div className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Wraps instead of scrolling sideways: half the filters used to sit
+            off-screen, so you had to swipe the row to discover that "Ebony" or
+            "Middle Eastern" existed at all. They all fit on two lines. */}
+        <div className="flex flex-wrap gap-2 pb-1">
           {visibleCategories.map((cat) => (
             <button
               key={cat}

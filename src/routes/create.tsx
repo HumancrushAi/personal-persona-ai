@@ -558,7 +558,7 @@ function ChipRow({
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
-          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+          className={`min-h-11 rounded-full border px-3.5 py-2 text-xs font-medium transition ${
             value === o.id
               ? "border-primary/60 bg-grad-primary text-primary-foreground shadow-glow"
               : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"

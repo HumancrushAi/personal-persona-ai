@@ -19,10 +19,18 @@ describe("framing comes first", () => {
 
   it("leads with framing for video too", () => {
     expect(
-      videoActionPrompt({ gender: "female" }, "ride me").startsWith(
+      videoActionPrompt({ gender: "female" }, "dance for me").startsWith(
         "Wide full body photograph of a woman standing",
       ),
     ).toBe(true);
+  });
+
+  // "standing" fights any request that carries its own posture — asked to ride,
+  // she was described as standing and the motion came out wrong.
+  it("drops the standing stance when the request has its own posture", () => {
+    const p = videoActionPrompt({ gender: "female" }, "bouncing on a dick");
+    expect(p.startsWith("Wide full body photograph of a woman in a room")).toBe(true);
+    expect(p).not.toMatch(/woman standing/);
   });
 
   it("uses the companion's own pronouns in the framing sentence", () => {

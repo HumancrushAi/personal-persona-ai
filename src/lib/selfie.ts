@@ -52,7 +52,7 @@ const ACT_RE = kw(
 // True when the request implies nudity (so we only force genitalia when the
 // groin will actually be bare — a clothed selfie shouldn't be nuded). Lingerie is
 // deliberately NOT here: it's clothed-sexy, handled as its own tag.
-function requestIsNude(req: string): boolean {
+export function requestIsNude(req: string): boolean {
   if (!req.trim()) return true; // default (no request) selfie in this app trends nude
   return (
     kw([KW.undress, KW.breasts, KW.pussy, KW.penis, KW.ass].join("|")).test(req) || ACT_RE.test(req)
@@ -170,11 +170,18 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
 
   // "send me a pic of", "show me", "can you take a photo of", "i wanna see"...
   s = s.replace(
-    /^\s*(?:hey|hi|yo|please|pls|plz)?[,\s]*(?:can|could|will|would)?\s*(?:you|u)?\s*(?:please|pls)?\s*(?:send|show|take|snap|give|make|do|shoot|film|record)\s*(?:me|us)?\s*(?:a|an|some|the|another)?\s*(?:new|quick|sexy|hot|nice)?\s*(?:pic(?:ture)?s?|photos?|selfies?|images?|shots?|vids?|videos?|clips?|nudes?)?\s*(?:of|with|where)?\s*/i,
+    /^\s*(?:hey|hi|yo|please|pls|plz)?[,\s]*(?:can|could|will|would)?\s*(?:you|u)?\s*(?:please|pls)?\s*(?:send|show|take|snap|give|make|do|shoot|film|record)\s*(?:me|us)?\s*(?:a|an|some|the|another)?\s*(?:new|quick|sexy|hot|nice)?\s*(?:pictures?|pics?|photos?|selfies?|images?|shots?|videos?|vids?|clips?|nudes?)?\s*(?:of|with|where)?\s*/i,
     "",
   );
   s = s.replace(/^\s*(?:i\s*(?:wanna|want\s*to|would\s*like\s*to|'?d\s*like\s*to)\s*see)\s*/i, "");
   s = s.replace(/^\s*(?:lemme|let\s*me)\s*see\s*/i, "");
+  // Bare noun phrases with no verb ("a video of you bouncing…") slipped past the
+  // patterns above, so the request kept its lead-in and came out as "She is a
+  // video of she bouncing on a dick."
+  s = s.replace(
+    /^\s*(?:a|an|another|some)?\s*(?:new|quick|sexy|hot|nice)?\s*(?:pictures?|pics?|photos?|selfies?|images?|shots?|videos?|vids?|clips?|nudes?)\s*(?:of|with)?\s*/i,
+    "",
+  );
 
   const poss = subject === "he" ? "his" : subject === "they" ? "their" : "her";
   const refl = subject === "he" ? "himself" : subject === "they" ? "themselves" : "herself";
@@ -198,9 +205,18 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
 // the model a composition to build, instead of a rule to obey. Same request,
 // same start frame, same negatives: subject-anchored framing produced head to
 // feet with the face in shot.
-function framingFor(noun: string, poss: string): string {
-  return `Wide full body photograph of a ${noun} standing in a room, ${poss} whole body visible from head to feet, ${poss} face clearly visible at the top of the frame, camera far away across the room. Not a close-up, not cropped.`;
+function framingFor(noun: string, poss: string, posed: boolean): string {
+  // Naming the subject and a place is what holds the camera back. "standing"
+  // was part of that, but it contradicts any request with its own posture —
+  // asked to ride, she was described as standing and rode oddly as a result.
+  // Dropped whenever the request already says what she is doing.
+  const stance = posed ? "" : " standing";
+  return `Wide full body photograph of a ${noun}${stance} in a room, ${poss} whole body visible from head to feet, ${poss} face clearly visible at the top of the frame, camera far away across the room. Not a close-up, not cropped.`;
 }
+
+// Requests that carry their own posture, which "standing" would fight.
+const POSTURE_RE =
+  /\b(ride|riding|bounc\w*|sit\w*|sitting|lying|lie|laid|kneel\w*|bent|bend\w*|squat\w*|straddl\w*|on all fours|doggy|cowgirl|on her back|on his back|leaning|crawl\w*|spread\w*)\b/i;
 
 // Photographic language, not render language. "8k masterpiece" vocabulary is
 // what produces the airbrushed CG look that reads as AI on sight.
@@ -218,8 +234,8 @@ export function videoStillPrompt(
 
   const undress = requestIsNude(req)
     ? isMale
-      ? `${subject} is completely naked, penis and groin visible`
-      : `${subject} is completely naked, bare breasts and nipples visible`
+      ? `${subject} is already completely naked with no clothing on at all, penis and groin visible, bare skin`
+      : `${subject} is already completely naked with no clothing on at all, bare breasts and nipples visible, bare skin`
     : `${subject} holds the pose`;
 
   // NOTE: deliberately no actionTags here. Those are booru tags ("bent over,
@@ -232,7 +248,7 @@ export function videoStillPrompt(
   const poss = isMale ? "his" : noun === "woman" ? "her" : "their";
 
   return [
-    framingFor(noun, poss),
+    framingFor(noun, poss, POSTURE_RE.test(req)),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
     QUALITY,
@@ -257,8 +273,8 @@ export function videoActionPrompt(
 
   const undress = requestIsNude(req)
     ? isMale
-      ? `${subject} strips off all clothing until completely naked, penis and groin visible`
-      : `${subject} strips off all clothing until completely naked, bare breasts and nipples visible`
+      ? `${subject} is already completely naked with no clothing on at all, penis and groin visible, bare skin throughout`
+      : `${subject} is already completely naked with no clothing on at all, bare breasts and nipples visible, bare skin throughout`
     : `${subject} moves seductively for the camera`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
@@ -267,7 +283,7 @@ export function videoActionPrompt(
   const poss = isMale ? "his" : noun === "woman" ? "her" : "their";
 
   return [
-    framingFor(noun, poss),
+    framingFor(noun, poss, POSTURE_RE.test(req)),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
     QUALITY,

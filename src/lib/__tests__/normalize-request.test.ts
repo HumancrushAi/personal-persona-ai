@@ -29,3 +29,13 @@ describe("normalizeRequest", () => {
     expect(p).not.toMatch(/She is send me/);
   });
 });
+
+// "a video of you bouncing on a dick" produced "She is eo of she bouncing…":
+// the noun list had vids? before videos?, so it matched "vid" and left "eo".
+describe("noun-phrase requests", () => {
+  it("strips a bare 'a video of' lead-in without eating the word", () => {
+    expect(normalizeRequest("a video of you bouncing on a dick", "she")).toBe("bouncing on a dick");
+    expect(normalizeRequest("a picture of you in the shower", "she")).toBe("in the shower");
+    expect(normalizeRequest("a pic of yourself naked", "she")).toBe("herself naked");
+  });
+});

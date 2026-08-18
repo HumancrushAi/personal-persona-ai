@@ -18,6 +18,7 @@ import {
   kontextSelfiePrompt,
   videoStillPrompt,
   videoActionPrompt,
+  requestIsNude,
   checkCrossGenderRequest,
 } from "./selfie";
 import { runpodEndpoint, runpodRun } from "./runpod";
@@ -285,11 +286,11 @@ export async function startImageJob(
           // frames are wasted generation time.
           image_url: startFrame,
           fps: 16,
-          frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "49"),
+          frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "25"),
           num_scenes: 1,
           sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "30"),
           prompts: [imagePrompt],
-          negative_prompt: VIDEO_NEGATIVE,
+          negative_prompt: negativeFor(userRequest),
           lora_strengths: VIDEO_LORA_STRENGTHS,
         };
 
@@ -400,6 +401,16 @@ function webhookFor(provider: "runpod"): string {
 const VIDEO_NEGATIVE =
   "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, watermark text overlay, distorted hands, extra fingers, fused fingers, malformed breasts, asymmetric eyes, close-up, extreme close-up, cropped head, headless, head out of frame, face cut off, torso only, tight crop, zoomed in, mutated hands, fused fingers, melting object, deformed object, object merging into hand, extra arms, floating limbs, warped anatomy, morphing, flickering, jittery motion, rubbery movement, unnatural motion";
 
+// Applied only when the request implies nudity. Without it nothing pushes back
+// on the clothes already in the start frame, so explicit acts were performed
+// fully dressed.
+const CLOTHING_NEGATIVE =
+  "clothed, wearing clothes, dressed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, dress, swimsuit, fabric covering body, partially undressed";
+
+function negativeFor(userReq: string | undefined): string {
+  return requestIsNude(userReq ?? "") ? `${CLOTHING_NEGATIVE}, ${VIDEO_NEGATIVE}` : VIDEO_NEGATIVE;
+}
+
 // The endpoint's tuned LoRA weights, exactly as its operator specified them.
 // These are what the endpoint is tuned WITH; leaving the key out runs it at
 // whatever defaults the worker falls back to, which is not what the endpoint was
@@ -508,7 +519,7 @@ export async function startVideoJob(
         num_scenes: 1,
         sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "30"),
         prompts: [videoPrompt],
-        negative_prompt: VIDEO_NEGATIVE,
+        negative_prompt: negativeFor(userReq),
         lora_strengths: VIDEO_LORA_STRENGTHS,
       },
       webhookFor("runpod"),

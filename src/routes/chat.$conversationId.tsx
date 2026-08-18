@@ -105,6 +105,14 @@ function ChatPage() {
       if (error) throw error;
       return data as Message[];
     },
+    // Media lands in the chat from the server (webhook or a reconcile tick),
+    // which can happen after this tab has stopped watching the job — a video
+    // took 4m16s while the poll gave up at 3m, so the photo and clip were
+    // already sitting in the conversation and the page simply never re-read it.
+    // Refetching keeps late arrivals from needing a manual reload. Paused when
+    // the tab is hidden, so it costs nothing in the background.
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: balance } = useQuery({
@@ -238,7 +246,9 @@ function ChatPage() {
       await new Promise((r) => setTimeout(r, 2000));
       attempts++;
     }
-    toast.info(`She is still working on that ${label}. It'll show up in the chat soon!`);
+    // Now literally true: the messages query polls, so whenever the server
+    // finishes it the media drops into the conversation on its own.
+    toast.info(`She is still working on that ${label}. It'll appear here as soon as it's ready.`);
   }
 
   // Pick up jobs left mid-flight. A closed tab, a dropped connection, or a

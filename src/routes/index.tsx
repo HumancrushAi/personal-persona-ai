@@ -1040,7 +1040,7 @@ function BannerSlider({
               setIdx(i);
             }}
             aria-label={`Slide ${i + 1}`}
-            className={`my-3 h-1.5 rounded-full transition-all ${
+            className={`tap-exempt my-3 h-1.5 rounded-full transition-all ${
               i === idx ? "w-6 bg-white" : "w-1.5 bg-white/50 hover:bg-white/80"
             }`}
           />

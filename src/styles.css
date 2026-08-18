@@ -109,3 +109,29 @@
 .animate-live {
   animation: live-ken 9s ease-in-out infinite;
 }
+
+/* Touch-target floor.
+ *
+ * Rather than chase every screen one at a time — and the chat is behind auth,
+ * so it can't be measured from outside — this sets one minimum for every
+ * control. It applies to touch pointers and to any viewport narrower than md,
+ * so a desktop mouse keeps the tighter sizing while phones get a thumb-sized
+ * target either way.
+ *
+ * 44px is the Apple/Material minimum. Anything genuinely meant to be smaller
+ * (carousel dots, inline text links) opts out with .tap-exempt. */
+@media (pointer: coarse), (max-width: 767px) {
+  button:not(.tap-exempt),
+  [role="button"]:not(.tap-exempt),
+  select,
+  textarea,
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) {
+    min-height: 44px;
+  }
+
+  /* Icon-only controls are square, so height alone doesn't save them. */
+  button:not(.tap-exempt),
+  [role="button"]:not(.tap-exempt) {
+    min-width: 44px;
+  }
+}

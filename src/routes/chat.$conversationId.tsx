@@ -333,11 +333,10 @@ function ChatPage() {
     setAsking(null);
     setMediaBusy("video");
     try {
-      // Clip length is frames / fps on the endpoint, and 16 is its tuned fps,
-      // so the chosen duration is expressed as a frame count.
-      const res = await requestVideoFn({
-        data: { conversationId, prompt, settings: { fps: 16, framesPerScene: seconds * 16 } },
-      });
+      // Send the duration itself. This used to send a `settings` object that
+      // the server no longer accepted, so zod stripped it and every clip came
+      // back at the 5s default no matter what was picked.
+      const res = await requestVideoFn({ data: { conversationId, prompt, seconds } });
       await pollMediaJob((res as any).jobId, "video");
     } catch (err: any) {
       const msg = err?.message ?? "Error";

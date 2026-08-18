@@ -30,18 +30,32 @@ import { FAQSection } from "@/components/FAQSection";
 const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
 const reelUrlHelper = (name: string) => `${REEL_BASE}/${name}.mp4`;
 const BANNERS: { reel: string; title: string; sub: string; gender: "m" | "f" }[] = [
-  { reel: reelUrlHelper("r10"), title: "Pool side", sub: "stylish vibes · always online 🔥", gender: "m" },
+  {
+    reel: reelUrlHelper("r10"),
+    title: "Pool side",
+    sub: "stylish vibes · always online 🔥",
+    gender: "m",
+  },
   {
     reel: reelUrlHelper("r1"),
     title: "After hours",
     sub: "still up… thinking about you 😏",
     gender: "f",
   },
-  { reel: reelUrlHelper("r11"), title: "Beach stroll", sub: "sunset stroll · golden hour vibes", gender: "m" },
-  { reel: reelUrlHelper("r8"), title: "Morning coffee", sub: "cozy vibes · soft smiles 💋", gender: "f" },
+  {
+    reel: reelUrlHelper("r11"),
+    title: "Beach stroll",
+    sub: "sunset stroll · golden hour vibes",
+    gender: "m",
+  },
+  {
+    reel: reelUrlHelper("r8"),
+    title: "Morning coffee",
+    sub: "cozy vibes · soft smiles 💋",
+    gender: "f",
+  },
   { reel: reelUrlHelper("r3"), title: "Sunset vibes", sub: "wish you were here 🌅", gender: "f" },
 ];
-
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -271,7 +285,6 @@ function Landing() {
         <BannerSlider slides={bannerSlides} onPick={(c) => setTease(c)} />
       </section>
 
-
       {/* HERO STRIP */}
       <section className="relative mx-auto max-w-7xl px-4 pt-2 md:px-6">
         <div className="absolute inset-0 -z-10 bg-grad-hero opacity-70 blur-3xl" aria-hidden />
@@ -327,7 +340,7 @@ function Landing() {
                   <img
                     src={companionImage(c.image_url)}
                     alt={c.name}
-                    className="h-16 w-16 rounded-full object-cover"
+                    className="h-16 w-16 rounded-full object-cover object-top"
                   />
                 </span>
               </span>
@@ -451,7 +464,11 @@ function Landing() {
               t: "AI selfies",
               d: "She sends custom selfies & photos on request.",
             },
-            { i: <Mic className="h-5 w-5" />, t: "Voice notes", d: "Hear her voice with personalized audio notes." },
+            {
+              i: <Mic className="h-5 w-5" />,
+              t: "Voice notes",
+              d: "Hear her voice with personalized audio notes.",
+            },
             {
               i: <Sparkles className="h-5 w-5" />,
               t: "Roleplay scenes",
@@ -652,7 +669,7 @@ function StoryViewer({
             <img
               src={companionImage(companion.image_url)}
               alt=""
-              className="h-8 w-8 rounded-full object-cover"
+              className="h-8 w-8 rounded-full object-cover object-top"
             />
             <span className="text-sm font-semibold text-white">{companion.name}</span>
           </div>
@@ -735,7 +752,7 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
         <div className="flex items-center gap-3 border-b border-white/10 bg-background/60 p-3 backdrop-blur">
           <img
             src={companionImage(companion.image_url)}
-            className="h-10 w-10 rounded-full object-cover"
+            className="h-10 w-10 rounded-full object-cover object-top"
             alt=""
           />
           <div className="flex-1">
@@ -757,7 +774,7 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
           <div className="flex items-end gap-2">
             <img
               src={companionImage(companion.image_url)}
-              className="h-7 w-7 rounded-full object-cover"
+              className="h-7 w-7 rounded-full object-cover object-top"
               alt=""
             />
             {typing ? (
@@ -825,7 +842,7 @@ function SignupGate({ companion, onClose }: { companion: Companion; onClose: () 
       <div className="w-full rounded-3xl border border-white/10 bg-card p-6 text-center shadow-glow">
         <img
           src={companionImage(companion.image_url)}
-          className="mx-auto h-16 w-16 rounded-full object-cover ring-2 ring-primary"
+          className="mx-auto h-16 w-16 rounded-full object-cover object-top ring-2 ring-primary"
           alt=""
         />
         <h3 className="mt-3 font-display text-xl font-semibold">
@@ -928,13 +945,23 @@ function BannerSlider({
           >
             {i === idx ? (
               <video
+                key={s.reel}
                 src={s.reel}
                 autoPlay
                 muted
                 loop
                 playsInline
                 preload="auto"
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover animate-in fade-in duration-300"
+                // Mobile browsers were refusing the autoplay (the element sat
+                // paused with the media fully loaded), leaving the hero a black
+                // rectangle. The poster gives it a real frame regardless, and
+                // the explicit play() retries once the source is ready.
+                poster={s.companion ? companionImage(s.companion.image_url) : undefined}
+                onLoadedData={(e) => {
+                  const v = e.currentTarget;
+                  if (v.paused) v.play().catch(() => {});
+                }}
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top animate-in fade-in duration-300"
               />
             ) : s.companion ? (
               <img
@@ -958,7 +985,7 @@ function BannerSlider({
                   <img
                     src={companionImage(s.companion.image_url)}
                     alt={s.companion.name}
-                    className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white/80 shadow-lg md:h-16 md:w-16"
+                    className="h-12 w-12 shrink-0 rounded-full object-cover object-top ring-2 ring-white/80 shadow-lg md:h-16 md:w-16"
                   />
                 )}
                 <h2 className="font-display text-2xl font-semibold text-white drop-shadow md:text-4xl">

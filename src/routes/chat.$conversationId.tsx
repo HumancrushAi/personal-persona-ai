@@ -396,7 +396,7 @@ function ChatPage() {
               alt=""
               width={48}
               height={48}
-              className="h-10 w-10 rounded-full object-cover ring-2 ring-primary/60 md:hidden"
+              className="h-10 w-10 rounded-full object-cover object-top ring-2 ring-primary/60 md:hidden"
             />
           )}
           <div className="flex-1 min-w-0">

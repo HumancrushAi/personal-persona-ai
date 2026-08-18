@@ -209,7 +209,7 @@ function CamView() {
             <img
               src={companionImage(model?.image_url ?? "")}
               alt=""
-              className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/80"
+              className="h-9 w-9 rounded-full object-cover object-top ring-2 ring-primary/80"
             />
             <div className="rounded-full bg-black/55 px-3 py-1 backdrop-blur">
               <div className="flex items-center gap-2 text-sm font-semibold text-white">

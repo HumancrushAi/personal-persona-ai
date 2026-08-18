@@ -174,7 +174,7 @@ function MePage() {
                     alt=""
                     width={64}
                     height={64}
-                    className="h-14 w-14 rounded-full object-cover ring-2 ring-primary/50"
+                    className="h-14 w-14 rounded-full object-cover object-top ring-2 ring-primary/50"
                   />
                 )}
                 <div className="flex-1 min-w-0">

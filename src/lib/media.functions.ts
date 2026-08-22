@@ -223,7 +223,7 @@ export async function startImageJob(
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
   const refined = await refineMediaPrompt("photo", userRequest ?? "", companion);
   const imagePrompt =
-    refined ??
+    refined?.[0] ??
     (imageEndpoint
       ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
       : videoStillPrompt(companion, userRequest));
@@ -452,9 +452,19 @@ export async function startVideoJob(
 ): Promise<string> {
   const startImage = resolveHostedImage(companion.imageUrl);
 
+  // The endpoint renders one scene per prompt and joins them, so a clip is cut
+  // into ~5s scenes and Grok writes the action as a progression across them.
+  // One prompt stretched over the whole clip is what made a video read as a
+  // single held pose.
+  const totalSeconds = seconds ?? 5;
+  const sceneCount = Math.max(1, Math.min(4, Math.round(totalSeconds / 5)));
+
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
-  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion);
-  const videoPrompt = refinedVideo ?? videoActionPrompt(companion, userReq);
+  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount);
+  const scenePrompts = refinedVideo?.length
+    ? refinedVideo
+    : [videoActionPrompt(companion, userReq)];
+  const videoPrompt = scenePrompts.join("\n\n");
   const cost = VIDEO_COST;
 
   const runpodVideo = runpodEndpoint("video");
@@ -521,12 +531,12 @@ export async function startVideoJob(
         fps,
         // Length is frames / fps on this endpoint, so the requested duration is
         // converted here rather than sent as seconds.
-        frames_per_scene: seconds
-          ? Math.round(seconds * fps)
-          : Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
-        num_scenes: 1,
+        // Total length is frames_per_scene * num_scenes, so the per-scene frame
+        // count is the requested duration divided across the scenes.
+        frames_per_scene: Math.round((totalSeconds * fps) / scenePrompts.length),
+        num_scenes: scenePrompts.length,
         sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
-        prompts: [videoPrompt],
+        prompts: scenePrompts,
         negative_prompt: negativeFor(userReq),
         lora_strengths: VIDEO_LORA_STRENGTHS,
       },

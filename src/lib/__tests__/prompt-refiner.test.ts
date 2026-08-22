@@ -63,12 +63,59 @@ describe("refineMediaPrompt", () => {
           status: 200,
         }),
     );
-    expect(await refineMediaPrompt("photo", "naked on the bed", subject)).toBe(good);
+    expect(await refineMediaPrompt("photo", "naked on the bed", subject)).toEqual([good]);
   });
 
   it("falls back when the API errors", async () => {
     process.env.XAI_API_KEY = "test";
     vi.stubGlobal("fetch", async () => new Response("nope", { status: 500 }));
     expect(await refineMediaPrompt("video", "dancing", subject)).toBeNull();
+  });
+});
+
+// A video is rendered scene by scene, so the refiner has to hand back one
+// prompt per scene rather than a single block the endpoint would stretch.
+describe("refineMediaPrompt video scenes", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  it("splits a numbered list into separate scene prompts", async () => {
+    process.env.XAI_API_KEY = "test";
+    const body =
+      "1. exact same woman as the reference image, completely nude, standing in a marble shower, water running over her tits, golden light, photorealistic 8k\n" +
+      "2. exact same woman as the reference image, completely nude, kneeling on the wet floor, fingers between her legs, steam, photorealistic 8k";
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(JSON.stringify({ choices: [{ message: { content: body } }] }), {
+          status: 200,
+        }),
+    );
+    const out = await refineMediaPrompt("video", "shower scene", subject, 2);
+    expect(out).toHaveLength(2);
+    expect(out?.[0]).toMatch(/^exact same woman/);
+    expect(out?.[1]).toMatch(/kneeling/);
+  });
+
+  it("never returns more scenes than were asked for", async () => {
+    process.env.XAI_API_KEY = "test";
+    const body = [1, 2, 3, 4, 5]
+      .map(
+        (n) =>
+          `${n}. exact same woman as the reference image, completely nude scene ${n}, luxury bedroom, soft lighting, photorealistic 8k detailed skin`,
+      )
+      .join("\n");
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(JSON.stringify({ choices: [{ message: { content: body } }] }), {
+          status: 200,
+        }),
+    );
+    expect(await refineMediaPrompt("video", "strip", subject, 2)).toHaveLength(2);
   });
 });

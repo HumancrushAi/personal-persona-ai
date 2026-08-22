@@ -218,9 +218,15 @@ export async function startImageJob(
     );
   }
 
-  const imagePrompt = imageEndpoint
-    ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
-    : videoStillPrompt(companion, userRequest);
+  // Grok rewrites the user's line into a full prompt in the house style; the
+  // keyword builder is the fallback when no key is set or the call fails.
+  const { refineMediaPrompt } = await import("./prompt-refiner.server");
+  const refined = await refineMediaPrompt("photo", userRequest ?? "", companion);
+  const imagePrompt =
+    refined ??
+    (imageEndpoint
+      ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
+      : videoStillPrompt(companion, userRequest));
 
   // The endpoint centre-crops to a square, which decapitated the result. Square
   // it ourselves, keeping the whole figure, before handing it over.
@@ -446,7 +452,9 @@ export async function startVideoJob(
 ): Promise<string> {
   const startImage = resolveHostedImage(companion.imageUrl);
 
-  const videoPrompt = videoActionPrompt(companion, userReq);
+  const { refineMediaPrompt } = await import("./prompt-refiner.server");
+  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion);
+  const videoPrompt = refinedVideo ?? videoActionPrompt(companion, userReq);
   const cost = VIDEO_COST;
 
   const runpodVideo = runpodEndpoint("video");

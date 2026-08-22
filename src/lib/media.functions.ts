@@ -525,7 +525,7 @@ export async function startVideoJob(
           ? Math.round(seconds * fps)
           : Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
         num_scenes: 1,
-        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "22"),
+        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
         prompts: [videoPrompt],
         negative_prompt: negativeFor(userReq),
         lora_strengths: VIDEO_LORA_STRENGTHS,

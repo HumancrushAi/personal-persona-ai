@@ -1,73 +1,63 @@
 // Creating a companion's canonical portrait from a text description.
 //
-// This is TEXT-to-image, and it is the one thing the account's RunPod endpoints
-// cannot do:
-//   - the video endpoint is image-to-video and needs a start frame
-//   - FLUX Kontext is image-to-image and needs a source photo to edit
-// A brand-new companion has neither, so there is nothing to hand them.
+// This is TEXT-to-image, which neither RunPod endpoint can do: the video one
+// needs a start frame and FLUX Kontext needs a source photo to edit. Replicate
+// used to cover it and was removed, which left admin portrait generation and
+// /create throwing outright.
 //
-// Replicate used to cover this and has been removed. Until an uncensored
-// text-to-image endpoint exists (a ComfyUI serverless endpoint with an SDXL or
-// Pony checkpoint), portrait creation is unavailable — and it says so plainly
-// rather than throwing something cryptic from inside a provider client.
+// xAI's Imagine model fills that gap, and it takes an optional reference image,
+// so the same face can be carried across a set — which is what a promo page of
+// one "model" needs.
 //
-// Point RUNPOD_TEXT_IMAGE_ENDPOINT at that endpoint and this starts working
-// with no other change.
+// Explicit content is NOT this path's job. Imagine is a general image model with
+// its own policy; sexy-but-clothed is what it does well and what public promo
+// material needs anyway. Explicit versions of the same person come from the
+// RunPod video endpoint via the media pipeline.
 
-import { runpodRun, runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } from "./runpod";
+const XAI_IMAGE_URL = "https://api.x.ai/v1/images/generations";
 
-const PORTRAIT_UNAVAILABLE =
-  "Portrait generation is unavailable: it needs a text-to-image endpoint, and the configured RunPod endpoints are image-to-video and image-to-image only. Set RUNPOD_TEXT_IMAGE_ENDPOINT to an uncensored text-to-image endpoint to enable it.";
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const UNAVAILABLE =
+  "Portrait generation is not configured (XAI_API_KEY missing). It needs a text-to-image model; the RunPod endpoints are image-to-video and image-to-image only.";
 
 export async function generateCompanionPortrait(
   prompt: string,
-  opts?: { gender?: string | null; noNudity?: boolean },
+  opts?: { gender?: string | null; noNudity?: boolean; referenceUrl?: string | null },
 ): Promise<string> {
-  const endpoint = process.env.RUNPOD_TEXT_IMAGE_ENDPOINT;
-  if (!endpoint || !process.env.RUNPOD_API_KEY) throw new Error(PORTRAIT_UNAVAILABLE);
+  const key = process.env.XAI_API_KEY;
+  if (!key) throw new Error(UNAVAILABLE);
 
-  // Public portraits stay clothed; the wardrobe wording in the prompt only
-  // steers the outfit, so the suppression has to live in the negative.
-  const negative = [
-    opts?.noNudity
-      ? "nude, naked, topless, bottomless, exposed breasts, nipples, genitals, explicit"
-      : "",
-    "deformed, bad anatomy, extra limbs, distorted hands, extra fingers, watermark, text",
-    "plastic skin, waxy skin, airbrushed, poreless, doll face, mannequin, uncanny valley, 3d render, cgi, oversaturated, beauty filter",
-  ]
-    .filter(Boolean)
-    .join(", ");
+  // A reference locks the face when building several images of one persona.
+  // Stated in the prompt as well as passed as an image: the model follows the
+  // instruction more reliably than the reference alone.
+  const body: Record<string, unknown> = {
+    model: process.env.XAI_IMAGE_MODEL || "grok-imagine-image-2.0",
+    prompt: opts?.referenceUrl
+      ? `Exact same woman as the reference image, identical face, same hair, same skin. ${prompt}`
+      : prompt,
+    n: 1,
+  };
+  if (opts?.referenceUrl) body.image = opts.referenceUrl;
 
-  const job = await runpodRun(endpoint, {
-    prompt,
-    negative_prompt: negative,
-    width: 768,
-    height: 1024,
-    num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "30"),
-    guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "6"),
-    output_format: "png",
-    enable_safety_checker: false,
+  const res = await fetch(XAI_IMAGE_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
-  const deadline = Date.now() + 5 * 60_000;
-  while (Date.now() < deadline) {
-    await sleep(4000);
-    const res = await runpodGet(endpoint, job.id);
-    const state = runpodStatusOf(res.status);
-    if (state === "failed") {
-      throw new Error(runpodOutputError(res.output, res.error) || `Portrait job ${res.status}`);
-    }
-    if (state !== "succeeded") continue;
-
-    const url = runpodOutputUrl(res.output);
-    if (!url) throw new Error("Portrait job finished with no image");
-
-    // Callers store the portrait themselves, and expect the bytes inline.
-    const img = await fetch(url);
-    if (!img.ok) throw new Error("Could not fetch generated portrait");
-    return `data:image/png;base64,${Buffer.from(await img.arrayBuffer()).toString("base64")}`;
+  if (!res.ok) {
+    const text = (await res.text()).slice(0, 300);
+    throw new Error(`Portrait generation failed: ${res.status} ${text}`);
   }
-  throw new Error("Portrait generation timed out");
+
+  const json = await res.json();
+  const item = json.data?.[0];
+
+  // Callers store the portrait themselves and expect the bytes inline.
+  if (item?.b64_json) return `data:image/jpeg;base64,${item.b64_json}`;
+  if (!item?.url) throw new Error("Portrait generation returned no image");
+
+  const img = await fetch(item.url);
+  if (!img.ok) throw new Error("Could not fetch generated portrait");
+  const mime = item.mime_type || "image/jpeg";
+  return `data:${mime};base64,${Buffer.from(await img.arrayBuffer()).toString("base64")}`;
 }

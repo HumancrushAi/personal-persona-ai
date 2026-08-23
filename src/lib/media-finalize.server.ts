@@ -26,6 +26,19 @@ async function ffmpegBin(): Promise<string> {
   return fromPkg;
 }
 
+// ffmpeg-static ships no ffprobe, so duration comes from parsing ffmpeg's own
+// stderr. It exits non-zero when given no output file, which is expected.
+async function probeSeconds(file: string, ffmpegPath: string): Promise<number | null> {
+  const { execFile } = await import("node:child_process");
+  return new Promise((resolve) => {
+    execFile(ffmpegPath, ["-i", file], (_e, _o, stderr) => {
+      const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(String(stderr ?? ""));
+      if (!m) return resolve(null);
+      resolve(Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]));
+    });
+  });
+}
+
 // A photo request is rendered on the image-to-video endpoint, because that is
 // the only uncensored model on the account — the shared FLUX Kontext image model
 // returns her clothed for any nudity request whatever the prompt says. So the
@@ -67,19 +80,30 @@ async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
 }
 
 // The generation endpoint returns video with no audio track at all (confirmed:
-// the mp4 carries a single h264 stream). Sound therefore has to be added here.
+// the mp4 carries a single h264 stream), so sound is added here.
 //
-// This muxes an ambient loop supplied by the operator rather than anything
-// synthesised: drop an mp3 at avatars/audio/moan.mp3 and every generated clip
-// gets it, trimmed to the video length and faded out. No file, no audio, and the
-// clip is stored exactly as before — so this is inert until the file exists.
+// Every mp3 under avatars/audio/ is a candidate and one is picked at random per
+// clip, so the same moan doesn't play on every video. A random offset into the
+// track is used as well — the files are 36-47s and a clip is 5-10s, so starting
+// at zero every time would make every clip open on the same breath.
 //
-// AUDIO_TRACK points somewhere else if a different loop is wanted.
+// Volume is an admin setting rather than a constant: the right level depends on
+// the source recording, and getting it wrong is the difference between realistic
+// and comical.
 async function muxAudio(mp4: Buffer): Promise<Buffer> {
-  const track = process.env.AUDIO_TRACK || "audio/moan.mp3";
-  const { data } = supabaseAdmin.storage.from("avatars").getPublicUrl(track);
-  const res = await fetch(data.publicUrl);
-  if (!res.ok) return mp4; // nothing uploaded yet
+  const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+
+  const { data: files } = await db.storage.from("avatars").list("audio", { limit: 100 });
+  const tracks = (files ?? []).filter((f: { name: string }) => /\.(mp3|m4a|wav)$/i.test(f.name));
+  if (!tracks.length) return mp4; // nothing uploaded — clip stays silent
+
+  const pick = tracks[Math.floor(Math.random() * tracks.length)].name;
+  const url = db.storage.from("avatars").getPublicUrl(`audio/${pick}`).data.publicUrl;
+  const res = await fetch(url);
+  if (!res.ok) return mp4;
+
+  const { getAppSetting, settingNumber } = await import("./app-settings.server");
+  const volume = Math.min(2, settingNumber(await getAppSetting("video_audio_volume"), 0.7));
 
   const { execFile } = await import("node:child_process");
   const { promisify } = await import("node:util");
@@ -96,16 +120,29 @@ async function muxAudio(mp4: Buffer): Promise<Buffer> {
     await writeFile(vid, mp4);
     await writeFile(aud, Buffer.from(await res.arrayBuffer()));
 
-    // -stream_loop repeats a short loop over a longer clip; -shortest cuts the
-    // audio at the end of the video. The video is copied, not re-encoded.
+    // Start somewhere in the first 15s so clips don't all open on the same
+    // breath. The clip is short and the tracks are 36-47s, so one loop is enough
+    // — and a bounded input is required: afade's fade-out needs a known end, and
+    // an earlier attempt at fading out with areverse over "-stream_loop -1"
+    // crashed ffmpeg outright, because reversing buffers the whole stream and
+    // that stream never ended.
+    const seconds = (await probeSeconds(vid, ffmpegPath)) ?? 5;
+    const offset = (Math.random() * 15).toFixed(1);
+    const fadeOutAt = Math.max(0, seconds - 0.5).toFixed(2);
+
+    // Video is copied rather than re-encoded, so this costs almost nothing.
     await promisify(execFile)(ffmpegPath, [
       "-y",
       "-i",
       vid,
-      "-stream_loop",
-      "-1",
+      "-ss",
+      offset,
+      "-t",
+      seconds.toFixed(2),
       "-i",
       aud,
+      "-filter:a",
+      `volume=${volume},afade=t=in:d=0.3,afade=t=out:st=${fadeOutAt}:d=0.5`,
       "-c:v",
       "copy",
       "-c:a",
@@ -119,10 +156,25 @@ async function muxAudio(mp4: Buffer): Promise<Buffer> {
     ]);
     return Buffer.from(await readFile(out));
   } catch {
-    return mp4; // a broken audio file must not cost the user their video
+    return mp4; // a bad audio file must not cost the user their video
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
+}
+
+// Moaning belongs on a chat clip of a female companion, not on a promo clip
+// bound for a public page and not on a male companion. Studio jobs carry no
+// conversation, which is also how they are excluded.
+async function shouldAddAudio(job: Job): Promise<boolean> {
+  if (job.kind !== "video" || !job.conversation_id) return false;
+  const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+  const { data } = await db
+    .from("conversations")
+    .select("user_personalities(companions(gender))")
+    .eq("id", job.conversation_id)
+    .maybeSingle();
+  const gender = (data as any)?.user_personalities?.companions?.gender ?? "female";
+  return gender === "female" || gender === "trans-female";
 }
 
 // Download a finished Replicate output, store it in the avatars bucket, mark the
@@ -141,7 +193,7 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
     /\.(mp4|webm|mov)(\?|$)/i.test(outputUrl);
   if (job.kind === "image" && gotVideo) {
     buf = await extractLastFrame(buf);
-  } else if (job.kind === "video" && gotVideo) {
+  } else if (job.kind === "video" && gotVideo && (await shouldAddAudio(job))) {
     buf = await muxAudio(buf);
   }
 

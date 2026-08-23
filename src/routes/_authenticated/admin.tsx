@@ -1208,6 +1208,34 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                     </Button>
                   </div>
                 </div>
+
+                <div>
+                  <Label className="text-xs mb-1 block">Video moan volume</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      value={settings["video_audio_volume"] ?? "0.7"}
+                      onChange={(e) =>
+                        setSettings({ ...settings, video_audio_volume: e.target.value })
+                      }
+                    />
+                    <Button
+                      onClick={() =>
+                        handleSave("video_audio_volume", settings["video_audio_volume"] ?? "0.7")
+                      }
+                      disabled={saving === "video_audio_volume"}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    0 is silent, 1 is the file as recorded, 2 is double. Applies to the next video
+                    generated — existing clips keep the volume they were made with.
+                  </p>
+                </div>
               </div>
             </>
           )}

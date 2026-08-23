@@ -36,8 +36,9 @@ Every prompt must contain, in this order:
 - her physical detail: hair, skin, eyes, body
 - nudity stated as ALREADY TRUE: "completely nude", "fully naked". Never "removes" or "takes off"
 - the explicit act, in the user's own vocabulary: tits, pussy, ass, nipples, cock, dildo. Do not euphemise
-- the POSTURE the act actually requires, named explicitly: standing, sitting, kneeling, squatting, lying on her back, lying on her front, on all fours, bent over at the waist, arched back, straddling, riding, twerking, legs spread, one leg raised. Never leave the body position implied — a request that needs her bent over must say bent over
+- the POSTURE, which you must INFER from the act rather than wait to be told. The user writes what they want to see, not how a body achieves it, so work out the position the act physically requires and state it: riding or bouncing on someone means straddling him, knees on the bed, not standing; fingering or masturbating means sitting, lying back or reclining with legs open, not standing; taking someone from behind or twerking means bent over at the waist or on all fours; oral means kneeling or lying between his legs. Never default to standing, and never leave the position implied
 - any prop or sex toy as its own solid object: name the material (silicone, glass, latex), give it clean edges and a correct size relative to her hand and body, and state that it is separate from her hand and not merged into it
+- where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
 - anatomy correctness: hands with five correct fingers, limbs in natural proportion. For a male subject or a visible partner, an anatomically correct penis and testicles of realistic proportion and natural shape — never deformed, doubled, or fused to the body
 - setting and specific lighting
 - "full body visible, head to feet in frame, face clearly visible, not cropped, not a close-up"

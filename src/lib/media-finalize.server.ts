@@ -12,6 +12,20 @@ type Job = {
   cost: number;
 };
 
+// In the deployed function the ffmpeg binary sits at bin/ffmpeg, put there by
+// the bundleFfmpeg plugin in vite.config.ts (Nitro's tracer only carries the JS
+// shim, so relying on ffmpeg-static's own path 404s in production). Locally that
+// copy doesn't exist and ffmpeg-static resolves to node_modules.
+async function ffmpegBin(): Promise<string> {
+  const { join } = await import("node:path");
+  const { existsSync } = await import("node:fs");
+  const bundled = join(process.cwd(), "bin", "ffmpeg");
+  if (existsSync(bundled)) return bundled;
+  const fromPkg = (await import("ffmpeg-static")).default as unknown as string;
+  if (!fromPkg) throw new Error("ffmpeg binary not found");
+  return fromPkg;
+}
+
 // A photo request is rendered on the image-to-video endpoint, because that is
 // the only uncensored model on the account — the shared FLUX Kontext image model
 // returns her clothed for any nudity request whatever the prompt says. So the
@@ -28,18 +42,8 @@ async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
   const { promisify } = await import("node:util");
   const { writeFile, readFile, unlink, mkdtemp } = await import("node:fs/promises");
   const { join: joinPath } = await import("node:path");
-  const { existsSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
-
-  // In the deployed function the binary sits at bin/ffmpeg, put there by the
-  // bundleFfmpeg plugin in vite.config.ts (Nitro's tracer only carries the JS
-  // shim, so relying on ffmpeg-static's own path 404s in production). Locally
-  // that copy doesn't exist and ffmpeg-static resolves to node_modules.
-  const bundled = joinPath(process.cwd(), "bin", "ffmpeg");
-  const ffmpegPath = existsSync(bundled)
-    ? bundled
-    : ((await import("ffmpeg-static")).default as unknown as string);
-  if (!ffmpegPath) throw new Error("ffmpeg binary not found for still extraction");
+  const ffmpegPath = await ffmpegBin();
 
   const dir = await mkdtemp(joinPath(tmpdir(), "still-"));
   const inPath = joinPath(dir, "in.mp4");
@@ -62,6 +66,65 @@ async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
   }
 }
 
+// The generation endpoint returns video with no audio track at all (confirmed:
+// the mp4 carries a single h264 stream). Sound therefore has to be added here.
+//
+// This muxes an ambient loop supplied by the operator rather than anything
+// synthesised: drop an mp3 at avatars/audio/moan.mp3 and every generated clip
+// gets it, trimmed to the video length and faded out. No file, no audio, and the
+// clip is stored exactly as before — so this is inert until the file exists.
+//
+// AUDIO_TRACK points somewhere else if a different loop is wanted.
+async function muxAudio(mp4: Buffer): Promise<Buffer> {
+  const track = process.env.AUDIO_TRACK || "audio/moan.mp3";
+  const { data } = supabaseAdmin.storage.from("avatars").getPublicUrl(track);
+  const res = await fetch(data.publicUrl);
+  if (!res.ok) return mp4; // nothing uploaded yet
+
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const { writeFile, readFile, mkdtemp, rm } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const ffmpegPath = await ffmpegBin();
+
+  const dir = await mkdtemp(join(tmpdir(), "mux-"));
+  try {
+    const vid = join(dir, "in.mp4");
+    const aud = join(dir, "in.mp3");
+    const out = join(dir, "out.mp4");
+    await writeFile(vid, mp4);
+    await writeFile(aud, Buffer.from(await res.arrayBuffer()));
+
+    // -stream_loop repeats a short loop over a longer clip; -shortest cuts the
+    // audio at the end of the video. The video is copied, not re-encoded.
+    await promisify(execFile)(ffmpegPath, [
+      "-y",
+      "-i",
+      vid,
+      "-stream_loop",
+      "-1",
+      "-i",
+      aud,
+      "-c:v",
+      "copy",
+      "-c:a",
+      "aac",
+      "-shortest",
+      "-map",
+      "0:v:0",
+      "-map",
+      "1:a:0",
+      out,
+    ]);
+    return Buffer.from(await readFile(out));
+  } catch {
+    return mp4; // a broken audio file must not cost the user their video
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 // Download a finished Replicate output, store it in the avatars bucket, mark the
 // job completed, and post the media message. Throws on storage failure so the
 // caller can mark the job failed + refund.
@@ -78,6 +141,8 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
     /\.(mp4|webm|mov)(\?|$)/i.test(outputUrl);
   if (job.kind === "image" && gotVideo) {
     buf = await extractLastFrame(buf);
+  } else if (job.kind === "video" && gotVideo) {
+    buf = await muxAudio(buf);
   }
 
   const isVideo = job.kind === "video";

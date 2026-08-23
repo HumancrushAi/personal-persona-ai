@@ -2,10 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { amIAdmin } from "@/lib/admin.functions";
-import { studioGenerate, studioClip } from "@/lib/studio.functions";
+import { studioGenerate, studioClip, studioDelete } from "@/lib/studio.functions";
 import { checkMediaJob } from "@/lib/media.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, Film, Download, Link2, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Sparkles,
+  Film,
+  Download,
+  Link2,
+  Loader2,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/studio")({
@@ -41,12 +50,22 @@ async function saveFile(url: string, name: string) {
   setTimeout(() => URL.revokeObjectURL(href), 10_000);
 }
 
-type Shot = { url: string; clipUrl?: string; clipStatus?: "running" | "failed" };
+type Shot = {
+  url: string;
+  clipUrl?: string;
+  clipStatus?: "running" | "failed";
+  // The brief that produced this shot, so Regenerate repeats it even after the
+  // prompt box has moved on.
+  prompt: string;
+  reference?: string | null;
+  busy?: "regen" | "delete";
+};
 
 function StudioPage() {
   const checkAdmin = useServerFn(amIAdmin);
   const generate = useServerFn(studioGenerate);
   const makeClip = useServerFn(studioClip);
+  const removeShot = useServerFn(studioDelete);
   const checkJob = useServerFn(checkMediaJob);
 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -73,7 +92,10 @@ function StudioPage() {
       const res: any = await generate({
         data: { prompt: p, count, referenceUrl: reference ?? undefined },
       });
-      setShots((prev) => [...res.images.map((url: string) => ({ url })), ...prev]);
+      setShots((prev) => [
+        ...res.images.map((url: string) => ({ url, prompt: p, reference })),
+        ...prev,
+      ]);
       if (res.errors?.length) toast.warning(`${res.errors.length} of ${count} failed`);
     } catch (e: any) {
       toast.error(e?.message ?? "Generation failed");
@@ -149,6 +171,40 @@ function StudioPage() {
     if (ok === shots.length) toast.success(`Saved ${ok} file${ok === 1 ? "" : "s"}`);
     else if (ok === 0) toast.error("Nothing could be saved");
     else toast.warning(`Saved ${ok} of ${shots.length}`);
+  }
+
+  async function regenerate(shot: Shot) {
+    setShots((prev) => prev.map((s) => (s.url === shot.url ? { ...s, busy: "regen" } : s)));
+    try {
+      const res: any = await generate({
+        data: { prompt: shot.prompt, count: 1, referenceUrl: shot.reference ?? undefined },
+      });
+      const url = res.images?.[0];
+      if (!url) throw new Error("No image returned");
+      // Swap in place so the grid keeps its order while you iterate on one shot.
+      setShots((prev) =>
+        prev.map((s) =>
+          s.url === shot.url ? { url, prompt: shot.prompt, reference: shot.reference } : s,
+        ),
+      );
+      // The replaced file is no longer referenced, so don't leave it in storage.
+      removeShot({ data: { url: shot.url } }).catch(() => {});
+    } catch (e: any) {
+      setShots((prev) => prev.map((s) => (s.url === shot.url ? { ...s, busy: undefined } : s)));
+      toast.error(e?.message ?? "Regenerate failed");
+    }
+  }
+
+  async function discard(shot: Shot) {
+    setShots((prev) => prev.map((s) => (s.url === shot.url ? { ...s, busy: "delete" } : s)));
+    try {
+      await removeShot({ data: { url: shot.url } });
+      setShots((prev) => prev.filter((s) => s.url !== shot.url));
+      if (reference === shot.url) setReference(null);
+    } catch (e: any) {
+      setShots((prev) => prev.map((s) => (s.url === shot.url ? { ...s, busy: undefined } : s)));
+      toast.error(e?.message ?? "Delete failed");
+    }
   }
 
   if (isAdmin === null) {
@@ -323,9 +379,38 @@ function StudioPage() {
                     size="sm"
                     variant="ghost"
                     className="min-h-11 text-[11px]"
+                    title="Download this file"
                     onClick={() => download(s)}
                   >
                     <Download className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-11 text-[11px]"
+                    title="Regenerate with the same brief"
+                    disabled={!!s.busy}
+                    onClick={() => regenerate(s)}
+                  >
+                    {s.busy === "regen" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-11 text-[11px] text-red-400 hover:text-red-300"
+                    title="Delete this shot"
+                    disabled={!!s.busy}
+                    onClick={() => discard(s)}
+                  >
+                    {s.busy === "delete" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
                   </Button>
                 </div>
               </div>

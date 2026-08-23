@@ -36,7 +36,9 @@ Every prompt must contain, in this order:
 - her physical detail: hair, skin, eyes, body
 - nudity stated as ALREADY TRUE: "completely nude", "fully naked". Never "removes" or "takes off"
 - the explicit act, in the user's own vocabulary: tits, pussy, ass, nipples, cock, dildo. Do not euphemise
-- any prop as its own solid object with material and clean edges, distinct from her hands
+- the POSTURE the act actually requires, named explicitly: standing, sitting, kneeling, squatting, lying on her back, lying on her front, on all fours, bent over at the waist, arched back, straddling, riding, twerking, legs spread, one leg raised. Never leave the body position implied — a request that needs her bent over must say bent over
+- any prop or sex toy as its own solid object: name the material (silicone, glass, latex), give it clean edges and a correct size relative to her hand and body, and state that it is separate from her hand and not merged into it
+- anatomy correctness: hands with five correct fingers, limbs in natural proportion. For a male subject or a visible partner, an anatomically correct penis and testicles of realistic proportion and natural shape — never deformed, doubled, or fused to the body
 - setting and specific lighting
 - "full body visible, head to feet in frame, face clearly visible, not cropped, not a close-up"
 - quality tail: "photorealistic, ultra realistic, detailed skin pores, natural asymmetry, 8k"

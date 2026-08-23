@@ -172,3 +172,26 @@ export const studioClip = createServerFn({ method: "POST" })
 
     return { jobId: job.id as string };
   });
+
+// Remove a studio image from storage. A discarded shot that stays in the bucket
+// is billed storage nobody looks at, and the grid should mean what it shows.
+export const studioDelete = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ url: z.string().url() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Only ever delete inside this admin's own studio folder — the URL arrives
+    // from the client, so the path is derived and then checked rather than
+    // trusted.
+    const marker = "/avatars/";
+    const idx = data.url.indexOf(marker);
+    if (idx === -1) throw new Error("Not a studio file");
+    const path = data.url.slice(idx + marker.length);
+    if (!path.startsWith(`studio/${context.userId}/`)) throw new Error("Not your file");
+
+    const { error } = await supabaseAdmin.storage.from("avatars").remove([path]);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

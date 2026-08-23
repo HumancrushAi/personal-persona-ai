@@ -136,3 +136,74 @@ export async function refineMediaPrompt(
     clearTimeout(timer);
   }
 }
+
+// Promo images are a different job from chat media: clothed, publishable, and
+// the thing being sold is that they don't look generated. Same expansion, same
+// density, opposite content rules — so it gets its own system prompt rather
+// than a flag on the explicit one.
+const PROMO_SYSTEM = `You write prompts for a photorealistic image model producing social-media photos of a fictional adult model.
+
+Expand the user's short description into ONE dense prompt of comma-separated fragments, never sentences.
+
+Include, in this order:
+- the subject: age range, hair (colour, length, cut), eyes, skin, build
+- wardrobe: specific garments, fabrics and colours. Always fully clothed — attractive and form-fitting is fine, exposed is not
+- pose and expression, natural and candid rather than posed for a camera
+- setting with real detail, and the specific light in it (window light, golden hour, overcast, lamplight)
+- camera language: shot on a full-frame DSLR, 50mm or 85mm lens, shallow depth of field, natural bokeh
+- realism markers: real skin texture with visible pores and fine lines, natural asymmetry, flyaway hairs, subtle skin tone variation, no airbrushing, no smoothing, no beauty filter
+- any object or prop as a separate solid item with its own material, weight and clean edges, correctly proportioned and distinct from her hands
+
+Never write "8k", "masterpiece", "ultra HD" or similar render tags — they push the image toward looking generated. Aim for a real photograph taken by a real person.
+
+Never describe the subject as young, teen, schoolgirl, or a minor — she is an adult in her twenties or older.
+
+Output only the prompt, 90-150 words. No preamble, no quotes, no explanation.`;
+
+// When a reference image is supplying the face, inventing hair, eyes and build
+// fights it: the model gets told she is chestnut-haired while being shown a
+// blonde. The wardrobe and setting are still described in full.
+const PROMO_WITH_REFERENCE = `
+The subject's face, hair and body come from a reference image that will be supplied. Do NOT invent or describe her hair colour, hair length, eye colour, skin tone or build — say "the same woman as the reference image, identical face and hair" instead, and spend the words on wardrobe, pose, setting, light and camera.`;
+
+// Same refiner, promo rules. Falls back to the caller's own text on any failure.
+export async function refinePromoPrompt(
+  description: string,
+  hasReference = false,
+): Promise<string | null> {
+  const key = process.env.XAI_API_KEY;
+  const req = (description ?? "").trim();
+  if (!key || !req) return null;
+
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 20_000);
+  try {
+    const res = await fetch(XAI_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      signal: abort.signal,
+      body: JSON.stringify({
+        model: process.env.XAI_MODEL || "grok-4.6",
+        temperature: 0.8,
+        max_tokens: 500,
+        messages: [
+          {
+            role: "system",
+            content: hasReference ? PROMO_SYSTEM + PROMO_WITH_REFERENCE : PROMO_SYSTEM,
+          },
+          { role: "user", content: req },
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const out = (json.choices?.[0]?.message?.content ?? "").trim();
+    if (out.length < 60) return null;
+    if (/^(i (can'?t|cannot|won'?t)|i'm sorry|as an ai|sorry,)/i.test(out)) return null;
+    return out;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

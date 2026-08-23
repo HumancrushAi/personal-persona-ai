@@ -119,3 +119,60 @@ describe("refineMediaPrompt video scenes", () => {
     expect(await refineMediaPrompt("video", "strip", subject, 2)).toHaveLength(2);
   });
 });
+
+// Promo prompts are the opposite content rules from chat media: clothed,
+// publishable, and when a reference image supplies the face the model must not
+// invent a conflicting one.
+describe("refinePromoPrompt", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  it("stays out of the way with no key", async () => {
+    const { refinePromoPrompt } = await import("../prompt-refiner.server");
+    delete process.env.XAI_API_KEY;
+    expect(await refinePromoPrompt("a goth woman")).toBeNull();
+  });
+
+  it("tells the model not to invent looks when a reference is supplied", async () => {
+    const { refinePromoPrompt } = await import("../prompt-refiner.server");
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_u: string, init: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content:
+                  "the same woman as the reference image, identical face and hair, black silk robe, balcony, overcast daylight, 85mm lens, real skin texture with visible pores",
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    await refinePromoPrompt("on a balcony", true);
+    expect(sent.messages[0].content).toMatch(/reference image/i);
+    expect(sent.messages[0].content).toMatch(/Do NOT invent/i);
+  });
+
+  it("keeps the minor guard in the promo rules", async () => {
+    const { refinePromoPrompt } = await import("../prompt-refiner.server");
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_u: string, init: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(JSON.stringify({ choices: [{ message: { content: "x".repeat(80) } }] }), {
+        status: 200,
+      });
+    });
+    await refinePromoPrompt("a woman in a kitchen");
+    expect(sent.messages[0].content).toMatch(/never describe the subject as young/i);
+  });
+});

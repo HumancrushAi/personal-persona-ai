@@ -22,6 +22,25 @@ const PRESETS = [
   "a brunette in black gym wear, mirror selfie in a modern gym, confident look",
 ];
 
+// The files live on Supabase, so a plain <a download> is cross-origin and the
+// browser navigates to the image instead of saving it. Fetching to a blob and
+// handing that to the anchor is what actually produces a file on disk.
+async function saveFile(url: string, name: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Could not fetch file");
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoking synchronously can cancel the download before the browser has
+  // started it on Firefox and Safari.
+  setTimeout(() => URL.revokeObjectURL(href), 10_000);
+}
+
 type Shot = { url: string; clipUrl?: string; clipStatus?: "running" | "failed" };
 
 function StudioPage() {
@@ -38,6 +57,7 @@ function StudioPage() {
   // When set, new images are built from this face instead of from scratch —
   // that is what turns a pile of strangers into a set of one persona.
   const [reference, setReference] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     checkAdmin({} as any)
@@ -92,6 +112,43 @@ function StudioPage() {
       );
       toast.error(e?.message ?? "Clip failed");
     }
+  }
+
+  // Throws so a batch can count real successes; the click handler below is what
+  // turns a failure into a toast.
+  async function saveShot(shot: Shot) {
+    const url = shot.clipUrl ?? shot.url;
+    const ext = shot.clipUrl ? "mp4" : url.split("?")[0].split(".").pop() || "jpg";
+    await saveFile(url, `humancrush-${Date.now()}.${ext}`);
+  }
+
+  async function download(shot: Shot) {
+    try {
+      await saveShot(shot);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Download failed");
+    }
+  }
+
+  // Saving one at a time is the slow part of filling a page, so the whole set
+  // downloads in sequence — parallel triggers get dropped by the browser.
+  async function downloadAll() {
+    if (!shots.length) return;
+    setSaving(true);
+    let ok = 0;
+    for (const s of shots) {
+      try {
+        await saveShot(s);
+        ok++;
+        await new Promise((r) => setTimeout(r, 400));
+      } catch {
+        /* keep going; one bad file shouldn't stop the batch */
+      }
+    }
+    setSaving(false);
+    if (ok === shots.length) toast.success(`Saved ${ok} file${ok === 1 ? "" : "s"}`);
+    else if (ok === 0) toast.error("Nothing could be saved");
+    else toast.warning(`Saved ${ok} of ${shots.length}`);
   }
 
   if (isAdmin === null) {
@@ -197,7 +254,32 @@ function StudioPage() {
         </div>
 
         {shots.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {shots.length} shot{shots.length === 1 ? "" : "s"}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-11 rounded-full"
+              disabled={saving}
+              onClick={downloadAll}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-3.5 w-3.5" /> Download all
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {shots.length > 0 && (
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             {shots.map((s) => (
               <div
                 key={s.url}
@@ -237,10 +319,13 @@ function StudioPage() {
                       </>
                     )}
                   </Button>
-                  <Button asChild size="sm" variant="ghost" className="min-h-11 text-[11px]">
-                    <a href={s.clipUrl ?? s.url} target="_blank" rel="noreferrer">
-                      <Download className="h-3.5 w-3.5" />
-                    </a>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-11 text-[11px]"
+                    onClick={() => download(s)}
+                  >
+                    <Download className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

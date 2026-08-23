@@ -64,7 +64,15 @@ export const studioGenerate = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const prompt = `${data.prompt}. ${PROMO_STYLE}`;
+    // Grok expands the short description into a full photographic prompt. The
+    // typed line alone produces a generic image; the expansion is what carries
+    // the wardrobe detail, the lighting and the realism markers.
+    const { refinePromoPrompt } = await import("./prompt-refiner.server");
+    const refined = await refinePromoPrompt(data.prompt, Boolean(data.referenceUrl));
+    // PROMO_STYLE is appended either way. The clothed guarantee is the one thing
+    // that must not depend on the model having behaved — a refined prompt is
+    // only checked for length and a refusal prefix.
+    const prompt = `${refined ?? data.prompt}. ${PROMO_STYLE}`;
 
     // One failure shouldn't lose the images that did work, so results are
     // settled rather than raced.

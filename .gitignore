@@ -44,3 +44,7 @@ dist-ssr
 *.png
 !public/**/*.png
 !src/**/*.png
+
+# scratch from local generation tests
+.promo.txt
+.tmp-verify/

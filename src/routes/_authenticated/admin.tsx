@@ -191,12 +191,17 @@ function AdminPage() {
           <h1 className="font-display text-2xl md:text-3xl">Admin console</h1>
           <p className="text-xs text-muted-foreground">Manage users, credits, and subscriptions.</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => supabase.auth.signOut().then(() => location.assign("/"))}
-        >
-          Sign out
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild className="bg-grad-primary text-primary-foreground">
+            <Link to="/studio">Promo Studio</Link>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => supabase.auth.signOut().then(() => location.assign("/"))}
+          >
+            Sign out
+          </Button>
+        </div>
       </header>
 
       <Tabs defaultValue="users">
@@ -586,7 +591,11 @@ function PersonasPanel() {
   // serverless timeout; failures are counted but don't stop the run.
   async function regenerateAllPhotos() {
     if (regenAll) return;
-    if (!window.confirm(`Regenerate photos for all ${personas.length} models? This can take a few minutes.`))
+    if (
+      !window.confirm(
+        `Regenerate photos for all ${personas.length} models? This can take a few minutes.`,
+      )
+    )
       return;
     const list = [...personas];
     let failed = 0;
@@ -800,7 +809,11 @@ function PersonasPanel() {
           </div>
           <div>
             <Label className="text-xs">Speaking style</Label>
-            <Input value={form.speaking_style} onChange={set("speaking_style")} placeholder="e.g. casual, flirty, uses emojis" />
+            <Input
+              value={form.speaking_style}
+              onChange={set("speaking_style")}
+              placeholder="e.g. casual, flirty, uses emojis"
+            />
           </div>
           <div>
             <Label className="text-xs">Vocabulary level</Label>
@@ -809,18 +822,32 @@ function PersonasPanel() {
               value={form.vocabulary_level}
               onChange={(e) => setForm((f) => ({ ...f, vocabulary_level: e.target.value }))}
             >
-              <option value="casual" className="bg-background">Casual / Texting</option>
-              <option value="intellectual" className="bg-background">Intellectual / Formal</option>
-              <option value="slang" className="bg-background">Slang / Gen Z</option>
+              <option value="casual" className="bg-background">
+                Casual / Texting
+              </option>
+              <option value="intellectual" className="bg-background">
+                Intellectual / Formal
+              </option>
+              <option value="slang" className="bg-background">
+                Slang / Gen Z
+              </option>
             </select>
           </div>
           <div className="md:col-span-2">
             <Label className="text-xs">Boundaries (topics she avoids)</Label>
-            <Input value={form.boundaries} onChange={set("boundaries")} placeholder="e.g. political discussion, excessive violence" />
+            <Input
+              value={form.boundaries}
+              onChange={set("boundaries")}
+              placeholder="e.g. political discussion, excessive violence"
+            />
           </div>
           <div className="md:col-span-2">
             <Label className="text-xs">Greeting message (first chat message)</Label>
-            <Input value={form.greeting} onChange={set("greeting")} placeholder="e.g. Hey babe! So glad you're here. 💖" />
+            <Input
+              value={form.greeting}
+              onChange={set("greeting")}
+              placeholder="e.g. Hey babe! So glad you're here. 💖"
+            />
           </div>
           <div>
             <Label className="text-xs">Voice (OpenAI TTS)</Label>
@@ -829,14 +856,30 @@ function PersonasPanel() {
               value={form.voice_id}
               onChange={(e) => setForm((f) => ({ ...f, voice_id: e.target.value }))}
             >
-              <option value="alloy" className="bg-background">Alloy</option>
-              <option value="echo" className="bg-background">Echo</option>
-              <option value="fable" className="bg-background">Fable</option>
-              <option value="onyx" className="bg-background">Onyx</option>
-              <option value="nova" className="bg-background">Nova</option>
-              <option value="shimmer" className="bg-background">Shimmer</option>
-              <option value="sage" className="bg-background">Sage</option>
-              <option value="coral" className="bg-background">Coral</option>
+              <option value="alloy" className="bg-background">
+                Alloy
+              </option>
+              <option value="echo" className="bg-background">
+                Echo
+              </option>
+              <option value="fable" className="bg-background">
+                Fable
+              </option>
+              <option value="onyx" className="bg-background">
+                Onyx
+              </option>
+              <option value="nova" className="bg-background">
+                Nova
+              </option>
+              <option value="shimmer" className="bg-background">
+                Shimmer
+              </option>
+              <option value="sage" className="bg-background">
+                Sage
+              </option>
+              <option value="coral" className="bg-background">
+                Coral
+              </option>
             </select>
           </div>
           <div className="flex items-end gap-2 md:col-span-2">
@@ -1076,13 +1119,19 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
     }
   }
 
-  if (loading) return <div className="p-4 text-center text-muted-foreground">Loading settings…</div>;
+  if (loading)
+    return <div className="p-4 text-center text-muted-foreground">Loading settings…</div>;
 
   return (
     <div className="space-y-6">
       <section className="glass rounded-2xl p-4">
         <h2 className="mb-4 font-display text-lg capitalize">
-          {category === "pricing" ? "Plans & Pricing" : category === "aiconfig" ? "AI Configuration" : "Platform Content"} Settings
+          {category === "pricing"
+            ? "Plans & Pricing"
+            : category === "aiconfig"
+              ? "AI Configuration"
+              : "Platform Content"}{" "}
+          Settings
         </h2>
         <div className="space-y-4">
           {category === "pricing" && (
@@ -1094,9 +1143,16 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                     <Input
                       type="number"
                       value={settings["price_pack_1_cents"] ?? "1999"}
-                      onChange={(e) => setSettings({ ...settings, price_pack_1_cents: e.target.value })}
+                      onChange={(e) =>
+                        setSettings({ ...settings, price_pack_1_cents: e.target.value })
+                      }
                     />
-                    <Button onClick={() => handleSave("price_pack_1_cents", settings["price_pack_1_cents"] ?? "1999")} disabled={saving === "price_pack_1_cents"}>
+                    <Button
+                      onClick={() =>
+                        handleSave("price_pack_1_cents", settings["price_pack_1_cents"] ?? "1999")
+                      }
+                      disabled={saving === "price_pack_1_cents"}
+                    >
                       Save
                     </Button>
                   </div>
@@ -1107,9 +1163,19 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                     <Input
                       type="number"
                       value={settings["price_pack_1_credits"] ?? "150"}
-                      onChange={(e) => setSettings({ ...settings, price_pack_1_credits: e.target.value })}
+                      onChange={(e) =>
+                        setSettings({ ...settings, price_pack_1_credits: e.target.value })
+                      }
                     />
-                    <Button onClick={() => handleSave("price_pack_1_credits", settings["price_pack_1_credits"] ?? "150")} disabled={saving === "price_pack_1_credits"}>
+                    <Button
+                      onClick={() =>
+                        handleSave(
+                          "price_pack_1_credits",
+                          settings["price_pack_1_credits"] ?? "150",
+                        )
+                      }
+                      disabled={saving === "price_pack_1_credits"}
+                    >
                       Save
                     </Button>
                   </div>
@@ -1128,9 +1194,16 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                       type="number"
                       step="0.1"
                       value={settings["default_temperature"] ?? "0.9"}
-                      onChange={(e) => setSettings({ ...settings, default_temperature: e.target.value })}
+                      onChange={(e) =>
+                        setSettings({ ...settings, default_temperature: e.target.value })
+                      }
                     />
-                    <Button onClick={() => handleSave("default_temperature", settings["default_temperature"] ?? "0.9")} disabled={saving === "default_temperature"}>
+                    <Button
+                      onClick={() =>
+                        handleSave("default_temperature", settings["default_temperature"] ?? "0.9")
+                      }
+                      disabled={saving === "default_temperature"}
+                    >
                       Save
                     </Button>
                   </div>
@@ -1149,10 +1222,17 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                   <div className="flex gap-2">
                     <Input
                       value={settings["platform_banner_text"] ?? ""}
-                      onChange={(e) => setSettings({ ...settings, platform_banner_text: e.target.value })}
+                      onChange={(e) =>
+                        setSettings({ ...settings, platform_banner_text: e.target.value })
+                      }
                       placeholder="e.g. 🔥 Summer Special: Double tokens on all subscription tiers!"
                     />
-                    <Button onClick={() => handleSave("platform_banner_text", settings["platform_banner_text"] ?? "")} disabled={saving === "platform_banner_text"}>
+                    <Button
+                      onClick={() =>
+                        handleSave("platform_banner_text", settings["platform_banner_text"] ?? "")
+                      }
+                      disabled={saving === "platform_banner_text"}
+                    >
                       Save
                     </Button>
                   </div>
@@ -1162,10 +1242,17 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                   <div className="flex gap-2">
                     <Input
                       value={settings["system_status_message"] ?? ""}
-                      onChange={(e) => setSettings({ ...settings, system_status_message: e.target.value })}
+                      onChange={(e) =>
+                        setSettings({ ...settings, system_status_message: e.target.value })
+                      }
                       placeholder="e.g. All systems operational"
                     />
-                    <Button onClick={() => handleSave("system_status_message", settings["system_status_message"] ?? "")} disabled={saving === "system_status_message"}>
+                    <Button
+                      onClick={() =>
+                        handleSave("system_status_message", settings["system_status_message"] ?? "")
+                      }
+                      disabled={saving === "system_status_message"}
+                    >
                       Save
                     </Button>
                   </div>
@@ -1312,8 +1399,8 @@ function EvalPanel() {
         <div>
           <h3 className="font-display text-base">Persona Eval Suite</h3>
           <p className="text-xs text-muted-foreground">
-            Runs scripted chat scenarios against the live model and scores persona
-            consistency, naturalness, repetition, and safety.
+            Runs scripted chat scenarios against the live model and scores persona consistency,
+            naturalness, repetition, and safety.
           </p>
         </div>
         <Button onClick={runAll} disabled={running}>

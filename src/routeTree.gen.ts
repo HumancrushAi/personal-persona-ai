@@ -24,6 +24,7 @@ import { Route as CamsIndexRouteImport } from './routes/cams.index'
 import { Route as CompanionIdRouteImport } from './routes/companion.$id'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 import { Route as CamsIdRouteImport } from './routes/cams.$id'
+import { Route as AuthenticatedStudioRouteImport } from './routes/_authenticated/studio'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicRunpodWebhookRouteImport } from './routes/api/public/runpod-webhook'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
@@ -103,6 +104,11 @@ const CamsIdRoute = CamsIdRouteImport.update({
   path: '/cams/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedStudioRoute = AuthenticatedStudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/admin'
+    | '/studio'
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/admin'
+    | '/studio'
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/_authenticated/admin'
+    | '/_authenticated/studio'
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
@@ -378,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CamsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/studio': {
+      id: '/_authenticated/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof AuthenticatedStudioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -411,10 +430,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedStudioRoute: typeof AuthenticatedStudioRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedStudioRoute: AuthenticatedStudioRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

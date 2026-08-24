@@ -83,7 +83,12 @@ function actionTags(req: string, isMale: boolean): string {
         ? "male masturbation, hand on penis, stroking, groin visible"
         : "female masturbation, fingering, hand between legs, spread legs, pleasuring herself, touching her pussy",
     );
-  if (has(KW.toys)) ex.push("sex toy, dildo, holding a dildo, using sex toy");
+  if (has(KW.toys)) {
+    const toyTag = !isMale && has(KW.pussy)
+      ? "sex toy, dildo, holding a dildo, using sex toy, dildo inserted in her pussy, female anatomy, no penis"
+      : "sex toy, dildo, holding a dildo, using sex toy";
+    ex.push(toyTag);
+  }
   if (has(KW.anal)) ex.push("anal, insertion, bent over, ass, presenting");
   if (has(KW.oral)) ex.push("oral, fellatio, open mouth, tongue out");
   if (has(KW.sex)) ex.push("explicit, spread legs, presenting, penetration");
@@ -205,18 +210,16 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
 // the model a composition to build, instead of a rule to obey. Same request,
 // same start frame, same negatives: subject-anchored framing produced head to
 // feet with the face in shot.
-function framingFor(noun: string, poss: string, posed: boolean): string {
-  // Naming the subject and a place is what holds the camera back. "standing"
-  // was part of that, but it contradicts any request with its own posture —
-  // asked to ride, she was described as standing and rode oddly as a result.
-  // Dropped whenever the request already says what she is doing.
-  const stance = posed ? "" : " standing";
+function framingFor(noun: string, poss: string, posed: boolean, hasReq: boolean): string {
+  // If the user specified a request, we drop "standing" because it often conflicts
+  // with the desired action or composition, even if not matching a specific posture keyword.
+  const stance = (posed || hasReq) ? "" : " standing";
   return `Wide full body photograph of a ${noun}${stance} in a room, ${poss} whole body visible from head to feet, ${poss} face clearly visible at the top of the frame, camera far away across the room. Not a close-up, not cropped.`;
 }
 
 // Requests that carry their own posture, which "standing" would fight.
 const POSTURE_RE =
-  /\b(ride|riding|bounc\w*|sit\w*|sitting|lying|lie|laid|kneel\w*|bent|bend\w*|squat\w*|straddl\w*|on all fours|doggy|cowgirl|on her back|on his back|leaning|crawl\w*|spread\w*)\b/i;
+  /\b(ride|riding|bounc\w*|sit\w*|sitting|lying|lie|laid|kneel\w*|bent|bend\w*|squat\w*|straddl\w*|on all fours|doggy|cowgirl|on her back|on his back|leaning|crawl\w*|spread\w*|masturbat\w*|finger\w*|rub\w*|touch\w*|play\w*|dildo\w*|toy\w*|plug\w*|suck\w*|blowjob|bj|oral|anal|fuck\w*|sex|penetrat\w*|insert\w*)\b/i;
 
 // Photographic language, not render language. "8k masterpiece" vocabulary is
 // what produces the airbrushed CG look that reads as AI on sight.
@@ -225,9 +228,13 @@ const POSTURE_RE =
 // separate solid object with its own material and edges, and saying explicitly
 // that it is not part of her hand, is the only lever available from the prompt
 // side. It helps; it does not fully solve it.
-function objectClause(req: string): string {
+function objectClause(req: string, isMale: boolean): string {
   if (!kw(KW.toys).test(req)) return "";
-  return "The sex toy is a separate solid object with smooth silicone material and clean defined edges, held in her hand but clearly distinct from it, correct proportions, fingers wrapped around it and still countable as fingers. The toy is not merged into her hand or body.";
+  const toyDescription = "The sex toy is a separate solid object with smooth silicone material and clean defined edges, held in her hand but clearly distinct from it, correct proportions, fingers wrapped around it and still countable as fingers. The toy is not merged into her hand or body.";
+  if (!isMale && kw("pussy|vagina|vulva|cunt|slit|clit").test(req)) {
+    return `${toyDescription} She has normal female anatomy, a natural pussy, and no penis. The toy is inserted into her pussy.`;
+  }
+  return toyDescription;
 }
 
 const QUALITY =
@@ -245,7 +252,7 @@ export function videoStillPrompt(
   const undress = requestIsNude(req)
     ? isMale
       ? `${subject} is already completely naked with no clothing on at all, penis and groin visible, bare skin`
-      : `${subject} is already completely naked with no clothing on at all, bare breasts and nipples visible, bare skin`
+      : `${subject} is already completely naked with no clothing on at all, bare breasts, nipples, and pussy visible, bare skin, female anatomy`
     : `${subject} holds the pose`;
 
   // NOTE: deliberately no actionTags here. Those are booru tags ("bent over,
@@ -258,10 +265,10 @@ export function videoStillPrompt(
   const poss = isMale ? "his" : noun === "woman" ? "her" : "their";
 
   return [
-    framingFor(noun, poss, POSTURE_RE.test(req)),
+    framingFor(noun, poss, POSTURE_RE.test(req), !!req),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
-    objectClause(req),
+    objectClause(req, isMale),
     QUALITY,
     "The camera stays wide and does not move closer. Settles into a still held pose at the end.",
   ]
@@ -285,7 +292,7 @@ export function videoActionPrompt(
   const undress = requestIsNude(req)
     ? isMale
       ? `${subject} is already completely naked with no clothing on at all, penis and groin visible, bare skin throughout`
-      : `${subject} is already completely naked with no clothing on at all, bare breasts and nipples visible, bare skin throughout`
+      : `${subject} is already completely naked with no clothing on at all, bare breasts, nipples, and pussy visible, bare skin throughout, female anatomy`
     : `${subject} moves seductively for the camera`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
@@ -294,10 +301,10 @@ export function videoActionPrompt(
   const poss = isMale ? "his" : noun === "woman" ? "her" : "their";
 
   return [
-    framingFor(noun, poss, POSTURE_RE.test(req)),
+    framingFor(noun, poss, POSTURE_RE.test(req), !!req),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
-    objectClause(req),
+    objectClause(req, isMale),
     QUALITY,
     "Smooth natural lifelike motion throughout, consistent face and body. The camera stays wide and does not move closer.",
   ]
@@ -323,7 +330,7 @@ export function kontextSelfiePrompt(
   const state = requestIsNude(req)
     ? isMale
       ? "completely naked, no clothing, penis and groin visible"
-      : "completely naked, no clothing, bare breasts and nipples visible"
+      : "completely naked, no clothing, bare breasts, nipples, and pussy visible, female anatomy"
     : `wearing what ${subject} has on`;
 
   return [

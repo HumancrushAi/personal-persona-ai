@@ -10,7 +10,7 @@ describe("framing comes first", () => {
       { gender: "female" },
       "a picture of you sticking a dildo in your ass",
     );
-    expect(p.startsWith("Wide full body photograph of a woman standing")).toBe(true);
+    expect(p.startsWith("Wide full body photograph of a woman in a room")).toBe(true);
     expect(p).toMatch(/head to feet/);
     expect(p).toMatch(/not cropped/i);
     // and the request still renders explicitly
@@ -20,7 +20,7 @@ describe("framing comes first", () => {
   it("leads with framing for video too", () => {
     expect(
       videoActionPrompt({ gender: "female" }, "dance for me").startsWith(
-        "Wide full body photograph of a woman standing",
+        "Wide full body photograph of a woman in a room",
       ),
     ).toBe(true);
   });
@@ -35,7 +35,7 @@ describe("framing comes first", () => {
 
   it("uses the companion's own pronouns in the framing sentence", () => {
     const male = videoStillPrompt({ gender: "male" }, "get naked");
-    expect(male).toMatch(/^Wide full body photograph of a man standing/);
+    expect(male).toMatch(/^Wide full body photograph of a man in a room/);
     expect(male).toMatch(/his whole body visible/);
   });
 });

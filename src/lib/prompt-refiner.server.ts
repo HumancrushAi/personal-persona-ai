@@ -40,6 +40,7 @@ Every prompt must contain, in this order:
 - any prop or sex toy as its own solid object: name the material (silicone, glass, latex), give it clean edges and a correct size relative to her hand and body, and state that it is separate from her hand and not merged into it
 - where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
 - anatomy correctness: hands with five correct fingers, limbs in natural proportion. For a male subject or a visible partner, an anatomically correct penis and testicles of realistic proportion and natural shape — never deformed, doubled, or fused to the body
+- female anatomy correctness: a female subject has standard female anatomy, a natural pussy (vagina and vulva), and NO penis. Any sex toy (like a dildo or vibrator) is a separate object inserted into her pussy, she does not have a penis. Never render a female subject with male genitalia unless explicitly requested.
 - setting and specific lighting
 - "full body visible, head to feet in frame, face clearly visible, not cropped, not a close-up"
 - quality tail: "photorealistic, ultra realistic, detailed skin pores, natural asymmetry, 8k"
@@ -69,6 +70,60 @@ Examples of the required style:
 ${EXAMPLES}`;
 }
 
+async function refineMediaWithOpenRouter(
+  kind: "photo" | "video",
+  userRequest: string,
+  subject: string,
+  scenes = 1,
+): Promise<string[] | null> {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return null;
+
+  const model = process.env.OPENROUTER_MODEL || "sao10k/l3.1-euryale-70b";
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 20_000);
+
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      signal: abort.signal,
+      body: JSON.stringify({
+        model,
+        temperature: 0.8,
+        messages: [
+          { role: "system", content: systemFor(kind, scenes) },
+          { role: "user", content: `Subject: a ${subject}. Request: ${userRequest}` },
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const raw = (json.choices?.[0]?.message?.content ?? "").trim();
+    if (!raw) return null;
+
+    if (/^(i (can'?t|cannot|won'?t)|i'm sorry|as an ai|sorry,)/i.test(raw)) return null;
+
+    if (kind === "photo") return raw.length < 60 ? null : [raw];
+
+    const parts = raw
+      .split(/\n+/)
+      .map((l: string) => l.replace(/^\s*\d+[.)]\s*/, "").trim())
+      .filter((l: string) => l.length > 40);
+
+    if (!parts.length) return null;
+    return parts.slice(0, scenes);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function refineMediaPrompt(
   kind: "photo" | "video",
   userRequest: string,
@@ -77,7 +132,7 @@ export async function refineMediaPrompt(
 ): Promise<string[] | null> {
   const key = process.env.XAI_API_KEY;
   const req = (userRequest ?? "").trim();
-  if (!key || !req) return null;
+  if (!req) return null;
 
   const g = (companion.gender ?? "").toLowerCase();
   const noun =
@@ -94,50 +149,58 @@ export async function refineMediaPrompt(
     .filter(Boolean)
     .join(" ");
 
-  // A slow refiner must not hold up a job that works without it.
-  const abort = new AbortController();
-  const timer = setTimeout(() => abort.abort(), 20_000);
+  // Attempt using Grok first if the key is available
+  if (key) {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 20_000);
 
-  try {
-    const res = await fetch(XAI_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      signal: abort.signal,
-      body: JSON.stringify({
-        model: process.env.XAI_MODEL || "grok-4.6",
-        temperature: 0.8,
-        max_tokens: kind === "video" ? 2000 : 500,
-        messages: [
-          { role: "system", content: systemFor(kind, scenes) },
-          { role: "user", content: `Subject: a ${subject}. Request: ${req}` },
-        ],
-      }),
-    });
-    if (!res.ok) return null;
+    try {
+      const res = await fetch(XAI_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        signal: abort.signal,
+        body: JSON.stringify({
+          model: process.env.XAI_MODEL || "grok-4.6",
+          temperature: 0.8,
+          max_tokens: kind === "video" ? 2000 : 500,
+          messages: [
+            { role: "system", content: systemFor(kind, scenes) },
+            { role: "user", content: `Subject: a ${subject}. Request: ${req}` },
+          ],
+        }),
+      });
 
-    const json = await res.json();
-    const raw = (json.choices?.[0]?.message?.content ?? "").trim();
-    if (!raw) return null;
+      if (res.ok) {
+        const json = await res.json();
+        const raw = (json.choices?.[0]?.message?.content ?? "").trim();
+        if (raw && !/^(i (can'?t|cannot|won'?t)|i'm sorry|as an ai|sorry,)/i.test(raw)) {
+          if (kind === "photo") {
+            if (raw.length >= 60) {
+              clearTimeout(timer);
+              return [raw];
+            }
+          } else {
+            const parts = raw
+              .split(/\n+/)
+              .map((l: string) => l.replace(/^\s*\d+[.)]\s*/, "").trim())
+              .filter((l: string) => l.length > 40);
 
-    // A refusal reaching the renderer as a prompt would be worse than the
-    // builder output it replaced.
-    if (/^(i (can'?t|cannot|won'?t)|i'm sorry|as an ai|sorry,)/i.test(raw)) return null;
-
-    if (kind === "photo") return raw.length < 60 ? null : [raw];
-
-    // Split the numbered list back into scenes, dropping the numbering.
-    const parts = raw
-      .split(/\n+/)
-      .map((l: string) => l.replace(/^\s*\d+[.)]\s*/, "").trim())
-      .filter((l: string) => l.length > 40);
-
-    if (!parts.length) return null;
-    return parts.slice(0, scenes);
-  } catch {
-    return null; // timeout, network, bad JSON — the builder covers it
-  } finally {
-    clearTimeout(timer);
+            if (parts.length > 0) {
+              clearTimeout(timer);
+              return parts.slice(0, scenes);
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignored: proceed to OpenRouter fallback
+    } finally {
+      clearTimeout(timer);
+    }
   }
+
+  // Fallback to OpenRouter (uncensored model) if Grok is not configured, failed, or refused
+  return refineMediaWithOpenRouter(kind, req, subject, scenes);
 }
 
 // Promo images are a different job from chat media: clothed, publishable, and

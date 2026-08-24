@@ -41,6 +41,14 @@ type Message = {
   media_url?: string | null;
 };
 
+type LocalPendingJob = {
+  id: string;
+  kind: "photo" | "video";
+  conversationId: string;
+  created_at: string;
+  dbJobId?: string;
+};
+
 function ChatPage() {
   const { conversationId } = Route.useParams();
   const navigate = useNavigate();
@@ -62,6 +70,34 @@ function ChatPage() {
   // "taking a pic for you…" with no movement reads as a hang — people gave up
   // and assumed it was broken while the job was in fact still running.
   const [waited, setWaited] = useState(0);
+
+  const [localJobs, setLocalJobs] = useState<LocalPendingJob[]>([]);
+
+  // Helper to save to localStorage
+  const saveLocalJobs = (jobs: LocalPendingJob[]) => {
+    try {
+      localStorage.setItem(`hc_local_jobs_${conversationId}`, JSON.stringify(jobs));
+    } catch (e) {
+      console.error("Failed to save local pending jobs", e);
+    }
+  };
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`hc_local_jobs_${conversationId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored) as LocalPendingJob[];
+        // Filter out jobs older than 10 minutes to prevent stales
+        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+        const valid = parsed.filter((j) => new Date(j.created_at).getTime() > tenMinutesAgo);
+        setLocalJobs(valid);
+        saveLocalJobs(valid);
+      }
+    } catch (e) {
+      console.error("Failed to parse local pending jobs", e);
+    }
+  }, [conversationId]);
 
   useEffect(() => {
     if (!mediaBusy) {
@@ -115,6 +151,74 @@ function ChatPage() {
     refetchIntervalInBackground: false,
   });
 
+  const { data: pendingJobs } = useQuery({
+    queryKey: ["pending-jobs", conversationId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("media_jobs")
+        .select("id, kind, status, created_at")
+        .eq("conversation_id", conversationId)
+        .in("status", ["pending", "processing"])
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 3000,
+  });
+
+  // Clean up completed/failed local jobs based on database status updates
+  useEffect(() => {
+    if (!pendingJobs) return;
+    setLocalJobs((prev) => {
+      const next = prev.filter((j) => {
+        if (!j.dbJobId) {
+          // If it has no dbJobId, keep it only if it is less than 2 minutes old
+          return Date.now() - new Date(j.created_at).getTime() < 120_000;
+        }
+        // If it has dbJobId, keep it only if it is still in the database pendingJobs list
+        return pendingJobs.some((db) => db.id === j.dbJobId);
+      });
+      if (next.length !== prev.length) {
+        saveLocalJobs(next);
+      }
+      return next;
+    });
+  }, [pendingJobs]);
+
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const pendingMessages = (pendingJobs ?? []).map((job) => ({
+    id: `pending-job-${job.id}`,
+    role: "assistant" as const,
+    content: "",
+    kind: job.kind === "image" ? "image_pending" : job.kind === "video" ? "video_pending" : "voice_pending",
+    media_url: null,
+    created_at: job.created_at,
+    jobId: job.id,
+  }));
+
+  const localPendingMessages = localJobs
+    .filter((j) => !j.dbJobId || !pendingJobs?.some((db) => db.id === j.dbJobId))
+    .map((j) => ({
+      id: `local-pending-job-${j.id}`,
+      role: "assistant" as const,
+      content: "",
+      kind: (j.kind === "photo" ? "image_pending" : "video_pending") as any,
+      media_url: null,
+      created_at: j.created_at,
+      jobId: j.id,
+    }));
+
+  const allMessages = [...(messages ?? []), ...pendingMessages, ...localPendingMessages].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  const messageIds = allMessages.map((m) => m.id).join(",");
+
   const { data: balance } = useQuery({
     queryKey: ["balance"],
     queryFn: async () => {
@@ -135,7 +239,7 @@ function ChatPage() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, sending, mediaBusy, pendingUser]);
+  }, [messageIds, sending, mediaBusy, pendingUser]);
 
   async function sendMessage(raw: string) {
     const content = raw.trim();
@@ -158,6 +262,7 @@ function ChatPage() {
 
       qc.invalidateQueries({ queryKey: ["balance"] });
       qc.invalidateQueries({ queryKey: ["conv-meta", conversationId] });
+      qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
       await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
       setPendingUser(null); // real messages are loaded now — drop the optimistic bubble
       if (res?.relationship?.leveledUp) {
@@ -227,28 +332,38 @@ function ChatPage() {
     // the poll gave up while the job was still healthy and the media only
     // arrived if the webhook happened to land. Videos get eight minutes.
     const maxAttempts = label === "video" ? 240 : 150;
-    while (attempts < maxAttempts) {
-      let res: any;
-      try {
-        res = await checkJob({ data: { jobId } });
-      } catch {
-        res = null; // transient — keep polling
+    try {
+      while (attempts < maxAttempts) {
+        let res: any;
+        try {
+          res = await checkJob({ data: { jobId } });
+        } catch {
+          res = null; // transient — keep polling
+        }
+        if (res?.status === "completed") {
+          qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
+          await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+          await qc.invalidateQueries({ queryKey: ["balance"] });
+          toast.success(label === "video" ? "Video received!" : "Photo received!");
+          return;
+        }
+        if (res?.status === "failed") {
+          qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
+          throw new Error("Generation failed");
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+        attempts++;
       }
-      if (res?.status === "completed") {
-        await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
-        await qc.invalidateQueries({ queryKey: ["balance"] });
-        toast.success(label === "video" ? "Video received!" : "Photo received!");
-        return;
-      }
-      if (res?.status === "failed") {
-        throw new Error("Generation failed");
-      }
-      await new Promise((r) => setTimeout(r, 2000));
-      attempts++;
+      // Now literally true: the messages query polls, so whenever the server
+      // finishes it the media drops into the conversation on its own.
+      toast.info(`She is still working on that ${label}. It'll appear here as soon as it's ready.`);
+    } finally {
+      setLocalJobs((prev) => {
+        const next = prev.filter((j) => j.dbJobId !== jobId);
+        saveLocalJobs(next);
+        return next;
+      });
     }
-    // Now literally true: the messages query polls, so whenever the server
-    // finishes it the media drops into the conversation on its own.
-    toast.info(`She is still working on that ${label}. It'll appear here as soon as it's ready.`);
   }
 
   // Pick up jobs left mid-flight. A closed tab, a dropped connection, or a
@@ -285,10 +400,37 @@ function ChatPage() {
   async function runSelfie(prompt: string) {
     setAsking(null);
     setMediaBusy("selfie");
+    const localId = `local-job-${Date.now()}`;
+    const newLocalJob: LocalPendingJob = {
+      id: localId,
+      kind: "photo",
+      conversationId,
+      created_at: new Date().toISOString(),
+    };
+    setLocalJobs((prev) => {
+      const next = [...prev, newLocalJob];
+      saveLocalJobs(next);
+      return next;
+    });
+
     try {
       const res = await selfie({ data: { conversationId, prompt } });
-      await pollMediaJob((res as any).jobId, "photo");
+      const jobId = (res as any).jobId;
+      setLocalJobs((prev) => {
+        const next = prev.map((j) => (j.id === localId ? { ...j, dbJobId: jobId } : j));
+        saveLocalJobs(next);
+        return next;
+      });
+      setMediaBusy(null); // Clear early so placeholder in chat list takes over progress indicator
+      qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
+      await pollMediaJob(jobId, "photo");
     } catch (err: any) {
+      setMediaBusy(null);
+      setLocalJobs((prev) => {
+        const next = prev.filter((j) => j.id !== localId);
+        saveLocalJobs(next);
+        return next;
+      });
       const msg = err?.message ?? "Error";
       if (msg.includes("OUT_OF_CREDITS")) {
         toast.error("Not enough credits — selfies cost 8");
@@ -296,8 +438,6 @@ function ChatPage() {
       } else if (msg.includes("BLOCKED_CONTENT")) {
         toast.error("She can't take that kind of pic — no credits used.");
       } else toast.error(msg);
-    } finally {
-      setMediaBusy(null);
     }
   }
 
@@ -332,13 +472,40 @@ function ChatPage() {
   async function runVideo(prompt: string, seconds: number) {
     setAsking(null);
     setMediaBusy("video");
+    const localId = `local-job-${Date.now()}`;
+    const newLocalJob: LocalPendingJob = {
+      id: localId,
+      kind: "video",
+      conversationId,
+      created_at: new Date().toISOString(),
+    };
+    setLocalJobs((prev) => {
+      const next = [...prev, newLocalJob];
+      saveLocalJobs(next);
+      return next;
+    });
+
     try {
       // Send the duration itself. This used to send a `settings` object that
       // the server no longer accepted, so zod stripped it and every clip came
       // back at the 5s default no matter what was picked.
       const res = await requestVideoFn({ data: { conversationId, prompt, seconds } });
-      await pollMediaJob((res as any).jobId, "video");
+      const jobId = (res as any).jobId;
+      setLocalJobs((prev) => {
+        const next = prev.map((j) => (j.id === localId ? { ...j, dbJobId: jobId } : j));
+        saveLocalJobs(next);
+        return next;
+      });
+      setMediaBusy(null); // Clear early so placeholder in chat list takes over progress indicator
+      qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
+      await pollMediaJob(jobId, "video");
     } catch (err: any) {
+      setMediaBusy(null);
+      setLocalJobs((prev) => {
+        const next = prev.filter((j) => j.id !== localId);
+        saveLocalJobs(next);
+        return next;
+      });
       const msg = err?.message ?? "Error";
       if (msg.includes("OUT_OF_CREDITS")) {
         toast.error("Not enough credits — videos cost 15");
@@ -346,8 +513,6 @@ function ChatPage() {
       } else if (msg.includes("BLOCKED_CONTENT")) {
         toast.error("She can't make that kind of video — no credits used.");
       } else toast.error(msg);
-    } finally {
-      setMediaBusy(null);
     }
   }
 
@@ -355,6 +520,8 @@ function ChatPage() {
   const level = (conv as any)?.relationship_level ?? 1;
   const xp = (conv as any)?.relationship_xp ?? 0;
   const xpInLevel = xp % 15;
+  const hasPendingJobs = (pendingJobs?.length ?? 0) > 0;
+  const isBusy = !!mediaBusy || sending || hasPendingJobs || localJobs.length > 0;
   const showOpener = scenario && messages && messages.length === 0;
 
   return (
@@ -448,12 +615,12 @@ function ChatPage() {
                 </div>
               </div>
             )}
-            {messages?.length === 0 && !scenario && (
+            {allMessages.length === 0 && !scenario && (
               <div className="glass rounded-2xl p-4 text-center text-sm text-muted-foreground">
                 Say hi to {p?.nickname ?? "them"} 💋
               </div>
             )}
-            {messages?.map((m) => (
+            {allMessages.map((m) => (
               <div
                 key={m.id}
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
@@ -484,6 +651,57 @@ function ChatPage() {
                   {m.kind === "voice" && m.media_url && (
                     <div className="p-2">
                       <audio controls src={m.media_url} className="w-64" />
+                    </div>
+                  )}
+                  {m.kind === "image_pending" && (
+                    <div className="relative flex aspect-square w-72 flex-col items-center justify-center bg-black/40 p-4">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 animate-pulse" />
+                      <div className="flex flex-col items-center gap-3 text-center">
+                        <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+                          <ImageIcon className="h-6 w-6 text-primary animate-pulse" />
+                          <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="font-semibold text-white/90">Generating Photo...</div>
+                          <div className="text-xs text-muted-foreground">
+                            {Math.max(0, Math.round((Date.now() - new Date((m as any).created_at).getTime()) / 1000))}s elapsed
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {m.kind === "video_pending" && (
+                    <div className="relative flex aspect-square w-72 flex-col items-center justify-center bg-black/40 p-4 md:aspect-[9/16]">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 animate-pulse" />
+                      <div className="flex flex-col items-center gap-3 text-center">
+                        <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+                          <VideoIcon className="h-6 w-6 text-primary animate-pulse" />
+                          <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="font-semibold text-white/90">Generating Video...</div>
+                          <div className="text-xs text-muted-foreground">
+                            {Math.max(0, Math.round((Date.now() - new Date((m as any).created_at).getTime()) / 1000))}s elapsed
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {m.kind === "voice_pending" && (
+                    <div className="relative flex w-64 flex-col items-center justify-center bg-black/40 p-4">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 animate-pulse" />
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+                          <Mic className="h-4 w-4 text-primary animate-pulse" />
+                          <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="font-semibold text-sm text-white/90">Recording Audio...</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {Math.max(0, Math.round((Date.now() - new Date((m as any).created_at).getTime()) / 1000))}s elapsed
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                   {(m.content || m.kind === "text") && (
@@ -532,8 +750,8 @@ function ChatPage() {
               type="button"
               size="icon"
               variant="ghost"
-              onClick={() => !mediaBusy && setAsking("photo")}
-              disabled={!!mediaBusy || sending}
+              onClick={() => !isBusy && setAsking("photo")}
+              disabled={isBusy}
               className="rounded-full"
               title="Ask for a selfie (8 credits)"
             >
@@ -544,7 +762,7 @@ function ChatPage() {
               size="icon"
               variant="ghost"
               onClick={handleVoice}
-              disabled={!!mediaBusy || sending}
+              disabled={isBusy}
               className="rounded-full"
               title="Get her voice note of last reply (3 credits)"
             >
@@ -554,8 +772,8 @@ function ChatPage() {
               type="button"
               size="icon"
               variant="ghost"
-              onClick={() => !mediaBusy && setAsking("video")}
-              disabled={!!mediaBusy || sending}
+              onClick={() => !isBusy && setAsking("video")}
+              disabled={isBusy}
               className="rounded-full"
               title="Ask her for a video (15 credits)"
             >

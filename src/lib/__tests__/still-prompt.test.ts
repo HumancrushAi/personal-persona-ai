@@ -26,6 +26,19 @@ describe("videoStillPrompt", () => {
   it("defaults to explicit when nothing is asked for", () => {
     expect(videoStillPrompt({ gender: "female" }, "")).toMatch(/completely naked/i);
   });
+
+  it("drops standing when custom request is provided", () => {
+    const p = videoStillPrompt({ gender: "female" }, "lying on bed");
+    expect(p).not.toMatch(/standing/i);
+  });
+
+  it("handles toys realistically and specifies no penis for females", () => {
+    const p = videoStillPrompt({ gender: "female" }, "dildo in pussy");
+    expect(p).toMatch(/female anatomy/i);
+    expect(p).toMatch(/no penis/i);
+    expect(p).toMatch(/inserted/i);
+    expect(p).not.toMatch(/standing/i);
+  });
 });
 
 // Realism regression. "8k masterpiece ultra detailed" pushes the render toward

@@ -232,10 +232,12 @@ function Landing() {
     return BANNERS.map((b) => {
       const filename = b.reel.split("/").pop()?.replace(".mp4", "") || "";
       const comp = pickCompanion(filename, b.gender);
-      // Prefer custom generated AI reel if available, falling back to showcase reel
+      // Use the companion's own generated reel (made from their portrait) so the
+      // video always matches the face shown.  Fall back to the legacy showcase
+      // reel only when no companion-specific clip exists yet.
       const reel = comp ? (companionReelUrl(comp.id) || b.reel) : b.reel;
       return {
-        reel: b.reel, // Always play the showcase video reel (r10, r11, r1, r8, r3)
+        reel,
         title: comp ? `${comp.name}, ${comp.age}` : b.title,
         sub: comp?.short_bio || b.sub,
         gender: b.gender,

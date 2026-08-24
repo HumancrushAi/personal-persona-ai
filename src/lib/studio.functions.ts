@@ -57,6 +57,7 @@ export const studioGenerate = createServerFn({ method: "POST" })
         prompt: z.string().min(3).max(600),
         count: z.number().int().min(1).max(MAX_VARIATIONS).default(2),
         referenceUrl: z.string().url().optional(),
+        companionId: z.string().uuid().optional(),
       })
       .parse(d),
   )
@@ -82,12 +83,29 @@ export const studioGenerate = createServerFn({ method: "POST" })
       ),
     );
 
-    const images: string[] = [];
+    const images: { id?: string; url: string }[] = [];
     const errors: string[] = [];
     for (const r of results) {
       if (r.status === "fulfilled") {
         try {
-          images.push(await storeImage(supabaseAdmin, context.userId, r.value));
+          const publicUrl = await storeImage(supabaseAdmin, context.userId, r.value);
+          let mediaRowId: string | undefined = undefined;
+
+          if (data.companionId) {
+            const { data: row, error: insertErr } = await supabaseAdmin
+              .from("companion_media")
+              .insert({
+                companion_id: data.companionId,
+                media_url: publicUrl,
+              })
+              .select("id")
+              .single();
+            if (!insertErr && row) {
+              mediaRowId = row.id;
+            }
+          }
+
+          images.push({ id: mediaRowId, url: publicUrl });
         } catch (e: any) {
           errors.push(e.message ?? "storage failed");
         }

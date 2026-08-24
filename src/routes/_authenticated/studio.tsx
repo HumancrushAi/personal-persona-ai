@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { amIAdmin } from "@/lib/admin.functions";
+import { amIAdmin, adminAddCompanionMedia, adminDeleteCompanionMedia } from "@/lib/admin.functions";
 import { studioGenerate, studioClip, studioDelete, refineStudioPrompt } from "@/lib/studio.functions";
 import { checkMediaJob } from "@/lib/media.functions";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/studio")({
   ssr: false,
@@ -51,6 +53,7 @@ async function saveFile(url: string, name: string) {
 }
 
 type Shot = {
+  id?: string;
   url: string;
   clipUrl?: string;
   clipStatus?: "running" | "failed";
@@ -67,6 +70,8 @@ function StudioPage() {
   const makeClip = useServerFn(studioClip);
   const removeShot = useServerFn(studioDelete);
   const checkJob = useServerFn(checkMediaJob);
+  const deleteMedia = useServerFn(adminDeleteCompanionMedia);
+  const addMedia = useServerFn(adminAddCompanionMedia);
 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [prompt, setPrompt] = useState("");
@@ -78,7 +83,9 @@ function StudioPage() {
   const [reference, setReference] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Prompt refiner, custom video motion prompts, and gallery filter states
+  // Companion selection, prompt refiner, custom video motion prompts, and gallery filter states
+  const [selectedCompanionId, setSelectedCompanionId] = useState<string | null>(null);
+  const [loadingShots, setLoadingShots] = useState(false);
   const [refiningPrompt, setRefiningPrompt] = useState(false);
   const [animatingShotUrl, setAnimatingShotUrl] = useState<string | null>(null);
   const [motionPrompt, setMotionPrompt] = useState("");
@@ -86,11 +93,65 @@ function StudioPage() {
   const [refiningMotion, setRefiningMotion] = useState(false);
   const [galleryFilter, setGalleryFilter] = useState<"all" | "images" | "videos">("all");
 
+  const { data: companions } = useQuery({
+    queryKey: ["studio-companions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("companions")
+        .select("id, name, image_url")
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   useEffect(() => {
     checkAdmin({} as any)
       .then((r: any) => setIsAdmin(!!r?.isAdmin))
       .catch(() => setIsAdmin(false));
   }, []);
+
+  async function handleCompanionChange(companionId: string) {
+    setSelectedCompanionId(companionId || null);
+    if (!companionId) {
+      setReference(null);
+      setShots([]);
+      return;
+    }
+
+    const comp = companions?.find((c) => c.id === companionId);
+    if (comp) {
+      setReference(comp.image_url);
+    }
+
+    setLoadingShots(true);
+    try {
+      const { data, error } = await supabase
+        .from("companion_media")
+        .select("id, media_url, created_at")
+        .eq("companion_id", companionId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const loaded = (data ?? []).map((row) => {
+        const url = row.media_url;
+        const isVideo = url.endsWith(".mp4") || url.endsWith(".webm") || url.includes("video");
+        return {
+          id: row.id,
+          url: isVideo ? "" : url,
+          clipUrl: isVideo ? url : undefined,
+          prompt: "",
+          reference: comp?.image_url || null,
+        };
+      });
+      setShots(loaded);
+    } catch (e: any) {
+      toast.error("Failed to load saved images: " + e.message);
+    } finally {
+      setLoadingShots(false);
+    }
+  }
 
   async function handleRefinePrompt() {
     const p = prompt.trim();
@@ -138,10 +199,20 @@ function StudioPage() {
     setBusy(true);
     try {
       const res: any = await generate({
-        data: { prompt: p, count, referenceUrl: reference ?? undefined },
+        data: {
+          prompt: p,
+          count,
+          referenceUrl: reference ?? undefined,
+          companionId: selectedCompanionId ?? undefined,
+        },
       });
       setShots((prev) => [
-        ...res.images.map((url: string) => ({ url, prompt: p, reference })),
+        ...res.images.map((img: { id?: string; url: string }) => ({
+          id: img.id,
+          url: img.url,
+          prompt: p,
+          reference,
+        })),
         ...prev,
       ]);
       if (res.errors?.length) toast.warning(`${res.errors.length} of ${count} failed`);
@@ -166,9 +237,26 @@ function StudioPage() {
           continue;
         }
         if (j?.status === "completed" && j.mediaUrl) {
+          let dbId = undefined;
+          if (selectedCompanionId) {
+            try {
+              const addRes = await addMedia({
+                data: {
+                  companionId: selectedCompanionId,
+                  mediaUrl: j.mediaUrl,
+                },
+              });
+              dbId = addRes.id;
+            } catch (err: any) {
+              toast.error("Failed to save video to database: " + err.message);
+            }
+          }
+
           setShots((prev) =>
             prev.map((s) =>
-              s.url === shot.url ? { ...s, clipUrl: j.mediaUrl, clipStatus: undefined } : s,
+              s.url === shot.url
+                ? { ...s, clipUrl: j.mediaUrl, clipStatus: undefined, id: dbId || s.id }
+                : s,
             ),
           );
           return;
@@ -222,35 +310,61 @@ function StudioPage() {
   }
 
   async function regenerate(shot: Shot) {
-    setShots((prev) => prev.map((s) => (s.url === shot.url ? { ...s, busy: "regen" } : s)));
+    setShots((prev) => prev.map((s) => (s.url === shot.url && s.clipUrl === shot.clipUrl ? { ...s, busy: "regen" } : s)));
     try {
       const res: any = await generate({
-        data: { prompt: shot.prompt, count: 1, referenceUrl: shot.reference ?? undefined },
+        data: {
+          prompt: shot.prompt || prompt || "same model",
+          count: 1,
+          referenceUrl: shot.reference ?? undefined,
+          companionId: selectedCompanionId ?? undefined,
+        },
       });
-      const url = res.images?.[0];
-      if (!url) throw new Error("No image returned");
+      const img = res.images?.[0];
+      if (!img) throw new Error("No image returned");
+
       // Swap in place so the grid keeps its order while you iterate on one shot.
       setShots((prev) =>
         prev.map((s) =>
-          s.url === shot.url ? { url, prompt: shot.prompt, reference: shot.reference } : s,
+          s.url === shot.url && s.clipUrl === shot.clipUrl
+            ? { id: img.id, url: img.url, prompt: shot.prompt, reference: shot.reference }
+            : s,
         ),
       );
-      // The replaced file is no longer referenced, so don't leave it in storage.
-      removeShot({ data: { url: shot.url } }).catch(() => {});
+
+      // Replaced files are no longer referenced, so don't leave them in storage or db
+      if (shot.id) {
+        await deleteMedia({ data: { id: shot.id } }).catch(() => {});
+      }
+      if (shot.url) {
+        removeShot({ data: { url: shot.url } }).catch(() => {});
+      }
+      if (shot.clipUrl) {
+        removeShot({ data: { url: shot.clipUrl } }).catch(() => {});
+      }
     } catch (e: any) {
-      setShots((prev) => prev.map((s) => (s.url === shot.url ? { ...s, busy: undefined } : s)));
+      setShots((prev) => prev.map((s) => (s.url === shot.url && s.clipUrl === shot.clipUrl ? { ...s, busy: undefined } : s)));
       toast.error(e?.message ?? "Regenerate failed");
     }
   }
 
   async function discard(shot: Shot) {
-    setShots((prev) => prev.map((s) => (s.url === shot.url ? { ...s, busy: "delete" } : s)));
+    setShots((prev) => prev.map((s) => (s.url === shot.url && s.clipUrl === shot.clipUrl ? { ...s, busy: "delete" } : s)));
     try {
-      await removeShot({ data: { url: shot.url } });
-      setShots((prev) => prev.filter((s) => s.url !== shot.url));
+      if (shot.id) {
+        await deleteMedia({ data: { id: shot.id } });
+      }
+      if (shot.url) {
+        await removeShot({ data: { url: shot.url } }).catch(() => {});
+      }
+      if (shot.clipUrl) {
+        await removeShot({ data: { url: shot.clipUrl } }).catch(() => {});
+      }
+      setShots((prev) => prev.filter((s) => !(s.url === shot.url && s.clipUrl === shot.clipUrl)));
       if (reference === shot.url) setReference(null);
+      toast.success("Deleted successfully");
     } catch (e: any) {
-      setShots((prev) => prev.map((s) => (s.url === shot.url ? { ...s, busy: undefined } : s)));
+      setShots((prev) => prev.map((s) => (s.url === shot.url && s.clipUrl === shot.clipUrl ? { ...s, busy: undefined } : s)));
       toast.error(e?.message ?? "Delete failed");
     }
   }
@@ -282,6 +396,35 @@ function StudioPage() {
               Clothed promo images and short clips for social pages and funnels.
             </p>
           </div>
+        </div>
+
+        {/* Companion / persona selector */}
+        <div className="mb-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+          <label className="mb-2 block text-xs font-semibold text-white/70">
+            Select Model / Persona
+          </label>
+          <select
+            value={selectedCompanionId ?? ""}
+            onChange={(e) => handleCompanionChange(e.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none focus:border-primary/50"
+          >
+            <option value="">— No persona (freeform) —</option>
+            {companions?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {selectedCompanionId && (
+            <p className="mt-2 text-[10px] text-primary/80">
+              ✓ Images will be saved to this persona's gallery. Her face is locked as the reference.
+            </p>
+          )}
+          {loadingShots && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Loading saved images…
+            </div>
+          )}
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/5 p-4">

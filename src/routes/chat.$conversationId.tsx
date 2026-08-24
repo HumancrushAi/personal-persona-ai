@@ -217,7 +217,7 @@ function ChatPage() {
     }));
 
   const allMessages = [...(messages ?? []), ...pendingMessages, ...localPendingMessages].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
   );
 
   const messageIds = allMessages.map((m) => m.id).join(",");

@@ -352,27 +352,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* CATEGORIES */}
-      <section className="mx-auto mt-4 max-w-7xl px-4 md:px-6">
-        {/* Wraps instead of scrolling sideways: half the filters used to sit
-            off-screen, so you had to swipe the row to discover that "Ebony" or
-            "Middle Eastern" existed at all. They all fit on two lines. */}
-        <div className="flex flex-wrap gap-2 pb-1">
-          {visibleCategories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCat(cat)}
-              className={`min-h-11 shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition ${
-                activeCat === cat
-                  ? "border-primary/60 bg-grad-primary text-primary-foreground shadow-glow"
-                  : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </section>
+
 
       {/* LIVE NOW — real models; the image IS who you chat with */}
       <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
@@ -386,7 +366,7 @@ function Landing() {
           }
         />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {searchedCompanions.slice(0, 14).map((c) => {
+          {(companions ?? []).slice(0, 14).map((c) => {
             const reel = getEffectiveCompanionReel(c);
             return (
               <button
@@ -430,16 +410,9 @@ function Landing() {
 
       {/* TRENDING (big grid) */}
       <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
-        <SectionTitle
-          title="✨ Trending crushes"
-          subtitle={
-            activeCat === "For you"
-              ? "tap anyone — they message you first"
-              : `showing ${filtered.length} in ${activeCat}`
-          }
-        />
+        <SectionTitle title="✨ Trending crushes" subtitle="tap anyone — they message you first" />
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {filtered.map((c) => (
+          {(companions ?? []).map((c) => (
             <button
               key={c.id}
               onClick={() => setTease(c)}

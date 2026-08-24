@@ -218,9 +218,18 @@ function Landing() {
 
   const bannerSlides = useMemo(() => {
     if (!companions || companions.length === 0) return [];
-    // Feature the actual top companions directly from the roster
-    const featured = companions.slice(0, 6);
-    return featured.map((c) => {
+    // Curate a vibrant mix of top female & male companions so both men and women models appear
+    const females = companions.filter((c) => !c.gender.includes("male") || c.gender.includes("trans-female"));
+    const males = companions.filter((c) => c.gender.includes("male") && !c.gender.includes("trans-female"));
+
+    const selected: Companion[] = [];
+    const maxLen = Math.max(females.length, males.length);
+    for (let i = 0; i < maxLen && selected.length < 8; i++) {
+      if (females[i]) selected.push(females[i]);
+      if (males[i]) selected.push(males[i]);
+    }
+
+    return selected.map((c) => {
       const reel = companionReelUrl(c.id) || getCompanionReel(c.name);
       return {
         reel: reel ?? "",
@@ -1013,17 +1022,17 @@ function BannerSlider({
             className="group relative block h-full w-full shrink-0 overflow-hidden bg-neutral-950 text-left"
             aria-label={s.companion ? `Chat with ${s.companion.name}` : s.title}
           >
-            {/* Ambient blurred backdrop so wide screens have rich atmosphere */}
+            {/* Ambient blurred backdrop so wide screens have rich, warm atmosphere */}
             {s.companion ? (
               <img
                 src={companionImage(s.companion.image_url)}
                 alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-3xl opacity-35 scale-125"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-2xl opacity-60 scale-110"
               />
             ) : null}
 
-            {/* Main media — object-contain ensures 100% of head and body is visible */}
-            {i === idx ? (
+            {/* Main media — object-contain ensures 100% of head and body is visible without cutoffs */}
+            {i === idx && s.reel ? (
               <video
                 key={s.reel}
                 src={s.reel}
@@ -1043,7 +1052,7 @@ function BannerSlider({
               <img
                 src={companionImage(s.companion.image_url)}
                 alt=""
-                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain brightness-[0.7] transition-all"
+                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain animate-live transition-all"
               />
             ) : (
               <div className="absolute inset-0 bg-neutral-950" />

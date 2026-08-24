@@ -783,9 +783,9 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
 
   return (
     <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/85 backdrop-blur-xl md:items-center md:p-6">
-      <div className="relative flex h-[94vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-card shadow-glow md:h-[680px] md:rounded-3xl">
-        {/* Live Model Stage (Candy.ai style) */}
-        <div className="relative h-44 w-full shrink-0 overflow-hidden bg-neutral-950 border-b border-white/10">
+      <div className="relative flex h-[96vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-card shadow-glow md:h-[720px] md:rounded-3xl">
+        {/* Large Immersive Live Model Stage (Candy.ai style) */}
+        <div className="relative h-[340px] md:h-[380px] w-full shrink-0 overflow-hidden bg-neutral-950 border-b border-white/10">
           {/* Ambient blur */}
           <img
             src={companionImage(companion.image_url)}
@@ -802,20 +802,20 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
               playsInline
               onError={() => setReelFailed(true)}
               poster={companionImage(companion.image_url)}
-              className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+              className="relative z-[1] mx-auto h-full w-full object-cover object-[center_15%] animate-live"
             />
           ) : (
             <img
               src={companionImage(companion.image_url)}
               alt={companion.name}
-              className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+              className="relative z-[1] mx-auto h-full w-full object-cover object-[center_15%] animate-live"
             />
           )}
-          <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/30 to-black/40" />
+          <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/35" />
 
           {/* Header controls over stage */}
-          <div className="absolute inset-x-0 top-0 z-[3] flex items-center justify-between p-3">
-            <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 backdrop-blur border border-white/10">
+          <div className="absolute inset-x-0 top-0 z-[3] flex items-center justify-between p-3.5">
+            <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur border border-white/15 shadow-md">
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 uppercase tracking-wider">
                 <Circle className="h-1.5 w-1.5 fill-red-500 text-red-500 animate-pulse" /> LIVE
               </span>
@@ -825,27 +825,51 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
             </div>
             <button
               onClick={onClose}
-              className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80 backdrop-blur border border-white/10"
+              className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80 backdrop-blur border border-white/15 shadow-md transition"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Status badge over stage */}
-          <div className="absolute inset-x-0 bottom-2 z-[3] px-3 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[11px] text-white/90 font-medium bg-black/60 px-2.5 py-0.5 rounded-full backdrop-blur border border-white/10">
+          {/* Status and Action badges over stage */}
+          <div className="absolute inset-x-0 bottom-3 z-[3] px-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs text-white font-medium bg-black/65 px-3 py-1 rounded-full backdrop-blur border border-white/15 shadow-sm">
               {typing ? (
-                <span className="text-primary flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 animate-spin" /> Typing for you…
+                <span className="text-primary flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 animate-spin" /> Typing for you…
                 </span>
               ) : (
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
+                <span className="text-emerald-400 flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-white/70 font-medium">{companion.ethnicity}</span>
+            <span className="text-[11px] text-white/80 font-medium bg-black/50 px-2.5 py-1 rounded-full backdrop-blur border border-white/10">
+              {companion.ethnicity}
+            </span>
           </div>
+        </div>
+
+        {/* Quick Action Suggestion Chips (Candy.ai style) */}
+        <div className="flex gap-2 overflow-x-auto px-3 py-2 border-b border-white/5 bg-background/40 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0">
+          {[
+            { label: "📸 Send a selfie", text: "Can you send me a cute selfie?" },
+            { label: "🎙️ Voice note", text: "Send me a voice message 💋" },
+            { label: "🔥 What are you wearing?", text: "What are you wearing right now?" },
+            { label: "✨ Tell me a secret", text: "Tell me something you haven't told anyone..." },
+          ].map((chip) => (
+            <button
+              key={chip.label}
+              type="button"
+              onClick={() => {
+                setInput(chip.text);
+                setTimeout(() => inputRef.current?.focus(), 50);
+              }}
+              className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/85 hover:bg-white/10 hover:border-primary/40 transition active:scale-95"
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
 
         {/* Messages */}
@@ -853,15 +877,15 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
           <div className="mx-auto max-w-[80%] rounded-full bg-white/5 px-3 py-1 text-center text-[10px] text-muted-foreground">
             Today
           </div>
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2.5">
             <img
               src={companionImage(companion.image_url)}
-              className="h-7 w-7 rounded-full object-cover object-top"
+              className="h-8 w-8 rounded-full object-cover object-[center_15%] ring-1 ring-primary/40 shadow-sm"
               alt=""
             />
             {typing ? (
-              <div className="rounded-2xl rounded-bl-sm bg-white/8 px-4 py-3">
-                <div className="flex gap-1">
+              <div className="rounded-2xl rounded-bl-sm border border-white/10 bg-white/8 px-4 py-3">
+                <div className="flex gap-1.5">
                   <Dot />
                   <Dot delay={0.15} />
                   <Dot delay={0.3} />
@@ -869,7 +893,7 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
               </div>
             ) : (
               showMsg && (
-                <div className="max-w-[78%] rounded-2xl rounded-bl-sm bg-white/8 px-4 py-2.5 text-sm">
+                <div className="max-w-[82%] rounded-2xl rounded-bl-sm border border-white/10 bg-white/10 px-4 py-3 text-sm text-white shadow-sm leading-relaxed">
                   {opener(companion.name, companion.id)}
                 </div>
               )
@@ -878,25 +902,25 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
         </div>
 
         {/* Composer */}
-        <div className="border-t border-white/10 bg-background/70 p-3 backdrop-blur">
+        <div className="border-t border-white/10 bg-background/80 p-3 backdrop-blur shrink-0">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               triggerGate();
             }}
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1.5"
+            className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 focus-within:border-primary/60 transition shadow-inner"
           >
             <Input
               ref={inputRef}
               value={input}
               onChange={(e) => onChange(e.target.value)}
               placeholder={`Message ${companion.name}…`}
-              className="h-9 flex-1 border-0 bg-transparent text-sm focus-visible:ring-0"
+              className="h-9 flex-1 border-0 bg-transparent text-sm focus-visible:ring-0 placeholder:text-white/40"
             />
             <Button
               type="submit"
               size="icon"
-              className="h-9 w-9 rounded-full bg-grad-primary text-primary-foreground"
+              className="h-9 w-9 rounded-full bg-grad-primary text-primary-foreground shadow-glow hover:scale-105 active:scale-95 transition"
             >
               <Send className="h-4 w-4" />
             </Button>

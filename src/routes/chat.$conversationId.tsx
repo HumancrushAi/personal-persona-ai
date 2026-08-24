@@ -633,7 +633,7 @@ function ChatPage() {
 
         {/* Mobile Live Face & Reaction Stage (Candy.ai style) */}
         <div className="relative mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-md md:hidden shrink-0">
-          <div className="relative h-32 w-full overflow-hidden">
+          <div className="relative h-44 sm:h-52 w-full overflow-hidden">
             {p?.companions?.image_url && (
               <img
                 src={companionImage(p.companions.image_url)}
@@ -661,18 +661,18 @@ function ChatPage() {
             ) : null}
             <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/25" />
             <div className="absolute inset-x-0 bottom-2 z-[3] px-3 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-[11px] text-white font-medium bg-black/60 px-2.5 py-0.5 rounded-full backdrop-blur border border-white/10">
+              <div className="flex items-center gap-1.5 text-xs text-white font-medium bg-black/65 px-3 py-1 rounded-full backdrop-blur border border-white/15 shadow-sm">
                 {isBusy ? (
                   <span className="text-primary flex items-center gap-1">
                     <Sparkles className="h-3 w-3 animate-spin" /> Typing a message…
                   </span>
                 ) : (
                   <span className="text-emerald-400 flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
                   </span>
                 )}
               </div>
-              <span className="text-[10px] text-white/80 font-medium bg-black/50 px-2 py-0.5 rounded-full backdrop-blur border border-white/10">
+              <span className="text-[10px] text-white/80 font-medium bg-black/50 px-2.5 py-1 rounded-full backdrop-blur border border-white/10">
                 <Circle className="inline h-1.5 w-1.5 fill-red-500 text-red-500 mr-1" /> Live
               </span>
             </div>

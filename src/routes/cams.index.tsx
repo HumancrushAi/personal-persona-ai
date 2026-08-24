@@ -67,48 +67,55 @@ function CamsPage() {
 }
 
 function CamCard({ c }: { c: any }) {
-  const [hovered, setHovered] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [reelFailed, setReelFailed] = useState(false);
-  const reel = reelFailed ? getCompanionReel(c.name) : getEffectiveCompanionReel(c);
+  const reel = !reelFailed ? getEffectiveCompanionReel(c) : null;
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (hovered && reel) {
-      videoRef.current?.play().catch(() => {});
-    } else {
-      videoRef.current?.pause();
-      if (videoRef.current) videoRef.current.currentTime = 0;
-    }
-  }, [hovered, reel]);
+    const video = videoRef.current;
+    if (!video || !reel) return;
+    video.muted = true;
+    video.playsInline = true;
+    video.loop = true;
+    video.play().catch(() => {});
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) video.play().catch(() => {});
+        });
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [reel]);
 
   return (
     <Link
       to="/cams/$id"
       params={{ id: c.id }}
-      onMouseEnter={() => reel && setHovered(true)}
-      onMouseLeave={() => reel && setHovered(false)}
       className="group relative aspect-[2/3] overflow-hidden rounded-3xl border border-white/10 bg-card shadow-md transition hover:shadow-glow"
     >
-      <img
-        src={companionImage(c.image_url)}
-        alt={c.name}
-        loading="lazy"
-        className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-300 ${
-          hovered && reel ? "opacity-0" : "opacity-100 animate-live"
-        }`}
-      />
-      {reel && (
+      {reel ? (
         <video
           ref={videoRef}
           src={reel}
+          autoPlay
           muted
           loop
           playsInline
-          preload="none"
+          preload="auto"
           onError={() => setReelFailed(true)}
-          className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-300 ${
-            hovered ? "opacity-100" : "opacity-0"
-          }`}
+          poster={companionImage(c.image_url)}
+          className="absolute inset-0 h-full w-full object-cover object-top animate-live"
+        />
+      ) : (
+        <img
+          src={companionImage(c.image_url)}
+          alt={c.name}
+          loading="lazy"
+          className="animate-live absolute inset-0 h-full w-full object-cover object-top"
         />
       )}
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">

@@ -958,7 +958,16 @@ function AutoPlayVideo({
     video.loop = true;
 
     const playVideo = () => {
-      video.play().catch(() => {});
+      const p = video.play();
+      if (p !== undefined) {
+        p.catch(() => {
+          const enablePlay = () => {
+            video.play().catch(() => {});
+          };
+          window.addEventListener("touchstart", enablePlay, { once: true });
+          window.addEventListener("click", enablePlay, { once: true });
+        });
+      }
     };
 
     playVideo();
@@ -971,7 +980,7 @@ function AutoPlayVideo({
           }
         });
       },
-      { threshold: 0.05 }
+      { threshold: 0.01 }
     );
 
     observer.observe(video);
@@ -990,7 +999,6 @@ function AutoPlayVideo({
       loop
       playsInline
       preload="auto"
-      poster={poster}
       onError={onError}
       onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
       onCanPlay={(e) => e.currentTarget.play().catch(() => {})}

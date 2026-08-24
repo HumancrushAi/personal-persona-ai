@@ -56,12 +56,33 @@ if (!process.env.RUNPOD_API_KEY || !endpoint) {
 const db = createClient(url, serviceKey, { auth: { persistSession: false } });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// Idle, loopable motion. No explicit content: these clips play on the public
-// cams grid, so they match the clothed portraits they're generated from.
-const MOTION =
-  "she breathes softly and shifts her weight, small natural head movement, blinking, a slight smile, looking at the camera, subtle idle motion, seamless loop";
+function motionForCompanion(c: { name: string; gender: string; short_bio?: string }): string {
+  const g = (c.gender || "").toLowerCase();
+  const pronoun = g.includes("male") && !g.includes("trans-female") ? "he" : "she";
+  const posPronoun = pronoun === "he" ? "his" : "her";
+
+  const MOTIONS = [
+    // Pool / Swimming
+    `${pronoun} rests by the crystal clear swimming pool water with light water ripples, gentle head turns, blinking, and a radiant charming smile at the camera, natural loop`,
+    // Dancing / Music vibes
+    `${pronoun} sways gently and dances rhythmically to music, moving shoulders with playful laughing expression, blinking naturally, looking at the camera, smooth loop`,
+    // Cafe / Lounge
+    `${pronoun} sits relaxed at a modern lounge, leaning forward slightly, smiling warmly and making flirty eye contact with the camera, natural idle motion`,
+    // Beach / Golden hour
+    `${pronoun} turns gently in the soft warm ocean breeze, hair shifting softly, blinking and laughing with genuine warmth at the lens, seamless loop`,
+    // Sun lounger / Relaxation
+    `${pronoun} relaxes on a luxury lounge chair, resting comfortably, turning head to smile warmly with captivating eye contact, natural breathing`,
+    // Playful / Flirty
+    `${pronoun} smiles playfully, adjusting ${posPronoun} hair with natural hand and head movement, blinking gently and making seductive eye contact, seamless video loop`,
+  ];
+
+  let seed = 0;
+  for (let i = 0; i < c.name.length; i++) seed = (seed * 31 + c.name.charCodeAt(i)) >>> 0;
+  return MOTIONS[seed % MOTIONS.length];
+}
+
 const NEGATIVE =
-  "blurry, low quality, deformed, extra limbs, watermark, text, static, still, frozen, no movement, bad anatomy, cartoon, nudity, naked, topless";
+  "blurry, low quality, deformed, extra limbs, watermark, text, static, still, frozen, no movement, bad anatomy, cartoon, anime, 3d render, nudity, naked, topless";
 
 // The video endpoint returns a 640x640 square, and it gets there by centre-
 // cropping whatever you send it — feeding it the 768x1024 portrait directly
@@ -192,7 +213,7 @@ async function main() {
             frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
             num_scenes: 1,
             sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
-            prompts: [MOTION],
+            prompts: [motionForCompanion(c)],
             negative_prompt: NEGATIVE,
           }),
         "submit",

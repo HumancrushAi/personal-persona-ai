@@ -153,7 +153,7 @@ export async function refineMediaPrompt(
   // Attempt using Grok first if the key is available
   if (key) {
     const abort = new AbortController();
-    const timer = setTimeout(() => abort.abort(), 20_000);
+    const timer = setTimeout(() => abort.abort(), 60_000);
 
     try {
       const res = await fetch(XAI_URL, {
@@ -233,44 +233,98 @@ Output only the prompt, 90-150 words. No preamble, no quotes, no explanation.`;
 const PROMO_WITH_REFERENCE = `
 The subject's face, hair and body come from a reference image that will be supplied. Do NOT invent or describe her hair colour, hair length, eye colour, skin tone or build — say "the same woman as the reference image, identical face and hair" instead, and spend the words on wardrobe, pose, setting, light and camera.`;
 
-// Same refiner, promo rules. Falls back to the caller's own text on any failure.
-export async function refinePromoPrompt(
+async function refinePromoWithOpenRouter(
   description: string,
   hasReference = false,
 ): Promise<string | null> {
-  const key = process.env.XAI_API_KEY;
-  const req = (description ?? "").trim();
-  if (!key || !req) return null;
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return null;
 
+  const model = process.env.OPENROUTER_MODEL || "sao10k/l3.1-euryale-70b";
   const abort = new AbortController();
-  const timer = setTimeout(() => abort.abort(), 20_000);
+  const timer = setTimeout(() => abort.abort(), 30_000);
+
   try {
-    const res = await fetch(XAI_URL, {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
       signal: abort.signal,
       body: JSON.stringify({
-        model: process.env.XAI_MODEL || "grok-4.6",
+        model,
         temperature: 0.8,
-        max_tokens: 500,
         messages: [
           {
             role: "system",
             content: hasReference ? PROMO_SYSTEM + PROMO_WITH_REFERENCE : PROMO_SYSTEM,
           },
-          { role: "user", content: req },
+          { role: "user", content: description },
         ],
       }),
     });
     if (!res.ok) return null;
+
     const json = await res.json();
     const out = (json.choices?.[0]?.message?.content ?? "").trim();
     if (out.length < 60) return null;
     if (/^(i (can'?t|cannot|won'?t)|i'm sorry|as an ai|sorry,)/i.test(out)) return null;
+
     return out;
   } catch {
     return null;
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Same refiner, promo rules. Falls back to OpenRouter or user's text on any failure.
+export async function refinePromoPrompt(
+  description: string,
+  hasReference = false,
+): Promise<string | null> {
+  const key = process.env.XAI_API_KEY;
+  const req = (description ?? "").trim();
+  if (!req) return null;
+
+  // Attempt using Grok first if the key is available
+  if (key) {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 60_000);
+    try {
+      const res = await fetch(XAI_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        signal: abort.signal,
+        body: JSON.stringify({
+          model: process.env.XAI_MODEL || "grok-4.6",
+          temperature: 0.8,
+          max_tokens: 500,
+          messages: [
+            {
+              role: "system",
+              content: hasReference ? PROMO_SYSTEM + PROMO_WITH_REFERENCE : PROMO_SYSTEM,
+            },
+            { role: "user", content: req },
+          ],
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const out = (json.choices?.[0]?.message?.content ?? "").trim();
+        if (out.length >= 60 && !/^(i (can'?t|cannot|won'?t)|i'm sorry|as an ai|sorry,)/i.test(out)) {
+          clearTimeout(timer);
+          return out;
+        }
+      }
+    } catch {
+      // Ignored: proceed to OpenRouter fallback
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // Fallback to OpenRouter (uncensored model) if Grok is not configured or failed/timed out
+  return refinePromoWithOpenRouter(req, hasReference);
 }

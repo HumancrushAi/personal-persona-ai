@@ -29,32 +29,54 @@ import { FAQSection } from "@/components/FAQSection";
 // and girls. gender = who's in the clip, so the CTA opens a gender-matched model.
 const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
 const reelUrlHelper = (name: string) => `${REEL_BASE}/${name}.mp4`;
-const BANNERS: { reel: string; title: string; sub: string; gender: "m" | "f" }[] = [
+const BANNERS: { reel?: string; title: string; sub: string; gender: "m" | "f"; name: string }[] = [
+  {
+    name: "Raven",
+    title: "Dark poetry",
+    sub: "alt goth babe · vinyl & midnight chats 🖤",
+    gender: "f",
+  },
   {
     reel: reelUrlHelper("r10"),
+    name: "Kaito",
     title: "Pool side",
     sub: "stylish vibes · always online 🔥",
     gender: "m",
   },
   {
+    name: "Vesper",
+    title: "Neon nights",
+    sub: "mysterious goth artist · industrial beats 💋",
+    gender: "f",
+  },
+  {
     reel: reelUrlHelper("r1"),
+    name: "Sofia",
     title: "After hours",
     sub: "still up… thinking about you 😏",
     gender: "f",
   },
   {
     reel: reelUrlHelper("r11"),
+    name: "Akira",
     title: "Beach stroll",
     sub: "sunset stroll · golden hour vibes",
     gender: "m",
   },
   {
     reel: reelUrlHelper("r8"),
+    name: "Aria",
     title: "Morning coffee",
     sub: "cozy vibes · soft smiles 💋",
     gender: "f",
   },
-  { reel: reelUrlHelper("r3"), title: "Sunset vibes", sub: "wish you were here 🌅", gender: "f" },
+  {
+    reel: reelUrlHelper("r3"),
+    name: "Priya",
+    title: "Sunset vibes",
+    sub: "wish you were here 🌅",
+    gender: "f",
+  },
 ];
 
 export const Route = createFileRoute("/")({
@@ -91,6 +113,7 @@ type Companion = {
 
 const CATEGORIES = [
   "For you",
+  "Goth",
   "New",
   "Trending",
   "Women",
@@ -113,6 +136,12 @@ function matchesCategory(c: Companion, cat: Cat): boolean {
     case "New":
     case "Trending":
       return true;
+    case "Goth":
+      return (
+        /goth|alt|dark|punk/i.test(c.short_bio) ||
+        /goth|alt|dark|punk/i.test(c.ethnicity) ||
+        ["raven", "vesper", "jade", "nyx"].includes(c.name.toLowerCase())
+      );
     case "Women":
       return c.gender === "female" || c.gender === "trans-female";
     case "Men":
@@ -230,11 +259,10 @@ function Landing() {
   const bannerSlides = useMemo(() => {
     if (!companions || companions.length === 0) return [];
     return BANNERS.map((b) => {
-      const filename = b.reel.split("/").pop()?.replace(".mp4", "") || "";
-      const comp = pickCompanion(filename, b.gender);
-      // For male companions (Kaito & Akira), getEffectiveCompanionReel enforces the original stock male videos.
-      // For female companions, it uses their portrait-generated clip or showcase video.
-      const reel = comp ? (getEffectiveCompanionReel(comp) || b.reel) : b.reel;
+      const comp = b.name
+        ? companions.find((c) => c.name.toLowerCase() === b.name.toLowerCase()) || pickCompanion(b.name, b.gender)
+        : pickCompanion("", b.gender);
+      const reel = comp ? (getEffectiveCompanionReel(comp) || b.reel || "") : (b.reel || "");
       return {
         reel,
         title: comp ? `${comp.name}, ${comp.age}` : b.title,

@@ -547,16 +547,9 @@ function ChatPage() {
             gender: (p?.companions as any)?.gender,
           });
           return reelUrl ? (
-            <video
+            <AutoPlayVideo
               key={p.companion_id}
               src={reelUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
-              onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
               poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
               className="relative z-[1] h-full w-full object-contain object-top animate-live"
             />
@@ -659,16 +652,9 @@ function ChatPage() {
                 gender: (p?.companions as any)?.gender,
               });
               return reelUrl ? (
-                <video
+                <AutoPlayVideo
                   key={p.companion_id}
                   src={reelUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
-                  onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
                   poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
                   className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
                 />
@@ -947,5 +933,68 @@ function ChatPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function AutoPlayVideo({
+  src,
+  poster,
+  className,
+  onError,
+}: {
+  src: string;
+  poster?: string;
+  className?: string;
+  onError?: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = true;
+    video.playsInline = true;
+    video.loop = true;
+
+    const playVideo = () => {
+      video.play().catch(() => {});
+    };
+
+    playVideo();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            playVideo();
+          }
+        });
+      },
+      { threshold: 0.05 }
+    );
+
+    observer.observe(video);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [src]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      poster={poster}
+      onError={onError}
+      onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
+      onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
+      className={className}
+    />
   );
 }

@@ -404,16 +404,9 @@ function Landing() {
                 className="group relative h-[340px] w-[200px] shrink-0 snap-start overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-left shadow-md transition hover:shadow-glow md:h-[400px] md:w-[240px]"
               >
                 {reel ? (
-                  <video
+                  <AutoPlayVideo
                     key={reel}
                     src={reel}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="auto"
-                    onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
-                    onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
                     poster={companionImage(c.image_url)}
                     className="absolute inset-0 h-full w-full object-cover object-top animate-live"
                   />
@@ -797,18 +790,11 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
             className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-2xl opacity-40 scale-110"
           />
           {reel ? (
-            <video
+            <AutoPlayVideo
               key={reel}
               src={reel}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
-              onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
-              onError={() => setReelFailed(true)}
               poster={companionImage(companion.image_url)}
+              onError={() => setReelFailed(true)}
               className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
             />
           ) : (
@@ -937,6 +923,69 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
         {gate && <SignupGate companion={companion} onClose={() => setGate(false)} />}
       </div>
     </div>
+  );
+}
+
+function AutoPlayVideo({
+  src,
+  poster,
+  className,
+  onError,
+}: {
+  src: string;
+  poster?: string;
+  className?: string;
+  onError?: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = true;
+    video.playsInline = true;
+    video.loop = true;
+
+    const playVideo = () => {
+      video.play().catch(() => {});
+    };
+
+    playVideo();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            playVideo();
+          }
+        });
+      },
+      { threshold: 0.05 }
+    );
+
+    observer.observe(video);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [src]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      poster={poster}
+      onError={onError}
+      onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
+      onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
+      className={className}
+    />
   );
 }
 

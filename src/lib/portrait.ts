@@ -47,57 +47,63 @@ const COLORS = [
 ] as const;
 
 const FEM_GARMENTS = [
-  "a lace bra and matching panties",
-  "a silk chemise slip",
-  "a tight ribbed crop top and micro shorts",
-  "a bodycon mini dress",
-  "a sheer mesh babydoll over a bikini set",
-  "a satin robe worn open over a bralette",
-  "a strappy bodysuit",
-  "a triangle bikini top and high-cut bottoms",
+  "a stylish designer one-piece swimsuit with elegant cutouts",
+  "a silk chemise slip with delicate lace trim",
+  "a tight ribbed summer crop top and high-waisted shorts",
+  "a chic bodycon mini dress",
+  "a light linen shirt worn casually unbuttoned over a stylish bikini",
+  "a strappy satin camisole and soft loungewear",
+  "a triangle bikini top and high-cut bottoms by the water",
 ] as const;
 
 const MASC_GARMENTS = [
-  "an open unbuttoned shirt over a fitted tank top",
-  "a tight ribbed tank top and low-slung jeans",
-  "an unzipped hoodie over a bare-armed tee",
-  "a fitted henley with the sleeves pushed up",
-  "a cropped muscle tee and joggers",
+  "stylish swim trunks by the poolside with water droplets on shoulders",
+  "an open linen summer shirt over a fitted tank top and tailored shorts",
+  "a fitted dark henley shirt with sleeves casually rolled up",
+  "a relaxed open button-up shirt and swim shorts at the beach",
+  "a fitted ribbed tank top and jeans, athletic build",
 ] as const;
 
 const ENBY_GARMENTS = [
   "a cropped tank top and high-waisted shorts",
-  "an oversized mesh top over a fitted bralette",
-  "a cropped hoodie and bike shorts",
-  "a sleeveless bodysuit",
+  "an oversized linen summer shirt over a fitted tank",
+  "a cropped hoodie and summer shorts",
+  "a stylish sleeveless summer bodysuit",
+] as const;
+
+const CAMERA_ANGLES = [
+  "cinematic medium shot, eye-level candid framing, creamy shallow depth of field",
+  "three-quarter body portrait, natural perspective, soft directional sunlight",
+  "candid dynamic shot, slightly low angle capturing full posture and natural movement",
+  "intimate medium shot, beautiful natural perspective, crisp 85mm portraiture",
+  "environmental candid portrait, relaxed framing, authentic real-world perspective",
 ] as const;
 
 const POSES = [
-  "sitting on the edge of a bed leaning back on both hands",
-  "standing and glancing back over one shoulder",
-  "lying on their front propped up on their elbows",
-  "leaning against a doorframe with hips angled",
-  "kneeling upright on soft bedding",
-  "sitting cross-legged facing the camera",
-  "half-turned in profile looking back at the lens",
-  "standing with one hand in their hair",
+  "resting arms along the edge of a crystal clear swimming pool with wet glistening skin and water droplets",
+  "relaxing on a luxury sun lounger by the pool, smiling warmly at the camera",
+  "walking along the sandy beach at golden hour with hair gently caught in the sea breeze",
+  "sitting at a stylish outdoor cafe table, resting chin on hand with a playful captivating smile",
+  "sitting on the edge of a bed leaning back on both hands with natural posture",
+  "standing by a sunlit floor-to-ceiling balcony window glancing back over one shoulder",
+  "leaning against a modern terrace railing with city lights glowing in the soft dusk background",
+  "kneeling casually on a plush lounge sofa with a radiant, inviting expression",
+  "half-turned in profile looking back at the lens with authentic candid chemistry",
+  "sitting relaxed with one arm resting over the back of a sun lounger",
 ] as const;
 
 const SETTINGS = [
-  "a warmly lit bedroom",
-  "a sunlit apartment window",
-  "a dim room with neon accent lighting",
-  "a hotel suite at golden hour",
-  "a bathroom mirror with soft vanity lights",
-  "a balcony at dusk with city lights behind",
-  "a cosy living room lit by lamplight",
+  "a sparkling infinity swimming pool overlooking the ocean at golden hour",
+  "a sun-drenched Mediterranean resort patio with turquoise water in the background",
+  "a sunlit luxury modern apartment with large floor-to-ceiling windows",
+  "a warm tropical beach with golden sunlight and gentle ocean waves",
+  "a dimly lit upscale penthouse lounge with soft ambient glow and city skyline",
+  "a cozy sunlit boutique hotel suite with warm wooden tones and linen",
+  "a chic outdoor cafe terrace in the late afternoon sun",
+  "a luxury private villa terrace overlooking lush gardens and pool",
 ] as const;
 
-// Wardrobe for public-facing portraits: revealing, never bare — and gendered,
-// because "lingerie, mini dress" on a male companion is nonsense. Returned as
-// booru-style TAGS placed near the front of the prompt: Pony weights early
-// tokens hardest, and the same direction written as trailing prose got ignored
-// (first regen of a male model came back shirtless).
+// Wardrobe for public-facing portraits: revealing, never bare — and gendered
 function wardrobeTags(gender: string, seed: number): string {
   const g = (gender ?? "").toLowerCase();
   const color = pick(COLORS, seed, 1);
@@ -111,17 +117,16 @@ function wardrobeTags(gender: string, seed: number): string {
   return `fully clothed, wearing ${color} ${garment}, revealing but covered, visible clothing on chest and torso`;
 }
 
-// Trailing prose reinforcement — sets mood, not the wardrobe (that's carried by
-// the tags above and the nudity negatives at the call site).
+// Trailing prose reinforcement — sets mood
 const MOOD =
-  "Sexy and revealing but fully covered — nothing exposed. Sultry seductive expression, flirty eye contact with the camera.";
+  "Attractive, natural and charming expression, captivating eye contact with the camera, authentic candid moment.";
 
 export type PortraitSubject = {
   name: string;
   age: number;
   ethnicity: string;
   gender: string;
-  art_style: string;
+  art_style?: string;
   short_bio: string;
 };
 
@@ -129,34 +134,32 @@ export function portraitPrompt(c: PortraitSubject, extra?: string): string {
   const noun = genderNoun(c.gender);
   const g = (c.gender ?? "").toLowerCase();
   const seed = hashName(c.name);
-  // Pony is tag-driven: this booru tag is what actually locks the rendered sex.
-  // Prose alone ("a man named Kaito") loses to the negative prompt.
+
   const genderTag =
     g === "male" || g === "trans-male"
       ? "handsome adult man, solo, male focus"
       : g === "non-binary"
         ? "androgynous person, solo"
         : "attractive woman, solo";
-  // Photographic language, not render language. "Ultra photorealistic glamour"
-  // steers Pony toward the airbrushed CG look that reads as AI on sight; naming
-  // a camera and asking for untouched skin is what actually buys realism.
-  // Everything downstream starts from this image — chat photos and the cams
-  // clips are image-to-video off it — so the realism ceiling is set right here.
+
   const style =
     c.art_style === "anime"
       ? "Stylized high-quality anime illustration, cel shaded, expressive, alluring, vertical portrait."
-      : "Candid photo taken on a Sony A7 IV with an 85mm f/1.4 lens, natural available light, true-to-life colour, subtle film grain, vertical full-body portrait. Real untouched skin with visible pores, fine texture, faint blemishes and freckles, uneven natural tone, flyaway strands of hair, natural asymmetry, no airbrushing, no smoothing, no retouching. Looks like a real photo of a real person, not a render.";
+      : "Candid raw photo taken on a Sony A7 IV with an 85mm f/1.4 GM lens, natural ambient daylight, realistic true-to-life colors, authentic skin micro-texture with visible pores, fine natural details, subtle film grain, vertical portrait. Looks like an authentic high-resolution photograph of a real person, not an AI illustration, 3D render, or drawing.";
+
+  const angle = pick(CAMERA_ANGLES, seed, 5);
 
   return [
     genderTag,
     wardrobeTags(c.gender, seed),
     style,
-    `A stunning, sexy ${c.ethnicity} ${noun} named ${c.name} who is exactly ${c.age} years old and clearly looks ${c.age} — age-appropriate face, skin, and body.`,
-    `Pose: ${pick(POSES, seed, 3)}, in ${pick(SETTINGS, seed, 4)}.`,
+    angle,
+    `A stunning, attractive ${c.ethnicity} ${noun} named ${c.name} who is exactly ${c.age} years old — authentic face, natural body, real human skin.`,
+    `Activity & Pose: ${pick(POSES, seed, 3)}, in ${pick(SETTINGS, seed, 4)}.`,
     c.short_bio ? `Vibe: ${c.short_bio}.` : "",
     extra ? `${extra}.` : "",
     MOOD,
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(", ");
 }

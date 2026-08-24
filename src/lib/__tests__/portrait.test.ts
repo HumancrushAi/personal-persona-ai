@@ -19,7 +19,7 @@ const ROSTER = [
 ];
 
 const outfitOf = (p: string) => p.match(/wearing ([^,]+)/)?.[1] ?? "";
-const poseOf = (p: string) => p.match(/Pose: ([^.]+)\./)?.[1] ?? "";
+const poseOf = (p: string) => p.match(/(?:Activity & )?Pose: ([^.]+)\./)?.[1] ?? "";
 
 describe("portraitPrompt", () => {
   it("locks the rendered sex with a booru gender tag", () => {

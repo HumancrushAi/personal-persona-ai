@@ -921,7 +921,7 @@ function BannerSlider({
 
   if (n === 0) {
     return (
-      <div className="h-[340px] animate-pulse rounded-3xl border border-white/10 bg-white/5 md:h-[520px]" />
+      <div className="h-[380px] animate-pulse rounded-3xl border border-white/10 bg-white/5 md:h-[560px]" />
     );
   }
 
@@ -935,7 +935,7 @@ function BannerSlider({
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="flex h-[340px] transition-transform duration-700 ease-out md:h-[520px]"
+        className="flex h-[380px] transition-transform duration-700 ease-out md:h-[560px]"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {slides.map((s, i) => (
@@ -943,9 +943,19 @@ function BannerSlider({
             key={i}
             type="button"
             onClick={() => s.companion && onPick(s.companion)}
-            className="group relative block h-full w-full shrink-0 overflow-hidden text-left"
+            className="group relative block h-full w-full shrink-0 overflow-hidden bg-neutral-950 text-left"
             aria-label={s.companion ? `Chat with ${s.companion.name}` : s.title}
           >
+            {/* Ambient blurred backdrop so wide screens have rich atmosphere */}
+            {s.companion ? (
+              <img
+                src={companionImage(s.companion.image_url)}
+                alt=""
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-3xl opacity-35 scale-125"
+              />
+            ) : null}
+
+            {/* Main media — object-contain ensures 100% of head and body is visible */}
             {i === idx ? (
               <video
                 key={s.reel}
@@ -955,28 +965,25 @@ function BannerSlider({
                 loop
                 playsInline
                 preload="auto"
-                // Mobile browsers were refusing the autoplay (the element sat
-                // paused with the media fully loaded), leaving the hero a black
-                // rectangle. The poster gives it a real frame regardless, and
-                // the explicit play() retries once the source is ready.
                 poster={s.companion ? companionImage(s.companion.image_url) : undefined}
                 onLoadedData={(e) => {
                   const v = e.currentTarget;
                   if (v.paused) v.play().catch(() => {});
                 }}
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center animate-in fade-in duration-300"
+                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain animate-in fade-in duration-300"
               />
             ) : s.companion ? (
               <img
                 src={companionImage(s.companion.image_url)}
                 alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover brightness-[0.35]"
+                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain brightness-[0.7] transition-all"
               />
             ) : (
               <div className="absolute inset-0 bg-neutral-950" />
             )}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-black/30" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 md:p-7">
+
+            <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/20 to-black/20" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] p-5 md:p-8">
               <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live
               </span>

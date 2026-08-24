@@ -921,7 +921,7 @@ function BannerSlider({
 
   if (n === 0) {
     return (
-      <div className="h-[260px] animate-pulse rounded-3xl border border-white/10 bg-white/5 md:h-[420px]" />
+      <div className="h-[340px] animate-pulse rounded-3xl border border-white/10 bg-white/5 md:h-[520px]" />
     );
   }
 
@@ -935,7 +935,7 @@ function BannerSlider({
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="flex h-[260px] transition-transform duration-700 ease-out md:h-[420px]"
+        className="flex h-[340px] transition-transform duration-700 ease-out md:h-[520px]"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {slides.map((s, i) => (
@@ -964,7 +964,7 @@ function BannerSlider({
                   const v = e.currentTarget;
                   if (v.paused) v.play().catch(() => {});
                 }}
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top animate-in fade-in duration-300"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center animate-in fade-in duration-300"
               />
             ) : s.companion ? (
               <img

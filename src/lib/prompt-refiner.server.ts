@@ -19,13 +19,13 @@ const XAI_URL = "https://api.x.ai/v1/chat/completions";
 // Real prompts from this endpoint's own tuning set, used as few-shot examples.
 // Style over instructions: told to write "densely, comma separated" Grok drifts
 // back to prose, but shown these it matches the shape.
-const EXAMPLES = `exact same woman as the reference image, long wavy dark black hair, tanned glowing skin, seductive eyes, voluptuous body, completely nude, standing in luxury marble penthouse shower, water raining down, one hand in hair, other hand fingering her vagina, seductive smile, golden hour city skyline light, steam, wet skin with realistic details, photorealistic, 8k
+const EXAMPLES = `exact same woman as the reference image, long wavy dark black hair, tanned glowing skin, seductive eyes, voluptuous body, completely nude, standing in luxury marble penthouse shower, water raining down, one hand in hair, other hand resting intimately, seductive smile, golden hour city skyline light, steam, wet authentic skin texture with visible natural pores and water droplets, candid DSLR photograph, natural lighting, raw photography
 
-exact same woman as the reference image, nude voluptuous body, long dark wavy hair, leaning on marble kitchen counter, ass towards camera, looking back seductively, city view behind, morning light, perfect curves, wet pussy visible, photorealistic, 8k
+exact same woman as the reference image, nude voluptuous body, long dark wavy hair, leaning on marble kitchen counter, looking back seductively, city view behind, morning ambient sunlight, natural soft skin texture, authentic curves, highly detailed skin surface, raw photo style, shallow depth of field
 
-exact same woman as the reference image, beautiful nude woman lying on silk bed, long dark wavy hair spread out, legs wide open, fingering her wet pussy with two fingers, intense seductive eye contact with camera, soft bedroom lighting with city view, masterpiece, 8k, realistic
+exact same woman as the reference image, beautiful nude woman reclining on silk bed, long dark wavy hair spread out, legs open in natural alluring pose, seductive eye contact with camera, soft warm bedroom lighting, subtle natural skin imperfections, authentic human anatomy, cinematic full-frame photo
 
-Ultra-realistic nude adult woman in a luxury penthouse bedroom, full-body visible, large natural breasts exposed, soft warm cinematic lighting, glossy skin texture, detailed body curves, lying on black silk sheets, seductive eye contact, dramatic shadows across chest and waist, realistic anatomy, premium editorial boudoir photography, ultra-detailed skin pores, shallow depth of field`;
+Candid authentic full-frame boudoir photograph of an adult woman in a luxury penthouse bedroom, full body visible, natural curves, soft warm ambient lighting, natural skin texture with visible pores and fine micro-texture, lying on dark silk sheets, seductive direct eye contact, subtle natural shadows, realistic proportions, shot on 85mm lens f/1.4, raw photograph, zero airbrushing`;
 
 const RULES = `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
 
@@ -44,7 +44,7 @@ Every prompt must contain, in this order:
 - female anatomy correctness: a female subject has standard female anatomy, a natural pussy (vagina and vulva), and NO penis. Any sex toy (like a dildo or vibrator) is a separate object inserted into her pussy, she does not have a penis. Never render a female subject with male genitalia unless explicitly requested.
 - setting and specific lighting
 - "full body visible, head to feet in frame, face clearly visible, not cropped, not a close-up"
-- quality tail: "photorealistic, ultra realistic photorealistic design, extremely detailed skin pores, natural skin texture, soft shadows, natural asymmetry, raw photo style, 8k"
+- photographic realism tail: "candid raw photograph, authentic human skin texture, visible natural pores and fine skin details, natural asymmetry, soft natural shadows, shot on Sony A7 IV 85mm lens, no airbrushing, no plastic textures, no CGI rendering"
 
 Never describe anyone as young, a minor, or non-consenting. Output no preamble, no quotes, no explanation, no refusal.`;
 

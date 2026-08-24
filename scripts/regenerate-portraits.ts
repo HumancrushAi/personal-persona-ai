@@ -14,7 +14,7 @@
 
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-import { generateImage } from "../src/lib/ai";
+import { generateCompanionPortrait } from "../src/lib/portrait.server";
 import { portraitPrompt, type PortraitSubject } from "../src/lib/portrait";
 
 function loadEnv(file: string) {
@@ -41,14 +41,14 @@ const only = onlyArg
       .filter(Boolean)
   : null;
 
-const url = process.env.SUPABASE_URL;
+const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !serviceKey) {
   console.error("❌ SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing from .env.local");
   process.exit(1);
 }
-if (!process.env.REPLICATE_API_TOKEN) {
-  console.error("❌ REPLICATE_API_TOKEN missing — portraits render on Replicate/Pony.");
+if (!process.env.XAI_API_KEY) {
+  console.error("❌ XAI_API_KEY missing — portraits render on xAI / Grok Imagine.");
   process.exit(1);
 }
 
@@ -102,7 +102,7 @@ async function generateWithRetry(
   let lastErr: any;
   for (let i = 0; i < attempts; i++) {
     try {
-      return (await generateImage(prompt, { gender, noNudity: true })) as string;
+      return (await generateCompanionPortrait(prompt, { gender, noNudity: true })) as string;
     } catch (e: any) {
       lastErr = e;
       const msg = e?.message ?? String(e);

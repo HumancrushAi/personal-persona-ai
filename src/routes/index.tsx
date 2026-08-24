@@ -333,10 +333,10 @@ function Landing() {
                 <Flame className="h-3.5 w-3.5 text-primary" /> 18+ · 25 free messages · no card
               </p>
               <h1 className="mt-3 font-display text-3xl font-semibold leading-[1.05] md:text-5xl">
-                She's whoever <span className="text-primary">you</span> want her to be.
+                Your AI crush, <span className="text-primary">built</span> your way.
               </h1>
               <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
-                Tap anyone below — they message you first.
+                Women and men — tap anyone below to start chatting instantly.
               </p>
             </div>
             <div className="hidden gap-2 md:flex">
@@ -351,14 +351,22 @@ function Landing() {
           </div>
 
           {/* SEARCH */}
-          <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5">
-            <Search className="h-4 w-4 text-muted-foreground" />
+          <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 transition-all focus-within:border-primary/50 focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-primary/20">
+            <Search className="h-4 w-4 shrink-0 text-primary" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search people, vibes, interests…"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              placeholder="Search companions by name, ethnicity, bio, vibe..."
+              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-muted-foreground"
             />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -366,23 +374,29 @@ function Landing() {
       {/* STORIES */}
       <section className="mx-auto mt-6 max-w-7xl px-4 md:px-6">
         <SectionTitle title="Stories" subtitle="tap to peek" />
-        <div className="-mx-2 mt-3 flex gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-2 mt-3 flex gap-3.5 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {searchedCompanions.map((c) => (
             <button
               key={c.id}
               onClick={() => setStoryView(c)}
-              className="group flex w-[78px] shrink-0 flex-col items-center gap-1.5"
+              className="group flex w-[80px] shrink-0 flex-col items-center gap-1.5 transition-transform active:scale-95"
             >
-              <span className="rounded-full bg-grad-primary p-[2px] shadow-glow">
-                <span className="block rounded-full bg-background p-[2px]">
+              <span className="relative rounded-full bg-grad-primary p-[2.5px] shadow-glow transition-all duration-300 group-hover:scale-105 group-hover:shadow-primary/40">
+                <span className="block overflow-hidden rounded-full bg-background p-[2px]">
                   <img
                     src={companionImage(c.image_url)}
                     alt={c.name}
-                    className="h-16 w-16 rounded-full object-cover object-top"
+                    className="h-16 w-16 rounded-full object-cover object-top transition-transform duration-300 group-hover:scale-110"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80";
+                    }}
                   />
                 </span>
+                <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500 shadow-sm" />
               </span>
-              <span className="line-clamp-1 text-[11px] text-white/80">{c.name}</span>
+              <span className="line-clamp-1 text-center text-xs font-medium text-white/90 group-hover:text-primary">
+                {c.name}
+              </span>
             </button>
           ))}
         </div>
@@ -697,10 +711,12 @@ function StoryViewer({
   onChat: () => void;
 }) {
   const [progress, setProgress] = useState(0);
+  const reelUrl = getEffectiveCompanionReel(companion);
+
   useEffect(() => {
     const start = Date.now();
     const t = setInterval(() => {
-      const p = Math.min(100, ((Date.now() - start) / 5000) * 100);
+      const p = Math.min(100, ((Date.now() - start) / 10000) * 100);
       setProgress(p);
       if (p >= 100) {
         clearInterval(t);
@@ -709,43 +725,68 @@ function StoryViewer({
     }, 50);
     return () => clearInterval(t);
   }, [onClose]);
+
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 p-4"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md"
       onClick={onClose}
     >
       <div
-        className="relative h-[90vh] w-full max-w-md overflow-hidden rounded-3xl bg-black"
+        className="relative h-[85vh] w-full max-w-sm overflow-hidden rounded-3xl bg-neutral-950 border border-white/10 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="absolute inset-x-3 top-3 z-10 h-1 overflow-hidden rounded-full bg-white/20">
-          <div className="h-full bg-white" style={{ width: `${progress}%` }} />
+        {/* Progress Bar */}
+        <div className="absolute inset-x-3 top-3 z-20 h-1 overflow-hidden rounded-full bg-white/20">
+          <div className="h-full bg-white transition-all duration-75" style={{ width: `${progress}%` }} />
         </div>
-        <div className="absolute inset-x-3 top-6 z-10 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img
-              src={companionImage(companion.image_url)}
-              alt=""
-              className="h-8 w-8 rounded-full object-cover object-top"
-            />
-            <span className="text-sm font-semibold text-white">{companion.name}</span>
+
+        {/* Header Header */}
+        <div className="absolute inset-x-3 top-6 z-20 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent p-2 rounded-2xl">
+          <div className="flex items-center gap-2.5">
+            <span className="rounded-full bg-grad-primary p-[1.5px]">
+              <img
+                src={companionImage(companion.image_url)}
+                alt={companion.name}
+                className="h-8 w-8 rounded-full object-cover object-top"
+              />
+            </span>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-white leading-tight">{companion.name}, {companion.age}</span>
+              <span className="text-[10px] text-primary/90 font-medium">Online now</span>
+            </div>
           </div>
-          <button onClick={onClose} className="rounded-full bg-black/40 p-1.5 text-white">
+          <button
+            onClick={onClose}
+            className="rounded-full bg-black/60 p-2 text-white/80 transition-colors hover:bg-black/90 hover:text-white"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <img
-          src={companionImage(companion.image_url)}
-          alt={companion.name}
-          className="h-full w-full object-cover object-top"
-        />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-5">
-          <p className="text-sm text-white/90">{companion.short_bio}</p>
+
+        {/* Story Media (Video or Fallback Image) */}
+        {reelUrl ? (
+          <AutoPlayVideo
+            src={reelUrl}
+            className="h-full w-full object-contain object-top bg-black"
+          />
+        ) : (
+          <img
+            src={companionImage(companion.image_url)}
+            alt={companion.name}
+            className="h-full w-full object-contain object-top bg-black"
+          />
+        )}
+
+        {/* Footer Overlay */}
+        <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent p-5">
+          <p className="text-xs leading-relaxed text-white/90 font-light line-clamp-3">
+            "{companion.short_bio}"
+          </p>
           <Button
             onClick={onChat}
-            className="mt-3 w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+            className="mt-3.5 w-full rounded-full bg-grad-primary text-primary-foreground shadow-glow font-medium text-sm h-11"
           >
-            <MessageCircle className="mr-2 h-4 w-4" /> Message {companion.name}
+            <MessageCircle className="mr-2 h-4 w-4" /> Start Chatting with {companion.name}
           </Button>
         </div>
       </div>

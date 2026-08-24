@@ -343,7 +343,7 @@ export const requestVideo = createServerFn({ method: "POST" })
     const { data: conv } = await supabase
       .from("conversations")
       .select(
-        "user_personalities(nickname, style_backstory, companions(name, image_url, sort_order, age, ethnicity, base_personality))",
+        "user_personalities(nickname, style_backstory, companions(name, image_url, sort_order, age, ethnicity, gender, base_personality))",
       )
       .eq("id", data.conversationId)
       .eq("user_id", userId)
@@ -366,7 +366,13 @@ export const requestVideo = createServerFn({ method: "POST" })
       supabase,
       userId,
       data.conversationId,
-      { name: c.name, gender: c.gender, imageUrl: c.image_url },
+      {
+        name: c.name,
+        gender: c.gender,
+        imageUrl: c.image_url,
+        age: c.age,
+        ethnicity: c.ethnicity,
+      },
       userPrompt,
       balance,
       data.seconds,
@@ -445,7 +451,7 @@ export async function startVideoJob(
   supabase: any,
   userId: string,
   conversationId: string,
-  companion: { name: string; gender?: string | null; imageUrl?: string | null },
+  companion: { name: string; gender?: string | null; imageUrl?: string | null; age?: number; ethnicity?: string },
   userReq: string | undefined,
   balance: { free: number; paid: number },
   seconds?: number,
@@ -708,7 +714,7 @@ export const videoScript = createServerFn({ method: "POST" })
     const { data: conv } = await supabase
       .from("conversations")
       .select(
-        "user_personalities(nickname, style_backstory, companions(name, image_url, sort_order, age, ethnicity, base_personality, voice_id))",
+        "user_personalities(nickname, style_backstory, companions(name, image_url, sort_order, age, ethnicity, gender, base_personality, voice_id))",
       )
       .eq("id", data.conversationId)
       .eq("user_id", userId)
@@ -725,13 +731,21 @@ export const videoScript = createServerFn({ method: "POST" })
       if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
     }
 
+    const g = (c.gender ?? "").toLowerCase();
+    const noun =
+      g === "male" || g === "trans-male"
+        ? "man"
+        : g === "non-binary"
+          ? "androgynous person"
+          : "woman";
+
     const line = (
       await chatComplete(
         [
           {
             role: "system",
             content:
-              `You are ${p.nickname}, a ${c.age}-year-old ${c.ethnicity} woman recording a short, flirty, intimate video message for the person you're talking to. ` +
+              `You are ${p.nickname}, a ${c.age}-year-old ${c.ethnicity} ${noun} recording a short, flirty, intimate video message for the person you're talking to. ` +
               `Base personality: ${c.base_personality}. ${p.style_backstory ? `Vibe: ${p.style_backstory}. ` : ""}` +
               `Write ONE or TWO short sentences she says out loud to the camera — playful, seductive, personal, spoken aloud (no stage directions, no asterisks, no quotes). Max 160 characters.`,
           },

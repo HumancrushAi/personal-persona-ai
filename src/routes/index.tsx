@@ -21,7 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
-import { companionForReel, companionReelUrl, getCompanionReel } from "@/lib/reels";
+import { companionForReel, companionReelUrl, getCompanionReel, getEffectiveCompanionReel } from "@/lib/reels";
 import { useCloseOnBack } from "@/hooks/use-close-on-back";
 import { FAQSection } from "@/components/FAQSection";
 
@@ -232,10 +232,9 @@ function Landing() {
     return BANNERS.map((b) => {
       const filename = b.reel.split("/").pop()?.replace(".mp4", "") || "";
       const comp = pickCompanion(filename, b.gender);
-      // Use the companion's own generated reel (made from their portrait) so the
-      // video always matches the face shown.  Fall back to the legacy showcase
-      // reel only when no companion-specific clip exists yet.
-      const reel = comp ? (companionReelUrl(comp.id) || b.reel) : b.reel;
+      // For male companions (Kaito & Akira), getEffectiveCompanionReel enforces the original stock male videos.
+      // For female companions, it uses their portrait-generated clip or showcase video.
+      const reel = comp ? (getEffectiveCompanionReel(comp) || b.reel) : b.reel;
       return {
         reel,
         title: comp ? `${comp.name}, ${comp.age}` : b.title,
@@ -396,7 +395,7 @@ function Landing() {
         />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {searchedCompanions.slice(0, 14).map((c) => {
-            const reel = companionReelUrl(c.id) || getCompanionReel(c.name);
+            const reel = getEffectiveCompanionReel(c);
             return (
               <button
                 key={c.id}
@@ -741,7 +740,7 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reel = !reelFailed
-    ? companionReelUrl(companion.id) || getCompanionReel(companion.name)
+    ? getEffectiveCompanionReel(companion)
     : null;
 
   useEffect(() => {
@@ -804,13 +803,13 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
               playsInline
               onError={() => setReelFailed(true)}
               poster={companionImage(companion.image_url)}
-              className="relative z-[1] mx-auto h-full w-full object-cover object-[center_15%] animate-live"
+              className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
             />
           ) : (
             <img
               src={companionImage(companion.image_url)}
               alt={companion.name}
-              className="relative z-[1] mx-auto h-full w-full object-cover object-[center_15%] animate-live"
+              className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
             />
           )}
           <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/35" />

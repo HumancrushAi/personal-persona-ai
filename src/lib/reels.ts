@@ -31,6 +31,19 @@ export const companionForReel = (reelName: string): string | null =>
 export const companionReelUrl = (id: string | null | undefined): string | null =>
   id ? `${BASE}/companion-${id}.mp4` : null;
 
+// Effective reel resolver: male models (Kaito & Akira) always use the original
+// stock male videos (r10 & r11). Female models use companionReelUrl(id) || getCompanionReel(name).
+export function getEffectiveCompanionReel(c: { id?: string; name?: string | null; gender?: string | null }): string | null {
+  if (!c) return null;
+  const nameKey = (c.name || "").toLowerCase();
+  const g = (c.gender || "").toLowerCase();
+  const isMale = g.includes("male") && !g.includes("trans-female") || nameKey === "kaito" || nameKey === "akira";
+  if (isMale) {
+    return getCompanionReel(c.name);
+  }
+  return (c.id ? companionReelUrl(c.id) : null) || getCompanionReel(c.name);
+}
+
 function hash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;

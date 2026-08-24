@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getScenario } from "@/lib/scenarios";
-import { getCompanionReel, companionReelUrl } from "@/lib/reels";
+import { getCompanionReel, companionReelUrl, getEffectiveCompanionReel } from "@/lib/reels";
 
 export const Route = createFileRoute("/chat/$conversationId")({
   ssr: false,
@@ -41,6 +41,7 @@ type Message = {
   content: string;
   kind?: string | null;
   media_url?: string | null;
+  created_at?: string | null;
 };
 
 type LocalPendingJob = {
@@ -539,24 +540,31 @@ function ChatPage() {
           />
         )}
         {/* Model video loop with automatic fallback to high-res portrait */}
-        {p?.companion_id && (companionReelUrl(p.companion_id) || getCompanionReel(p?.companions?.name)) ? (
-          <video
-            key={p.companion_id}
-            src={companionReelUrl(p.companion_id) || getCompanionReel(p?.companions?.name) || undefined}
-            autoPlay
-            loop
-            muted
-            playsInline
-            poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
-            className="relative z-[1] h-full w-full object-cover object-[center_15%] animate-live"
-          />
-        ) : p?.companions?.image_url ? (
-          <img
-            src={companionImage(p.companions.image_url)}
-            alt={p?.nickname ?? ""}
-            className="relative z-[1] h-full w-full object-cover object-[center_15%] animate-live"
-          />
-        ) : null}
+        {(() => {
+          const reelUrl = getEffectiveCompanionReel({
+            id: p?.companion_id,
+            name: p?.companions?.name,
+            gender: (p?.companions as any)?.gender,
+          });
+          return reelUrl ? (
+            <video
+              key={p.companion_id}
+              src={reelUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
+              className="relative z-[1] h-full w-full object-contain object-top animate-live"
+            />
+          ) : p?.companions?.image_url ? (
+            <img
+              src={companionImage(p.companions.image_url)}
+              alt={p?.nickname ?? ""}
+              className="relative z-[1] h-full w-full object-contain object-top animate-live"
+            />
+          ) : null;
+        })()}
         <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/25 to-black/30" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] p-6">
           <div className="flex items-center gap-2">
@@ -598,7 +606,7 @@ function ChatPage() {
               alt=""
               width={52}
               height={52}
-              className="h-11 w-11 shrink-0 rounded-full object-cover object-[center_15%] ring-2 ring-primary/80 shadow-md md:hidden"
+              className="h-11 w-11 shrink-0 rounded-full object-cover object-top ring-2 ring-primary/80 shadow-md md:hidden"
             />
           )}
           <div className="flex-1 min-w-0">
@@ -633,7 +641,7 @@ function ChatPage() {
 
         {/* Mobile Live Face & Reaction Stage (Candy.ai style) */}
         <div className="relative mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-md md:hidden shrink-0">
-          <div className="relative h-44 sm:h-52 w-full overflow-hidden">
+          <div className="relative h-56 sm:h-64 w-full overflow-hidden">
             {p?.companions?.image_url && (
               <img
                 src={companionImage(p.companions.image_url)}
@@ -641,24 +649,31 @@ function ChatPage() {
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-xl opacity-40 scale-110"
               />
             )}
-            {p?.companion_id && (companionReelUrl(p.companion_id) || getCompanionReel(p?.companions?.name)) ? (
-              <video
-                key={p.companion_id}
-                src={companionReelUrl(p.companion_id) || getCompanionReel(p?.companions?.name) || undefined}
-                autoPlay
-                loop
-                muted
-                playsInline
-                poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
-                className="relative z-[1] mx-auto h-full w-full object-cover object-[center_15%] animate-live"
-              />
-            ) : p?.companions?.image_url ? (
-              <img
-                src={companionImage(p.companions.image_url)}
-                alt={p?.nickname ?? ""}
-                className="relative z-[1] mx-auto h-full w-full object-cover object-[center_15%] animate-live"
-              />
-            ) : null}
+            {(() => {
+              const reelUrl = getEffectiveCompanionReel({
+                id: p?.companion_id,
+                name: p?.companions?.name,
+                gender: (p?.companions as any)?.gender,
+              });
+              return reelUrl ? (
+                <video
+                  key={p.companion_id}
+                  src={reelUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
+                  className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+                />
+              ) : p?.companions?.image_url ? (
+                <img
+                  src={companionImage(p.companions.image_url)}
+                  alt={p?.nickname ?? ""}
+                  className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+                />
+              ) : null;
+            })()}
             <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/25" />
             <div className="absolute inset-x-0 bottom-2 z-[3] px-3 flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs text-white font-medium bg-black/65 px-3 py-1 rounded-full backdrop-blur border border-white/15 shadow-sm">

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { viewerCount, getCompanionReel, companionReelUrl } from "@/lib/reels";
+import { viewerCount, getCompanionReel, companionReelUrl, getEffectiveCompanionReel } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
 import { sendTip, startPrivateShow, TIP_AMOUNTS, PRIVATE_ENTRY_COST } from "@/lib/cams.functions";
 import { startChat } from "@/lib/chat.functions";
@@ -49,7 +49,7 @@ function CamView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companions")
-        .select("id, name, age, ethnicity, image_url")
+        .select("id, name, age, ethnicity, image_url, gender")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -57,11 +57,8 @@ function CamView() {
     },
   });
 
-  // Her own generated clip first; the old name-pinned stock reel is only a
-  // fallback for companions whose clip hasn't been generated yet, and a failed
-  // load drops through to the portrait.
   const [reelFailed, setReelFailed] = useState(false);
-  const reel = reelFailed ? (model ? getCompanionReel(model.name) : null) : companionReelUrl(id);
+  const reel = reelFailed ? (model ? getCompanionReel(model.name) : null) : (model ? getEffectiveCompanionReel(model) : null);
   useEffect(() => setReelFailed(false), [id]);
 
   const { data: balance } = useQuery({

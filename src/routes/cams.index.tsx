@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { viewerCount, getCompanionReel, companionReelUrl } from "@/lib/reels";
+import { viewerCount, getCompanionReel, companionReelUrl, getEffectiveCompanionReel } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Circle } from "lucide-react";
@@ -37,8 +37,8 @@ function CamsPage() {
   const sortedModels = useMemo(() => {
     if (!models) return [];
     return [...models].sort((a, b) => {
-      const hasA = getCompanionReel(a.name) ? 1 : 0;
-      const hasB = getCompanionReel(b.name) ? 1 : 0;
+      const hasA = getEffectiveCompanionReel(a) ? 1 : 0;
+      const hasB = getEffectiveCompanionReel(b) ? 1 : 0;
       return hasB - hasA;
     });
   }, [models]);
@@ -69,10 +69,8 @@ function CamsPage() {
 function CamCard({ c }: { c: any }) {
   const [hovered, setHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  // Her own generated clip; the name-pinned stock reel is only a fallback for
-  // companions whose clip doesn't exist yet, and a 404 falls back to the photo.
   const [reelFailed, setReelFailed] = useState(false);
-  const reel = reelFailed ? getCompanionReel(c.name) : companionReelUrl(c.id);
+  const reel = reelFailed ? getCompanionReel(c.name) : getEffectiveCompanionReel(c);
 
   useEffect(() => {
     if (hovered && reel) {

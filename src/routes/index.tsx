@@ -389,13 +389,13 @@ function Landing() {
               key={c.id}
               type="button"
               onClick={() => setTease(c)}
-              className="group relative h-[300px] w-[180px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card text-left shadow-md md:h-[360px] md:w-[220px]"
+              className="group relative h-[320px] w-[190px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card text-left shadow-md md:h-[390px] md:w-[230px]"
             >
               <img
                 src={companionImage(c.image_url)}
                 alt={c.name}
                 loading="lazy"
-                className="animate-live absolute inset-0 h-full w-full object-cover"
+                className="animate-live absolute inset-0 h-full w-full object-cover object-top"
               />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium backdrop-blur">
@@ -434,7 +434,7 @@ function Landing() {
                 src={companionImage(c.image_url)}
                 alt={c.name}
                 loading="lazy"
-                className="aspect-[3/4] w-full object-cover transition group-hover:scale-[1.05]"
+                className="aspect-[3/4.2] w-full object-cover object-top transition group-hover:scale-[1.05]"
               />
               <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] backdrop-blur">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> online
@@ -683,7 +683,7 @@ function StoryViewer({
         <img
           src={companionImage(companion.image_url)}
           alt={companion.name}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover object-top"
         />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-5">
           <p className="text-sm text-white/90">{companion.short_bio}</p>

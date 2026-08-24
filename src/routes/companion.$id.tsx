@@ -288,7 +288,7 @@ function Page() {
             alt={companion.name}
             width={1024}
             height={1024}
-            className="aspect-[3/4] w-full rounded-3xl object-cover shadow-glow ring-1 ring-white/10"
+            className="aspect-[3/4.2] w-full rounded-3xl object-cover object-top shadow-glow ring-1 ring-white/10"
           />
           <h1 className="mt-4 font-display text-3xl font-semibold">
             {companion.name}, {companion.age}

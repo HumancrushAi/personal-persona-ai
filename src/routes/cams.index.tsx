@@ -89,13 +89,13 @@ function CamCard({ c }: { c: any }) {
       params={{ id: c.id }}
       onMouseEnter={() => reel && setHovered(true)}
       onMouseLeave={() => reel && setHovered(false)}
-      className="group relative aspect-[3/4] overflow-hidden rounded-3xl border border-white/10 bg-card shadow-md transition hover:shadow-glow"
+      className="group relative aspect-[3/4.2] overflow-hidden rounded-3xl border border-white/10 bg-card shadow-md transition hover:shadow-glow"
     >
       <img
         src={companionImage(c.image_url)}
         alt={c.name}
         loading="lazy"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+        className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-300 ${
           hovered && reel ? "opacity-0" : "opacity-100 animate-live"
         }`}
       />

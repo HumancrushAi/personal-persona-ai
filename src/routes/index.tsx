@@ -21,7 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
-import { companionForReel } from "@/lib/reels";
+import { companionForReel, companionReelUrl, getCompanionReel } from "@/lib/reels";
 import { useCloseOnBack } from "@/hooks/use-close-on-back";
 import { FAQSection } from "@/components/FAQSection";
 

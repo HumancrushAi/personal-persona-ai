@@ -554,6 +554,9 @@ function ChatPage() {
               loop
               muted
               playsInline
+              preload="auto"
+              onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
+              onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
               poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
               className="relative z-[1] h-full w-full object-contain object-top animate-live"
             />
@@ -663,6 +666,9 @@ function ChatPage() {
                   loop
                   muted
                   playsInline
+                  preload="auto"
+                  onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
+                  onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
                   poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
                   className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
                 />

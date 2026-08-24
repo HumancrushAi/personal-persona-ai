@@ -411,6 +411,9 @@ function Landing() {
                     muted
                     loop
                     playsInline
+                    preload="auto"
+                    onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
+                    onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
                     poster={companionImage(c.image_url)}
                     className="absolute inset-0 h-full w-full object-cover object-top animate-live"
                   />
@@ -801,6 +804,9 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
               loop
               muted
               playsInline
+              preload="auto"
+              onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
+              onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
               onError={() => setReelFailed(true)}
               poster={companionImage(companion.image_url)}
               className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"

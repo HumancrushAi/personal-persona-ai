@@ -216,24 +216,21 @@ function Landing() {
     staleTime: 60_000,
   });
 
-  // Pin each hero reel to a specific companion. The pin is validated against the
-  // banner's own gender, and falls back to any companion of that gender if the
-  // pinned name was renamed or removed — so a slide can never advertise a woman
-  // and open a man (or point at a companion that no longer exists).
-  const pickCompanion = (reelName: string, gender: "m" | "f"): Companion | null => {
-    const list = companions ?? [];
-    const wanted = gender === "m" ? ["male", "trans-male"] : ["female", "trans-female"];
-    const matchesGender = (c: Companion) => wanted.includes(c.gender);
-
-    const target = companionForReel(reelName);
-    const exact = target ? list.find((c) => c.name.toLowerCase() === target) : undefined;
-    if (exact && matchesGender(exact)) return exact;
-    return list.find(matchesGender) ?? null;
-  };
-  const bannerSlides = BANNERS.map((b) => {
-    const filename = b.reel.split("/").pop()?.replace(".mp4", "") || "";
-    return { ...b, companion: pickCompanion(filename, b.gender) };
-  }).filter((s) => s.companion !== null);
+  const bannerSlides = useMemo(() => {
+    if (!companions || companions.length === 0) return [];
+    // Feature the actual top companions directly from the roster
+    const featured = companions.slice(0, 6);
+    return featured.map((c) => {
+      const reel = companionReelUrl(c.id) || getCompanionReel(c.name);
+      return {
+        reel: reel ?? "",
+        title: `${c.name}, ${c.age}`,
+        sub: c.short_bio,
+        gender: (c.gender.includes("male") && !c.gender.includes("trans-female") ? "m" : "f") as "m" | "f",
+        companion: c,
+      };
+    });
+  }, [companions]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -699,7 +696,6 @@ function StoryViewer({
   );
 }
 
-/* ---------- Tease Chat (signup gate) ---------- */
 function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () => void }) {
   const navigate = useNavigate();
   const openChat = useServerFn(startChat);
@@ -707,7 +703,12 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
   const [showMsg, setShowMsg] = useState(false);
   const [input, setInput] = useState("");
   const [gate, setGate] = useState(false);
+  const [reelFailed, setReelFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const reel = !reelFailed
+    ? companionReelUrl(companion.id) || getCompanionReel(companion.name)
+    : null;
 
   useEffect(() => {
     const t1 = setTimeout(() => {
@@ -750,23 +751,69 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
 
   return (
     <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/85 backdrop-blur-xl md:items-center md:p-6">
-      <div className="relative flex h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-card shadow-glow md:h-[640px] md:rounded-3xl">
-        {/* Header */}
-        <div className="flex items-center gap-3 border-b border-white/10 bg-background/60 p-3 backdrop-blur">
+      <div className="relative flex h-[94vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-card shadow-glow md:h-[680px] md:rounded-3xl">
+        {/* Live Model Stage (Candy.ai style) */}
+        <div className="relative h-44 w-full shrink-0 overflow-hidden bg-neutral-950 border-b border-white/10">
+          {/* Ambient blur */}
           <img
             src={companionImage(companion.image_url)}
-            className="h-10 w-10 rounded-full object-cover object-top"
             alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-2xl opacity-40 scale-110"
           />
-          <div className="flex-1">
-            <p className="font-display text-sm font-semibold">
-              {companion.name}, {companion.age}
-            </p>
-            <p className="text-[11px] text-emerald-400">● online · typing for you</p>
+          {reel ? (
+            <video
+              key={reel}
+              src={reel}
+              autoPlay
+              loop
+              muted
+              playsInline
+              onError={() => setReelFailed(true)}
+              poster={companionImage(companion.image_url)}
+              className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+            />
+          ) : (
+            <img
+              src={companionImage(companion.image_url)}
+              alt={companion.name}
+              className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+            />
+          )}
+          <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/30 to-black/40" />
+
+          {/* Header controls over stage */}
+          <div className="absolute inset-x-0 top-0 z-[3] flex items-center justify-between p-3">
+            <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 backdrop-blur border border-white/10">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 uppercase tracking-wider">
+                <Circle className="h-1.5 w-1.5 fill-red-500 text-red-500 animate-pulse" /> LIVE
+              </span>
+              <span className="text-xs font-semibold text-white">
+                {companion.name}, {companion.age}
+              </span>
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80 backdrop-blur border border-white/10"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-white/10">
-            <X className="h-4 w-4" />
-          </button>
+
+          {/* Status badge over stage */}
+          <div className="absolute inset-x-0 bottom-2 z-[3] px-3 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[11px] text-white/90 font-medium bg-black/60 px-2.5 py-0.5 rounded-full backdrop-blur border border-white/10">
+              {typing ? (
+                <span className="text-primary flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 animate-spin" /> Typing for you…
+                </span>
+              ) : (
+                <span className="text-emerald-400 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-white/70 font-medium">{companion.ethnicity}</span>
+          </div>
         </div>
 
         {/* Messages */}

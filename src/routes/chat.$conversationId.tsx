@@ -23,9 +23,11 @@ import {
   Video as VideoIcon,
   Heart,
   Sparkles,
+  Circle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getScenario } from "@/lib/scenarios";
+import { getCompanionReel, companionReelUrl } from "@/lib/reels";
 
 export const Route = createFileRoute("/chat/$conversationId")({
   ssr: false,
@@ -526,23 +528,56 @@ function ChatPage() {
 
   return (
     <div className="flex h-dvh">
-      {/* Persistent model image (candy.ai-style) — desktop */}
-      <aside className="relative hidden w-80 shrink-0 md:block lg:w-96">
+      {/* Persistent model live video loop (candy.ai-style) — desktop */}
+      <aside className="relative hidden w-80 shrink-0 overflow-hidden bg-neutral-950 md:block lg:w-96">
+        {/* Ambient background glow */}
         {p?.companions?.image_url && (
           <img
             src={companionImage(p.companions.image_url)}
-            alt={p?.nickname ?? ""}
-            className="h-full w-full object-cover"
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-2xl opacity-30 scale-110"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/30" />
-        <div className="absolute inset-x-0 bottom-0 p-6">
-          <div className="font-display text-3xl font-semibold text-white drop-shadow">
+        {/* Model video loop with automatic fallback to high-res portrait */}
+        {p?.companion_id && (companionReelUrl(p.companion_id) || getCompanionReel(p?.companions?.name)) ? (
+          <video
+            key={p.companion_id}
+            src={companionReelUrl(p.companion_id) || getCompanionReel(p?.companions?.name) || undefined}
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
+            className="relative z-[1] h-full w-full object-cover object-top animate-live"
+          />
+        ) : p?.companions?.image_url ? (
+          <img
+            src={companionImage(p.companions.image_url)}
+            alt={p?.nickname ?? ""}
+            className="relative z-[1] h-full w-full object-cover object-top animate-live"
+          />
+        ) : null}
+        <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/25 to-black/30" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] p-6">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+              <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live
+            </span>
+          </div>
+          <div className="mt-1.5 font-display text-3xl font-semibold text-white drop-shadow">
             {p?.nickname ?? "…"}
           </div>
-          <div className="mt-1.5 flex items-center gap-2 text-xs text-white/85">
-            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" /> online now
-            <span className="inline-flex items-center gap-1">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-white/90">
+            {isBusy ? (
+              <span className="inline-flex items-center gap-1 text-primary font-medium">
+                <Sparkles className="h-3 w-3 animate-spin text-primary" /> typing a message…
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
+                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> smiling at you 💋
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1 text-white/70">
               <Heart className="h-3 w-3 fill-primary text-primary" /> Level {level}
             </span>
           </div>

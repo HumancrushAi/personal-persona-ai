@@ -52,7 +52,7 @@ function Browse() {
                 width={1024}
                 height={1024}
                 loading="lazy"
-                className="aspect-[3/4.2] w-full object-cover object-top transition group-hover:scale-[1.04]"
+                className="aspect-[2/3] w-full object-cover object-top transition duration-300 group-hover:scale-[1.03]"
               />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3">
                 <div className="flex items-baseline justify-between">

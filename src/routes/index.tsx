@@ -381,32 +381,49 @@ function Landing() {
           }
         />
         <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {searchedCompanions.slice(0, 14).map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setTease(c)}
-              className="group relative h-[320px] w-[190px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-card text-left shadow-md md:h-[390px] md:w-[230px]"
-            >
-              <img
-                src={companionImage(c.image_url)}
-                alt={c.name}
-                loading="lazy"
-                className="animate-live absolute inset-0 h-full w-full object-cover object-top"
-              />
-              <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium backdrop-blur">
-                  <Circle className="h-1.5 w-1.5 fill-red-500 text-red-500" /> LIVE
-                </span>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 text-left">
-                <p className="font-display text-sm font-semibold text-white">
-                  {c.name}, {c.age}
-                </p>
-                <p className="line-clamp-1 text-[11px] text-white/75">{c.ethnicity}</p>
-              </div>
-            </button>
-          ))}
+          {searchedCompanions.slice(0, 14).map((c) => {
+            const reel = companionReelUrl(c.id) || getCompanionReel(c.name);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setTease(c)}
+                className="group relative h-[340px] w-[200px] shrink-0 snap-start overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-left shadow-md transition hover:shadow-glow md:h-[400px] md:w-[240px]"
+              >
+                {reel ? (
+                  <video
+                    key={reel}
+                    src={reel}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    poster={companionImage(c.image_url)}
+                    className="absolute inset-0 h-full w-full object-cover object-top animate-live"
+                  />
+                ) : (
+                  <img
+                    src={companionImage(c.image_url)}
+                    alt={c.name}
+                    loading="lazy"
+                    className="animate-live absolute inset-0 h-full w-full object-cover object-top"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
+                <div className="absolute inset-x-0 top-0 flex items-center justify-between p-3">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur shadow-sm">
+                    <Circle className="h-1.5 w-1.5 fill-white text-white animate-pulse" /> LIVE
+                  </span>
+                </div>
+                <div className="absolute inset-x-0 bottom-0 p-3.5 text-left">
+                  <p className="font-display text-base font-semibold text-white drop-shadow">
+                    {c.name}, {c.age}
+                  </p>
+                  <p className="line-clamp-1 text-[11px] text-white/80">{c.short_bio || c.ethnicity}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -425,30 +442,33 @@ function Landing() {
             <button
               key={c.id}
               onClick={() => setTease(c)}
-              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-card text-left shadow-md transition hover:shadow-glow"
+              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-left shadow-md transition hover:shadow-glow"
             >
-              <img
-                src={companionImage(c.image_url)}
-                alt={c.name}
-                loading="lazy"
-                className="aspect-[3/4.2] w-full object-cover object-top transition group-hover:scale-[1.05]"
-              />
-              <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] backdrop-blur">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> online
-              </div>
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3">
-                <div className="flex items-baseline justify-between">
-                  <h3 className="font-display text-base font-semibold text-white md:text-lg">
-                    {c.name}, {c.age}
-                  </h3>
+              <div className="relative w-full aspect-[2/3] overflow-hidden">
+                <img
+                  src={companionImage(c.image_url)}
+                  alt={c.name}
+                  loading="lazy"
+                  className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.03]"
+                />
+                <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] backdrop-blur border border-white/10">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> online
                 </div>
-                <p className="text-[10px] uppercase tracking-wide text-white/70">{c.ethnicity}</p>
-                <p className="mt-1 line-clamp-2 text-[11px] text-white/85 md:text-xs">
-                  {c.short_bio}
-                </p>
-                <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-grad-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground">
-                  <MessageCircle className="h-3 w-3" /> Chat now
-                </span>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none" />
+                <div className="absolute inset-x-0 bottom-0 p-3 pt-6">
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="font-display text-base font-semibold text-white md:text-lg">
+                      {c.name}, {c.age}
+                    </h3>
+                  </div>
+                  <p className="text-[10px] uppercase tracking-wide text-primary font-medium">{c.ethnicity}</p>
+                  <p className="mt-0.5 line-clamp-1 text-[11px] text-white/85">
+                    {c.short_bio}
+                  </p>
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-grad-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground">
+                    <MessageCircle className="h-3 w-3" /> Chat now
+                  </span>
+                </div>
               </div>
             </button>
           ))}

@@ -132,7 +132,7 @@ function booruPonyPrompt(
     nudeTags =
       kind === "male"
         ? "nude, completely naked, no clothing, standing, penis, testicles, pubic hair, groin visible"
-        : "nude, completely naked, bare chest, nipples";
+        : "nude, completely naked, bare breasts, nipples, detailed pussy, vulva, labia, clitoris, pubic hair, groin visible";
   }
 
   // Pose/act tags follow the request regardless of gender; anatomy in actionTags
@@ -210,10 +210,16 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
 // the model a composition to build, instead of a rule to obey. Same request,
 // same start frame, same negatives: subject-anchored framing produced head to
 // feet with the face in shot.
-function framingFor(noun: string, poss: string, posed: boolean, hasReq: boolean): string {
-  // If the user specified a request, we drop "standing" because it often conflicts
-  // with the desired action or composition, even if not matching a specific posture keyword.
-  const stance = (posed || hasReq) ? "" : " standing";
+function framingFor(noun: string, poss: string, posed: boolean, hasReq: boolean, name?: string): string {
+  let stance = " standing";
+  if (posed || hasReq) {
+    stance = "";
+  } else if (name) {
+    // Pick an intimate, natural posture instead of default standing
+    const postures = ["lying on bed", "sitting on the edge of the bed", "reclining on a couch"];
+    const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    stance = " " + postures[hash % postures.length];
+  }
   return `Wide full body photograph of a ${noun}${stance} in a room, ${poss} whole body visible from head to feet, ${poss} face clearly visible at the top of the frame, camera far away across the room. Not a close-up, not cropped.`;
 }
 
@@ -241,7 +247,7 @@ const QUALITY =
   "Candid photograph, natural available light, true-to-life colour, real untouched skin with visible pores and natural texture, natural asymmetry, no airbrushing or smoothing. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
 
 export function videoStillPrompt(
-  c: { gender?: string | null },
+  c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
 ): string {
   const req = (userPrompt ?? "").trim();
@@ -251,8 +257,8 @@ export function videoStillPrompt(
 
   const undress = requestIsNude(req)
     ? isMale
-      ? `${subject} is already completely naked with no clothing on at all, penis and groin visible, bare skin`
-      : `${subject} is already completely naked with no clothing on at all, bare breasts, nipples, and pussy visible, bare skin, female anatomy`
+      ? `${subject} is already completely naked with no clothing on at all, anatomically correct penis and groin and testicles visible, bare skin`
+      : `${subject} is already completely naked with no clothing on at all, bare breasts and nipples visible, highly detailed pussy with naturally shaped vulva and labia visible, clitoris visible, wet glistening skin, female anatomy`
     : `${subject} holds the pose`;
 
   // NOTE: deliberately no actionTags here. Those are booru tags ("bent over,
@@ -265,7 +271,7 @@ export function videoStillPrompt(
   const poss = isMale ? "his" : noun === "woman" ? "her" : "their";
 
   return [
-    framingFor(noun, poss, POSTURE_RE.test(req), !!req),
+    framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
     objectClause(req, isMale),
@@ -281,7 +287,7 @@ export function videoStillPrompt(
 // was missing: the old builder pasted the raw request into a sentence, so "send
 // me a sexy video" produced a clothed clip of her standing in her portrait.
 export function videoActionPrompt(
-  c: { gender?: string | null },
+  c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
 ): string {
   const req = (userPrompt ?? "").trim();
@@ -291,8 +297,8 @@ export function videoActionPrompt(
 
   const undress = requestIsNude(req)
     ? isMale
-      ? `${subject} is already completely naked with no clothing on at all, penis and groin visible, bare skin throughout`
-      : `${subject} is already completely naked with no clothing on at all, bare breasts, nipples, and pussy visible, bare skin throughout, female anatomy`
+      ? `${subject} is already completely naked with no clothing on at all, anatomically correct penis and groin and testicles visible, bare skin throughout`
+      : `${subject} is already completely naked with no clothing on at all, bare breasts and nipples visible, highly detailed pussy with naturally shaped vulva and labia visible, clitoris visible, wet glistening skin throughout, female anatomy`
     : `${subject} moves seductively for the camera`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
@@ -301,7 +307,7 @@ export function videoActionPrompt(
   const poss = isMale ? "his" : noun === "woman" ? "her" : "their";
 
   return [
-    framingFor(noun, poss, POSTURE_RE.test(req), !!req),
+    framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
     objectClause(req, isMale),

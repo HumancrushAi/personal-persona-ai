@@ -195,3 +195,22 @@ export const studioDelete = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Refine a promo prompt with the OpenAI/xAI refiner logic before generating
+export const refineStudioPrompt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        prompt: z.string().min(3).max(600),
+        hasReference: z.boolean().default(false),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { refinePromoPrompt } = await import("./prompt-refiner.server");
+    const refined = await refinePromoPrompt(data.prompt, data.hasReference);
+    return { refined: refined ?? data.prompt };
+  });
+

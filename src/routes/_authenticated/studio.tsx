@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { amIAdmin } from "@/lib/admin.functions";
-import { studioGenerate, studioClip, studioDelete } from "@/lib/studio.functions";
+import { studioGenerate, studioClip, studioDelete, refineStudioPrompt } from "@/lib/studio.functions";
 import { checkMediaJob } from "@/lib/media.functions";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,11 +78,59 @@ function StudioPage() {
   const [reference, setReference] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Prompt refiner, custom video motion prompts, and gallery filter states
+  const [refiningPrompt, setRefiningPrompt] = useState(false);
+  const [animatingShotUrl, setAnimatingShotUrl] = useState<string | null>(null);
+  const [motionPrompt, setMotionPrompt] = useState("");
+  const [motionSeconds, setMotionSeconds] = useState(5);
+  const [refiningMotion, setRefiningMotion] = useState(false);
+  const [galleryFilter, setGalleryFilter] = useState<"all" | "images" | "videos">("all");
+
   useEffect(() => {
     checkAdmin({} as any)
       .then((r: any) => setIsAdmin(!!r?.isAdmin))
       .catch(() => setIsAdmin(false));
   }, []);
+
+  async function handleRefinePrompt() {
+    const p = prompt.trim();
+    if (!p || refiningPrompt) return;
+    setRefiningPrompt(true);
+    try {
+      const res = await refineStudioPrompt({ data: { prompt: p, hasReference: !!reference } });
+      if (res?.refined) {
+        setPrompt(res.refined);
+        toast.success("Prompt refined successfully!");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Refinement failed");
+    } finally {
+      setRefiningPrompt(false);
+    }
+  }
+
+  async function handleRefineMotion() {
+    if (!motionPrompt.trim() || refiningMotion) return;
+    setRefiningMotion(true);
+    try {
+      const res = await refineStudioPrompt({ data: { prompt: motionPrompt, hasReference: true } });
+      if (res?.refined) {
+        setMotionPrompt(res.refined);
+        toast.success("Motion prompt refined successfully!");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Refinement failed");
+    } finally {
+      setRefiningMotion(false);
+    }
+  }
+
+  // Segmented gallery filter
+  const filteredShots = shots.filter((s) => {
+    if (galleryFilter === "images") return !s.clipUrl;
+    if (galleryFilter === "videos") return !!s.clipUrl;
+    return true;
+  });
 
   async function run() {
     const p = prompt.trim();
@@ -246,6 +294,30 @@ function StudioPage() {
             className="w-full resize-y rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm outline-none placeholder:text-white/35 focus:border-primary/50"
           />
 
+          <div className="mt-2.5 flex items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+            <p className="text-[10px] text-white/50">
+              Tip: Describe clothing, setting, and lighting.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={handleRefinePrompt}
+              disabled={refiningPrompt || !prompt.trim()}
+              className="min-h-9 rounded-full bg-white/10 text-xs hover:bg-white/15 border border-white/5"
+            >
+              {refiningPrompt ? (
+                <>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Refining...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-1 h-3 w-3" /> Refine with AI
+                </>
+              )}
+            </Button>
+          </div>
+
           <div className="mt-2 flex flex-wrap gap-1.5">
             {PRESETS.map((p) => (
               <button
@@ -310,108 +382,226 @@ function StudioPage() {
         </div>
 
         {shots.length > 0 && (
-          <div className="mt-6 flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              {shots.length} shot{shots.length === 1 ? "" : "s"}
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="min-h-11 rounded-full"
-              disabled={saving}
-              onClick={downloadAll}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-3.5 w-3.5" /> Download all
-                </>
-              )}
-            </Button>
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
+              {(["all", "images", "videos"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setGalleryFilter(filter)}
+                  className={`rounded-lg px-3 py-1.5 text-[11px] font-medium capitalize transition-all ${
+                    galleryFilter === filter
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:text-white/80"
+                  }`}
+                >
+                  {filter === "all" ? "All Assets" : filter === "images" ? "Still Images" : "Video Clips"}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3 justify-between sm:justify-end">
+              <p className="text-xs text-muted-foreground">
+                {filteredShots.length} asset{filteredShots.length === 1 ? "" : "s"}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-11 rounded-full"
+                disabled={saving}
+                onClick={downloadAll}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-3.5 w-3.5" /> Download all
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         )}
 
-        {shots.length > 0 && (
+        {filteredShots.length > 0 && (
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-            {shots.map((s) => (
+            {filteredShots.map((s) => (
               <div
                 key={s.url}
-                className="overflow-hidden rounded-2xl border border-white/10 bg-card"
+                className="overflow-hidden rounded-2xl border border-white/10 bg-card flex flex-col justify-between"
               >
-                {s.clipUrl ? (
-                  <video src={s.clipUrl} controls loop playsInline className="w-full" />
-                ) : (
-                  <img src={s.url} alt="" className="aspect-[2/3] w-full object-cover" />
-                )}
-                <div className="flex flex-wrap gap-1 p-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="min-h-11 flex-1 text-[11px]"
-                    onClick={() => {
-                      setReference(s.url);
-                      toast.success("Locked this face for the next generation");
-                    }}
-                  >
-                    <Link2 className="mr-1 h-3.5 w-3.5" /> Same person
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="min-h-11 flex-1 text-[11px]"
-                    disabled={s.clipStatus === "running"}
-                    onClick={() => animate(s)}
-                  >
-                    {s.clipStatus === "running" ? (
-                      <>
-                        <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> Clip…
-                      </>
-                    ) : (
-                      <>
-                        <Film className="mr-1 h-3.5 w-3.5" /> Clip
-                      </>
+                <div>
+                  {s.clipUrl ? (
+                    <video src={s.clipUrl} controls loop playsInline className="w-full animate-fade-in" />
+                  ) : (
+                    <img src={s.url} alt="" className="aspect-[2/3] w-full object-cover" />
+                  )}
+                </div>
+
+                <div className="flex flex-col">
+                  {animatingShotUrl === s.url && (
+                    <div className="border-t border-white/10 bg-white/5 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-primary">Animate Still Image</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={handleRefineMotion}
+                          disabled={refiningMotion || !motionPrompt.trim()}
+                          className="h-6 px-1.5 text-[9px] text-primary/85 hover:text-primary hover:bg-white/5"
+                        >
+                          {refiningMotion ? "Refining..." : "AI Refine"}
+                        </Button>
+                      </div>
+                      <textarea
+                        value={motionPrompt}
+                        onChange={(e) => setMotionPrompt(e.target.value)}
+                        rows={2}
+                        placeholder="Describe motion — e.g. smiling and waving at camera"
+                        className="w-full resize-none rounded-xl border border-white/10 bg-black/30 p-2 text-[11px] outline-none placeholder:text-white/30"
+                      />
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[9px] text-white/55">Duration:</span>
+                        <select
+                          value={motionSeconds}
+                          onChange={(e) => setMotionSeconds(Number(e.target.value))}
+                          className="h-7 rounded bg-black/40 border border-white/10 text-[9px] text-white outline-none px-1"
+                        >
+                          {[3, 4, 5, 6, 7, 8, 9, 10].map((sec) => (
+                            <option key={sec} value={sec}>{sec}s</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex gap-1.5 pt-1">
+                        <Button
+                          size="sm"
+                          className="h-8 flex-1 text-[10px] bg-grad-primary text-primary-foreground"
+                          disabled={s.clipStatus === "running"}
+                          onClick={async () => {
+                            const targetShot = s;
+                            setAnimatingShotUrl(null);
+                            setShots((prev) => prev.map((item) => (item.url === targetShot.url ? { ...item, clipStatus: "running" } : item)));
+                            try {
+                              const res: any = await makeClip({ data: { imageUrl: targetShot.url, prompt: motionPrompt, seconds: motionSeconds } });
+                              // Same reconcile the chat uses; clips take a couple of minutes.
+                              for (let i = 0; i < 120; i++) {
+                                await new Promise((r) => setTimeout(r, 3000));
+                                let j: any = null;
+                                try {
+                                  j = await checkJob({ data: { jobId: res.jobId } });
+                                } catch {
+                                  continue;
+                                }
+                                if (j?.status === "completed" && j.mediaUrl) {
+                                  setShots((prev) =>
+                                    prev.map((item) =>
+                                      item.url === targetShot.url ? { ...item, clipUrl: j.mediaUrl, clipStatus: undefined } : item,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                if (j?.status === "failed") break;
+                              }
+                              throw new Error("Clip failed");
+                            } catch (e: any) {
+                              setShots((prev) =>
+                                prev.map((item) => (item.url === targetShot.url ? { ...item, clipStatus: "failed" } : item)),
+                              );
+                              toast.error(e?.message ?? "Clip failed");
+                            }
+                          }}
+                        >
+                          Create Video
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2 text-[10px] text-white/70 hover:text-white"
+                          onClick={() => setAnimatingShotUrl(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-1 p-2 border-t border-white/5">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-11 flex-1 text-[11px]"
+                      onClick={() => {
+                        setReference(s.url);
+                        toast.success("Locked this face for the next generation");
+                      }}
+                    >
+                      <Link2 className="mr-1 h-3.5 w-3.5" /> Same person
+                    </Button>
+                    {!s.clipUrl && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="min-h-11 flex-1 text-[11px]"
+                        disabled={s.clipStatus === "running"}
+                        onClick={() => {
+                          if (animatingShotUrl === s.url) {
+                            setAnimatingShotUrl(null);
+                          } else {
+                            setAnimatingShotUrl(s.url);
+                            setMotionPrompt("she shifts her weight, natural head movement, hair moves slightly, subtle lifelike motion");
+                          }
+                        }}
+                      >
+                        {s.clipStatus === "running" ? (
+                          <>
+                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> Animating...
+                          </>
+                        ) : (
+                          <>
+                            <Film className="mr-1 h-3.5 w-3.5" /> Animate
+                          </>
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="min-h-11 text-[11px]"
-                    title="Download this file"
-                    onClick={() => download(s)}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="min-h-11 text-[11px]"
-                    title="Regenerate with the same brief"
-                    disabled={!!s.busy}
-                    onClick={() => regenerate(s)}
-                  >
-                    {s.busy === "regen" ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="min-h-11 text-[11px] text-red-400 hover:text-red-300"
-                    title="Delete this shot"
-                    disabled={!!s.busy}
-                    onClick={() => discard(s)}
-                  >
-                    {s.busy === "delete" ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-11 text-[11px]"
+                      title="Download this file"
+                      onClick={() => download(s)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-11 text-[11px]"
+                      title="Regenerate with the same brief"
+                      disabled={!!s.busy}
+                      onClick={() => regenerate(s)}
+                    >
+                      {s.busy === "regen" ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-11 text-[11px] text-red-400 hover:text-red-300"
+                      title="Delete this shot"
+                      disabled={!!s.busy}
+                      onClick={() => discard(s)}
+                    >
+                      {s.busy === "delete" ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

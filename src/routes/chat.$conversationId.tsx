@@ -548,13 +548,13 @@ function ChatPage() {
             muted
             playsInline
             poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
-            className="relative z-[1] h-full w-full object-cover object-top animate-live"
+            className="relative z-[1] h-full w-full object-cover object-[center_15%] animate-live"
           />
         ) : p?.companions?.image_url ? (
           <img
             src={companionImage(p.companions.image_url)}
             alt={p?.nickname ?? ""}
-            className="relative z-[1] h-full w-full object-cover object-top animate-live"
+            className="relative z-[1] h-full w-full object-cover object-[center_15%] animate-live"
           />
         ) : null}
         <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/25 to-black/30" />
@@ -596,9 +596,9 @@ function ChatPage() {
             <img
               src={companionImage(p.companions.image_url)}
               alt=""
-              width={48}
-              height={48}
-              className="h-10 w-10 rounded-full object-cover object-top ring-2 ring-primary/60 md:hidden"
+              width={52}
+              height={52}
+              className="h-11 w-11 shrink-0 rounded-full object-cover object-[center_15%] ring-2 ring-primary/80 shadow-md md:hidden"
             />
           )}
           <div className="flex-1 min-w-0">
@@ -616,7 +616,7 @@ function ChatPage() {
               size="icon"
               variant="ghost"
               className="rounded-full"
-              title="Edit her personality"
+              title="Edit personality"
             >
               <Link to="/companion/$id" params={{ id: p.companion_id }} search={{ edit: true }}>
                 <Sparkles className="h-4 w-4 text-primary" />
@@ -631,7 +631,55 @@ function ChatPage() {
           </Link>
         </header>
 
-        <div className="h-1 w-full bg-white/5">
+        {/* Mobile Live Face & Reaction Stage (Candy.ai style) */}
+        <div className="relative mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-md md:hidden shrink-0">
+          <div className="relative h-32 w-full overflow-hidden">
+            {p?.companions?.image_url && (
+              <img
+                src={companionImage(p.companions.image_url)}
+                alt=""
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-xl opacity-40 scale-110"
+              />
+            )}
+            {p?.companion_id && (companionReelUrl(p.companion_id) || getCompanionReel(p?.companions?.name)) ? (
+              <video
+                key={p.companion_id}
+                src={companionReelUrl(p.companion_id) || getCompanionReel(p?.companions?.name) || undefined}
+                autoPlay
+                loop
+                muted
+                playsInline
+                poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
+                className="relative z-[1] mx-auto h-full w-full object-cover object-[center_15%] animate-live"
+              />
+            ) : p?.companions?.image_url ? (
+              <img
+                src={companionImage(p.companions.image_url)}
+                alt={p?.nickname ?? ""}
+                className="relative z-[1] mx-auto h-full w-full object-cover object-[center_15%] animate-live"
+              />
+            ) : null}
+            <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/25" />
+            <div className="absolute inset-x-0 bottom-2 z-[3] px-3 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] text-white font-medium bg-black/60 px-2.5 py-0.5 rounded-full backdrop-blur border border-white/10">
+                {isBusy ? (
+                  <span className="text-primary flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 animate-spin" /> Typing a message…
+                  </span>
+                ) : (
+                  <span className="text-emerald-400 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-white/80 font-medium bg-black/50 px-2 py-0.5 rounded-full backdrop-blur border border-white/10">
+                <Circle className="inline h-1.5 w-1.5 fill-red-500 text-red-500 mr-1" /> Live
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-1 w-full bg-white/5 mt-2">
           <div
             className="h-full bg-grad-primary transition-all"
             style={{ width: `${(xpInLevel / 15) * 100}%` }}

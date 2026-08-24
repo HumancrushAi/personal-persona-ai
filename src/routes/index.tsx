@@ -216,29 +216,32 @@ function Landing() {
     staleTime: 60_000,
   });
 
+  const pickCompanion = (reelName: string, gender: "m" | "f"): Companion | null => {
+    const list = companions ?? [];
+    const wanted = gender === "m" ? ["male", "trans-male"] : ["female", "trans-female"];
+    const matchesGender = (c: Companion) => wanted.includes(c.gender);
+
+    const target = companionForReel(reelName);
+    const exact = target ? list.find((c) => c.name.toLowerCase() === target) : undefined;
+    if (exact && matchesGender(exact)) return exact;
+    return list.find(matchesGender) ?? null;
+  };
+
   const bannerSlides = useMemo(() => {
     if (!companions || companions.length === 0) return [];
-    // Curate a vibrant mix of top female & male companions so both men and women models appear
-    const females = companions.filter((c) => !c.gender.includes("male") || c.gender.includes("trans-female"));
-    const males = companions.filter((c) => c.gender.includes("male") && !c.gender.includes("trans-female"));
-
-    const selected: Companion[] = [];
-    const maxLen = Math.max(females.length, males.length);
-    for (let i = 0; i < maxLen && selected.length < 8; i++) {
-      if (females[i]) selected.push(females[i]);
-      if (males[i]) selected.push(males[i]);
-    }
-
-    return selected.map((c) => {
-      const reel = companionReelUrl(c.id) || getCompanionReel(c.name);
+    return BANNERS.map((b) => {
+      const filename = b.reel.split("/").pop()?.replace(".mp4", "") || "";
+      const comp = pickCompanion(filename, b.gender);
+      // Prefer custom generated AI reel if available, falling back to showcase reel
+      const reel = comp ? (companionReelUrl(comp.id) || b.reel) : b.reel;
       return {
-        reel: reel ?? "",
-        title: `${c.name}, ${c.age}`,
-        sub: c.short_bio,
-        gender: (c.gender.includes("male") && !c.gender.includes("trans-female") ? "m" : "f") as "m" | "f",
-        companion: c,
+        reel: b.reel, // Always play the showcase video reel (r10, r11, r1, r8, r3)
+        title: comp ? `${comp.name}, ${comp.age}` : b.title,
+        sub: comp?.short_bio || b.sub,
+        gender: b.gender,
+        companion: comp,
       };
-    });
+    }).filter((s) => s.companion !== null);
   }, [companions]);
 
   const filtered = useMemo(() => {

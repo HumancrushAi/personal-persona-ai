@@ -133,10 +133,10 @@ export function portraitPrompt(c: PortraitSubject, extra?: string): string {
   // Prose alone ("a man named Kaito") loses to the negative prompt.
   const genderTag =
     g === "male" || g === "trans-male"
-      ? "1boy, solo, male focus"
+      ? "handsome adult man, solo, male focus"
       : g === "non-binary"
-        ? "androgynous, solo"
-        : "1girl, solo";
+        ? "androgynous person, solo"
+        : "attractive woman, solo";
   // Photographic language, not render language. "Ultra photorealistic glamour"
   // steers Pony toward the airbrushed CG look that reads as AI on sight; naming
   // a camera and asking for untouched skin is what actually buys realism.

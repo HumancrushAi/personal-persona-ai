@@ -23,9 +23,9 @@ const poseOf = (p: string) => p.match(/Pose: ([^.]+)\./)?.[1] ?? "";
 
 describe("portraitPrompt", () => {
   it("locks the rendered sex with a booru gender tag", () => {
-    expect(portraitPrompt(subject("Kaito", "male"))).toMatch(/^1boy, solo, male focus/);
-    expect(portraitPrompt(subject("Aria"))).toMatch(/^1girl, solo/);
-    expect(portraitPrompt(subject("Sky", "non-binary"))).toMatch(/^androgynous, solo/);
+    expect(portraitPrompt(subject("Kaito", "male"))).toMatch(/^handsome adult man, solo, male focus/);
+    expect(portraitPrompt(subject("Aria"))).toMatch(/^attractive woman, solo/);
+    expect(portraitPrompt(subject("Sky", "non-binary"))).toMatch(/^androgynous person, solo/);
   });
 
   it("keeps public portraits clothed", () => {

@@ -11,35 +11,17 @@ const REEL_MAP: Record<string, string> = {
 };
 
 export const getCompanionReel = (name: string | null | undefined): string | null => {
-  if (!name) return null;
-  const key = name.toLowerCase();
-  const reel = REEL_MAP[key];
-  return reel ? `${BASE}/${reel}.mp4` : null;
+  return null;
 };
 
-// Which companion a given reel advertises ("r8" -> "aria"). Derived from
-// REEL_MAP so the home banner and the cams pages can't drift apart — they used
-// to keep separate hardcoded copies of the same pairing.
-export const companionForReel = (reelName: string): string | null =>
-  Object.entries(REEL_MAP).find(([, reel]) => reel === reelName)?.[0] ?? null;
+export const companionForReel = (reelName: string): string | null => null;
 
-// Her OWN looping clip, generated image-to-video from her portrait by
-// scripts/generate-reels.ts. Addressed by companion id rather than tracked in a
-// column, so no schema change is needed and the file is the source of truth.
-// Missing clips 404, which the players treat as "fall back to the portrait" —
-// so this is safe for companions whose clip hasn't been generated yet.
 export const companionReelUrl = (id: string | null | undefined): string | null =>
   id ? `${BASE}/companion-${id}.mp4` : null;
 
-// Effective reel resolver: stock mapped models (Kaito, Akira, Sofia, Aria, Priya)
-// return their stock reels (r10, r11, r1, r8, r3). All other models return companionReelUrl(c.id).
 export function getEffectiveCompanionReel(c: { id?: string; name?: string | null; gender?: string | null }): string | null {
-  if (!c) return null;
-  const stock = getCompanionReel(c.name);
-  if (stock) {
-    return stock;
-  }
-  return c.id ? companionReelUrl(c.id) : null;
+  if (!c || !c.id) return null;
+  return companionReelUrl(c.id);
 }
 
 function hash(s: string): number {

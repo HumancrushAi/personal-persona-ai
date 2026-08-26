@@ -19,6 +19,9 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Wand2,
+  Video,
+  Lock,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
 import { companionForReel, companionReelUrl, getCompanionReel, getEffectiveCompanionReel } from "@/lib/reels";
@@ -29,52 +32,61 @@ import { FAQSection } from "@/components/FAQSection";
 // and girls. gender = who's in the clip, so the CTA opens a gender-matched model.
 const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
 const reelUrlHelper = (name: string) => `${REEL_BASE}/${name}.mp4`;
-const BANNERS: { reel?: string; title: string; sub: string; gender: "m" | "f"; name: string }[] = [
+const BANNERS: { id: string; name: string; title: string; sub: string; gender: "m" | "f" }[] = [
   {
+    id: "2c252785-fe75-4c84-a803-af9c484f6c96",
+    name: "Aria",
+    title: "Silk & Night lights",
+    sub: "provocative full body · penthouse luxury vibes 💋",
+    gender: "f",
+  },
+  {
+    id: "9a173fea-67ea-45d3-996a-9084dc3c98d0",
+    name: "Sofia",
+    title: "After hours lounge",
+    sub: "cozy full body lounge · thinking about you 😏",
+    gender: "f",
+  },
+  {
+    id: "f668101d-486e-45e2-9e87-69e70e272401",
     name: "Raven",
     title: "Dark poetry",
     sub: "alt goth babe · vinyl & midnight chats 🖤",
     gender: "f",
   },
   {
-    reel: reelUrlHelper("r10"),
-    name: "Kaito",
-    title: "Pool side",
-    sub: "stylish vibes · always online 🔥",
+    id: "21f6d269-510b-4091-a59c-a3f14e720335",
+    name: "Ren",
+    title: "Tokyo streetwear",
+    sub: "stylish city vibes · midnight chill 🔥",
     gender: "m",
   },
   {
+    id: "347215a1-7c96-4b0a-ada5-d21143578eae",
+    name: "Chloe",
+    title: "Indie playlist",
+    sub: "trans babe · late night lounge & coffee ☕✨",
+    gender: "f",
+  },
+  {
+    id: "5eaaf212-055d-44f8-841e-94967f4a674c",
     name: "Vesper",
     title: "Neon nights",
     sub: "mysterious goth artist · industrial beats 💋",
     gender: "f",
   },
   {
-    reel: reelUrlHelper("r1"),
-    name: "Sofia",
-    title: "After hours",
-    sub: "still up… thinking about you 😏",
-    gender: "f",
-  },
-  {
-    reel: reelUrlHelper("r11"),
-    name: "Akira",
-    title: "Beach stroll",
-    sub: "sunset stroll · golden hour vibes",
+    id: "78e5f6af-2c52-4dde-b710-09512d28f9aa",
+    name: "Dante",
+    title: "Salsa & fitness",
+    sub: "sultry workout & dancer · golden hour vibes 🌊",
     gender: "m",
   },
   {
-    reel: reelUrlHelper("r8"),
-    name: "Aria",
-    title: "Morning coffee",
-    sub: "cozy vibes · soft smiles 💋",
-    gender: "f",
-  },
-  {
-    reel: reelUrlHelper("r3"),
-    name: "Priya",
-    title: "Sunset vibes",
-    sub: "wish you were here 🌅",
+    id: "7cc8217f-180c-4d10-89b5-5598622aa626",
+    name: "Nova",
+    title: "Creative spark",
+    sub: "trans artist · deep chats & indie rock 💫",
     gender: "f",
   },
 ];
@@ -259,18 +271,17 @@ function Landing() {
   const bannerSlides = useMemo(() => {
     if (!companions || companions.length === 0) return [];
     return BANNERS.map((b) => {
-      const comp = b.name
-        ? companions.find((c) => c.name.toLowerCase() === b.name.toLowerCase()) || pickCompanion(b.name, b.gender)
-        : pickCompanion("", b.gender);
-      const reel = comp ? (getEffectiveCompanionReel(comp) || b.reel || "") : (b.reel || "");
+      const comp = companions.find((c) => c.id === b.id) || companions.find((c) => c.name.toLowerCase() === b.name.toLowerCase());
+      if (!comp) return null;
+      const reel = getEffectiveCompanionReel(comp) || "";
       return {
         reel,
-        title: comp ? `${comp.name}, ${comp.age}` : b.title,
-        sub: comp?.short_bio || b.sub,
+        title: `${comp.name}, ${comp.age}`,
+        sub: comp.short_bio || b.sub,
         gender: b.gender,
         companion: comp,
       };
-    }).filter((s) => s.companion !== null);
+    }).filter((s): s is NonNullable<typeof s> => s !== null);
   }, [companions]);
 
   const filtered = useMemo(() => {
@@ -318,37 +329,103 @@ function Landing() {
         </div>
       ) : null}
 
-      {/* BANNER SLIDER */}
+      {/* TOP PROMOTIONAL BANNER (Candy.ai style) */}
       <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
+        <Link
+          to="/auth"
+          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-600 via-rose-600 to-purple-700 px-4 py-3 text-white shadow-glow transition hover:opacity-95"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg shadow-inner backdrop-blur">
+              🔥
+            </span>
+            <div>
+              <p className="font-display text-sm font-bold tracking-wide uppercase text-white drop-shadow sm:text-base">
+                HOT SPECIAL · 25 FREE MESSAGES
+              </p>
+              <p className="text-[11px] text-white/90 sm:text-xs">
+                No credit card required · Instant access to all AI companions
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-yellow-400 px-4 py-1.5 text-xs font-extrabold tracking-wider uppercase text-black shadow-md group-hover:scale-105 transition-transform">
+            JOIN NOW
+          </span>
+        </Link>
+      </section>
+
+      {/* BANNER SLIDER */}
+      <section className="mx-auto mt-3 max-w-7xl px-4 md:px-6">
         <BannerSlider slides={bannerSlides} onPick={(c) => setTease(c)} />
       </section>
 
-      {/* HERO STRIP */}
-      <section className="relative mx-auto max-w-7xl px-4 pt-2 md:px-6">
-        <div className="absolute inset-0 -z-10 bg-grad-hero opacity-70 blur-3xl" aria-hidden />
-        <div className="glass overflow-hidden rounded-3xl p-5 md:p-8">
-          <div className="flex items-start justify-between gap-4">
+      {/* NEW EXPERIENCES — Candy.ai Style Cards */}
+      <section className="mx-auto mt-6 max-w-7xl px-4 md:px-6">
+        <SectionTitle title="🔥 New Experiences" subtitle="explore exclusive features & create your companion" />
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Card 1: Create Your Own Character */}
+          <Link
+            to="/create"
+            className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-primary/40 bg-gradient-to-br from-purple-950 via-pink-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-primary hover:shadow-glow"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/40 transition" />
             <div>
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium backdrop-blur">
-                <Flame className="h-3.5 w-3.5 text-primary" /> 18+ · 25 free messages · no card
-              </p>
-              <h1 className="mt-3 font-display text-3xl font-semibold leading-[1.05] md:text-5xl">
-                Your AI crush, <span className="text-primary">built</span> your way.
-              </h1>
-              <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
-                Women and men — tap anyone below to start chatting instantly.
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/30">
+                <Sparkles className="h-3 w-3" /> Custom AI
+              </span>
+              <h3 className="mt-2 font-display text-xl font-bold text-white">CREATE YOUR OWN MODEL</h3>
+              <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                Build your dream AI companion. Pick face, body type, personality & style.
               </p>
             </div>
-            <div className="hidden gap-2 md:flex">
-              <Button
-                asChild
-                size="lg"
-                className="rounded-full bg-grad-primary text-primary-foreground shadow-glow"
-              >
-                <Link to="/browse">Browse all</Link>
-              </Button>
+            <div className="flex items-center justify-between pt-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
+                <Wand2 className="h-3.5 w-3.5" /> Create Model
+              </span>
             </div>
-          </div>
+          </Link>
+
+          {/* Card 2: Build Your Video */}
+          <Link
+            to="/cams"
+            className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-rose-950 via-red-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-rose-500/60 hover:shadow-glow"
+          >
+            <div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400 border border-red-500/30">
+                <Circle className="h-2 w-2 fill-red-500 animate-pulse" /> Live Cams
+              </span>
+              <h3 className="mt-2 font-display text-xl font-bold text-white">BUILD YOUR VIDEO</h3>
+              <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                Super hot models in motion. Real video loops, live interaction & camera scenes.
+              </p>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white border border-white/20 backdrop-blur group-hover:bg-white/20">
+                <Video className="h-3.5 w-3.5 text-red-400" /> Watch Live Loops
+              </span>
+            </div>
+          </Link>
+
+          {/* Card 3: Private Content */}
+          <Link
+            to="/gallery"
+            className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-indigo-950 via-purple-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-indigo-500/60 hover:shadow-glow"
+          >
+            <div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400 border border-indigo-500/30">
+                <Lock className="h-3 w-3" /> Exclusive
+              </span>
+              <h3 className="mt-2 font-display text-xl font-bold text-white">PRIVATE CONTENT</h3>
+              <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                Unlock exclusive secret photos, voice notes, and private album collections.
+              </p>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white border border-white/20 backdrop-blur group-hover:bg-white/20">
+                <Lock className="h-3.5 w-3.5 text-indigo-400" /> Unlock Gallery
+              </span>
+            </div>
+          </Link>
         </div>
       </section>
 

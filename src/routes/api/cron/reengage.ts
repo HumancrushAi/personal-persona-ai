@@ -29,17 +29,19 @@ async function reengage({ request }: { request: Request }) {
 
   const { data: convos } = await supabaseAdmin
     .from("conversations")
-    .select("user_id, updated_at, user_personalities(nickname)")
+    .select("user_id, updated_at, user_personalities(nickname, companions(image_url))")
     .lte("updated_at", staleBefore)
     .gte("updated_at", notTooOld)
     .order("updated_at", { ascending: false })
     .limit(500);
 
-  // One ping per user (their most recent companion nickname).
-  const byUser = new Map<string, string>();
+  // One ping per user (their most recent companion nickname and image URL).
+  const byUser = new Map<string, { nick: string; imageUrl?: string }>();
   for (const c of convos ?? []) {
     if (!byUser.has(c.user_id)) {
-      byUser.set(c.user_id, (c as any).user_personalities?.nickname ?? "She");
+      const nick = (c as any).user_personalities?.nickname ?? "She";
+      const imageUrl = (c as any).user_personalities?.companions?.image_url;
+      byUser.set(c.user_id, { nick, imageUrl });
     }
   }
 
@@ -60,11 +62,12 @@ async function reengage({ request }: { request: Request }) {
   let emailSent = 0;
   let processed = 0;
 
-  for (const [uid, nick] of byUser) {
+  for (const [uid, info] of byUser) {
     if (recently.has(uid)) continue;
     if (processed >= 100) break; // keep within the function time budget
     processed++;
 
+    const { nick, imageUrl } = info;
     const title = `${nick} misses you 💌`;
     const body = `Come back and see what ${nick} sent you…`;
 
@@ -87,7 +90,7 @@ async function reengage({ request }: { request: Request }) {
     try {
       const { data: u } = await supabaseAdmin.auth.admin.getUserById(uid);
       if (u.user?.email) {
-        await sendEmail(u.user.email, title, notificationEmailHtml(title, body, `${site}/me`));
+        await sendEmail(u.user.email, title, notificationEmailHtml(title, body, `${site}/me`, imageUrl));
         emailSent++;
       }
     } catch {

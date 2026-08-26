@@ -37,15 +37,25 @@ export async function sendEmail(to: string, subject: string, html: string) {
 }
 
 // Simple branded wrapper for notification emails.
-export function notificationEmailHtml(title: string, body: string, url?: string): string {
-  const cta = url
-    ? `<a href="${url}" style="display:inline-block;background:linear-gradient(90deg,#ff4d8d,#c04bff);color:#fff;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:999px;">Open HumanCrush.com</a>`
+export function notificationEmailHtml(title: string, body: string, url?: string, imageUrl?: string): string {
+  const modelImage = imageUrl
+    ? `<div style="margin: 20px auto; width: 140px; height: 140px; border-radius: 50%; overflow: hidden; border: 3px solid #ff4d8d; box-shadow: 0 0 15px rgba(255, 77, 141, 0.4);">
+        <img src="${imageUrl}" alt="Companion avatar" style="width: 100%; height: 100%; object-fit: cover;" />
+       </div>`
     : "";
-  return `<div style="background:#0d0a12;padding:28px;font-family:Inter,Arial,sans-serif;">
-    <div style="max-width:440px;margin:auto;background:#171320;border:1px solid #2a2436;border-radius:20px;padding:28px;text-align:center;color:#fff;">
-      <div style="font-size:24px;font-weight:700;">❤ HumanCrush.com</div>
-      <h1 style="font-size:20px;margin:16px 0 8px;">${title}</h1>
-      <p style="color:#b3aac2;font-size:14px;line-height:1.6;margin:0 0 20px;">${body}</p>
+
+  const cta = url
+    ? `<div style="margin-top: 24px;">
+        <a href="${url}" style="display:inline-block;background:linear-gradient(90deg,#ff4d8d,#c04bff);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 32px;border-radius:999px;box-shadow: 0 4px 12px rgba(255, 77, 141, 0.3);">Open HumanCrush.com</a>
+       </div>`
+    : "";
+
+  return `<div style="background:#0d0a12;padding:40px 20px;font-family:Inter,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;">
+    <div style="max-width:440px;margin:auto;background:#171320;border:1px solid #2a2436;border-radius:24px;padding:32px;text-align:center;color:#fff;box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div style="font-size:24px;font-weight:800;background:linear-gradient(90deg,#ff4d8d,#c04bff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:inline-block;margin-bottom:8px;">❤ HumanCrush</div>
+      ${modelImage}
+      <h1 style="font-size:22px;font-weight:700;margin:16px 0 8px;letter-spacing:-0.5px;">${title}</h1>
+      <p style="color:#b3aac2;font-size:15px;line-height:1.6;margin:0 0 20px;font-weight:400;">${body}</p>
       ${cta}
     </div>
   </div>`;

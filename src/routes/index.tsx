@@ -89,6 +89,13 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
     sub: "alt goth babe · vinyl & midnight chats 🖤",
     gender: "f",
   },
+  {
+    id: "ab334fc9-fe99-4f60-bd63-1a969aece70c",
+    name: "Skye",
+    title: "Sun-kissed skies",
+    sub: "blue-haired baddie · swimsuit & tropical sunshine vibes 🩵",
+    gender: "f",
+  },
 ];
 
 export const Route = createFileRoute("/")({
@@ -1153,7 +1160,7 @@ function BannerSlider({
 
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-glow select-none"
+      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-glow select-none bg-neutral-950"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}
@@ -1161,7 +1168,7 @@ function BannerSlider({
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="flex w-full h-[500px] sm:h-[580px] md:h-[680px] transition-transform duration-700 ease-out"
+        className="flex w-full h-[520px] sm:h-[580px] md:h-[620px] transition-transform duration-700 ease-out"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {slides.map((s, i) => (
@@ -1169,7 +1176,7 @@ function BannerSlider({
             key={i}
             type="button"
             onClick={() => s.companion && onPick(s.companion)}
-            className="group relative block h-full w-full shrink-0 overflow-hidden bg-neutral-950 text-left"
+            className="group relative flex flex-col md:flex-row h-full w-full shrink-0 overflow-hidden text-left bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950"
             aria-label={s.companion ? `Chat with ${s.companion.name}` : s.title}
           >
             {/* Ambient blurred backdrop */}
@@ -1177,67 +1184,106 @@ function BannerSlider({
               <img
                 src={companionImage(s.companion.image_url)}
                 alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-3xl opacity-30 scale-125"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-3xl opacity-20 scale-125 z-0"
               />
             ) : null}
 
-            {/* Main media — full body head-to-toe presentation */}
-            <div className="relative z-[1] flex h-full w-full items-center justify-center p-2">
-              {s.reel ? (
-                <video
-                  key={s.reel}
-                  src={s.reel}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="auto"
-                  poster={s.companion ? companionImage(s.companion.image_url) : undefined}
-                  onLoadedData={(e) => {
-                    const v = e.currentTarget;
-                    if (v.paused) v.play().catch(() => {});
-                  }}
-                  className="pointer-events-none h-full w-full object-contain object-center"
-                />
-              ) : s.companion ? (
-                <img
-                  src={companionImage(s.companion.image_url)}
-                  alt={s.companion.name}
-                  className="pointer-events-none h-full w-full object-contain object-center animate-live"
-                />
-              ) : (
-                <div className="h-full w-full bg-neutral-950" />
-              )}
-            </div>
+            {/* Mobile-only background video/image (takes full screen on mobile) */}
+            {s.reel ? (
+              <video
+                key={s.reel + "-mobile"}
+                src={s.reel}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                poster={s.companion ? companionImage(s.companion.image_url) : undefined}
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover md:hidden z-0 opacity-60"
+              />
+            ) : s.companion ? (
+              <img
+                src={companionImage(s.companion.image_url)}
+                alt=""
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover md:hidden z-0 opacity-60"
+              />
+            ) : null}
 
-            <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] p-4 sm:p-6 md:p-8">
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live
-              </span>
-              {/* Her REAL portrait sits next to her name. The reel behind is
-                  ambient stock footage, not her — showing the actual face here
-                  is what stops "tapped one girl, got another". */}
-              <div className="mt-2 flex items-center gap-3">
+            {/* Content panel */}
+            <div className="relative z-10 flex flex-col justify-end md:justify-center w-full md:w-1/2 h-full p-6 sm:p-8 md:p-12 md:pr-4 bg-gradient-to-t from-black via-black/40 to-transparent md:from-transparent md:to-transparent">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                  <Circle className="h-1.5 w-1.5 fill-white text-white animate-pulse" /> Live
+                </span>
+                {s.companion?.gender === "trans-female" && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300 border border-indigo-500/25">
+                    TS
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-3 flex items-center gap-3 md:gap-4">
                 {s.companion && (
                   <img
                     src={companionImage(s.companion.image_url)}
                     alt={s.companion.name}
-                    className="h-12 w-12 shrink-0 rounded-full object-cover object-top ring-2 ring-white/80 shadow-lg md:h-16 md:w-16"
+                    className="h-12 w-12 shrink-0 rounded-full object-cover object-top ring-2 ring-primary/80 shadow-lg md:h-16 md:w-16"
                   />
                 )}
-                <h2 className="font-display text-2xl font-semibold text-white drop-shadow md:text-4xl">
-                  {s.companion ? `${s.companion.name}, ${s.companion.age}` : s.title}
-                </h2>
+                <div>
+                  <h2 className="font-display text-2xl font-bold text-white drop-shadow md:text-4xl">
+                    {s.companion ? `${s.companion.name}, ${s.companion.age}` : s.title}
+                  </h2>
+                  <p className="text-[10px] md:text-xs uppercase tracking-widest text-primary font-bold mt-0.5">
+                    {s.companion?.ethnicity || "Companion"}
+                  </p>
+                </div>
               </div>
-              <p className="mt-1 max-w-lg text-xs text-white/85 md:text-sm">
+
+              <p className="mt-4 max-w-md text-xs text-white/85 line-clamp-3 md:text-base md:line-clamp-4 leading-relaxed font-light">
                 {s.companion?.short_bio ?? s.sub}
               </p>
+
               {s.companion && (
-                <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
-                  Chat with {s.companion.name} →
-                </span>
+                <div className="mt-6">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-grad-primary px-6 py-2.5 text-xs md:text-sm font-bold text-primary-foreground shadow-glow group-hover:scale-[1.03] transition-transform duration-300">
+                    Chat with {s.companion.name} <MessageCircle className="h-4 w-4" />
+                  </span>
+                </div>
               )}
+            </div>
+
+            {/* Desktop-only Video player panel */}
+            <div className="relative z-10 hidden md:flex w-1/2 h-full items-center justify-center p-6 lg:p-8">
+              <div className="relative h-full aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition duration-500 group-hover:border-primary/30 group-hover:shadow-glow">
+                {s.reel ? (
+                  <video
+                    key={s.reel + "-desktop"}
+                    src={s.reel}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                    poster={s.companion ? companionImage(s.companion.image_url) : undefined}
+                    onLoadedData={(e) => {
+                      const v = e.currentTarget;
+                      if (v.paused) v.play().catch(() => {});
+                    }}
+                    className="pointer-events-none h-full w-full object-cover object-center"
+                  />
+                ) : s.companion ? (
+                  <img
+                    src={companionImage(s.companion.image_url)}
+                    alt={s.companion.name}
+                    className="pointer-events-none h-full w-full object-cover object-center animate-live"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-neutral-950" />
+                )}
+                {/* Visual shadow overlay inside the video frame */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+              </div>
             </div>
           </button>
         ))}

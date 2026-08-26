@@ -69,15 +69,22 @@
 
 @layer base {
   * { border-color: var(--color-border); }
-  html, body { background: var(--color-background); }
+  html {
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    background: var(--color-background);
+  }
   body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
     background:
       radial-gradient(1200px 600px at 80% -10%, oklch(0.30 0.16 340 / 0.45), transparent 60%),
       radial-gradient(1000px 500px at -10% 20%, oklch(0.28 0.14 290 / 0.5), transparent 60%),
       linear-gradient(180deg, oklch(0.13 0.02 305) 0%, oklch(0.10 0.02 305) 100%);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    min-height: 100vh;
+    min-height: 100dvh;
   }
   h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
 }

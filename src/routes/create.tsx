@@ -24,6 +24,10 @@ import outfitHoodie from "@/assets/create/outfit-hoodie.jpg";
 import outfitSilk from "@/assets/create/outfit-silk.jpg";
 import outfitStreet from "@/assets/create/outfit-streetwear.jpg";
 import outfitGown from "@/assets/create/outfit-gown.jpg";
+import breastSmall from "@/assets/create/breast-small.jpg";
+import breastMedium from "@/assets/create/breast-medium.jpg";
+import breastLarge from "@/assets/create/breast-large.jpg";
+import breastBusty from "@/assets/create/breast-busty.jpg";
 
 function PhotoSwatch({ src, alt }: { src: string; alt: string }) {
   return (
@@ -33,7 +37,7 @@ function PhotoSwatch({ src, alt }: { src: string; alt: string }) {
       loading="lazy"
       width={512}
       height={768}
-      className="h-24 w-full rounded-lg object-cover object-top"
+      className="aspect-[4/5] w-full rounded-xl object-cover object-top transition duration-300 group-hover:scale-105"
     />
   );
 }
@@ -209,6 +213,20 @@ const BODIES: Visual[] = [
   { id: "Tall", label: "Tall", swatch: <PhotoSwatch src={bodyTall} alt="Tall" /> },
   { id: "Thick", label: "Thick", swatch: <PhotoSwatch src={bodyThick} alt="Thick" /> },
   { id: "Muscular", label: "Muscular", swatch: <PhotoSwatch src={bodyMuscular} alt="Muscular" /> },
+];
+
+const BREASTS: Visual[] = [
+  { id: "Small", label: "Small (A)", swatch: <PhotoSwatch src={breastSmall} alt="Small" /> },
+  { id: "Medium", label: "Medium (B/C)", swatch: <PhotoSwatch src={breastMedium} alt="Medium" /> },
+  { id: "Large", label: "Large (D)", swatch: <PhotoSwatch src={breastLarge} alt="Large" /> },
+  { id: "Busty", label: "Busty (DD+)", swatch: <PhotoSwatch src={breastBusty} alt="Busty" /> },
+];
+
+const BUTTS: Visual[] = [
+  { id: "Small", label: "Small / Petite", swatch: <PhotoSwatch src={bodyPetite} alt="Small" /> },
+  { id: "Medium", label: "Medium / Athletic", swatch: <PhotoSwatch src={bodyAthletic} alt="Medium" /> },
+  { id: "Large", label: "Large / Curvy", swatch: <PhotoSwatch src={bodyCurvy} alt="Large" /> },
+  { id: "Big", label: "Big / Voluptuous", swatch: <PhotoSwatch src={bodyThick} alt="Big" /> },
 ];
 
 const HAIRS: Visual[] = [
@@ -460,37 +478,29 @@ function CreatePage() {
 
           {/* RIGHT — appearance + vibe */}
           <div className="space-y-5 rounded-3xl border border-white/10 bg-card p-5">
-            <Field label="Body">
-              <ChipRow options={toOpts(BODIES)} value={body} onChange={setBody} />
+            <Field label="Body Type">
+              <VisualGrid options={BODIES} value={body} onChange={setBody} />
             </Field>
             {isWoman && (
-              <Field label="Breast size">
-                <ChipRow
-                  options={["Small", "Medium", "Large", "Busty"].map((b) => ({ id: b, label: b }))}
-                  value={breast}
-                  onChange={setBreast}
-                />
+              <Field label="Breast Size">
+                <VisualGrid options={BREASTS} value={breast} onChange={setBreast} />
               </Field>
             )}
             {isWoman && (
-              <Field label="Butt size">
-                <ChipRow
-                  options={["Small", "Medium", "Large", "Big"].map((b) => ({ id: b, label: b }))}
-                  value={butt}
-                  onChange={setButt}
-                />
+              <Field label="Butt Size">
+                <VisualGrid options={BUTTS} value={butt} onChange={setButt} />
               </Field>
             )}
-            <Field label="Hair">
-              <ChipRow options={toOpts(HAIRS)} value={hair} onChange={setHair} />
+            <Field label="Hair Style">
+              <VisualGrid options={HAIRS} value={hair} onChange={setHair} />
             </Field>
-            <Field label="Eyes">
-              <ChipRow options={toOpts(EYES)} value={eyes} onChange={setEyes} />
+            <Field label="Eye Color">
+              <VisualGrid options={EYES} value={eyes} onChange={setEyes} />
             </Field>
             <Field label="Outfit">
-              <ChipRow options={toOpts(OUTFITS)} value={outfit} onChange={setOutfit} />
+              <VisualGrid options={OUTFITS} value={outfit} onChange={setOutfit} />
             </Field>
-            <Field label="Outfit fit">
+            <Field label="Outfit Fit">
               <ChipRow
                 options={[
                   { id: "slim", label: "Slim · form-fitting" },
@@ -501,8 +511,8 @@ function CreatePage() {
                 onChange={(v) => setFit(v as "slim" | "regular" | "loose")}
               />
             </Field>
-            <Field label="Vibe">
-              <ChipRow options={toOpts(VIBES)} value={vibe} onChange={setVibe} />
+            <Field label="Personality & Vibe">
+              <VisualGrid options={VIBES} value={vibe} onChange={setVibe} />
             </Field>
           </div>
         </div>
@@ -581,25 +591,35 @@ function VisualGrid({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-      {options.map((o) => (
-        <button
-          key={o.id}
-          onClick={() => onChange(o.id)}
-          className={`group flex flex-col items-center gap-1 rounded-2xl border p-2 text-center transition ${
-            value === o.id
-              ? "border-primary bg-grad-primary/15 shadow-glow"
-              : "border-white/10 bg-white/5 hover:bg-white/10"
-          }`}
-        >
-          <div className="w-full overflow-hidden rounded-lg bg-black/30 px-1 py-1">{o.swatch}</div>
-          <span
-            className={`line-clamp-1 text-[10px] font-medium ${value === o.id ? "text-white" : "text-white/75"}`}
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
+      {options.map((o) => {
+        const isSelected = value === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            className={`group relative flex flex-col items-center overflow-hidden rounded-2xl border p-1.5 text-center transition-all duration-200 ${
+              isSelected
+                ? "border-primary bg-primary/10 ring-2 ring-primary shadow-glow scale-[1.02]"
+                : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 hover:scale-[1.01]"
+            }`}
           >
-            {o.label}
-          </span>
-        </button>
-      ))}
+            <div className="w-full overflow-hidden rounded-xl bg-black/40">
+              {o.swatch}
+            </div>
+            <div className="mt-1.5 flex items-center justify-center gap-1 px-1 pb-0.5">
+              <span
+                className={`text-xs font-semibold tracking-tight transition ${
+                  isSelected ? "text-primary" : "text-white/80 group-hover:text-white"
+                }`}
+              >
+                {o.label}
+              </span>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -103,11 +103,8 @@ async function squareStartFrame(portraitUrl: string, id: string): Promise<string
   const h = meta.height ?? 0;
   if (!w || !h) throw new Error("portrait has no dimensions");
 
-  const side = Math.min(w, h);
   const squared = await sharp(src)
-    // top: 0 is the whole point — a centred crop is what cut the head off.
-    .extract({ left: Math.round((w - side) / 2), top: 0, width: side, height: side })
-    .resize(768, 768)
+    .resize(768, 768, { fit: "contain", background: { r: 15, g: 15, b: 20, alpha: 1 } })
     .png()
     .toBuffer();
 

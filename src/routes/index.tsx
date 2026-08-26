@@ -1177,32 +1177,16 @@ function BannerSlider({
               <img
                 src={companionImage(s.companion.image_url)}
                 alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-2xl opacity-60 scale-110"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-2xl opacity-40 scale-110"
               />
             ) : null}
 
-            {/* Main media — object-contain ensures 100% of head and body is visible without cutoffs */}
-            {i === idx && s.reel ? (
-              <video
-                key={s.reel}
-                src={s.reel}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-                poster={s.companion ? companionImage(s.companion.image_url) : undefined}
-                onLoadedData={(e) => {
-                  const v = e.currentTarget;
-                  if (v.paused) v.play().catch(() => {});
-                }}
-                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain animate-in fade-in duration-300"
-              />
-            ) : s.companion ? (
+            {/* Main full-body media matching companion image 1:1 */}
+            {s.companion ? (
               <img
                 src={companionImage(s.companion.image_url)}
-                alt=""
-                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain animate-live transition-all"
+                alt={s.companion.name}
+                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
               />
             ) : (
               <div className="absolute inset-0 bg-neutral-950" />

@@ -71,7 +71,7 @@
   * { border-color: var(--color-border); }
   html {
     overflow-x: hidden;
-    scrollbar-gutter: stable;
+    overflow-y: scroll;
     background: var(--color-background);
   }
   body {

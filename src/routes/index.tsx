@@ -442,7 +442,7 @@ function Landing() {
             </Link>
           }
         />
-        <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(companions ?? []).slice(0, 14).map((c) => {
             const reel = getEffectiveCompanionReel(c);
             return (
@@ -1161,7 +1161,7 @@ function BannerSlider({
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="flex h-[380px] transition-transform duration-700 ease-out md:h-[560px]"
+        className="flex w-full h-[380px] transition-transform duration-700 ease-out md:h-[560px]"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {slides.map((s, i) => (

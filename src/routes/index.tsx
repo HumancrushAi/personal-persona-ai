@@ -83,11 +83,11 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
     gender: "m",
   },
   {
-    id: "21f6d269-510b-4091-a59c-a3f14e720335",
-    name: "Ren",
-    title: "Tokyo streetwear",
-    sub: "stylish open bomber · midnight chill 🌃",
-    gender: "m",
+    id: "667ae29d-7e55-4588-b9c8-7bfad68f455e",
+    name: "Jade",
+    title: "Midnight vibes",
+    sub: "alt goth babe · vinyl & midnight chats 🖤",
+    gender: "f",
   },
 ];
 

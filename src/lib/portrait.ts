@@ -47,36 +47,31 @@ const COLORS = [
 ] as const;
 
 const FEM_GARMENTS = [
-  "a stylish designer one-piece swimsuit with elegant cutouts",
-  "a silk chemise slip with delicate lace trim",
-  "a tight ribbed summer crop top and high-waisted shorts",
-  "a chic bodycon mini dress",
-  "a light linen shirt worn casually unbuttoned over a stylish bikini",
-  "a strappy satin camisole and soft loungewear",
-  "a triangle bikini top and high-cut bottoms by the water",
+  "a tiny skimpy string bikini and micro bottoms by the crystal pool with glistening wet skin",
+  "a provocative sheer lace lingerie bodysuit with deep plunge neckline",
+  "a micro cut-out monokini swimsuit revealing soft curves and toned waist",
+  "a skimpy silk satin slip dress with ultra thin spaghetti straps and high leg slit",
+  "a tiny strappy triangle bikini with sun-kissed golden skin",
+  "a seductive sheer lace bralette and micro satin bottoms",
 ] as const;
 
 const MASC_GARMENTS = [
-  "stylish swim trunks by the poolside with water droplets on shoulders",
-  "an open linen summer shirt over a fitted tank top and tailored shorts",
-  "a fitted dark henley shirt with sleeves casually rolled up",
-  "a relaxed open button-up shirt and swim shorts at the beach",
-  "a fitted ribbed tank top and jeans, athletic build",
+  "stylish low-rise swim trunks by the poolside with wet glistening skin and muscular toned abs",
+  "an unbuttoned open linen shirt showing sculpted chest and abs with fitted swim shorts",
+  "low-rise beach boardshorts, shirtless athletic build with water droplets",
 ] as const;
 
 const ENBY_GARMENTS = [
-  "a cropped tank top and high-waisted shorts",
-  "an oversized linen summer shirt over a fitted tank",
-  "a cropped hoodie and summer shorts",
-  "a stylish sleeveless summer bodysuit",
+  "a cropped micro tank top and cheeky summer shorts",
+  "an open lightweight linen shirt over a fitted swim set",
+  "a stylish strappy summer bodysuit with cutouts",
 ] as const;
 
 const CAMERA_ANGLES = [
-  "cinematic medium shot, eye-level candid framing, creamy shallow depth of field",
-  "three-quarter body portrait, natural perspective, soft directional sunlight",
-  "candid dynamic shot, slightly low angle capturing full posture and natural movement",
-  "intimate medium shot, beautiful natural perspective, crisp 85mm portraiture",
-  "environmental candid portrait, relaxed framing, authentic real-world perspective",
+  "full body shot from head to toe, candid dynamic framing, creamy shallow depth of field",
+  "full length vertical portrait showing entire figure, natural perspective, soft directional sunlight",
+  "candid full body shot capturing complete posture, long legs and natural movement",
+  "full length environmental portrait, relaxed framing, crisp 85mm portraiture",
 ] as const;
 
 const POSES = [
@@ -114,7 +109,7 @@ function wardrobeTags(gender: string, seed: number): string {
         ? ENBY_GARMENTS
         : FEM_GARMENTS;
   const garment = pick(garments, seed, 2);
-  return `fully clothed, wearing ${color} ${garment}, revealing but covered, visible clothing on chest and torso`;
+  return `wearing revealing sexy ${color} ${garment}, skimpy alluring swimwear and lingerie aesthetic, provocative full body appeal`;
 }
 
 // Trailing prose reinforcement — sets mood

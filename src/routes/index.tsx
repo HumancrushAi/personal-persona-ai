@@ -1181,12 +1181,28 @@ function BannerSlider({
               />
             ) : null}
 
-            {/* Main full-body media matching companion image 1:1 */}
-            {s.companion ? (
+            {/* Main media — video loop with full-body object-contain framing */}
+            {s.reel ? (
+              <video
+                key={s.reel}
+                src={s.reel}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                poster={s.companion ? companionImage(s.companion.image_url) : undefined}
+                onLoadedData={(e) => {
+                  const v = e.currentTarget;
+                  if (v.paused) v.play().catch(() => {});
+                }}
+                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-center"
+              />
+            ) : s.companion ? (
               <img
                 src={companionImage(s.companion.image_url)}
                 alt={s.companion.name}
-                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-center animate-live"
               />
             ) : (
               <div className="absolute inset-0 bg-neutral-950" />

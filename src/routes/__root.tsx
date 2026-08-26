@@ -29,12 +29,14 @@ function AdminFooterLink() {
   });
   if (!isAdmin) return null;
   return (
-    <Link
-      to="/admin"
-      className="fixed bottom-3 right-3 z-40 inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-white/10 backdrop-blur transition hover:text-primary"
-    >
-      <Shield className="h-3.5 w-3.5" /> Admin
-    </Link>
+    <footer className="flex justify-center pb-20 pt-6">
+      <Link
+        to="/admin"
+        className="inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-white/10 backdrop-blur transition hover:text-primary"
+      >
+        <Shield className="h-3.5 w-3.5" /> Admin
+      </Link>
+    </footer>
   );
 }
 

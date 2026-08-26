@@ -1161,7 +1161,7 @@ function BannerSlider({
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="flex w-full h-[460px] sm:h-[520px] md:h-[640px] transition-transform duration-700 ease-out"
+        className="flex w-full h-[500px] sm:h-[580px] md:h-[680px] transition-transform duration-700 ease-out"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {slides.map((s, i) => (
@@ -1177,39 +1177,41 @@ function BannerSlider({
               <img
                 src={companionImage(s.companion.image_url)}
                 alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-2xl opacity-40 scale-110"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-3xl opacity-30 scale-125"
               />
             ) : null}
 
-            {/* Main media — video loop with full body head-to-toe framing */}
-            {s.reel ? (
-              <video
-                key={s.reel}
-                src={s.reel}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-                poster={s.companion ? companionImage(s.companion.image_url) : undefined}
-                onLoadedData={(e) => {
-                  const v = e.currentTarget;
-                  if (v.paused) v.play().catch(() => {});
-                }}
-                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-top"
-              />
-            ) : s.companion ? (
-              <img
-                src={companionImage(s.companion.image_url)}
-                alt={s.companion.name}
-                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-neutral-950" />
-            )}
+            {/* Main media — full body head-to-toe presentation */}
+            <div className="relative z-[1] flex h-full w-full items-center justify-center p-2">
+              {s.reel ? (
+                <video
+                  key={s.reel}
+                  src={s.reel}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                  poster={s.companion ? companionImage(s.companion.image_url) : undefined}
+                  onLoadedData={(e) => {
+                    const v = e.currentTarget;
+                    if (v.paused) v.play().catch(() => {});
+                  }}
+                  className="pointer-events-none h-full w-full object-contain object-center"
+                />
+              ) : s.companion ? (
+                <img
+                  src={companionImage(s.companion.image_url)}
+                  alt={s.companion.name}
+                  className="pointer-events-none h-full w-full object-contain object-center animate-live"
+                />
+              ) : (
+                <div className="h-full w-full bg-neutral-950" />
+              )}
+            </div>
 
-            <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/20 to-black/20" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] p-5 md:p-8">
+            <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] p-4 sm:p-6 md:p-8">
               <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 <Circle className="h-1.5 w-1.5 fill-white text-white" /> Live
               </span>

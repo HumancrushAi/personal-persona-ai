@@ -70,9 +70,9 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
   },
   {
     id: "948f3ac7-a60c-4342-93fb-0f3ae3578101",
-    name: "Ebony",
+    name: "Zara",
     title: "Golden glow",
-    sub: "gorgeous curvy beauty · sun-kissed confidence 🔥",
+    sub: "curvy golden-hour goddess · radiant charm & seductive warmth 💋",
     gender: "f",
   },
   {

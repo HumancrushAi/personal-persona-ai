@@ -1161,7 +1161,7 @@ function BannerSlider({
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="flex w-full h-[380px] transition-transform duration-700 ease-out md:h-[560px]"
+        className="flex w-full h-[460px] sm:h-[520px] md:h-[640px] transition-transform duration-700 ease-out"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {slides.map((s, i) => (
@@ -1172,7 +1172,7 @@ function BannerSlider({
             className="group relative block h-full w-full shrink-0 overflow-hidden bg-neutral-950 text-left"
             aria-label={s.companion ? `Chat with ${s.companion.name}` : s.title}
           >
-            {/* Ambient blurred backdrop so wide screens have rich, warm atmosphere */}
+            {/* Ambient blurred backdrop */}
             {s.companion ? (
               <img
                 src={companionImage(s.companion.image_url)}
@@ -1181,7 +1181,7 @@ function BannerSlider({
               />
             ) : null}
 
-            {/* Main media — video loop with full-body object-contain framing */}
+            {/* Main media — video loop with full body head-to-toe framing */}
             {s.reel ? (
               <video
                 key={s.reel}
@@ -1196,13 +1196,13 @@ function BannerSlider({
                   const v = e.currentTarget;
                   if (v.paused) v.play().catch(() => {});
                 }}
-                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-center"
+                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-top"
               />
             ) : s.companion ? (
               <img
                 src={companionImage(s.companion.image_url)}
                 alt={s.companion.name}
-                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-center animate-live"
+                className="pointer-events-none relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
               />
             ) : (
               <div className="absolute inset-0 bg-neutral-950" />

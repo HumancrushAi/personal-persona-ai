@@ -22,6 +22,12 @@ import {
   Wand2,
   Video,
   Lock,
+  Compass,
+  Film,
+  Home,
+  MessageSquare,
+  FolderHeart,
+  UserPlus,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
 import { companionForReel, companionReelUrl, getCompanionReel, getEffectiveCompanionReel } from "@/lib/reels";
@@ -237,9 +243,15 @@ function Landing() {
   });
 
   const [activeCat, setActiveCat] = useState<Cat>("For you");
+  const [topTab, setTopTab] = useState<"girls" | "anime" | "guys">("girls");
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
   const [query, setQuery] = useState("");
+  const [authed, setAuthed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+  }, []);
 
   // One entry covers both overlays, so handing off story -> tease doesn't churn
   // the history stack mid-transition.
@@ -293,22 +305,40 @@ function Landing() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (companions ?? []).filter((c) => {
+    let list = companions ?? [];
+
+    // Filter by topTab (Girls, Anime, Guys)
+    if (topTab === "girls") {
+      list = list.filter((c) => (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime");
+    } else if (topTab === "anime") {
+      list = list.filter((c) => c.art_style === "anime" || c.image_url?.includes("anime"));
+    } else if (topTab === "guys") {
+      list = list.filter((c) => c.gender === "male" || c.gender === "trans-male");
+    }
+
+    // Filter by search query or category pill
+    return list.filter((c) => {
       if (q) {
         const hay = `${c.name} ${c.ethnicity} ${c.short_bio}`.toLowerCase();
         return hay.includes(q);
       }
       return matchesCategory(c, activeCat);
     });
-  }, [companions, activeCat, query]);
+  }, [companions, activeCat, query, topTab]);
 
-  // Only offer categories that actually have someone in them — tapping "Trans"
-  // or "Non-binary" and landing on an empty grid reads as a broken site.
+  // Only offer categories that actually have someone in them
   const visibleCategories = useMemo(() => {
-    const list = companions ?? [];
+    let list = companions ?? [];
+    if (topTab === "girls") {
+      list = list.filter((c) => (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime");
+    } else if (topTab === "anime") {
+      list = list.filter((c) => c.art_style === "anime" || c.image_url?.includes("anime"));
+    } else if (topTab === "guys") {
+      list = list.filter((c) => c.gender === "male" || c.gender === "trans-male");
+    }
     if (!list.length) return CATEGORIES;
     return CATEGORIES.filter((cat) => list.some((c) => matchesCategory(c, cat)));
-  }, [companions]);
+  }, [companions, topTab]);
 
   // If the active chip disappears (data changed), fall back to the default tab.
   useEffect(() => {
@@ -327,283 +357,457 @@ function Landing() {
   }, [companions, query]);
 
   return (
-    <div className="min-h-screen overflow-x-hidden pb-24">
-      <Nav />
-
-      {bannerText ? (
-        <div className="bg-primary/15 px-4 py-2 text-center text-sm font-medium text-primary">
-          {bannerText}
-        </div>
-      ) : null}
-
-      {/* TOP PROMOTIONAL BANNER (Candy.ai style) */}
-      <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
-        <Link
-          to="/auth"
-          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-600 via-rose-600 to-purple-700 px-4 py-3 text-white shadow-glow transition hover:opacity-95"
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg shadow-inner backdrop-blur">
-              🔥
+    <div className="min-h-screen bg-neutral-950 text-white flex flex-col md:flex-row">
+      {/* LEFT SIDEBAR (desktop only) */}
+      <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-white/10 bg-[#0f0d15] p-5 z-30 justify-between">
+        <div className="flex flex-col gap-8">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 px-2">
+            <Heart className="h-6 w-6 fill-primary text-primary" />
+            <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-r from-pink-500 to-rose-400 bg-clip-text text-transparent">
+              HumanCrush<span className="text-white">.com</span>
             </span>
+          </Link>
+
+          {/* Navigation Items */}
+          <nav className="flex flex-col gap-1.5">
+            {[
+              { label: "Home", icon: <Home className="h-5 w-5" />, to: "/" },
+              { label: "Discover", icon: <Compass className="h-5 w-5" />, to: "/cams" },
+              { label: "Shorts", icon: <Film className="h-5 w-5" />, to: "/gallery" },
+              { label: "Chat", icon: <MessageSquare className="h-5 w-5" />, to: "/me" },
+              { label: "Collection", icon: <FolderHeart className="h-5 w-5" />, to: "/gallery" },
+              { label: "Create Character", icon: <UserPlus className="h-5 w-5" />, to: "/create" },
+              { label: "My AI", icon: <Heart className="h-5 w-5" />, to: "/me" },
+            ].map((item, idx) => {
+              const active = item.to === "/";
+              return (
+                <Link
+                  key={idx}
+                  to={item.to}
+                  className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-medium transition ${
+                    active
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Bottom Sidebar Links */}
+        <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 text-xs text-white/70">
+            <span className="text-base">🇺🇸</span> English
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1.5 px-3 text-[11px] text-white/40">
+            <a href="#" className="hover:underline">Discord</a>
+            <a href="#" className="hover:underline">Help Center</a>
+            <a href="#" className="hover:underline">Contact</a>
+            <a href="#" className="hover:underline">Affiliate</a>
+          </div>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 md:pl-64 min-h-screen pb-24 overflow-x-hidden">
+        {/* TOP HEADER */}
+        <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/80 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 md:px-8">
+            
+            {/* Top Tabs (Girls, Anime, Guys) */}
+            <div className="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
+              {[
+                { id: "girls", label: "♀ Girls" },
+                { id: "anime", label: "🌀 Anime" },
+                { id: "guys", label: "♂ Guys" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setTopTab(tab.id as any)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase transition ${
+                    topTab === tab.id
+                      ? "bg-grad-primary text-primary-foreground shadow-glow"
+                      : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Right side buttons */}
+            <div className="flex items-center gap-3">
+              {authed ? (
+                <>
+                  <Button asChild variant="ghost" size="sm" className="h-9 rounded-full px-3 text-xs sm:text-sm">
+                    <Link to="/me">My chats</Link>
+                  </Button>
+                  <Button asChild size="sm" className="h-9 rounded-full bg-grad-primary px-4 text-xs text-primary-foreground sm:text-sm shadow-glow">
+                    <Link to="/browse">
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Enter
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button asChild variant="ghost" size="sm" className="h-9 rounded-full px-3 text-xs sm:text-sm text-white/80">
+                    <Link to="/auth">Login</Link>
+                  </Button>
+                  <Button asChild size="sm" className="h-9 rounded-full bg-grad-primary px-4 text-xs text-primary-foreground sm:text-sm shadow-glow">
+                    <Link to="/auth">Create Free Account</Link>
+                  </Button>
+                </>
+              )}
+            </div>
+
+          </div>
+        </header>
+
+        {bannerText ? (
+          <div className="bg-primary/15 px-4 py-2 text-center text-sm font-medium text-primary">
+            {bannerText}
+          </div>
+        ) : null}
+
+        {/* TOP PROMOTIONAL BANNER */}
+        <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
+          <Link
+            to="/auth"
+            className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-600 via-rose-600 to-purple-700 px-4 py-3 text-white shadow-glow transition hover:opacity-95"
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg shadow-inner backdrop-blur">
+                🔥
+              </span>
+              <div>
+                <p className="font-display text-sm font-bold tracking-wide uppercase text-white drop-shadow sm:text-base">
+                  HOT SPECIAL · 25 FREE MESSAGES
+                </p>
+                <p className="text-[11px] text-white/90 sm:text-xs">
+                  No credit card required · Instant access to all AI companions
+                </p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full bg-yellow-400 px-4 py-1.5 text-xs font-extrabold tracking-wider uppercase text-black shadow-md group-hover:scale-105 transition-transform">
+              JOIN NOW
+            </span>
+          </Link>
+        </section>
+
+        {/* BANNER SLIDER */}
+        <section className="mx-auto mt-3 max-w-7xl px-4 md:px-6">
+          <BannerSlider slides={bannerSlides} onPick={(c) => setTease(c)} />
+        </section>
+
+        {/* NEW EXPERIENCES — Candy.ai Style Cards */}
+        <section className="mx-auto mt-6 max-w-7xl px-4 md:px-6">
+          <SectionTitle title="🔥 New Experiences" subtitle="explore exclusive features & create your companion" />
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {/* Card 1: Create Your Own Character */}
+            <Link
+              to="/create"
+              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-primary/40 bg-gradient-to-br from-purple-950 via-pink-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-primary hover:shadow-glow"
+            >
+              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/40 transition" />
+              <div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/30">
+                  <Sparkles className="h-3 w-3" /> Custom AI
+                </span>
+                <h3 className="mt-2 font-display text-xl font-bold text-white">CREATE YOUR OWN MODEL</h3>
+                <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                  Build your dream AI companion. Pick face, body type, personality & style.
+                </p>
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
+                  <Wand2 className="h-3.5 w-3.5" /> Create Model
+                </span>
+              </div>
+            </Link>
+
+            {/* Card 2: Build Your Video */}
+            <Link
+              to="/cams"
+              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-rose-950 via-red-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-rose-500/60 hover:shadow-glow"
+            >
+              <div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400 border border-red-500/30">
+                  <Circle className="h-2 w-2 fill-red-500 animate-pulse" /> Live Cams
+                </span>
+                <h3 className="mt-2 font-display text-xl font-bold text-white">BUILD YOUR VIDEO</h3>
+                <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                  Super hot models in motion. Real video loops, live interaction & camera scenes.
+                </p>
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white border border-white/20 backdrop-blur group-hover:bg-white/20">
+                  <Video className="h-3.5 w-3.5 text-red-400" /> Watch Live Loops
+                </span>
+              </div>
+            </Link>
+
+            {/* Card 3: Private Content */}
+            <Link
+              to="/gallery"
+              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-indigo-950 via-purple-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-indigo-500/60 hover:shadow-glow"
+            >
+              <div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400 border border-indigo-500/30">
+                  <Lock className="h-3 w-3" /> Exclusive
+                </span>
+                <h3 className="mt-2 font-display text-xl font-bold text-white">PRIVATE CONTENT</h3>
+                <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                  Unlock exclusive secret photos, voice notes, and private album collections.
+                </p>
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white border border-white/20 backdrop-blur group-hover:bg-white/20">
+                  <Lock className="h-3.5 w-3.5 text-indigo-400" /> Unlock Gallery
+                </span>
+              </div>
+            </Link>
+          </div>
+        </section>
+
+        {/* LIVE NOW */}
+        <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
+          <SectionTitle
+            title="🔴 Live now"
+            subtitle="tap to chat"
+            cta={
+              <Link to="/cams" className="text-xs text-primary hover:underline">
+                See all
+              </Link>
+            }
+          />
+          <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(companions ?? []).slice(0, 14).map((c) => {
+              const reel = getEffectiveCompanionReel(c);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setTease(c)}
+                  className="group relative h-[340px] w-[200px] shrink-0 snap-start overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-left shadow-md transition hover:shadow-glow md:h-[400px] md:w-[240px]"
+                >
+                  {reel ? (
+                    <AutoPlayVideo
+                      key={reel}
+                      src={reel}
+                      poster={companionImage(c.image_url)}
+                      className="absolute inset-0 h-full w-full object-cover object-top animate-live"
+                    />
+                  ) : (
+                    <img
+                      src={companionImage(c.image_url)}
+                      alt={c.name}
+                      loading="lazy"
+                      className="animate-live absolute inset-0 h-full w-full object-cover object-top"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
+                  <div className="absolute inset-x-0 top-0 flex items-center justify-between p-3">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur shadow-sm">
+                      <Circle className="h-1.5 w-1.5 fill-white text-white animate-pulse" /> LIVE
+                    </span>
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 p-3.5 text-left">
+                    <p className="font-display text-base font-semibold text-white drop-shadow">
+                      {c.name}, {c.age}
+                    </p>
+                    <p className="line-clamp-1 text-[11px] text-white/80">{c.short_bio || c.ethnicity}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* EXPLORE FEATURED CHARACTERS SECTION (Candy.ai style filter & grid) */}
+        <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-white/5 pb-4">
             <div>
-              <p className="font-display text-sm font-bold tracking-wide uppercase text-white drop-shadow sm:text-base">
-                HOT SPECIAL · 25 FREE MESSAGES
-              </p>
-              <p className="text-[11px] text-white/90 sm:text-xs">
-                No credit card required · Instant access to all AI companions
-              </p>
+              <h2 className="font-display text-xl font-bold tracking-tight md:text-2xl text-white">Explore Featured Characters</h2>
+              <p className="text-xs text-white/50 mt-0.5">tap anyone — they message you first</p>
+            </div>
+            
+            {/* Search + Category Filter Strip */}
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Search Bar */}
+              <div className="relative flex-1 sm:w-60 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                <input
+                  type="text"
+                  placeholder="Search characters..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-xs text-white placeholder-white/30 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition"
+                />
+              </div>
+
+              {/* Category Pills Slider */}
+              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {visibleCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCat(cat)}
+                    className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold border transition ${
+                      activeCat === cat
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-white/10 bg-white/5 text-white/60 hover:text-white hover:border-white/20"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <span className="shrink-0 rounded-full bg-yellow-400 px-4 py-1.5 text-xs font-extrabold tracking-wider uppercase text-black shadow-md group-hover:scale-105 transition-transform">
-            JOIN NOW
-          </span>
-        </Link>
-      </section>
 
-      {/* BANNER SLIDER */}
-      <section className="mx-auto mt-3 max-w-7xl px-4 md:px-6">
-        <BannerSlider slides={bannerSlides} onPick={(c) => setTease(c)} />
-      </section>
+          {/* Grid of character cards */}
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {filtered.map((c, index) => {
+              const reel = getEffectiveCompanionReel(c);
+              const isNew = index === 0; // Highlight the first one as NEW
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setTease(c)}
+                  className="group relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-left shadow-md transition hover:shadow-glow hover:border-primary/30"
+                >
+                  <div className="relative w-full aspect-[2/3] overflow-hidden">
+                    <img
+                      src={companionImage(c.image_url)}
+                      alt={c.name}
+                      loading="lazy"
+                      className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]"
+                    />
+                    
+                    {/* Badge: NEW */}
+                    {isNew && (
+                      <div className="absolute left-3 top-3 z-10 rounded-md bg-grad-primary px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-primary-foreground shadow-glow animate-pulse">
+                        New
+                      </div>
+                    )}
 
-      {/* NEW EXPERIENCES — Candy.ai Style Cards */}
-      <section className="mx-auto mt-6 max-w-7xl px-4 md:px-6">
-        <SectionTitle title="🔥 New Experiences" subtitle="explore exclusive features & create your companion" />
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {/* Card 1: Create Your Own Character */}
-          <Link
-            to="/create"
-            className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-primary/40 bg-gradient-to-br from-purple-950 via-pink-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-primary hover:shadow-glow"
-          >
-            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/40 transition" />
-            <div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/30">
-                <Sparkles className="h-3 w-3" /> Custom AI
-              </span>
-              <h3 className="mt-2 font-display text-xl font-bold text-white">CREATE YOUR OWN MODEL</h3>
-              <p className="mt-1 text-xs text-white/80 line-clamp-2">
-                Build your dream AI companion. Pick face, body type, personality & style.
-              </p>
-            </div>
-            <div className="flex items-center justify-between pt-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
-                <Wand2 className="h-3.5 w-3.5" /> Create Model
-              </span>
-            </div>
-          </Link>
+                    {/* Online status indicator */}
+                    <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[9px] backdrop-blur border border-white/10">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> online
+                    </div>
 
-          {/* Card 2: Build Your Video */}
-          <Link
-            to="/cams"
-            className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-rose-950 via-red-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-rose-500/60 hover:shadow-glow"
-          >
-            <div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400 border border-red-500/30">
-                <Circle className="h-2 w-2 fill-red-500 animate-pulse" /> Live Cams
-              </span>
-              <h3 className="mt-2 font-display text-xl font-bold text-white">BUILD YOUR VIDEO</h3>
-              <p className="mt-1 text-xs text-white/80 line-clamp-2">
-                Super hot models in motion. Real video loops, live interaction & camera scenes.
-              </p>
-            </div>
-            <div className="flex items-center justify-between pt-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white border border-white/20 backdrop-blur group-hover:bg-white/20">
-                <Video className="h-3.5 w-3.5 text-red-400" /> Watch Live Loops
-              </span>
-            </div>
-          </Link>
+                    {/* Quick action buttons / icons overlay (lock, video) */}
+                    <div className="absolute right-3 top-10 flex flex-col gap-1.5">
+                      {reel && (
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/80 shadow-md">
+                          <Video className="h-3 w-3 text-red-400" />
+                        </div>
+                      )}
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/80 shadow-md">
+                        <Lock className="h-3 w-3 text-indigo-400" />
+                      </div>
+                    </div>
 
-          {/* Card 3: Private Content */}
-          <Link
-            to="/gallery"
-            className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-indigo-950 via-purple-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-indigo-500/60 hover:shadow-glow"
-          >
-            <div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400 border border-indigo-500/30">
-                <Lock className="h-3 w-3" /> Exclusive
-              </span>
-              <h3 className="mt-2 font-display text-xl font-bold text-white">PRIVATE CONTENT</h3>
-              <p className="mt-1 text-xs text-white/80 line-clamp-2">
-                Unlock exclusive secret photos, voice notes, and private album collections.
-              </p>
-            </div>
-            <div className="flex items-center justify-between pt-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white border border-white/20 backdrop-blur group-hover:bg-white/20">
-                <Lock className="h-3.5 w-3.5 text-indigo-400" /> Unlock Gallery
-              </span>
-            </div>
-          </Link>
-        </div>
-      </section>
-
-
-
-      {/* LIVE NOW — real models; the image IS who you chat with */}
-      <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
-        <SectionTitle
-          title="🔴 Live now"
-          subtitle="tap to chat"
-          cta={
-            <Link to="/cams" className="text-xs text-primary hover:underline">
-              See all
-            </Link>
-          }
-        />
-        <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {(companions ?? []).slice(0, 14).map((c) => {
-            const reel = getEffectiveCompanionReel(c);
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setTease(c)}
-                className="group relative h-[340px] w-[200px] shrink-0 snap-start overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-left shadow-md transition hover:shadow-glow md:h-[400px] md:w-[240px]"
-              >
-                {reel ? (
-                  <AutoPlayVideo
-                    key={reel}
-                    src={reel}
-                    poster={companionImage(c.image_url)}
-                    className="absolute inset-0 h-full w-full object-cover object-top animate-live"
-                  />
-                ) : (
-                  <img
-                    src={companionImage(c.image_url)}
-                    alt={c.name}
-                    loading="lazy"
-                    className="animate-live absolute inset-0 h-full w-full object-cover object-top"
-                  />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
-                <div className="absolute inset-x-0 top-0 flex items-center justify-between p-3">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur shadow-sm">
-                    <Circle className="h-1.5 w-1.5 fill-white text-white animate-pulse" /> LIVE
-                  </span>
-                </div>
-                <div className="absolute inset-x-0 bottom-0 p-3.5 text-left">
-                  <p className="font-display text-base font-semibold text-white drop-shadow">
-                    {c.name}, {c.age}
-                  </p>
-                  <p className="line-clamp-1 text-[11px] text-white/80">{c.short_bio || c.ethnicity}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* TRENDING (big grid) */}
-      <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
-        <SectionTitle title="✨ Trending crushes" subtitle="tap anyone — they message you first" />
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {(companions ?? []).map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setTease(c)}
-              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-left shadow-md transition hover:shadow-glow"
-            >
-              <div className="relative w-full aspect-[2/3] overflow-hidden">
-                <img
-                  src={companionImage(c.image_url)}
-                  alt={c.name}
-                  loading="lazy"
-                  className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.03]"
-                />
-                <div className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] backdrop-blur border border-white/10">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> online
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none" />
-                <div className="absolute inset-x-0 bottom-0 p-3 pt-6">
-                  <div className="flex items-baseline justify-between">
-                    <h3 className="font-display text-base font-semibold text-white md:text-lg">
-                      {c.name}, {c.age}
-                    </h3>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none" />
+                    
+                    <div className="absolute inset-x-0 bottom-0 p-3 pt-6">
+                      <div className="flex items-baseline justify-between">
+                        <h3 className="font-display text-base font-bold text-white md:text-lg drop-shadow">
+                          {c.name}, {c.age}
+                        </h3>
+                      </div>
+                      <p className="text-[10px] uppercase tracking-wider text-primary font-bold">{c.ethnicity}</p>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-white/80 leading-relaxed font-light">
+                        {c.short_bio}
+                      </p>
+                      
+                      <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-grad-primary px-3 py-1 text-[10px] font-bold text-primary-foreground shadow-md transition-all duration-300 group-hover:scale-105">
+                        <MessageCircle className="h-3.5 w-3.5" /> Chat now
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-[10px] uppercase tracking-wide text-primary font-medium">{c.ethnicity}</p>
-                  <p className="mt-0.5 line-clamp-1 text-[11px] text-white/85">
-                    {c.short_bio}
-                  </p>
-                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-grad-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground">
-                    <MessageCircle className="h-3 w-3" /> Chat now
-                  </span>
-                </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* FEATURE STRIP */}
+        <section className="mx-auto mt-14 max-w-7xl px-4 md:px-6">
+          <div className="grid gap-3 md:grid-cols-4">
+            {[
+              {
+                i: <ImageIcon className="h-5 w-5" />,
+                t: "AI selfies",
+                d: "She sends custom selfies & photos on request.",
+              },
+              {
+                i: <Mic className="h-5 w-5" />,
+                t: "Voice notes",
+                d: "Hear her voice with personalized audio notes.",
+              },
+              {
+                i: <Sparkles className="h-5 w-5" />,
+                t: "Roleplay scenes",
+                d: "First date, romance, fantasy roleplays…",
+              },
+              {
+                i: <Heart className="h-5 w-5 fill-primary text-primary" />,
+                t: "She remembers",
+                d: "Real relationship that levels up.",
+              },
+            ].map((f) => (
+              <div key={f.t} className="glass rounded-2xl p-4">
+                <div className="text-primary">{f.i}</div>
+                <p className="mt-2 font-display text-lg font-semibold">{f.t}</p>
+                <p className="text-xs text-muted-foreground">{f.d}</p>
               </div>
-            </button>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
 
-      {/* FEATURE STRIP */}
-      <section className="mx-auto mt-14 max-w-7xl px-4 md:px-6">
-        <div className="grid gap-3 md:grid-cols-4">
-          {[
-            {
-              i: <ImageIcon className="h-5 w-5" />,
-              t: "AI selfies",
-              d: "She sends custom selfies & photos on request.",
-            },
-            {
-              i: <Mic className="h-5 w-5" />,
-              t: "Voice notes",
-              d: "Hear her voice with personalized audio notes.",
-            },
-            {
-              i: <Sparkles className="h-5 w-5" />,
-              t: "Roleplay scenes",
-              d: "First date, romance, fantasy roleplays…",
-            },
-            {
-              i: <Heart className="h-5 w-5 fill-primary text-primary" />,
-              t: "She remembers",
-              d: "Real relationship that levels up.",
-            },
-          ].map((f) => (
-            <div key={f.t} className="glass rounded-2xl p-4">
-              <div className="text-primary">{f.i}</div>
-              <p className="mt-2 font-display text-lg font-semibold">{f.t}</p>
-              <p className="text-xs text-muted-foreground">{f.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        {/* CTA */}
+        <section className="mx-auto mt-14 max-w-7xl px-4 md:px-6">
+          <div className="glass rounded-3xl p-8 text-center md:p-12">
+            <h2 className="font-display text-3xl font-semibold md:text-5xl">
+              Your <span className="text-primary">crush</span> is online.
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
+              25 free messages on the house. No card. 18+ only.
+            </p>
+            <Button
+              asChild
+              size="lg"
+              className="mt-5 rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+            >
+              <Link to="/auth">Start free →</Link>
+            </Button>
+          </div>
+        </section>
 
-      {/* CTA */}
-      <section className="mx-auto mt-14 max-w-7xl px-4 md:px-6">
-        <div className="glass rounded-3xl p-8 text-center md:p-12">
-          <h2 className="font-display text-3xl font-semibold md:text-5xl">
-            Your <span className="text-primary">crush</span> is online.
-          </h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
-            25 free messages on the house. No card. 18+ only.
-          </p>
-          <Button
-            asChild
-            size="lg"
-            className="mt-5 rounded-full bg-grad-primary text-primary-foreground shadow-glow"
-          >
-            <Link to="/auth">Start free →</Link>
-          </Button>
-        </div>
-      </section>
+        <FAQSection />
 
-      <FAQSection />
+        <footer className="mt-4 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
+          <div className="mb-2 flex items-center justify-center gap-4">
+            <Link to="/faq" className="hover:text-foreground">
+              FAQ
+            </Link>
+            <Link to="/gallery" className="hover:text-foreground">
+              Gallery
+            </Link>
+            <Link to="/create" className="hover:text-foreground">
+              Create AI
+            </Link>
+          </div>
+          © {new Date().getFullYear()} HumanCrush.com · 18+ only · AI characters are fictional.
+        </footer>
 
-      <footer className="mt-4 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
-        <div className="mb-2 flex items-center justify-center gap-4">
-          <Link to="/faq" className="hover:text-foreground">
-            FAQ
-          </Link>
-          <Link to="/gallery" className="hover:text-foreground">
-            Gallery
-          </Link>
-          <Link to="/create" className="hover:text-foreground">
-            Create AI
-          </Link>
-        </div>
-        © {new Date().getFullYear()} HumanCrush.com · 18+ only · AI characters are fictional.
-      </footer>
-
-      {tease && <TeaseChat companion={tease} onClose={() => setTease(null)} />}
+        {tease && <TeaseChat companion={tease} onClose={() => setTease(null)} />}
+      </div>
     </div>
   );
 }

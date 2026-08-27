@@ -46,25 +46,32 @@ export const generateCharacter = createServerFn({ method: "POST" })
           ? "androgynous, solo"
           : "1girl, solo";
 
+    const baseDescription = [
+      `a ${data.ethnicity} ${genderWord} named ${data.name} who is exactly ${data.age} years old and clearly looks ${data.age}`,
+      data.bodyType ? `body type is ${data.bodyType}` : "",
+      data.breastSize && genderWord === "woman" ? `breast size is ${data.breastSize}` : "",
+      data.buttSize && genderWord === "woman" ? `butt/hips size is ${data.buttSize}` : "",
+      data.hair ? `hair is ${data.hair}` : "",
+      data.eyes ? `eyes are ${data.eyes}` : "",
+      data.outfit ? `wearing ${data.outfit}` : "wearing a highly sexy, provocative skimpy outfit",
+      data.fit === "slim"
+        ? "outfit fit: tailored and form-fitting, hugs the figure"
+        : data.fit === "loose"
+          ? "outfit fit: relaxed and loose, oversized silhouette"
+          : "outfit fit: regular",
+      data.vibe ? `personality/vibe is ${data.vibe}` : "",
+      "sultry, seductive, flirty eye contact, confident alluring pose, revealing form-fitting sexy outfit, cleavage, intimate warm lighting, head and shoulders to waist portrait"
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    const { refinePromoPrompt } = await import("./prompt-refiner.server");
+    const refinedPromo = await refinePromoPrompt(baseDescription);
+
     const prompt = [
       genderTag,
       style,
-      `Subject: a ${data.ethnicity} ${genderWord} named ${data.name} who is exactly ${data.age} years old and clearly looks ${data.age} — age-appropriate face, skin, and body for a ${data.age}-year-old.`,
-      data.bodyType ? `Body type: ${data.bodyType}.` : "",
-      data.breastSize && genderWord === "woman" ? `Breast size: ${data.breastSize}.` : "",
-      data.buttSize && genderWord === "woman" ? `Hips and butt size: ${data.buttSize}.` : "",
-      data.hair ? `Hair: ${data.hair}.` : "",
-      data.eyes ? `Eyes: ${data.eyes}.` : "",
-      data.outfit ? `Wearing: ${data.outfit}.` : "Wearing stylish casual clothes.",
-      data.fit === "slim"
-        ? "Outfit fit: tailored and form-fitting, hugs the figure, not baggy."
-        : data.fit === "loose"
-          ? "Outfit fit: relaxed and loose, oversized silhouette."
-          : "Outfit fit: regular, true-to-size.",
-      data.vibe ? `Vibe: ${data.vibe}.` : "",
-      // Skimpy but clothed — this portrait becomes the model's public face.
-      // The real guarantee is the noNudity negative prompt below.
-      "Sultry, seductive, flirty eye contact with the camera, confident alluring pose, revealing form-fitting outfit, sexy but fully covered with nothing exposed, intimate warm lighting. Centered, head and shoulders to waist.",
+      refinedPromo || baseDescription,
     ]
       .filter(Boolean)
       .join(" ");

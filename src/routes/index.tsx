@@ -365,7 +365,7 @@ function Landing() {
   }, [companions, query]);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[#07050a] text-white flex flex-col lg:flex-row relative">
       {/* LEFT SIDEBAR (desktop only) */}
       <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-white/10 bg-[#0f0d15] p-5 z-30 justify-between">
         <div className="flex flex-col gap-8">
@@ -422,7 +422,11 @@ function Landing() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 lg:pl-64 min-h-screen pb-24 overflow-x-hidden">
+      <div className="flex-1 lg:pl-64 min-h-screen pb-24 overflow-x-hidden relative">
+        {/* Background Ambient Glows */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none z-0" />
+        <div className="absolute top-1/3 left-0 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0" />
+        <div className="absolute bottom-0 right-1/4 w-[700px] h-[700px] rounded-full bg-indigo-500/5 blur-[180px] pointer-events-none z-0" />
         {/* TOP HEADER */}
         <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/85 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-8">
@@ -533,20 +537,20 @@ function Landing() {
             {/* Card 1: Create Your Own Character */}
             <Link
               to="/create"
-              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-primary/40 bg-gradient-to-br from-purple-950 via-pink-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-primary hover:shadow-glow"
+              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-pink-500/20 bg-gradient-to-br from-[#240b36] via-[#c31432]/10 to-[#050308] p-5 text-white shadow-lg transition duration-300 hover:scale-[1.02] hover:border-pink-500/60 hover:shadow-[0_0_25px_rgba(236,72,153,0.15)]"
             >
-              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/40 transition" />
+              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-pink-500/10 blur-2xl group-hover:bg-pink-500/20 transition duration-500" />
               <div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/30">
+                <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 border border-pink-500/30">
                   <Sparkles className="h-3 w-3" /> Custom AI
                 </span>
-                <h3 className="mt-2 font-display text-xl font-bold text-white">CREATE YOUR OWN MODEL</h3>
-                <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">CREATE YOUR OWN MODEL</h3>
+                <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
                   Build your dream AI companion. Pick face, body type, personality & style.
                 </p>
               </div>
               <div className="flex items-center justify-between pt-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-grad-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-1.5 text-xs font-bold text-white shadow-glow group-hover:brightness-110 transition">
                   <Wand2 className="h-3.5 w-3.5" /> Create Model
                 </span>
               </div>
@@ -555,20 +559,21 @@ function Landing() {
             {/* Card 2: Build Your Video */}
             <Link
               to="/cams"
-              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-rose-950 via-red-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-rose-500/60 hover:shadow-glow"
+              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-rose-500/20 bg-gradient-to-br from-[#3a0d18] via-[#e52d27]/10 to-[#050308] p-5 text-white shadow-lg transition duration-300 hover:scale-[1.02] hover:border-rose-500/60 hover:shadow-[0_0_25px_rgba(244,63,94,0.15)]"
             >
+              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition duration-500" />
               <div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400 border border-red-500/30">
-                  <Circle className="h-2 w-2 fill-red-500 animate-pulse" /> Live Cams
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 border border-rose-500/30">
+                  <Circle className="h-2 w-2 fill-rose-500 animate-pulse" /> Live Cams
                 </span>
-                <h3 className="mt-2 font-display text-xl font-bold text-white">BUILD YOUR VIDEO</h3>
-                <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">BUILD YOUR VIDEO</h3>
+                <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
                   Super hot models in motion. Real video loops, live interaction & camera scenes.
                 </p>
               </div>
               <div className="flex items-center justify-between pt-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white border border-white/20 backdrop-blur group-hover:bg-white/20">
-                  <Video className="h-3.5 w-3.5 text-red-400" /> Watch Live Loops
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-4 py-1.5 text-xs font-bold text-white border border-white/10 backdrop-blur group-hover:bg-white/10 group-hover:border-white/20 transition">
+                  <Video className="h-3.5 w-3.5 text-rose-400" /> Watch Live Loops
                 </span>
               </div>
             </Link>
@@ -576,19 +581,20 @@ function Landing() {
             {/* Card 3: Private Content */}
             <Link
               to="/gallery"
-              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-indigo-950 via-purple-950/60 to-black p-5 text-white shadow-lg transition hover:scale-[1.02] hover:border-indigo-500/60 hover:shadow-glow"
+              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-[#0f172a] via-[#1e1b4b]/20 to-[#050308] p-5 text-white shadow-lg transition duration-300 hover:scale-[1.02] hover:border-indigo-500/60 hover:shadow-[0_0_25px_rgba(99,102,241,0.15)]"
             >
+              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-indigo-500/10 blur-2xl group-hover:bg-indigo-500/20 transition duration-500" />
               <div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400 border border-indigo-500/30">
                   <Lock className="h-3 w-3" /> Exclusive
                 </span>
-                <h3 className="mt-2 font-display text-xl font-bold text-white">PRIVATE CONTENT</h3>
-                <p className="mt-1 text-xs text-white/80 line-clamp-2">
+                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">PRIVATE CONTENT</h3>
+                <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
                   Unlock exclusive secret photos, voice notes, and private album collections.
                 </p>
               </div>
               <div className="flex items-center justify-between pt-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white border border-white/20 backdrop-blur group-hover:bg-white/20">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-4 py-1.5 text-xs font-bold text-white border border-white/10 backdrop-blur group-hover:bg-white/10 group-hover:border-white/20 transition">
                   <Lock className="h-3.5 w-3.5 text-indigo-400" /> Unlock Gallery
                 </span>
               </div>
@@ -662,26 +668,26 @@ function Landing() {
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {/* Search Bar */}
               <div className="relative flex-1 sm:w-60 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
                 <input
                   type="text"
                   placeholder="Search characters..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-xs text-white placeholder-white/30 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition"
+                  className="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-xs text-white placeholder-white/30 hover:border-white/20 focus:border-pink-500/50 focus:outline-none focus:ring-1 focus:ring-pink-500/30 transition duration-300"
                 />
               </div>
 
               {/* Category Pills Slider */}
-              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {visibleCategories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setActiveCat(cat)}
-                    className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold border transition ${
+                    className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold border transition duration-300 ${
                       activeCat === cat
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-white/10 bg-white/5 text-white/60 hover:text-white hover:border-white/20"
+                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-transparent shadow-[0_0_15px_rgba(244,63,94,0.25)]"
+                        : "border-white/10 bg-white/5 text-white/50 hover:text-white hover:border-white/20"
                     }`}
                   >
                     {cat}
@@ -700,14 +706,14 @@ function Landing() {
                 <button
                   key={c.id}
                   onClick={() => setTease(c)}
-                  className="group relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-left shadow-md transition hover:shadow-glow hover:border-primary/30"
+                  className="group relative overflow-hidden rounded-3xl border border-white/5 bg-[#0a070e]/80 text-left shadow-lg transition duration-300 hover:shadow-[0_0_25px_rgba(244,63,94,0.15)] hover:border-pink-500/30"
                 >
                   <div className="relative w-full aspect-[2/3] overflow-hidden">
                     <img
                       src={companionImage(c.image_url)}
                       alt={c.name}
                       loading="lazy"
-                      className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]"
+                      className="h-full w-full object-cover object-top transition duration-700 ease-out group-hover:scale-[1.05]"
                     />
                     
                     {/* Badge: NEW */}
@@ -734,20 +740,20 @@ function Landing() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a070e] via-transparent to-transparent pointer-events-none" />
                     
-                    <div className="absolute inset-x-0 bottom-0 p-3 pt-6">
+                    <div className="absolute inset-x-0 bottom-0 p-3.5 pt-6 z-10">
                       <div className="flex items-baseline justify-between">
                         <h3 className="font-display text-base font-bold text-white md:text-lg drop-shadow">
                           {c.name}, {c.age}
                         </h3>
                       </div>
-                      <p className="text-[10px] uppercase tracking-wider text-primary font-bold">{c.ethnicity}</p>
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-white/80 leading-relaxed font-light">
+                      <p className="text-[10px] uppercase tracking-wider text-pink-400 font-bold">{c.ethnicity}</p>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-white/70 leading-relaxed font-light">
                         {c.short_bio}
                       </p>
                       
-                      <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-grad-primary px-3 py-1 text-[10px] font-bold text-primary-foreground shadow-md transition-all duration-300 group-hover:scale-105">
+                      <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-3.5 py-1.5 text-[10px] font-bold text-white shadow-md transition-all duration-300 group-hover:scale-105 group-hover:brightness-110">
                         <MessageCircle className="h-3.5 w-3.5" /> Chat now
                       </span>
                     </div>
@@ -775,14 +781,14 @@ function Landing() {
                     <button
                       key={c.id}
                       onClick={() => setTease(c)}
-                      className="group relative overflow-hidden rounded-3xl border border-purple-500/20 bg-neutral-950 text-left shadow-md transition hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:border-purple-500/40"
+                      className="group relative overflow-hidden rounded-3xl border border-purple-500/20 bg-[#0a070e]/80 text-left shadow-lg transition duration-300 hover:shadow-[0_0_25px_rgba(168,85,247,0.2)] hover:border-purple-500/50"
                     >
                       <div className="relative w-full aspect-[2/3] overflow-hidden">
                         <img
                           src={companionImage(c.image_url)}
                           alt={c.name}
                           loading="lazy"
-                          className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]"
+                          className="h-full w-full object-cover object-top transition duration-700 ease-out group-hover:scale-[1.05]"
                         />
                         
                         {/* Quick action buttons / icons overlay (lock, video) */}
@@ -797,9 +803,9 @@ function Landing() {
                           </div>
                         </div>
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a070e] via-transparent to-transparent pointer-events-none" />
                         
-                        <div className="absolute inset-x-0 bottom-0 p-3 pt-6">
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 pt-6 z-10">
                           <h3 className="font-display text-sm font-bold text-white drop-shadow">
                             {c.name}, {c.age}
                           </h3>
@@ -808,7 +814,7 @@ function Landing() {
                             {c.short_bio}
                           </p>
                           
-                          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-2.5 py-0.5 text-[9px] font-bold text-white shadow-md transition-all duration-300 group-hover:scale-105">
+                          <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 text-[9px] font-bold text-white shadow-md transition-all duration-300 group-hover:scale-105 group-hover:brightness-110">
                             <MessageCircle className="h-3 w-3" /> Chat now
                           </span>
                         </div>
@@ -907,10 +913,12 @@ function SectionTitle({
   cta?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-end justify-between gap-3">
+    <div className="flex items-end justify-between gap-3 border-l-4 border-pink-500 pl-3 py-0.5">
       <div>
-        <h2 className="font-display text-xl font-semibold md:text-2xl">{title}</h2>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+        <h2 className="font-display text-base font-extrabold tracking-wider uppercase text-white md:text-lg drop-shadow-sm">
+          {title}
+        </h2>
+        {subtitle && <p className="text-[11px] text-white/50 mt-0.5 font-light tracking-wide">{subtitle}</p>}
       </div>
       {cta}
     </div>
@@ -1449,7 +1457,7 @@ function BannerSlider({
 
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-glow select-none bg-neutral-950"
+      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-[0_0_35px_rgba(168,85,247,0.1)] select-none bg-[#0a0710]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}

@@ -413,10 +413,13 @@ function CreatePage() {
       : "Create my AI Companion";
 
     return (
-      <div className="min-h-screen pb-24 bg-neutral-950 text-white">
+      <div className="min-h-screen pb-24 bg-[#07050a] text-white relative overflow-hidden">
+        {/* Background Ambient Glows */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none z-0" />
+        <div className="absolute top-1/3 left-0 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0" />
         <SiteHeader />
         
-        <section className="mx-auto max-w-3xl px-4 py-8 md:px-6">
+        <section className="mx-auto max-w-3xl px-4 py-8 md:px-6 relative z-10">
           <div className="text-center">
             <h1 className="font-display text-3xl font-extrabold tracking-tight md:text-5xl bg-gradient-to-r from-white via-neutral-100 to-neutral-400 bg-clip-text text-transparent">
               {headerTitle}
@@ -573,7 +576,7 @@ function CreatePage() {
             <Button
               type="button"
               onClick={() => setStep(1)}
-              className="rounded-full bg-grad-primary px-10 py-6 text-sm font-extrabold tracking-wider uppercase text-primary-foreground shadow-glow hover:opacity-95 active:scale-95 transition"
+              className="rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-10 py-6 text-sm font-extrabold tracking-wider uppercase text-white shadow-[0_0_20px_rgba(244,63,94,0.3)] hover:brightness-110 active:scale-95 transition duration-300"
             >
               NEXT →
             </Button>
@@ -584,10 +587,13 @@ function CreatePage() {
   }
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen pb-24 bg-[#07050a] text-white relative overflow-hidden">
+      {/* Background Ambient Glows */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none z-0" />
+      <div className="absolute top-1/2 left-0 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0" />
       <SiteHeader />
 
-      <section className="mx-auto max-w-5xl px-4 py-6 md:px-6">
+      <section className="mx-auto max-w-5xl px-4 py-6 md:px-6 relative z-10">
         <div className="mb-4">
           <button
             type="button"
@@ -598,14 +604,14 @@ function CreatePage() {
           </button>
         </div>
 
-        <div className="glass rounded-3xl p-5 md:p-8">
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium">
-            <Sparkles className="h-3.5 w-3.5 text-primary" /> Create your AI · 1 portrait credit
+        <div className="rounded-3xl border border-white/5 bg-gradient-to-br from-[#170a25] via-[#2f0f35]/20 to-[#0c0911] p-5 md:p-8 shadow-lg">
+          <p className="inline-flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-[11px] font-medium text-pink-400">
+            <Sparkles className="h-3.5 w-3.5 text-pink-400" /> Create your AI · 1 portrait credit
           </p>
-          <h1 className="mt-3 font-display text-3xl font-semibold md:text-5xl">
-            Build your <span className="text-primary">crush</span>.
+          <h1 className="mt-3 font-display text-3xl font-extrabold md:text-5xl bg-gradient-to-r from-white via-pink-100 to-rose-300 bg-clip-text text-transparent">
+            Build your <span className="text-pink-500">crush</span>.
           </h1>
-          <p className="mt-1 max-w-lg text-sm text-muted-foreground md:text-base">
+          <p className="mt-2.5 max-w-lg text-sm text-white/70 md:text-base font-light">
             Pick the look. We generate her, then you fine-tune her personality.
           </p>
         </div>
@@ -696,7 +702,7 @@ function CreatePage() {
             size="lg"
             onClick={submit}
             disabled={loading}
-            className="rounded-full bg-grad-primary px-8 text-primary-foreground shadow-glow"
+            className="rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-8 text-white shadow-[0_0_25px_rgba(244,63,94,0.3)] hover:brightness-110 transition duration-300"
           >
             {loading ? (
               <>
@@ -717,7 +723,7 @@ function CreatePage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-white/70">{label}</p>
+      <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-pink-400/80">{label}</p>
       {children}
     </div>
   );
@@ -742,10 +748,10 @@ function ChipRow({
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
-          className={`min-h-11 rounded-full border px-3.5 py-2 text-xs font-medium transition ${
+          className={`min-h-10 rounded-full border px-4 py-2.5 text-xs font-semibold transition duration-300 ${
             value === o.id
-              ? "border-primary/60 bg-grad-primary text-primary-foreground shadow-glow"
-              : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
+              ? "border-transparent bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.25)]"
+              : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
           }`}
         >
           {o.label}
@@ -773,19 +779,19 @@ function VisualGrid({
             key={o.id}
             type="button"
             onClick={() => onChange(o.id)}
-            className={`group relative flex flex-col items-center overflow-hidden rounded-2xl border p-1.5 text-center transition-all duration-200 ${
+            className={`group relative flex flex-col items-center overflow-hidden rounded-2xl border p-1.5 text-center transition-all duration-300 ${
               isSelected
-                ? "border-primary bg-primary/10 ring-2 ring-primary shadow-glow scale-[1.02]"
-                : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 hover:scale-[1.01]"
+                ? "border-pink-500 bg-pink-500/5 ring-1 ring-pink-500 shadow-[0_0_15px_rgba(244,63,94,0.15)] scale-[1.02]"
+                : "border-white/15 bg-white/5 hover:border-white/25 hover:bg-white/10 hover:scale-[1.01]"
             }`}
           >
             <div className="w-full overflow-hidden rounded-xl bg-black/40">
               {o.swatch}
             </div>
-            <div className="mt-1.5 flex items-center justify-center gap-1 px-1 pb-0.5">
+            <div className="mt-2 flex items-center justify-center gap-1 px-1 pb-0.5">
               <span
-                className={`text-xs font-semibold tracking-tight transition ${
-                  isSelected ? "text-primary" : "text-white/80 group-hover:text-white"
+                className={`text-xs font-semibold tracking-tight transition duration-300 ${
+                  isSelected ? "text-pink-400 font-bold" : "text-white/70 group-hover:text-white"
                 }`}
               >
                 {o.label}

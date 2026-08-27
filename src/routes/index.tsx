@@ -163,9 +163,9 @@ function matchesCategory(c: Companion, cat: Cat): boolean {
       return true;
     case "Goth":
       return (
-        /goth|alt|dark|punk/i.test(c.short_bio) ||
-        /goth|alt|dark|punk/i.test(c.ethnicity) ||
-        ["raven", "vesper", "jade", "nyx"].includes(c.name.toLowerCase())
+        /\b(goth|alt|dark|punk)\b/i.test(c.short_bio) ||
+        /\b(goth|alt|dark|punk)\b/i.test(c.ethnicity) ||
+        ["raven", "vesper", "jade", "nyx", "lilith", "morticia"].includes(c.name.toLowerCase())
       );
     case "Women":
       return c.gender === "female" || c.gender === "trans-female";

@@ -28,6 +28,8 @@ import breastSmall from "@/assets/create/breast-small.jpg";
 import breastMedium from "@/assets/create/breast-medium.jpg";
 import breastLarge from "@/assets/create/breast-large.jpg";
 import breastBusty from "@/assets/create/breast-busty.jpg";
+import imgRealistic from "@/assets/companions/01-aria.jpg";
+import imgAnime from "@/assets/companions/anime1.jpg";
 
 function PhotoSwatch({ src, alt }: { src: string; alt: string }) {
   return (
@@ -345,6 +347,7 @@ function CreatePage() {
   const navigate = useNavigate();
   const generate = useServerFn(generateCharacter);
 
+  const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("female");
   const [artStyle, setArtStyle] = useState<Style>("realistic");
@@ -400,11 +403,201 @@ function CreatePage() {
     }
   }
 
+  if (step === 0) {
+    const isGirl = gender === "female" || gender === "trans-female";
+    const isGuy = gender === "male" || gender === "trans-male";
+    const headerTitle = isGirl
+      ? "Create my AI Girl"
+      : isGuy
+      ? "Create my AI Guy"
+      : "Create my AI Companion";
+
+    return (
+      <div className="min-h-screen pb-24 bg-neutral-950 text-white">
+        <SiteHeader />
+        
+        <section className="mx-auto max-w-3xl px-4 py-8 md:px-6">
+          <div className="text-center">
+            <h1 className="font-display text-3xl font-extrabold tracking-tight md:text-5xl bg-gradient-to-r from-white via-neutral-100 to-neutral-400 bg-clip-text text-transparent">
+              {headerTitle}
+            </h1>
+            <p className="mt-2 text-sm text-neutral-400">
+              Pick your preferred art style and gender to get started.
+            </p>
+          </div>
+
+          {/* Gender Tab Selection (Girls vs Guys) */}
+          <div className="mt-8 flex justify-center">
+            <div className="flex bg-neutral-900 border border-white/10 p-1.5 rounded-full">
+              <button
+                type="button"
+                onClick={() => setGender("female")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold uppercase transition ${
+                  isGirl ? "bg-grad-primary text-primary-foreground shadow-glow" : "text-white/60 hover:text-white"
+                }`}
+              >
+                ♀ Girls
+              </button>
+              <button
+                type="button"
+                onClick={() => setGender("male")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold uppercase transition ${
+                  isGuy ? "bg-grad-primary text-primary-foreground shadow-glow" : "text-white/60 hover:text-white"
+                }`}
+              >
+                ♂ Guys
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-Gender Buttons */}
+          <div className="mt-4 flex justify-center gap-2">
+            {isGirl && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setGender("female")}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
+                    gender === "female"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                  }`}
+                >
+                  ♀ Girls
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender("trans-female")}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
+                    gender === "trans-female"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                  }`}
+                >
+                  ⚧ Trans
+                </button>
+              </>
+            )}
+            {isGuy && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setGender("male")}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
+                    gender === "male"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                  }`}
+                >
+                  ♂ Guys
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender("trans-male")}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
+                    gender === "trans-male"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+                  }`}
+                >
+                  ⚧ Trans
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setGender("non-binary")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
+                gender === "non-binary"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+              }`}
+            >
+              ✦ Non-binary
+            </button>
+          </div>
+
+          {/* Art Style Choice (Realistic vs Anime Cards) */}
+          <div className="mt-8 grid grid-cols-2 gap-4 md:gap-6">
+            {/* Card 1: Realistic */}
+            <button
+              type="button"
+              onClick={() => setArtStyle("realistic")}
+              className={`group relative aspect-[3/4] overflow-hidden rounded-3xl border transition-all duration-300 ${
+                artStyle === "realistic"
+                  ? "border-primary bg-primary/5 ring-4 ring-primary/40 scale-[1.02] shadow-glow"
+                  : "border-white/10 bg-neutral-900 hover:border-white/20 hover:scale-[1.01]"
+              }`}
+            >
+              <img
+                src={imgRealistic}
+                alt="Realistic"
+                className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-6 left-0 right-0 text-center">
+                <span className="font-display text-lg font-bold text-white tracking-wide uppercase sm:text-2xl drop-shadow-md">
+                  Realistic
+                </span>
+                <p className="text-[10px] text-white/70 mt-1 sm:text-xs">Photographic style</p>
+              </div>
+            </button>
+
+            {/* Card 2: Anime */}
+            <button
+              type="button"
+              onClick={() => setArtStyle("anime")}
+              className={`group relative aspect-[3/4] overflow-hidden rounded-3xl border transition-all duration-300 ${
+                artStyle === "anime"
+                  ? "border-primary bg-primary/5 ring-4 ring-primary/40 scale-[1.02] shadow-glow"
+                  : "border-white/10 bg-neutral-900 hover:border-white/20 hover:scale-[1.01]"
+              }`}
+            >
+              <img
+                src={imgAnime}
+                alt="Anime"
+                className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-6 left-0 right-0 text-center">
+                <span className="font-display text-lg font-bold text-white tracking-wide uppercase sm:text-2xl drop-shadow-md">
+                  Anime
+                </span>
+                <p className="text-[10px] text-white/70 mt-1 sm:text-xs">Manga-inspired style</p>
+              </div>
+            </button>
+          </div>
+
+          {/* NEXT Button */}
+          <div className="mt-10 flex justify-center">
+            <Button
+              type="button"
+              onClick={() => setStep(1)}
+              className="rounded-full bg-grad-primary px-10 py-6 text-sm font-extrabold tracking-wider uppercase text-primary-foreground shadow-glow hover:opacity-95 active:scale-95 transition"
+            >
+              NEXT →
+            </Button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pb-24">
       <SiteHeader />
 
       <section className="mx-auto max-w-5xl px-4 py-6 md:px-6">
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setStep(0)}
+            className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Art Style / Gender selection
+          </button>
+        </div>
+
         <div className="glass rounded-3xl p-5 md:p-8">
           <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium">
             <Sparkles className="h-3.5 w-3.5 text-primary" /> Create your AI · 1 portrait credit
@@ -429,32 +622,13 @@ function CreatePage() {
               />
             </Field>
 
-            <Field label="Art style">
-              <div className="grid grid-cols-2 gap-2">
-                {STYLES.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setArtStyle(s.id)}
-                    className={`rounded-2xl border p-3 text-left transition ${
-                      artStyle === s.id
-                        ? "border-primary bg-grad-primary/15 shadow-glow"
-                        : "border-white/10 bg-white/5 hover:bg-white/10"
-                    }`}
-                  >
-                    <p className="font-display text-sm font-semibold">{s.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{s.sub}</p>
-                  </button>
-                ))}
+            <div className="rounded-2xl border border-white/5 bg-white/5 p-4">
+              <p className="text-[11px] uppercase tracking-wider text-white/50 font-bold mb-1">Active Choice</p>
+              <div className="flex gap-4 text-xs font-semibold">
+                <p>Art Style: <span className="text-primary uppercase">{artStyle}</span></p>
+                <p>Gender: <span className="text-primary uppercase">{gender}</span></p>
               </div>
-            </Field>
-
-            <Field label="Gender">
-              <ChipRow
-                options={GENDERS.map((g) => ({ id: g.id, label: `${g.emoji} ${g.label}` }))}
-                value={gender}
-                onChange={(v) => setGender(v as Gender)}
-              />
-            </Field>
+            </div>
 
             <Field label={`Age · ${age}`}>
               <input

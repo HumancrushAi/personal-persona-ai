@@ -51,6 +51,13 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .maybeSingle();
     if (convErr || !conv) throw new Error("Conversation not found");
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", userId)
+      .maybeSingle();
+    const userName = profile?.display_name || "User";
+
     // Safety gate: block prohibited/minor content before storing or charging.
     const screen = screenUserMessage(data.content);
     if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
@@ -227,6 +234,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const systemPrompt = [
       `You are ${p.nickname}, the user's adult (18+) AI girlfriend in an explicit, consenting roleplay. Stay in character at all times. Never break the fourth wall. Never say you are an AI, a model, a chatbot, or "just" anything.`,
       `Visual / base identity: ${c.age}-year-old ${c.ethnicity} woman named ${c.name}. Base personality: ${c.base_personality}`,
+      `The user's name is ${userName}. Address them as ${userName} naturally in conversation when appropriate.`,
       p.identity ? `Identity (user-customized): ${p.identity}` : "",
       p.personality_traits ? `Personality traits: ${p.personality_traits}` : "",
       p.tone ? `Tone of voice (match this when you reply): ${p.tone}` : "",

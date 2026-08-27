@@ -66,6 +66,8 @@ function ChatPage() {
   const [pendingUser, setPendingUser] = useState<string | null>(null);
   const [mediaBusy, setMediaBusy] = useState<"selfie" | "voice" | "video" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sendingRef = useRef(false);
+  const mediaBusyRef = useRef(false);
   const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
   // Which media request dialog is open, if any.
   const [asking, setAsking] = useState<MediaKind | null>(null);
@@ -246,11 +248,13 @@ function ChatPage() {
 
   async function sendMessage(raw: string) {
     const content = raw.trim();
-    if (!content || sending) return;
+    if (!content || sending || sendingRef.current) return;
+    sendingRef.current = true;
     const total = (balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0);
     if (total <= 0) {
       toast.error("You're out of credits");
       navigate({ to: "/credits" });
+      sendingRef.current = false;
       return;
     }
     setSending(true);
@@ -291,6 +295,7 @@ function ChatPage() {
       setInput(content);
       setPendingUser(null);
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }
@@ -401,6 +406,8 @@ function ChatPage() {
   // generation meant the model picked the subject itself, which is how people
   // ended up paying 8 credits for "whatever it felt like".
   async function runSelfie(prompt: string) {
+    if (mediaBusy || mediaBusyRef.current) return;
+    mediaBusyRef.current = true;
     setAsking(null);
     setMediaBusy("selfie");
     const localId = `local-job-${Date.now()}`;
@@ -424,10 +431,12 @@ function ChatPage() {
         saveLocalJobs(next);
         return next;
       });
+      mediaBusyRef.current = false;
       setMediaBusy(null); // Clear early so placeholder in chat list takes over progress indicator
       qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
       await pollMediaJob(jobId, "photo");
     } catch (err: any) {
+      mediaBusyRef.current = false;
       setMediaBusy(null);
       setLocalJobs((prev) => {
         const next = prev.filter((j) => j.id !== localId);
@@ -445,12 +454,14 @@ function ChatPage() {
   }
 
   async function handleVoice() {
-    if (mediaBusy) return;
+    if (mediaBusy || mediaBusyRef.current) return;
+    mediaBusyRef.current = true;
     const last = [...(messages ?? [])]
       .reverse()
       .find((m) => m.role === "assistant" && m.kind !== "voice");
     if (!last?.content) {
       toast.error("Need her to say something first");
+      mediaBusyRef.current = false;
       return;
     }
     setMediaBusy("voice");
@@ -465,6 +476,7 @@ function ChatPage() {
         navigate({ to: "/credits" });
       } else toast.error(msg);
     } finally {
+      mediaBusyRef.current = false;
       setMediaBusy(null);
     }
   }
@@ -473,6 +485,8 @@ function ChatPage() {
   // already generates one (chat.functions detects the request and fires the job
   // with whatever was said), and this button is the same thing without typing.
   async function runVideo(prompt: string, seconds: number) {
+    if (mediaBusy || mediaBusyRef.current) return;
+    mediaBusyRef.current = true;
     setAsking(null);
     setMediaBusy("video");
     const localId = `local-job-${Date.now()}`;
@@ -499,10 +513,12 @@ function ChatPage() {
         saveLocalJobs(next);
         return next;
       });
+      mediaBusyRef.current = false;
       setMediaBusy(null); // Clear early so placeholder in chat list takes over progress indicator
       qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
       await pollMediaJob(jobId, "video");
     } catch (err: any) {
+      mediaBusyRef.current = false;
       setMediaBusy(null);
       setLocalJobs((prev) => {
         const next = prev.filter((j) => j.id !== localId);

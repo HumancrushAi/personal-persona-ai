@@ -1,12 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateCharacter } from "@/lib/characters.functions";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Heart, Sparkles, Wand2, Loader2, ArrowLeft } from "lucide-react";
+import { Sparkles, Wand2, Loader2, ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import bodySlim from "@/assets/create/body-slim.jpg";
@@ -16,6 +16,25 @@ import bodyPetite from "@/assets/create/body-petite.jpg";
 import bodyTall from "@/assets/create/body-tall.jpg";
 import bodyThick from "@/assets/create/body-thick.jpg";
 import bodyMuscular from "@/assets/create/body-muscular.jpg";
+import breastSmall from "@/assets/create/breast-small.jpg";
+import breastMedium from "@/assets/create/breast-medium.jpg";
+import breastLarge from "@/assets/create/breast-large.jpg";
+import breastBusty from "@/assets/create/breast-busty.jpg";
+import hairLongBlack from "@/assets/create/hair-long-black.jpg";
+import hairLongBlonde from "@/assets/create/hair-long-blonde.jpg";
+import hairLongBrunette from "@/assets/create/hair-long-brunette.jpg";
+import hairShortPixie from "@/assets/create/hair-short-pixie.jpg";
+import hairBob from "@/assets/create/hair-bob.jpg";
+import hairWavyRed from "@/assets/create/hair-wavy-red.jpg";
+import hairPink from "@/assets/create/hair-pink.jpg";
+import hairCurlyAfro from "@/assets/create/hair-curly-afro.jpg";
+import hairSilver from "@/assets/create/hair-silver.jpg";
+import eyeBrown from "@/assets/create/eye-brown.jpg";
+import eyeHazel from "@/assets/create/eye-hazel.jpg";
+import eyeGreen from "@/assets/create/eye-green.jpg";
+import eyeBlue from "@/assets/create/eye-blue.jpg";
+import eyeGrey from "@/assets/create/eye-grey.jpg";
+import eyeAmber from "@/assets/create/eye-amber.jpg";
 import outfitCrop from "@/assets/create/outfit-crop.jpg";
 import outfitBlack from "@/assets/create/outfit-black-dress.jpg";
 import outfitSundress from "@/assets/create/outfit-sundress.jpg";
@@ -24,25 +43,16 @@ import outfitHoodie from "@/assets/create/outfit-hoodie.jpg";
 import outfitSilk from "@/assets/create/outfit-silk.jpg";
 import outfitStreet from "@/assets/create/outfit-streetwear.jpg";
 import outfitGown from "@/assets/create/outfit-gown.jpg";
-import breastSmall from "@/assets/create/breast-small.jpg";
-import breastMedium from "@/assets/create/breast-medium.jpg";
-import breastLarge from "@/assets/create/breast-large.jpg";
-import breastBusty from "@/assets/create/breast-busty.jpg";
+import vibeSweet from "@/assets/create/vibe-sweet.jpg";
+import vibeFlirty from "@/assets/create/vibe-flirty.jpg";
+import vibeDominant from "@/assets/create/vibe-dominant.jpg";
+import vibeSubmissive from "@/assets/create/vibe-submissive.jpg";
+import vibeBrat from "@/assets/create/vibe-brat.jpg";
+import vibeRomantic from "@/assets/create/vibe-romantic.jpg";
+import vibeMysterious from "@/assets/create/vibe-mysterious.jpg";
+import vibeGoth from "@/assets/create/vibe-goth.jpg";
 import imgRealistic from "@/assets/companions/01-aria.jpg";
 import imgAnime from "@/assets/companions/anime1.jpg";
-
-function PhotoSwatch({ src, alt }: { src: string; alt: string }) {
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      width={512}
-      height={768}
-      className="aspect-[4/5] w-full rounded-xl object-cover object-top transition duration-300 group-hover:scale-105"
-    />
-  );
-}
 
 export const Route = createFileRoute("/create")({
   ssr: false,
@@ -64,18 +74,9 @@ export const Route = createFileRoute("/create")({
 type Gender = "female" | "male" | "trans-female" | "trans-male" | "non-binary";
 type Style = "realistic" | "anime";
 
-const GENDERS: { id: Gender; label: string; emoji: string }[] = [
-  { id: "female", label: "Female", emoji: "♀" },
-  { id: "male", label: "Male", emoji: "♂" },
-  { id: "trans-female", label: "Trans woman", emoji: "⚧" },
-  { id: "trans-male", label: "Trans man", emoji: "⚧" },
-  { id: "non-binary", label: "Non-binary", emoji: "✦" },
-];
-
-const STYLES: { id: Style; label: string; sub: string }[] = [
-  { id: "realistic", label: "Realistic", sub: "Photographic, magazine-quality" },
-  { id: "anime", label: "Anime", sub: "Stylized, expressive, manga-inspired" },
-];
+// Every option id is fed verbatim into the portrait prompt, so the strings here
+// are content, not labels — renaming one changes what gets generated.
+type Option = { id: string; label: string; img: string };
 
 const ETHNICITIES = [
   "Latina",
@@ -97,251 +98,83 @@ const ETHNICITIES = [
   "Mixed",
 ];
 
-/* ---------- Visual swatches (lightweight illustrations) ---------- */
-
-function Silhouette({
-  w,
-  tall,
-  short,
-  hips,
-  muscular,
-}: {
-  w: number;
-  tall?: boolean;
-  short?: boolean;
-  hips?: boolean;
-  muscular?: boolean;
-}) {
-  const height = tall ? 70 : short ? 50 : 60;
-  const shoulder = muscular ? w + 6 : w + 2;
-  const hip = hips ? w + 8 : w + 2;
-  return (
-    <svg viewBox="0 0 60 80" className="h-14 w-full">
-      <defs>
-        <linearGradient id="sil" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
-          <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
-        </linearGradient>
-      </defs>
-      <circle cx="30" cy={40 - height / 2 + 6} r="5" fill="url(#sil)" />
-      <path
-        d={`M${30 - shoulder / 2},${46 - height / 2 + 4}
-            C${30 - w / 2},${50 - height / 2 + 4} ${30 - w / 2},${30 + height / 4} ${30 - hip / 2},${40 + height / 2 - 6}
-            L${30 + hip / 2},${40 + height / 2 - 6}
-            C${30 + w / 2},${30 + height / 4} ${30 + w / 2},${50 - height / 2 + 4} ${30 + shoulder / 2},${46 - height / 2 + 4}
-            Z`}
-        fill="url(#sil)"
-      />
-    </svg>
-  );
-}
-
-function HairSwatch({
-  color,
-  long,
-  wavy,
-  curly,
-}: {
-  color: string;
-  long?: boolean;
-  wavy?: boolean;
-  curly?: boolean;
-}) {
-  return (
-    <svg viewBox="0 0 60 60" className="h-14 w-full">
-      {/* face */}
-      <circle cx="30" cy="32" r="13" fill="#f3d3bd" />
-      {/* hair cap */}
-      <path
-        d={
-          curly
-            ? "M14,28 q0,-18 16,-18 q16,0 16,18 q-4,-6 -10,-4 q-2,-4 -6,0 q-4,-4 -8,2 q-2,-2 -8,2 z"
-            : "M14,28 q0,-18 16,-18 q16,0 16,18 q-3,-2 -6,-1 q-3,-3 -6,-1 q-4,-3 -7,-1 q-4,-2 -7,-1 q-3,-1 -6,1 z"
-        }
-        fill={color}
-      />
-      {/* long flowing strands */}
-      {long && (
-        <path
-          d={
-            wavy
-              ? "M14,30 q-2,12 1,22 q3,-3 5,-1 q-1,-10 1,-18 z M46,30 q2,12 -1,22 q-3,-3 -5,-1 q1,-10 -1,-18 z"
-              : "M14,30 q-1,12 2,22 l4,0 q-2,-12 0,-22 z M46,30 q1,12 -2,22 l-4,0 q2,-12 0,-22 z"
-          }
-          fill={color}
-        />
-      )}
-    </svg>
-  );
-}
-
-function EyeSwatch({ color }: { color: string }) {
-  return (
-    <svg viewBox="0 0 60 60" className="h-14 w-full">
-      <ellipse cx="30" cy="30" rx="22" ry="11" fill="#fff" />
-      <ellipse cx="30" cy="30" rx="22" ry="11" fill="none" stroke="#1a0d10" strokeWidth="2" />
-      <circle cx="30" cy="30" r="9" fill={color} />
-      <circle cx="30" cy="30" r="4" fill="#0a0a0c" />
-      <circle cx="32" cy="28" r="1.4" fill="#fff" />
-    </svg>
-  );
-}
-
-function OutfitSwatch({ top, bottom, emoji }: { top: string; bottom: string; emoji: string }) {
-  return (
-    <div className="relative h-14 w-full overflow-hidden rounded-lg">
-      <div className="absolute inset-x-0 top-0 h-1/2" style={{ background: top }} />
-      <div className="absolute inset-x-0 bottom-0 h-1/2" style={{ background: bottom }} />
-      <div className="absolute inset-0 grid place-items-center text-2xl drop-shadow">{emoji}</div>
-    </div>
-  );
-}
-
-function VibeSwatch({ emoji, hue }: { emoji: string; hue: string }) {
-  return (
-    <div className={`grid h-14 w-full place-items-center rounded-lg bg-gradient-to-br ${hue}`}>
-      <span className="text-2xl drop-shadow">{emoji}</span>
-    </div>
-  );
-}
-
-type Visual = { id: string; label: string; swatch: React.ReactNode };
-
-const BODIES: Visual[] = [
-  { id: "Slim", label: "Slim", swatch: <PhotoSwatch src={bodySlim} alt="Slim" /> },
-  { id: "Athletic", label: "Athletic", swatch: <PhotoSwatch src={bodyAthletic} alt="Athletic" /> },
-  { id: "Curvy", label: "Curvy", swatch: <PhotoSwatch src={bodyCurvy} alt="Curvy" /> },
-  { id: "Petite", label: "Petite", swatch: <PhotoSwatch src={bodyPetite} alt="Petite" /> },
-  { id: "Tall", label: "Tall", swatch: <PhotoSwatch src={bodyTall} alt="Tall" /> },
-  { id: "Thick", label: "Thick", swatch: <PhotoSwatch src={bodyThick} alt="Thick" /> },
-  { id: "Muscular", label: "Muscular", swatch: <PhotoSwatch src={bodyMuscular} alt="Muscular" /> },
+const BODIES: Option[] = [
+  { id: "Slim", label: "Slim", img: bodySlim },
+  { id: "Athletic", label: "Athletic", img: bodyAthletic },
+  { id: "Curvy", label: "Curvy", img: bodyCurvy },
+  { id: "Petite", label: "Petite", img: bodyPetite },
+  { id: "Tall", label: "Tall", img: bodyTall },
+  { id: "Thick", label: "Thick", img: bodyThick },
+  { id: "Muscular", label: "Muscular", img: bodyMuscular },
 ];
 
-const BREASTS: Visual[] = [
-  { id: "Small", label: "Small (A)", swatch: <PhotoSwatch src={breastSmall} alt="Small" /> },
-  { id: "Medium", label: "Medium (B/C)", swatch: <PhotoSwatch src={breastMedium} alt="Medium" /> },
-  { id: "Large", label: "Large (D)", swatch: <PhotoSwatch src={breastLarge} alt="Large" /> },
-  { id: "Busty", label: "Busty (DD+)", swatch: <PhotoSwatch src={breastBusty} alt="Busty" /> },
+const BREASTS: Option[] = [
+  { id: "Small", label: "Small (A)", img: breastSmall },
+  { id: "Medium", label: "Medium (B/C)", img: breastMedium },
+  { id: "Large", label: "Large (D)", img: breastLarge },
+  { id: "Busty", label: "Busty (DD+)", img: breastBusty },
 ];
 
-const BUTTS: Visual[] = [
-  { id: "Small", label: "Small / Petite", swatch: <PhotoSwatch src={bodyPetite} alt="Small" /> },
-  { id: "Medium", label: "Medium / Athletic", swatch: <PhotoSwatch src={bodyAthletic} alt="Medium" /> },
-  { id: "Large", label: "Large / Curvy", swatch: <PhotoSwatch src={bodyCurvy} alt="Large" /> },
-  { id: "Big", label: "Big / Voluptuous", swatch: <PhotoSwatch src={bodyThick} alt="Big" /> },
+// Borrowing the body photos: every rear-view prompt comes back
+// `imagine:content-moderated`, so there are no dedicated butt-*.jpg swatches
+// yet. These four are the same studio set and read the hip difference clearly.
+// scripts/generate-create-swatches.ts already defines the shots — run
+// `--only=butt-small,butt-medium,butt-large,butt-big` once they pass.
+const BUTTS: Option[] = [
+  { id: "Small", label: "Small", img: bodyPetite },
+  { id: "Medium", label: "Athletic", img: bodyAthletic },
+  { id: "Large", label: "Curvy", img: bodyCurvy },
+  { id: "Big", label: "Voluptuous", img: bodyThick },
 ];
 
-const HAIRS: Visual[] = [
-  { id: "Long black", label: "Long black", swatch: <HairSwatch color="#0b0b0d" long /> },
-  { id: "Long blonde", label: "Long blonde", swatch: <HairSwatch color="#e9c77a" long /> },
-  { id: "Long brunette", label: "Long brunette", swatch: <HairSwatch color="#4a2c1a" long /> },
-  { id: "Short pixie", label: "Short pixie", swatch: <HairSwatch color="#1a1a1a" /> },
-  { id: "Bob cut", label: "Bob cut", swatch: <HairSwatch color="#2a1a10" /> },
-  { id: "Wavy red", label: "Wavy red", swatch: <HairSwatch color="#b3431d" long wavy /> },
-  { id: "Pink dyed", label: "Pink dyed", swatch: <HairSwatch color="#ff6fb1" long /> },
-  { id: "Curly afro", label: "Curly afro", swatch: <HairSwatch color="#1a1310" curly /> },
-  { id: "Silver", label: "Silver", swatch: <HairSwatch color="#c9cad0" long /> },
+const HAIRS: Option[] = [
+  { id: "Long black", label: "Long black", img: hairLongBlack },
+  { id: "Long blonde", label: "Long blonde", img: hairLongBlonde },
+  { id: "Long brunette", label: "Long brunette", img: hairLongBrunette },
+  { id: "Short pixie", label: "Short pixie", img: hairShortPixie },
+  { id: "Bob cut", label: "Bob cut", img: hairBob },
+  { id: "Wavy red", label: "Wavy red", img: hairWavyRed },
+  { id: "Pink dyed", label: "Pink dyed", img: hairPink },
+  { id: "Curly afro", label: "Curly afro", img: hairCurlyAfro },
+  { id: "Silver", label: "Silver", img: hairSilver },
 ];
 
-const EYES: Visual[] = [
-  { id: "Brown", label: "Brown", swatch: <EyeSwatch color="#5a3a1c" /> },
-  { id: "Hazel", label: "Hazel", swatch: <EyeSwatch color="#8a6a32" /> },
-  { id: "Green", label: "Green", swatch: <EyeSwatch color="#3a8a4a" /> },
-  { id: "Blue", label: "Blue", swatch: <EyeSwatch color="#2f6dc9" /> },
-  { id: "Grey", label: "Grey", swatch: <EyeSwatch color="#8a96a4" /> },
-  { id: "Amber", label: "Amber", swatch: <EyeSwatch color="#c7821f" /> },
+const EYES: Option[] = [
+  { id: "Brown", label: "Brown", img: eyeBrown },
+  { id: "Hazel", label: "Hazel", img: eyeHazel },
+  { id: "Green", label: "Green", img: eyeGreen },
+  { id: "Blue", label: "Blue", img: eyeBlue },
+  { id: "Grey", label: "Grey", img: eyeGrey },
+  { id: "Amber", label: "Amber", img: eyeAmber },
 ];
 
-const OUTFITS: Visual[] = [
-  {
-    id: "Crop top + jeans",
-    label: "Crop top + jeans",
-    swatch: <PhotoSwatch src={outfitCrop} alt="Crop top + jeans" />,
-  },
-  {
-    id: "Black dress",
-    label: "Black dress",
-    swatch: <PhotoSwatch src={outfitBlack} alt="Black dress" />,
-  },
-  {
-    id: "Sundress",
-    label: "Sundress",
-    swatch: <PhotoSwatch src={outfitSundress} alt="Sundress" />,
-  },
-  {
-    id: "Workout set",
-    label: "Workout set",
-    swatch: <PhotoSwatch src={outfitWorkout} alt="Workout set" />,
-  },
-  {
-    id: "Oversized hoodie",
-    label: "Oversized hoodie",
-    swatch: <PhotoSwatch src={outfitHoodie} alt="Oversized hoodie" />,
-  },
-  {
-    id: "Silk blouse",
-    label: "Silk blouse",
-    swatch: <PhotoSwatch src={outfitSilk} alt="Silk blouse" />,
-  },
-  {
-    id: "Streetwear",
-    label: "Streetwear",
-    swatch: <PhotoSwatch src={outfitStreet} alt="Streetwear" />,
-  },
-  {
-    id: "Evening gown",
-    label: "Evening gown",
-    swatch: <PhotoSwatch src={outfitGown} alt="Evening gown" />,
-  },
+const OUTFITS: Option[] = [
+  { id: "Crop top + jeans", label: "Crop top + jeans", img: outfitCrop },
+  { id: "Black dress", label: "Black dress", img: outfitBlack },
+  { id: "Sundress", label: "Sundress", img: outfitSundress },
+  { id: "Workout set", label: "Workout set", img: outfitWorkout },
+  { id: "Oversized hoodie", label: "Oversized hoodie", img: outfitHoodie },
+  { id: "Silk blouse", label: "Silk blouse", img: outfitSilk },
+  { id: "Streetwear", label: "Streetwear", img: outfitStreet },
+  { id: "Evening gown", label: "Evening gown", img: outfitGown },
 ];
 
-const VIBES: Visual[] = [
-  {
-    id: "Sweet & shy",
-    label: "Sweet & shy",
-    swatch: <VibeSwatch emoji="🥺" hue="from-pink-400/60 to-rose-300/60" />,
-  },
-  {
-    id: "Confident & flirty",
-    label: "Confident & flirty",
-    swatch: <VibeSwatch emoji="😉" hue="from-fuchsia-500/70 to-rose-400/60" />,
-  },
-  {
-    id: "Dominant",
-    label: "Dominant",
-    swatch: <VibeSwatch emoji="🔥" hue="from-red-600/70 to-orange-500/60" />,
-  },
-  {
-    id: "Submissive",
-    label: "Submissive",
-    swatch: <VibeSwatch emoji="🎀" hue="from-pink-300/60 to-rose-200/60" />,
-  },
-  {
-    id: "Playful brat",
-    label: "Playful brat",
-    swatch: <VibeSwatch emoji="😈" hue="from-violet-500/70 to-fuchsia-500/60" />,
-  },
-  {
-    id: "Romantic",
-    label: "Romantic",
-    swatch: <VibeSwatch emoji="💖" hue="from-rose-400/70 to-pink-300/60" />,
-  },
-  {
-    id: "Mysterious",
-    label: "Mysterious",
-    swatch: <VibeSwatch emoji="🌙" hue="from-indigo-700/70 to-slate-700/60" />,
-  },
-  {
-    id: "Goth",
-    label: "Goth",
-    swatch: <VibeSwatch emoji="🦇" hue="from-zinc-800/80 to-purple-900/70" />,
-  },
-  {
-    id: "Girl next door",
-    label: "Girl next door",
-    swatch: <VibeSwatch emoji="🌻" hue="from-amber-300/70 to-yellow-200/60" />,
-  },
+const VIBES: Option[] = [
+  { id: "Sweet & shy", label: "Sweet & shy", img: vibeSweet },
+  { id: "Confident & flirty", label: "Confident & flirty", img: vibeFlirty },
+  { id: "Dominant", label: "Dominant", img: vibeDominant },
+  { id: "Submissive", label: "Submissive", img: vibeSubmissive },
+  { id: "Playful brat", label: "Playful brat", img: vibeBrat },
+  { id: "Romantic", label: "Romantic", img: vibeRomantic },
+  { id: "Mysterious", label: "Mysterious", img: vibeMysterious },
+  { id: "Goth", label: "Goth", img: vibeGoth },
+  // No vibe-girl-next-door.jpg yet — its generation never came back. The
+  // sundress shot is the closest read in the same set until it does.
+  { id: "Girl next door", label: "Girl next door", img: outfitSundress },
 ];
+
+const STEPS = ["Style", "Appearance", "Hair & eyes", "Outfit & vibe", "Finish"] as const;
+const LAST_STEP = STEPS.length - 1;
 
 function CreatePage() {
   const navigate = useNavigate();
@@ -364,6 +197,12 @@ function CreatePage() {
   const [loading, setLoading] = useState(false);
 
   const isWoman = gender === "female" || gender === "trans-female";
+
+  // Each step is its own screen, so landing mid-page after "Next" reads as a
+  // half-loaded page. Jump back to the top on every move.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   async function submit() {
     if (!name.trim()) {
@@ -403,284 +242,110 @@ function CreatePage() {
     }
   }
 
-  if (step === 0) {
-    const isGirl = gender === "female" || gender === "trans-female";
-    const isGuy = gender === "male" || gender === "trans-male";
-    const headerTitle = isGirl
-      ? "Create my AI Girl"
-      : isGuy
-      ? "Create my AI Guy"
-      : "Create my AI Companion";
-
-    return (
-      <div className="min-h-screen pb-24 bg-[#07050a] text-white relative overflow-hidden">
-        {/* Background Ambient Glows */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none z-0" />
-        <div className="absolute top-1/3 left-0 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0" />
-        <SiteHeader />
-        
-        <section className="mx-auto max-w-3xl px-4 py-8 md:px-6 relative z-10">
-          <div className="text-center">
-            <h1 className="font-display text-3xl font-extrabold tracking-tight md:text-5xl bg-gradient-to-r from-white via-neutral-100 to-neutral-400 bg-clip-text text-transparent">
-              {headerTitle}
-            </h1>
-            <p className="mt-2 text-sm text-neutral-400">
-              Pick your preferred art style and gender to get started.
-            </p>
-          </div>
-
-          {/* Gender Tab Selection (Girls vs Guys) */}
-          <div className="mt-8 flex justify-center">
-            <div className="flex bg-neutral-900 border border-white/10 p-1.5 rounded-full">
-              <button
-                type="button"
-                onClick={() => setGender("female")}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold uppercase transition ${
-                  isGirl ? "bg-grad-primary text-primary-foreground shadow-glow" : "text-white/60 hover:text-white"
-                }`}
-              >
-                ♀ Girls
-              </button>
-              <button
-                type="button"
-                onClick={() => setGender("male")}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold uppercase transition ${
-                  isGuy ? "bg-grad-primary text-primary-foreground shadow-glow" : "text-white/60 hover:text-white"
-                }`}
-              >
-                ♂ Guys
-              </button>
-            </div>
-          </div>
-
-          {/* Sub-Gender Buttons */}
-          <div className="mt-4 flex justify-center gap-2">
-            {isGirl && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setGender("female")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
-                    gender === "female"
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
-                  }`}
-                >
-                  ♀ Girls
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGender("trans-female")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
-                    gender === "trans-female"
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
-                  }`}
-                >
-                  ⚧ Trans
-                </button>
-              </>
-            )}
-            {isGuy && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setGender("male")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
-                    gender === "male"
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
-                  }`}
-                >
-                  ♂ Guys
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGender("trans-male")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
-                    gender === "trans-male"
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-white/10 bg-white/5 text-white/60 hover:text-white"
-                  }`}
-                >
-                  ⚧ Trans
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => setGender("non-binary")}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${
-                gender === "non-binary"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-white/10 bg-white/5 text-white/60 hover:text-white"
-              }`}
-            >
-              ✦ Non-binary
-            </button>
-          </div>
-
-          {/* Art Style Choice (Realistic vs Anime Cards) */}
-          <div className="mt-8 grid grid-cols-2 gap-4 md:gap-6">
-            {/* Card 1: Realistic */}
-            <button
-              type="button"
-              onClick={() => setArtStyle("realistic")}
-              className={`group relative aspect-[3/4] overflow-hidden rounded-3xl border transition-all duration-300 ${
-                artStyle === "realistic"
-                  ? "border-primary bg-primary/5 ring-4 ring-primary/40 scale-[1.02] shadow-glow"
-                  : "border-white/10 bg-neutral-900 hover:border-white/20 hover:scale-[1.01]"
-              }`}
-            >
-              <img
-                src={imgRealistic}
-                alt="Realistic"
-                className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-6 left-0 right-0 text-center">
-                <span className="font-display text-lg font-bold text-white tracking-wide uppercase sm:text-2xl drop-shadow-md">
-                  Realistic
-                </span>
-                <p className="text-[10px] text-white/70 mt-1 sm:text-xs">Photographic style</p>
-              </div>
-            </button>
-
-            {/* Card 2: Anime */}
-            <button
-              type="button"
-              onClick={() => setArtStyle("anime")}
-              className={`group relative aspect-[3/4] overflow-hidden rounded-3xl border transition-all duration-300 ${
-                artStyle === "anime"
-                  ? "border-primary bg-primary/5 ring-4 ring-primary/40 scale-[1.02] shadow-glow"
-                  : "border-white/10 bg-neutral-900 hover:border-white/20 hover:scale-[1.01]"
-              }`}
-            >
-              <img
-                src={imgAnime}
-                alt="Anime"
-                className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-6 left-0 right-0 text-center">
-                <span className="font-display text-lg font-bold text-white tracking-wide uppercase sm:text-2xl drop-shadow-md">
-                  Anime
-                </span>
-                <p className="text-[10px] text-white/70 mt-1 sm:text-xs">Manga-inspired style</p>
-              </div>
-            </button>
-          </div>
-
-          {/* NEXT Button */}
-          <div className="mt-10 flex justify-center">
-            <Button
-              type="button"
-              onClick={() => setStep(1)}
-              className="rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-10 py-6 text-sm font-extrabold tracking-wider uppercase text-white shadow-[0_0_20px_rgba(244,63,94,0.3)] hover:brightness-110 active:scale-95 transition duration-300"
-            >
-              NEXT →
-            </Button>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen pb-24 bg-[#07050a] text-white relative overflow-hidden">
-      {/* Background Ambient Glows */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none z-0" />
-      <div className="absolute top-1/2 left-0 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0" />
-      <SiteHeader />
+    <div className="relative min-h-screen overflow-x-hidden bg-[#07050a] text-white">
+      {/* Ambient glows — decorative only, kept behind everything and untappable. */}
+      <div className="pointer-events-none absolute right-0 top-0 z-0 h-[500px] w-[500px] rounded-full bg-pink-500/5 blur-[120px]" />
+      <div className="pointer-events-none absolute left-0 top-1/3 z-0 h-[600px] w-[600px] rounded-full bg-purple-500/5 blur-[150px]" />
 
-      <section className="mx-auto max-w-5xl px-4 py-6 md:px-6 relative z-10">
-        <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => setStep(0)}
-            className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition"
+      {/* SiteHeader is sticky on its own; wrapping both keeps the progress rail
+          pinned directly beneath it without hard-coding the header's height. */}
+      <div className="sticky top-0 z-40">
+        <SiteHeader />
+        <StepRail step={step} onJump={setStep} />
+      </div>
+
+      {/* Bottom padding clears the fixed action bar and, on mobile, BottomNav. */}
+      <main className="relative z-10 mx-auto max-w-5xl px-4 pb-56 pt-6 md:px-6 lg:pb-32">
+        {step === 0 && (
+          <Step
+            title="Who are you into?"
+            sub="Pick a gender and an art style. Everything after this is her look."
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to Art Style / Gender selection
-          </button>
-        </div>
+            <GenderPicker gender={gender} onChange={setGender} />
 
-        <div className="rounded-3xl border border-white/5 bg-gradient-to-br from-[#170a25] via-[#2f0f35]/20 to-[#0c0911] p-5 md:p-8 shadow-lg">
-          <p className="inline-flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-[11px] font-medium text-pink-400">
-            <Sparkles className="h-3.5 w-3.5 text-pink-400" /> Create your AI · 1 portrait credit
-          </p>
-          <h1 className="mt-3 font-display text-3xl font-extrabold md:text-5xl bg-gradient-to-r from-white via-pink-100 to-rose-300 bg-clip-text text-transparent">
-            Build your <span className="text-pink-500">crush</span>.
-          </h1>
-          <p className="mt-2.5 max-w-lg text-sm text-white/70 md:text-base font-light">
-            Pick the look. We generate her, then you fine-tune her personality.
-          </p>
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr]">
-          {/* LEFT — basics */}
-          <div className="space-y-5 rounded-3xl border border-white/10 bg-card p-5">
-            <Field label="Name">
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Aria"
-                maxLength={40}
-              />
-            </Field>
-
-            <div className="rounded-2xl border border-white/5 bg-white/5 p-4">
-              <p className="text-[11px] uppercase tracking-wider text-white/50 font-bold mb-1">Active Choice</p>
-              <div className="flex gap-4 text-xs font-semibold">
-                <p>Art Style: <span className="text-primary uppercase">{artStyle}</span></p>
-                <p>Gender: <span className="text-primary uppercase">{gender}</span></p>
+            <Section label="Art style">
+              <div className="grid grid-cols-2 gap-3 md:gap-5">
+                <StyleCard
+                  img={imgRealistic}
+                  title="Realistic"
+                  sub="Photographic"
+                  selected={artStyle === "realistic"}
+                  onClick={() => setArtStyle("realistic")}
+                />
+                <StyleCard
+                  img={imgAnime}
+                  title="Anime"
+                  sub="Manga-inspired"
+                  selected={artStyle === "anime"}
+                  onClick={() => setArtStyle("anime")}
+                />
               </div>
-            </div>
+            </Section>
+          </Step>
+        )}
 
-            <Field label={`Age · ${age}`}>
-              <input
-                type="range"
-                min={18}
-                max={60}
-                value={age}
-                onChange={(e) => setAge(Number(e.target.value))}
-                className="w-full accent-[hsl(var(--primary))]"
-              />
-            </Field>
-
-            <Field label="Ethnicity">
+        {step === 1 && (
+          <Step title="Her look" sub="Ethnicity, age and the shape of her body.">
+            <Section label="Ethnicity">
               <ChipRow
                 options={ETHNICITIES.map((e) => ({ id: e, label: e }))}
                 value={ethnicity}
                 onChange={setEthnicity}
               />
-            </Field>
-          </div>
+            </Section>
 
-          {/* RIGHT — appearance + vibe */}
-          <div className="space-y-5 rounded-3xl border border-white/10 bg-card p-5">
-            <Field label="Body Type">
-              <VisualGrid options={BODIES} value={body} onChange={setBody} />
-            </Field>
+            <Section label={`Age · ${age}`}>
+              <input
+                type="range"
+                min={18}
+                max={60}
+                value={age}
+                aria-label="Age"
+                onChange={(e) => setAge(Number(e.target.value))}
+                className="h-11 w-full accent-[hsl(var(--primary))]"
+              />
+              <div className="flex justify-between text-[11px] text-white/40">
+                <span>18</span>
+                <span>60</span>
+              </div>
+            </Section>
+
+            <Section label="Body type">
+              <PhotoGrid options={BODIES} value={body} onChange={setBody} />
+            </Section>
+
             {isWoman && (
-              <Field label="Breast Size">
-                <VisualGrid options={BREASTS} value={breast} onChange={setBreast} />
-              </Field>
+              <Section label="Breast size">
+                <PhotoGrid options={BREASTS} value={breast} onChange={setBreast} />
+              </Section>
             )}
+
             {isWoman && (
-              <Field label="Butt Size">
-                <VisualGrid options={BUTTS} value={butt} onChange={setButt} />
-              </Field>
+              <Section label="Butt size">
+                <PhotoGrid options={BUTTS} value={butt} onChange={setButt} />
+              </Section>
             )}
-            <Field label="Hair Style">
-              <VisualGrid options={HAIRS} value={hair} onChange={setHair} />
-            </Field>
-            <Field label="Eye Color">
-              <VisualGrid options={EYES} value={eyes} onChange={setEyes} />
-            </Field>
-            <Field label="Outfit">
-              <VisualGrid options={OUTFITS} value={outfit} onChange={setOutfit} />
-            </Field>
-            <Field label="Outfit Fit">
+          </Step>
+        )}
+
+        {step === 2 && (
+          <Step title="Hair & eyes" sub="The two things you'll notice first.">
+            <Section label="Hair">
+              <PhotoGrid options={HAIRS} value={hair} onChange={setHair} square />
+            </Section>
+            <Section label="Eye colour">
+              <PhotoGrid options={EYES} value={eyes} onChange={setEyes} square />
+            </Section>
+          </Step>
+        )}
+
+        {step === 3 && (
+          <Step title="Outfit & vibe" sub="What she wears, and how she talks to you.">
+            <Section label="Outfit">
+              <PhotoGrid options={OUTFITS} value={outfit} onChange={setOutfit} />
+            </Section>
+            <Section label="Fit">
               <ChipRow
                 options={[
                   { id: "slim", label: "Slim · form-fitting" },
@@ -690,47 +355,374 @@ function CreatePage() {
                 value={fit}
                 onChange={(v) => setFit(v as "slim" | "regular" | "loose")}
               />
-            </Field>
-            <Field label="Personality & Vibe">
-              <VisualGrid options={VIBES} value={vibe} onChange={setVibe} />
-            </Field>
-          </div>
-        </div>
+            </Section>
+            <Section label="Personality">
+              <PhotoGrid options={VIBES} value={vibe} onChange={setVibe} square />
+            </Section>
+          </Step>
+        )}
 
-        <div className="sticky bottom-3 mt-6 flex justify-center">
+        {step === LAST_STEP && (
+          <Step title="Name her" sub="Last step — then she's generated and yours.">
+            <Section label="Name">
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Aria"
+                maxLength={40}
+                autoFocus
+                className="h-14 rounded-2xl border-white/15 bg-white/5 text-lg"
+              />
+            </Section>
+
+            <Section label="Your crush">
+              <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                {[
+                  ["Style", artStyle],
+                  ["Gender", gender.replace("-", " ")],
+                  ["Ethnicity", ethnicity],
+                  ["Age", String(age)],
+                  ["Body", body],
+                  ...(isWoman
+                    ? ([
+                        ["Breasts", breast],
+                        ["Butt", butt],
+                      ] as [string, string][])
+                    : []),
+                  ["Hair", hair],
+                  ["Eyes", eyes],
+                  ["Outfit", `${outfit} · ${fit}`],
+                  ["Vibe", vibe],
+                ].map(([k, v]) => (
+                  <div
+                    key={k}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5"
+                  >
+                    <dt className="text-[10px] font-bold uppercase tracking-widest text-white/40">
+                      {k}
+                    </dt>
+                    <dd className="mt-0.5 truncate text-sm font-semibold capitalize text-white">
+                      {v}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </Section>
+          </Step>
+        )}
+      </main>
+
+      {/* Fixed so the way forward is always on screen. Sits above BottomNav on
+          mobile, which is itself fixed at the bottom below the lg breakpoint. */}
+      <div className="fixed inset-x-0 bottom-[68px] z-40 border-t border-white/10 bg-[#07050a]/90 backdrop-blur-xl lg:bottom-0">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 md:px-6">
           <Button
-            size="lg"
-            onClick={submit}
-            disabled={loading}
-            className="rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-8 text-white shadow-[0_0_25px_rgba(244,63,94,0.3)] hover:brightness-110 transition duration-300"
+            type="button"
+            variant="ghost"
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
+            disabled={step === 0}
+            className="h-12 rounded-full px-4 text-sm text-white/70 hover:text-white disabled:opacity-30"
           >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating your crush…
-              </>
-            ) : (
-              <>
-                <Wand2 className="mr-2 h-5 w-5" /> Generate AI character
-              </>
-            )}
+            <ArrowLeft className="mr-1.5 h-4 w-4" /> Back
           </Button>
+
+          <p className="hidden text-xs text-white/40 sm:block">
+            Step {step + 1} of {STEPS.length} · {STEPS[step]}
+          </p>
+
+          {step < LAST_STEP ? (
+            <Button
+              type="button"
+              onClick={() => setStep((s) => Math.min(LAST_STEP, s + 1))}
+              className="h-12 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-8 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(244,63,94,0.3)] transition duration-200 hover:brightness-110 active:scale-95 motion-reduce:transition-none"
+            >
+              Next <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={loading}
+              className="h-12 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_25px_rgba(244,63,94,0.35)] transition duration-200 hover:brightness-110 active:scale-95 motion-reduce:transition-none"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…
+                </>
+              ) : (
+                <>
+                  <Wand2 className="mr-2 h-4 w-4" /> Generate her
+                </>
+              )}
+            </Button>
+          )}
         </div>
-      </section>
+      </div>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* ---------- Layout ---------- */
+
+function StepRail({ step, onJump }: { step: number; onJump: (n: number) => void }) {
   return (
-    <div>
-      <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-pink-400/80">{label}</p>
+    <div className="border-b border-white/5 bg-[#07050a]/90 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-5xl items-center gap-1.5 px-4 py-2.5 md:gap-2 md:px-6">
+        {STEPS.map((label, i) => {
+          const done = i < step;
+          const current = i === step;
+          return (
+            <button
+              key={label}
+              type="button"
+              // Only steps already passed are reachable — jumping ahead would
+              // skip choices the summary then reports as picked.
+              disabled={i > step}
+              onClick={() => onJump(i)}
+              aria-current={current ? "step" : undefined}
+              aria-label={`Step ${i + 1}: ${label}`}
+              className="group flex min-w-0 flex-1 flex-col gap-1.5 py-1.5 text-left disabled:cursor-default"
+            >
+              <span
+                className={`h-1 w-full rounded-full transition-colors duration-200 motion-reduce:transition-none ${
+                  current
+                    ? "bg-gradient-to-r from-pink-500 to-rose-500"
+                    : done
+                      ? "bg-pink-500/50"
+                      : "bg-white/10"
+                }`}
+              />
+              <span
+                className={`truncate text-[10px] font-semibold uppercase tracking-wider ${
+                  current ? "text-pink-400" : done ? "text-white/50" : "text-white/25"
+                }`}
+              >
+                {label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Step({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-8">
+      <header>
+        <p className="inline-flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-[11px] font-medium text-pink-400">
+          <Sparkles className="h-3.5 w-3.5" /> 1 portrait credit
+        </p>
+        <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight md:text-5xl">
+          {title}
+        </h1>
+        <p className="mt-2 max-w-lg text-sm font-light text-white/60 md:text-base">{sub}</p>
+      </header>
       {children}
     </div>
   );
 }
 
-function toOpts(v: Visual[]): { id: string; label: string }[] {
-  return v.map((o) => ({ id: o.id, label: o.label }));
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-[11px] font-extrabold uppercase tracking-widest text-pink-400/80">
+        {label}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+/* ---------- Pickers ---------- */
+
+// Full-bleed photo, label burned into the bottom gradient, tick badge when
+// picked — the option itself is the image, not a thumbnail beside a caption.
+function PhotoGrid({
+  options,
+  value,
+  onChange,
+  square,
+}: {
+  options: Option[];
+  value: string;
+  onChange: (v: string) => void;
+  square?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:gap-3 lg:grid-cols-4">
+      {options.map((o) => {
+        const selected = value === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            aria-pressed={selected}
+            className={`group relative overflow-hidden rounded-2xl border text-left transition duration-200 motion-reduce:transition-none ${
+              selected
+                ? "border-pink-500 shadow-[0_0_25px_rgba(244,63,94,0.25)] ring-2 ring-pink-500"
+                : "border-white/10 hover:border-white/25"
+            }`}
+          >
+            <img
+              src={o.img}
+              alt={o.label}
+              loading="lazy"
+              width={448}
+              height={square ? 448 : 672}
+              className={`w-full bg-black/40 object-cover object-top transition duration-500 group-hover:scale-[1.04] motion-reduce:transition-none ${
+                square ? "aspect-square" : "aspect-[2/3]"
+              }`}
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+
+            {selected && (
+              <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-md">
+                <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+              </span>
+            )}
+
+            <span
+              className={`absolute inset-x-0 bottom-0 px-3 pb-2.5 pt-6 text-sm font-semibold drop-shadow ${
+                selected ? "text-white" : "text-white/85"
+              }`}
+            >
+              {o.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function StyleCard({
+  img,
+  title,
+  sub,
+  selected,
+  onClick,
+}: {
+  img: string;
+  title: string;
+  sub: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`group relative aspect-[3/4] overflow-hidden rounded-3xl border transition duration-200 motion-reduce:transition-none ${
+        selected
+          ? "border-pink-500 shadow-[0_0_30px_rgba(244,63,94,0.3)] ring-2 ring-pink-500"
+          : "border-white/10 hover:border-white/25"
+      }`}
+    >
+      <img
+        src={img}
+        alt={title}
+        className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105 motion-reduce:transition-none"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
+      {selected && (
+        <span className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-md">
+          <Check className="h-4 w-4 text-white" strokeWidth={3} />
+        </span>
+      )}
+      <div className="absolute inset-x-0 bottom-5 text-center">
+        <span className="font-display text-lg font-bold uppercase tracking-wide text-white drop-shadow-md sm:text-2xl">
+          {title}
+        </span>
+        <p className="mt-1 text-[10px] text-white/70 sm:text-xs">{sub}</p>
+      </div>
+    </button>
+  );
+}
+
+function GenderPicker({ gender, onChange }: { gender: Gender; onChange: (g: Gender) => void }) {
+  const isGirl = gender === "female" || gender === "trans-female";
+  const isGuy = gender === "male" || gender === "trans-male";
+
+  return (
+    <Section label="Gender">
+      <div className="flex justify-center">
+        <div className="flex rounded-full border border-white/10 bg-neutral-900 p-1.5">
+          <button
+            type="button"
+            onClick={() => onChange("female")}
+            aria-pressed={isGirl}
+            className={`h-11 rounded-full px-7 text-sm font-bold uppercase transition duration-200 motion-reduce:transition-none ${
+              isGirl
+                ? "bg-grad-primary text-primary-foreground shadow-glow"
+                : "text-white/60 hover:text-white"
+            }`}
+          >
+            ♀ Girls
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange("male")}
+            aria-pressed={isGuy}
+            className={`h-11 rounded-full px-7 text-sm font-bold uppercase transition duration-200 motion-reduce:transition-none ${
+              isGuy
+                ? "bg-grad-primary text-primary-foreground shadow-glow"
+                : "text-white/60 hover:text-white"
+            }`}
+          >
+            ♂ Guys
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-2">
+        {isGirl && (
+          <>
+            <GenderChip current={gender} id="female" label="♀ Girls" onChange={onChange} />
+            <GenderChip current={gender} id="trans-female" label="⚧ Trans" onChange={onChange} />
+          </>
+        )}
+        {isGuy && (
+          <>
+            <GenderChip current={gender} id="male" label="♂ Guys" onChange={onChange} />
+            <GenderChip current={gender} id="trans-male" label="⚧ Trans" onChange={onChange} />
+          </>
+        )}
+        <GenderChip current={gender} id="non-binary" label="✦ Non-binary" onChange={onChange} />
+      </div>
+    </Section>
+  );
+}
+
+function GenderChip({
+  current,
+  id,
+  label,
+  onChange,
+}: {
+  current: Gender;
+  id: Gender;
+  label: string;
+  onChange: (g: Gender) => void;
+}) {
+  const selected = current === id;
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(id)}
+      aria-pressed={selected}
+      className={`h-11 rounded-full border px-5 text-xs font-semibold transition duration-200 motion-reduce:transition-none ${
+        selected
+          ? "border-primary bg-primary/10 text-primary"
+          : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+      }`}
+    >
+      {label}
+    </button>
+  );
 }
 
 function ChipRow({
@@ -743,60 +735,22 @@ function ChipRow({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((o) => (
-        <button
-          key={o.id}
-          onClick={() => onChange(o.id)}
-          className={`min-h-10 rounded-full border px-4 py-2.5 text-xs font-semibold transition duration-300 ${
-            value === o.id
-              ? "border-transparent bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.25)]"
-              : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function VisualGrid({
-  options,
-  value,
-  onChange,
-}: {
-  options: Visual[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
+    <div className="flex flex-wrap gap-2">
       {options.map((o) => {
-        const isSelected = value === o.id;
+        const selected = value === o.id;
         return (
           <button
             key={o.id}
             type="button"
             onClick={() => onChange(o.id)}
-            className={`group relative flex flex-col items-center overflow-hidden rounded-2xl border p-1.5 text-center transition-all duration-300 ${
-              isSelected
-                ? "border-pink-500 bg-pink-500/5 ring-1 ring-pink-500 shadow-[0_0_15px_rgba(244,63,94,0.15)] scale-[1.02]"
-                : "border-white/15 bg-white/5 hover:border-white/25 hover:bg-white/10 hover:scale-[1.01]"
+            aria-pressed={selected}
+            className={`h-11 rounded-full border px-5 text-xs font-semibold transition duration-200 motion-reduce:transition-none ${
+              selected
+                ? "border-transparent bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.25)]"
+                : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <div className="w-full overflow-hidden rounded-xl bg-black/40">
-              {o.swatch}
-            </div>
-            <div className="mt-2 flex items-center justify-center gap-1 px-1 pb-0.5">
-              <span
-                className={`text-xs font-semibold tracking-tight transition duration-300 ${
-                  isSelected ? "text-pink-400 font-bold" : "text-white/70 group-hover:text-white"
-                }`}
-              >
-                {o.label}
-              </span>
-            </div>
+            {o.label}
           </button>
         );
       })}

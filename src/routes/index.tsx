@@ -239,7 +239,7 @@ function Landing() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companions")
-        .select("id, name, age, ethnicity, short_bio, image_url, gender, orientation")
+        .select("id, name, age, ethnicity, short_bio, image_url, gender, orientation, art_style")
         .order("sort_order");
       if (error) throw error;
       return data as Companion[];

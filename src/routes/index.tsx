@@ -1372,7 +1372,7 @@ function BannerSlider({
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="flex w-full h-[520px] sm:h-[580px] md:h-[620px] transition-transform duration-700 ease-out"
+        className="flex w-full h-[550px] sm:h-[640px] md:h-[700px] transition-transform duration-700 ease-out"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {slides.map((s, i) => (
@@ -1458,8 +1458,8 @@ function BannerSlider({
             </div>
 
             {/* Desktop-only Video player panel */}
-            <div className="relative z-10 hidden md:flex w-1/2 h-full items-center justify-center p-6 lg:p-8">
-              <div className="relative h-full aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition duration-500 group-hover:border-primary/30 group-hover:shadow-glow">
+            <div className="relative z-10 hidden md:flex w-1/2 h-full items-center justify-center p-3 lg:p-4">
+              <div className="relative h-[94%] aspect-[3/4] overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition duration-500 group-hover:border-primary/30 group-hover:shadow-glow">
                 {s.reel ? (
                   <video
                     key={s.reel + "-desktop"}

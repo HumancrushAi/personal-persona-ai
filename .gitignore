@@ -48,3 +48,6 @@ dist-ssr
 # scratch from local generation tests
 .promo.txt
 .tmp-verify/
+
+# promo video intermediates — regenerate with scripts/generate-social-reels.ts
+marketing/reels/work/

@@ -134,6 +134,7 @@ type Companion = {
   image_url: string;
   gender: string;
   orientation: string;
+  art_style: string;
 };
 
 const CATEGORIES = [
@@ -143,6 +144,7 @@ const CATEGORIES = [
   "Trending",
   "Women",
   "Men",
+  "Anime",
   "Gay",
   "Trans",
   "Non-binary",
@@ -168,9 +170,11 @@ function matchesCategory(c: Companion, cat: Cat): boolean {
         ["raven", "vesper", "jade", "nyx", "lilith", "morticia"].includes(c.name.toLowerCase())
       );
     case "Women":
-      return c.gender === "female" || c.gender === "trans-female";
+      return (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime";
     case "Men":
-      return c.gender === "male" || c.gender === "trans-male";
+      return (c.gender === "male" || c.gender === "trans-male") && c.art_style !== "anime";
+    case "Anime":
+      return c.art_style === "anime" || (c.image_url || "").includes("anime");
     case "Gay":
       return c.orientation === "gay" || c.orientation === "pansexual";
     case "Trans":
@@ -243,7 +247,7 @@ function Landing() {
   });
 
   const [activeCat, setActiveCat] = useState<Cat>("For you");
-  const [topTab, setTopTab] = useState<"girls" | "anime" | "guys">("girls");
+  const [topTab, setTopTab] = useState<"girls" | "guys">("girls");
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
   const [query, setQuery] = useState("");
@@ -307,13 +311,19 @@ function Landing() {
     const q = query.trim().toLowerCase();
     let list = companions ?? [];
 
-    // Filter by topTab (Girls, Anime, Guys)
+    // Filter by topTab (Girls, Guys)
     if (topTab === "girls") {
-      list = list.filter((c) => (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime");
-    } else if (topTab === "anime") {
-      list = list.filter((c) => c.art_style === "anime" || c.image_url?.includes("anime"));
+      if (activeCat === "Anime" || q.includes("anime")) {
+        list = list.filter((c) => c.gender === "female" || c.gender === "trans-female");
+      } else {
+        list = list.filter((c) => (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime");
+      }
     } else if (topTab === "guys") {
-      list = list.filter((c) => c.gender === "male" || c.gender === "trans-male");
+      if (activeCat === "Anime" || q.includes("anime")) {
+        list = list.filter((c) => c.gender === "male" || c.gender === "trans-male");
+      } else {
+        list = list.filter((c) => (c.gender === "male" || c.gender === "trans-male") && c.art_style !== "anime");
+      }
     }
 
     // Filter by search query or category pill
@@ -330,9 +340,7 @@ function Landing() {
   const visibleCategories = useMemo(() => {
     let list = companions ?? [];
     if (topTab === "girls") {
-      list = list.filter((c) => (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime");
-    } else if (topTab === "anime") {
-      list = list.filter((c) => c.art_style === "anime" || c.image_url?.includes("anime"));
+      list = list.filter((c) => c.gender === "female" || c.gender === "trans-female");
     } else if (topTab === "guys") {
       list = list.filter((c) => c.gender === "male" || c.gender === "trans-male");
     }
@@ -357,9 +365,9 @@ function Landing() {
   }, [companions, query]);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-neutral-950 text-white flex flex-col lg:flex-row">
       {/* LEFT SIDEBAR (desktop only) */}
-      <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-white/10 bg-[#0f0d15] p-5 z-30 justify-between">
+      <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-white/10 bg-[#0f0d15] p-5 z-30 justify-between">
         <div className="flex flex-col gap-8">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 px-2">
@@ -414,24 +422,31 @@ function Landing() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 md:pl-64 min-h-screen pb-24 overflow-x-hidden">
+      <div className="flex-1 lg:pl-64 min-h-screen pb-24 overflow-x-hidden">
         {/* TOP HEADER */}
-        <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/80 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 md:px-8">
+        <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/85 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-8">
             
-            {/* Top Tabs (Girls, Anime, Guys) */}
-            <div className="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
+            {/* Mobile Logo & Desktop-Hidden Menu Toggle indicator */}
+            <Link to="/" className="flex items-center gap-1.5 lg:hidden shrink-0">
+              <Heart className="h-5 w-5 fill-primary text-primary animate-pulse" />
+              <span className="font-display text-base font-bold tracking-tight bg-gradient-to-r from-pink-500 to-rose-400 bg-clip-text text-transparent">
+                HumanCrush<span className="text-white">.com</span>
+              </span>
+            </Link>
+
+            {/* Top Tabs (Girls, Guys) */}
+            <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-full border border-white/10 shrink-0">
               {[
                 { id: "girls", label: "♀ Girls" },
-                { id: "anime", label: "🌀 Anime" },
                 { id: "guys", label: "♂ Guys" }
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setTopTab(tab.id as any)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase transition ${
+                  className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide uppercase transition ${
                     topTab === tab.id
-                      ? "bg-grad-primary text-primary-foreground shadow-glow"
+                      ? "bg-grad-primary text-primary-foreground shadow-glow font-bold"
                       : "text-white/60 hover:text-white"
                   }`}
                 >
@@ -441,25 +456,25 @@ function Landing() {
             </div>
 
             {/* Right side buttons */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
               {authed ? (
                 <>
-                  <Button asChild variant="ghost" size="sm" className="h-9 rounded-full px-3 text-xs sm:text-sm">
-                    <Link to="/me">My chats</Link>
+                  <Button asChild variant="ghost" size="sm" className="h-8 rounded-full px-2.5 text-[11px] sm:text-sm sm:h-9 sm:px-3">
+                    <Link to="/me">Chats</Link>
                   </Button>
-                  <Button asChild size="sm" className="h-9 rounded-full bg-grad-primary px-4 text-xs text-primary-foreground sm:text-sm shadow-glow">
+                  <Button asChild size="sm" className="h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow">
                     <Link to="/browse">
-                      <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Enter
+                      <Sparkles className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" /> Enter
                     </Link>
                   </Button>
                 </>
               ) : (
                 <>
-                  <Button asChild variant="ghost" size="sm" className="h-9 rounded-full px-3 text-xs sm:text-sm text-white/80">
+                  <Button asChild variant="ghost" size="sm" className="h-8 rounded-full px-2.5 text-[11px] sm:text-sm text-white/80 sm:h-9 sm:px-3">
                     <Link to="/auth">Login</Link>
                   </Button>
-                  <Button asChild size="sm" className="h-9 rounded-full bg-grad-primary px-4 text-xs text-primary-foreground sm:text-sm shadow-glow">
-                    <Link to="/auth">Create Free Account</Link>
+                  <Button asChild size="sm" className="h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow">
+                    <Link to="/auth">Sign Up</Link>
                   </Button>
                 </>
               )}
@@ -474,28 +489,35 @@ function Landing() {
           </div>
         ) : null}
 
-        {/* TOP PROMOTIONAL BANNER */}
-        <section className="mx-auto mt-2 max-w-7xl px-4 md:px-6">
+        {/* TOP PROMOTIONAL BANNER — Premium, Modern, Custom Glassmorphic design */}
+        <section className="mx-auto mt-4 max-w-7xl px-4 md:px-6">
           <Link
             to="/auth"
-            className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-600 via-rose-600 to-purple-700 px-4 py-3 text-white shadow-glow transition hover:opacity-95"
+            className="group relative flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden rounded-3xl border border-pink-500/20 bg-gradient-to-r from-[#170a25] via-[#2f0f35] to-[#120822] px-6 py-4 text-white shadow-glow transition hover:border-pink-500/40 hover:shadow-[0_0_25px_rgba(244,63,94,0.15)]"
           >
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg shadow-inner backdrop-blur">
-                🔥
+            {/* Background glowing blobs */}
+            <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-pink-500/10 blur-3xl group-hover:bg-pink-500/20 transition-all duration-700" />
+            <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl group-hover:bg-purple-500/20 transition-all duration-700" />
+            
+            <div className="flex items-center gap-4 z-10">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-2xl shadow-glow">
+                ✨
               </span>
               <div>
-                <p className="font-display text-sm font-bold tracking-wide uppercase text-white drop-shadow sm:text-base">
-                  HOT SPECIAL · 25 FREE MESSAGES
+                <p className="font-display text-base font-extrabold tracking-wide uppercase text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400 drop-shadow">
+                  EXCLUSIVE SPECIAL OFFER
                 </p>
-                <p className="text-[11px] text-white/90 sm:text-xs">
-                  No credit card required · Instant access to all AI companions
+                <p className="text-xs text-white/70 mt-0.5 font-light">
+                  Get <strong className="text-white font-semibold">25 Free Messages</strong> instantly on registration · No credit card required.
                 </p>
               </div>
             </div>
-            <span className="shrink-0 rounded-full bg-yellow-400 px-4 py-1.5 text-xs font-extrabold tracking-wider uppercase text-black shadow-md group-hover:scale-105 transition-transform">
-              JOIN NOW
-            </span>
+            
+            <div className="flex items-center gap-2 shrink-0 z-10">
+              <span className="rounded-full bg-white text-black px-5 py-2 text-xs font-extrabold tracking-wider uppercase shadow-lg group-hover:bg-pink-500 group-hover:text-white transition-all duration-300">
+                Claim Free Chats
+              </span>
+            </div>
           </Link>
         </section>
 
@@ -735,6 +757,69 @@ function Landing() {
             })}
           </div>
         </section>
+
+        {/* ANIME COMPANIONS SECTION (Bottom of homepage) */}
+        {(() => {
+          const animeComps = (companions ?? []).filter((c) => c.art_style === "anime" || (c.image_url || "").includes("anime"));
+          if (!animeComps.length) return null;
+          return (
+            <section className="mx-auto mt-14 max-w-7xl px-4 lg:px-6">
+              <SectionTitle
+                title="🌀 Anime Companions"
+                subtitle="highly flirty & sexy 2D crushes"
+              />
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                {animeComps.map((c) => {
+                  const reel = getEffectiveCompanionReel(c);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setTease(c)}
+                      className="group relative overflow-hidden rounded-3xl border border-purple-500/20 bg-neutral-950 text-left shadow-md transition hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:border-purple-500/40"
+                    >
+                      <div className="relative w-full aspect-[2/3] overflow-hidden">
+                        <img
+                          src={companionImage(c.image_url)}
+                          alt={c.name}
+                          loading="lazy"
+                          className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]"
+                        />
+                        
+                        {/* Quick action buttons / icons overlay (lock, video) */}
+                        <div className="absolute right-3 top-3 flex flex-col gap-1.5">
+                          {reel && (
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/80 shadow-md">
+                              <Video className="h-3 w-3 text-red-400" />
+                            </div>
+                          )}
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/80 shadow-md">
+                            <Lock className="h-3 w-3 text-indigo-400" />
+                          </div>
+                        </div>
+
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none" />
+                        
+                        <div className="absolute inset-x-0 bottom-0 p-3 pt-6">
+                          <h3 className="font-display text-sm font-bold text-white drop-shadow">
+                            {c.name}, {c.age}
+                          </h3>
+                          <p className="text-[9px] uppercase tracking-wider text-purple-400 font-bold">{c.ethnicity} · Anime</p>
+                          <p className="mt-0.5 line-clamp-1 text-[10px] text-white/70 leading-relaxed font-light">
+                            {c.short_bio}
+                          </p>
+                          
+                          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-2.5 py-0.5 text-[9px] font-bold text-white shadow-md transition-all duration-300 group-hover:scale-105">
+                            <MessageCircle className="h-3 w-3" /> Chat now
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* FEATURE STRIP */}
         <section className="mx-auto mt-14 max-w-7xl px-4 md:px-6">

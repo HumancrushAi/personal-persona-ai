@@ -1459,7 +1459,7 @@ function BannerSlider({
 
             {/* Desktop-only Video player panel */}
             <div className="relative z-10 hidden md:flex w-1/2 h-full items-center justify-center p-3 lg:p-4">
-              <div className="relative h-[94%] aspect-[3/4] overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition duration-500 group-hover:border-primary/30 group-hover:shadow-glow">
+              <div className="relative h-[94%] w-auto aspect-[3/4] overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition duration-500 group-hover:border-primary/30 group-hover:shadow-glow">
                 {s.reel ? (
                   <video
                     key={s.reel + "-desktop"}
@@ -1474,13 +1474,13 @@ function BannerSlider({
                       const v = e.currentTarget;
                       if (v.paused) v.play().catch(() => {});
                     }}
-                    className="pointer-events-none h-full w-full object-cover object-center"
+                    className="pointer-events-none h-full w-full object-cover object-center scale-[1.18] transition duration-500"
                   />
                 ) : s.companion ? (
                   <img
                     src={companionImage(s.companion.image_url)}
                     alt={s.companion.name}
-                    className="pointer-events-none h-full w-full object-cover object-center animate-live"
+                    className="pointer-events-none h-full w-full object-cover object-center animate-live scale-[1.18] transition duration-500"
                   />
                 ) : (
                   <div className="h-full w-full bg-neutral-950" />

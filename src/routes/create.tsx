@@ -20,6 +20,10 @@ import breastSmall from "@/assets/create/breast-small.jpg";
 import breastMedium from "@/assets/create/breast-medium.jpg";
 import breastLarge from "@/assets/create/breast-large.jpg";
 import breastBusty from "@/assets/create/breast-busty.jpg";
+import buttSmall from "@/assets/create/butt-small.jpg";
+import buttMedium from "@/assets/create/butt-medium.jpg";
+import buttLarge from "@/assets/create/butt-large.jpg";
+import buttBig from "@/assets/create/butt-big.jpg";
 import hairLongBlack from "@/assets/create/hair-long-black.jpg";
 import hairLongBlonde from "@/assets/create/hair-long-blonde.jpg";
 import hairLongBrunette from "@/assets/create/hair-long-brunette.jpg";
@@ -115,16 +119,14 @@ const BREASTS: Option[] = [
   { id: "Busty", label: "Busty (DD+)", img: breastBusty },
 ];
 
-// Borrowing the body photos: every rear-view prompt comes back
-// `imagine:content-moderated`, so there are no dedicated butt-*.jpg swatches
-// yet. These four are the same studio set and read the hip difference clearly.
-// scripts/generate-create-swatches.ts already defines the shots — run
-// `--only=butt-small,butt-medium,butt-large,butt-big` once they pass.
+// Shot from behind. These used to borrow the front-facing body photos, because
+// the image provider refused every rear-view prompt — so the one step that asks
+// about her backside illustrated it with her front.
 const BUTTS: Option[] = [
-  { id: "Small", label: "Small", img: bodyPetite },
-  { id: "Medium", label: "Athletic", img: bodyAthletic },
-  { id: "Large", label: "Curvy", img: bodyCurvy },
-  { id: "Big", label: "Voluptuous", img: bodyThick },
+  { id: "Small", label: "Small", img: buttSmall },
+  { id: "Medium", label: "Athletic", img: buttMedium },
+  { id: "Large", label: "Curvy", img: buttLarge },
+  { id: "Big", label: "Voluptuous", img: buttBig },
 ];
 
 const HAIRS: Option[] = [

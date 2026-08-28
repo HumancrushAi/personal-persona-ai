@@ -51,3 +51,4 @@ dist-ssr
 
 # promo video intermediates — regenerate with scripts/generate-social-reels.ts
 marketing/reels/work/
+marketing/adult/reels/work/

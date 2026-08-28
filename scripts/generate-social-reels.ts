@@ -59,9 +59,16 @@ const RUNPOD_KEY = process.env.RUNPOD_API_KEY || "";
 const RUNPOD_VIDEO = process.env.RUNPOD_VIDEO_ENDPOINT || "";
 const OPENAI_KEY = process.env.OPENAI_API_KEY || "";
 
-const OUT_DIR = "marketing/reels";
+// Two sets, chosen with --set. They never mix in a run and never share an
+// output directory, because handing Facebook the adult cut would cost the ad
+// account. `social` is clothed and mainstream-safe; `adult` is lingerie and
+// only for PornHub/TrafficJunky-style networks.
+const SET = args.includes("--set=adult") ? "adult" : "social";
+const ADULT = SET === "adult";
+
+const OUT_DIR = ADULT ? "marketing/adult/reels" : "marketing/reels";
 const WORK_DIR = `${OUT_DIR}/work`;
-const SRC_DIR = "marketing/source";
+const SRC_DIR = ADULT ? "marketing/adult/source" : "marketing/source";
 const FFMPEG = path.resolve("node_modules/ffmpeg-static/ffmpeg.exe");
 
 const W = 1080;
@@ -85,7 +92,7 @@ type Reel = {
   motion: string;
 };
 
-const REELS: Reel[] = [
+const SOCIAL_REELS: Reel[] = [
   {
     id: "build-her",
     source: "sofa",
@@ -120,6 +127,35 @@ const REELS: Reel[] = [
       "she looks at the camera and talks warmly, natural mouth movement while speaking, soft smile, small head movements, blinking, relaxed and still by the window",
   },
 ];
+
+// Adult networks. Lingerie, direct copy — and still no nudity, because the ad
+// unit is held to a stricter line than the site it runs on.
+const ADULT_REELS: Reel[] = [
+  {
+    id: "sends-anything",
+    source: "bed",
+    line: "Build me exactly how you want me. Then ask me for anything — I'll send it.",
+    caption: ["Ask me for", "anything."],
+    endline: ["Your AI girl.", "Your rules."],
+    kicker: "Chat free",
+    voice: "shimmer",
+    motion:
+      "she looks at the camera and talks, natural mouth movement while speaking, slow confident head tilt, biting her lip, blinking, direct seductive eye contact, kneeling still on the bed",
+  },
+  {
+    id: "texts-back",
+    source: "phone",
+    line: "I'm awake whenever you are. Make your own AI girl and I'll always text back.",
+    caption: ["I always", "text back."],
+    endline: ["Make your own", "AI girl"],
+    kicker: "Start free",
+    voice: "coral",
+    motion:
+      "she looks at the camera and talks, natural mouth movement while speaking, smirking, slow blink, shifting her weight slightly, holding the phone steady, lying back on the couch",
+  },
+];
+
+const REELS: Reel[] = ADULT ? ADULT_REELS : SOCIAL_REELS;
 
 const NEGATIVE =
   "blurry, low quality, deformed, extra limbs, watermark, text, static, frozen, no movement, bad anatomy, cartoon, anime, 3d render, nudity, naked, topless, undressing";

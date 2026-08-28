@@ -43,9 +43,9 @@ const only = onlyArg
       .filter(Boolean)
   : null;
 
-const key = process.env.XAI_API_KEY;
+const key = process.env.REPLICATE_API_TOKEN;
 if (!key) {
-  console.error("❌ XAI_API_KEY missing from .env.local");
+  console.error("❌ REPLICATE_API_TOKEN missing from .env.local");
   process.exit(1);
 }
 
@@ -94,28 +94,46 @@ const BODIES: Swatch[] = [
   ],
 ].map(([file, subject]) => ({ file, prompt: fullBody(subject), crop: "tall" as const }));
 
+// Four options that look the same are four options nobody can choose between.
+// The first pass described these as A/B/D/DD and the model rendered them nearly
+// identically — so the wording is now exaggerated at both ends and anchored to
+// how the garment fits, which is what actually reads at thumbnail size.
 const BREASTS: Swatch[] = [
-  ["breast-small", "small petite A cup breasts"],
-  ["breast-medium", "medium natural B to C cup breasts"],
-  ["breast-large", "large full D cup breasts"],
-  ["breast-busty", "very large busty DD plus cup breasts with deep cleavage"],
+  [
+    "breast-small",
+    "very small flat A-cup breasts, minimal bust, slim narrow chest, the bra cups sitting almost flat against her, no cleavage at all",
+  ],
+  [
+    "breast-medium",
+    "average natural B-cup breasts, modest bust filling the cups neatly, only a hint of cleavage",
+  ],
+  [
+    "breast-large",
+    "large full D-cup breasts, heavy rounded bust filling the cups completely, clear deep cleavage",
+  ],
+  [
+    "breast-busty",
+    "enormous DDD-cup breasts, extremely large heavy bust overflowing the cups, dramatic very deep cleavage, the bra straps pulled taut",
+  ],
 ].map(([file, bust]) => ({
   file,
   prompt: `Vertical photograph of a beautiful young woman from mid thigh to the top of her head, wearing a black lace balconette bra and matching briefs, ${bust}, hands relaxed at her sides. ${LOOK}, torso centred in frame`,
   crop: "tall" as const,
 }));
 
-// Shot from the side, not from behind: rear-view briefs prompts come back
-// `imagine:content-moderated` every time, and each rejection costs ~95s. A side
-// profile reads the same difference in hip and thigh shape and passes.
+// Shot from BEHIND. These were previously side profiles, and then fell back to
+// the front-facing body photos entirely, so the one step in the wizard that asks
+// about her backside was illustrated with her front. xAI refuses rear-view
+// briefs prompts outright; FLUX on Replicate renders them, which is the reason
+// this script moved providers.
 const BUTTS: Swatch[] = [
-  ["butt-small", "a slim narrow"],
-  ["butt-medium", "an athletic firm"],
-  ["butt-large", "a full curvy"],
-  ["butt-big", "a dramatically wide voluptuous"],
+  ["butt-small", "a small slim narrow bottom and narrow hips"],
+  ["butt-medium", "an athletic firm toned rounded bottom"],
+  ["butt-large", "a large full curvy rounded bottom and wide hips"],
+  ["butt-big", "an enormous voluptuous rounded bottom and dramatically wide hips"],
 ].map(([file, shape]) => ({
   file,
-  prompt: `Vertical photograph of a beautiful young woman photographed from the side in profile, ${shape} hip and thigh silhouette, wearing a black lace bra and high waisted briefs, one hand resting on her hip. ${LOOK}, framed from the knees to the top of her head`,
+  prompt: `Rear view photograph of a beautiful young woman standing with her back to the camera, photographed from behind, ${shape}, wearing a black lace bra and matching high-cut lace briefs, glancing back over her shoulder at the camera. ${LOOK}, framed from mid-thigh to the top of her head, her back and bottom fill the frame`,
   crop: "tall" as const,
 }));
 
@@ -222,26 +240,39 @@ const VIBES: Swatch[] = [
 
 const ALL: Swatch[] = [...BODIES, ...BREASTS, ...BUTTS, ...OUTFITS, ...HAIRS, ...EYES, ...VIBES];
 
+// FLUX on Replicate, not xAI. Grok Imagine refuses every rear-view lingerie
+// prompt with `imagine:content-moderated` — which is why the butt swatches did
+// not exist for two rounds — and it hangs sockets open for ~95s before saying
+// so. FLUX renders them, honours the aspect ratio natively, and answers in a
+// few seconds.
 async function attempt(s: Swatch): Promise<Buffer> {
-  // The endpoint hangs open rather than erroring when it is unhealthy — a whole
-  // batch sat on dead sockets for twenty minutes before this timeout existed.
-  const res = await fetch("https://api.x.ai/v1/images/generations", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: process.env.XAI_IMAGE_MODEL || "grok-imagine-image-2.0",
-      prompt: s.prompt,
-      n: 1,
-    }),
-    signal: AbortSignal.timeout(150_000),
-  });
+  const res = await fetch(
+    "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        // Blocks until the prediction finishes, so there is no poll loop.
+        Prefer: "wait",
+      },
+      body: JSON.stringify({
+        input: {
+          prompt: s.prompt,
+          aspect_ratio: s.crop === "tall" ? "2:3" : "1:1",
+          output_format: "jpg",
+          safety_tolerance: 5,
+        },
+      }),
+      signal: AbortSignal.timeout(150_000),
+    },
+  );
   if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`);
 
   const json = await res.json();
-  const item = json.data?.[0];
-  if (item?.b64_json) return Buffer.from(item.b64_json, "base64");
-  if (!item?.url) throw new Error("no image in response");
-  const img = await fetch(item.url, { signal: AbortSignal.timeout(60_000) });
+  const url = typeof json.output === "string" ? json.output : json.output?.[0];
+  if (!url) throw new Error(`no image (status ${json.status}) ${json.error ?? ""}`.trim());
+  const img = await fetch(url, { signal: AbortSignal.timeout(60_000) });
   if (!img.ok) throw new Error(`could not fetch generated image (${img.status})`);
   return Buffer.from(await img.arrayBuffer());
 }
@@ -253,9 +284,7 @@ async function generate(s: Swatch): Promise<Buffer> {
       return await attempt(s);
     } catch (e: any) {
       lastErr = e;
-      // A moderation refusal is a verdict on the prompt, not a blip — retrying
-      // it just burns another 90s for the same answer.
-      if (/content-moderated/.test(e?.message ?? "")) throw e;
+      console.log(`   ${s.file}: ${(e?.message ?? e).toString().slice(0, 90)} — retry ${i + 1}/3`);
       if (i < 2) await new Promise((r) => setTimeout(r, 5000 * (i + 1)));
     }
   }

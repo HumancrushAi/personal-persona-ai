@@ -24,6 +24,7 @@ import {
   Heart,
   Sparkles,
   Circle,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getScenario } from "@/lib/scenarios";
@@ -34,6 +35,55 @@ export const Route = createFileRoute("/chat/$conversationId")({
   head: () => ({ meta: [{ title: "Chat — HumanCrush.com" }] }),
   component: ChatPage,
 });
+
+// Progress copy in her voice. A bare "131s elapsed" reads as a build log, but
+// with no signal at all a two-minute wait feels broken — so the line moves on as
+// the wait grows instead of counting at the user.
+function waitLine(seconds: number, kind: "photo" | "video"): string {
+  if (seconds < 20) return "finding the light…";
+  if (seconds < 60)
+    return kind === "video" ? "getting the shot right…" : "getting the angle right…";
+  if (seconds < 120) return "almost got it…";
+  return "nearly there, promise 💋";
+}
+
+// Media lives on a different origin, so a plain `download` attribute is ignored
+// and the browser just navigates to the file. Pulling the bytes down first and
+// handing over a blob is what actually saves to the phone's gallery.
+async function downloadMedia(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const href = URL.createObjectURL(await res.blob());
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10_000);
+  } catch {
+    // Opening the file directly still lets the user long-press to save it.
+    window.open(url, "_blank", "noopener");
+    toast("Opened in a new tab — press and hold to save");
+  }
+}
+
+function DownloadButton({ url, filename }: { url: string; filename: string }) {
+  return (
+    <button
+      type="button"
+      aria-label="Save to your device"
+      onClick={(e) => {
+        e.stopPropagation();
+        downloadMedia(url, filename);
+      }}
+      className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-white/90 backdrop-blur transition hover:bg-black/80 active:scale-95"
+    >
+      <Download className="h-4 w-4" />
+    </button>
+  );
+}
 
 type Message = {
   id: string;
@@ -200,7 +250,12 @@ function ChatPage() {
     id: `pending-job-${job.id}`,
     role: "assistant" as const,
     content: "",
-    kind: job.kind === "image" ? "image_pending" : job.kind === "video" ? "video_pending" : "voice_pending",
+    kind:
+      job.kind === "image"
+        ? "image_pending"
+        : job.kind === "video"
+          ? "video_pending"
+          : "voice_pending",
     media_url: null,
     created_at: job.created_at,
     jobId: job.id,
@@ -219,7 +274,7 @@ function ChatPage() {
     }));
 
   const allMessages = [...(messages ?? []), ...pendingMessages, ...localPendingMessages].sort(
-    (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+    (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime(),
   );
 
   const messageIds = allMessages.map((m) => m.id).join(",");
@@ -594,7 +649,8 @@ function ChatPage() {
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
-                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> smiling at you 💋
+                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />{" "}
+                smiling at you 💋
               </span>
             )}
             <span className="inline-flex items-center gap-1 text-white/70">
@@ -671,7 +727,9 @@ function ChatPage() {
                 <AutoPlayVideo
                   key={p.companion_id}
                   src={reelUrl}
-                  poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
+                  poster={
+                    p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined
+                  }
                   className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
                 />
               ) : p?.companions?.image_url ? (
@@ -691,7 +749,8 @@ function ChatPage() {
                   </span>
                 ) : (
                   <span className="text-emerald-400 flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling
+                    at you 💋
                   </span>
                 )}
               </div>
@@ -739,20 +798,32 @@ function ChatPage() {
                   }`}
                 >
                   {m.kind === "image" && m.media_url && (
-                    <img
-                      src={m.media_url}
-                      alt=""
-                      onClick={() => setActiveImageUrl(m.media_url ?? null)}
-                      className="block aspect-square w-72 cursor-pointer object-cover transition-opacity hover:opacity-90"
-                    />
+                    <div className="relative">
+                      <img
+                        src={m.media_url}
+                        alt=""
+                        onClick={() => setActiveImageUrl(m.media_url ?? null)}
+                        className="block aspect-square w-72 cursor-pointer object-cover transition-opacity hover:opacity-90"
+                      />
+                      <DownloadButton
+                        url={m.media_url}
+                        filename={`${p?.nickname ?? "humancrush"}-${m.id}.jpg`}
+                      />
+                    </div>
                   )}
                   {m.kind === "video" && m.media_url && (
-                    <video
-                      controls
-                      playsInline
-                      src={m.media_url}
-                      className="block w-72 rounded-2xl"
-                    />
+                    <div className="relative">
+                      <video
+                        controls
+                        playsInline
+                        src={m.media_url}
+                        className="block w-72 rounded-2xl"
+                      />
+                      <DownloadButton
+                        url={m.media_url}
+                        filename={`${p?.nickname ?? "humancrush"}-${m.id}.mp4`}
+                      />
+                    </div>
                   )}
                   {m.kind === "voice" && m.media_url && (
                     <div className="p-2">
@@ -768,9 +839,22 @@ function ChatPage() {
                           <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
                         </div>
                         <div className="space-y-1">
-                          <div className="font-semibold text-white/90">Generating Photo...</div>
+                          {/* In her voice, not the machine's — "Generating
+                              Photo…" reads as software and breaks the illusion
+                              the rest of the chat works to keep. */}
+                          <div className="font-semibold text-white/90">
+                            {p?.nickname ? `${p.nickname} is taking it…` : "Taking it for you…"}
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            {Math.max(0, Math.round((Date.now() - new Date((m as any).created_at).getTime()) / 1000))}s elapsed
+                            {waitLine(
+                              Math.max(
+                                0,
+                                Math.round(
+                                  (Date.now() - new Date((m as any).created_at).getTime()) / 1000,
+                                ),
+                              ),
+                              "photo",
+                            )}
                           </div>
                         </div>
                       </div>
@@ -785,9 +869,19 @@ function ChatPage() {
                           <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
                         </div>
                         <div className="space-y-1">
-                          <div className="font-semibold text-white/90">Generating Video...</div>
+                          <div className="font-semibold text-white/90">
+                            {p?.nickname ? `${p.nickname} is filming…` : "Filming it for you…"}
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            {Math.max(0, Math.round((Date.now() - new Date((m as any).created_at).getTime()) / 1000))}s elapsed
+                            {waitLine(
+                              Math.max(
+                                0,
+                                Math.round(
+                                  (Date.now() - new Date((m as any).created_at).getTime()) / 1000,
+                                ),
+                              ),
+                              "video",
+                            )}
                           </div>
                         </div>
                       </div>
@@ -802,9 +896,17 @@ function ChatPage() {
                           <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <div className="font-semibold text-sm text-white/90">Recording Audio...</div>
+                          <div className="font-semibold text-sm text-white/90">
+                            Recording Audio...
+                          </div>
                           <div className="text-[11px] text-muted-foreground">
-                            {Math.max(0, Math.round((Date.now() - new Date((m as any).created_at).getTime()) / 1000))}s elapsed
+                            {Math.max(
+                              0,
+                              Math.round(
+                                (Date.now() - new Date((m as any).created_at).getTime()) / 1000,
+                              ),
+                            )}
+                            s elapsed
                           </div>
                         </div>
                       </div>
@@ -816,14 +918,21 @@ function ChatPage() {
                 </div>
               </div>
             ))}
-            {pendingUser && !allMessages.some((m) => m.role === "user" && m.content.trim() === pendingUser.trim()) && (
-              <div className="flex justify-end">
-                <div className="max-w-[80%] rounded-2xl rounded-br-md bg-grad-primary px-4 py-2.5 text-sm text-primary-foreground shadow-glow">
-                  {pendingUser}
+            {pendingUser &&
+              !allMessages.some(
+                (m) => m.role === "user" && m.content.trim() === pendingUser.trim(),
+              ) && (
+                <div className="flex justify-end">
+                  <div className="max-w-[80%] rounded-2xl rounded-br-md bg-grad-primary px-4 py-2.5 text-sm text-primary-foreground shadow-glow">
+                    {pendingUser}
+                  </div>
                 </div>
-              </div>
-            )}
-            {(sending || (mediaBusy && !allMessages.some((m) => ["image_pending", "video_pending", "voice_pending"].includes(m.kind)))) && (
+              )}
+            {(sending ||
+              (mediaBusy &&
+                !allMessages.some((m) =>
+                  ["image_pending", "video_pending", "voice_pending"].includes(m.kind),
+                ))) && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground">
                   {mediaBusy === "selfie" ? (
@@ -928,6 +1037,16 @@ function ChatPage() {
           onClick={() => setActiveImageUrl(null)}
         >
           <button
+            aria-label="Save to your device"
+            className="absolute right-16 top-4 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadMedia(activeImageUrl, `${p?.nickname ?? "humancrush"}.jpg`);
+            }}
+          >
+            <Download className="h-6 w-6" />
+          </button>
+          <button
             className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
             onClick={() => setActiveImageUrl(null)}
           >
@@ -996,7 +1115,7 @@ function AutoPlayVideo({
           }
         });
       },
-      { threshold: 0.01 }
+      { threshold: 0.01 },
     );
 
     observer.observe(video);

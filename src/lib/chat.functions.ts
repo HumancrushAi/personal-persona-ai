@@ -89,6 +89,42 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
 
+    // A photo takes over two minutes, and nothing in the chat said one was
+    // already on its way — so users asked again, and were charged again for a
+    // second copy of the same picture. If one is already rendering, say so in
+    // character and let the text path answer instead of queueing another.
+    const mediaAlreadyComing =
+      wantsVideo(data.content) || wantsSelfie(data.content)
+        ? ((
+            await supabase
+              .from("media_jobs")
+              .select("kind")
+              .eq("conversation_id", data.conversationId)
+              .in("status", ["pending", "processing"])
+              .in("kind", ["image", "video"])
+              .limit(1)
+          ).data?.[0]?.kind ?? null)
+        : null;
+
+    if (mediaAlreadyComing) {
+      const reply =
+        mediaAlreadyComing === "video"
+          ? "still filming that one for you, baby — give me a sec 🎬"
+          : "i'm already taking one for you, hold on 📸";
+      await supabase.from("messages").insert({
+        conversation_id: data.conversationId,
+        user_id: userId,
+        role: "assistant",
+        content: reply,
+        kind: "text",
+      });
+      await supabase
+        .from("conversations")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", data.conversationId);
+      return { reply };
+    }
+
     // Auto-video: if the user asks her to send/make a video, queue it through
     // the same async job pipeline as the 🎬 button. Checked BEFORE the selfie
     // path so "send me a video of you…" doesn't get answered with a photo.
@@ -275,10 +311,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     ];
 
     // Admin-tunable sampling temperature (AI Config tab), clamped to sane range.
-    const temperature = Math.min(
-      2,
-      settingNumber(await getAppSetting("default_temperature"), 0.9),
-    );
+    const temperature = Math.min(2, settingNumber(await getAppSetting("default_temperature"), 0.9));
     const reply = await chatComplete(messages, { temperature });
 
     await supabase.from("messages").insert({

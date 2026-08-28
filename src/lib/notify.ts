@@ -36,17 +36,38 @@ export async function sendEmail(to: string, subject: string, html: string) {
   if (!res.ok) throw new Error(`Email error: ${res.status} ${(await res.text()).slice(0, 150)}`);
 }
 
+// Quotes and angle brackets inside an href close the attribute and let the rest
+// of the value become markup. Both URLs here are built from an env var and a
+// uuid, but they are still interpolated into an attribute in outbound mail.
+const attr = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 // Simple branded wrapper for notification emails.
-export function notificationEmailHtml(title: string, body: string, url?: string, imageUrl?: string): string {
-  const modelImage = imageUrl
+export function notificationEmailHtml(
+  title: string,
+  body: string,
+  url?: string,
+  imageUrl?: string,
+): string {
+  // Her photo is the thing people tap — it is the biggest, most personal element
+  // in the mail, and it used to be inert, so the tap did nothing and the CTA
+  // underneath was the only way through. It now goes exactly where the button
+  // goes. Wrapped rather than made a background so it still renders in clients
+  // that strip CSS.
+  const picture = imageUrl
     ? `<div style="margin: 20px auto; width: 140px; height: 140px; border-radius: 50%; overflow: hidden; border: 3px solid #ff4d8d; box-shadow: 0 0 15px rgba(255, 77, 141, 0.4);">
-        <img src="${imageUrl}" alt="Companion avatar" style="width: 100%; height: 100%; object-fit: cover;" />
+        <img src="${attr(imageUrl)}" alt="${attr(title)}" style="width: 100%; height: 100%; object-fit: cover;" />
        </div>`
     : "";
 
+  const modelImage =
+    picture && url
+      ? `<a href="${attr(url)}" style="text-decoration:none;display:block;">${picture}</a>`
+      : picture;
+
   const cta = url
     ? `<div style="margin-top: 24px;">
-        <a href="${url}" style="display:inline-block;background:linear-gradient(90deg,#ff4d8d,#c04bff);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 32px;border-radius:999px;box-shadow: 0 4px 12px rgba(255, 77, 141, 0.3);">Open HumanCrush.com</a>
+        <a href="${attr(url)}" style="display:inline-block;background:linear-gradient(90deg,#ff4d8d,#c04bff);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 32px;border-radius:999px;box-shadow: 0 4px 12px rgba(255, 77, 141, 0.3);">Open HumanCrush.com</a>
        </div>`
     : "";
 

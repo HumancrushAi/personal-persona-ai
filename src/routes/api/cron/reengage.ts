@@ -29,19 +29,22 @@ async function reengage({ request }: { request: Request }) {
 
   const { data: convos } = await supabaseAdmin
     .from("conversations")
-    .select("user_id, updated_at, user_personalities(nickname, companions(image_url))")
+    .select("id, user_id, updated_at, user_personalities(nickname, companions(image_url))")
     .lte("updated_at", staleBefore)
     .gte("updated_at", notTooOld)
     .order("updated_at", { ascending: false })
     .limit(500);
 
   // One ping per user (their most recent companion nickname and image URL).
-  const byUser = new Map<string, { nick: string; imageUrl?: string }>();
+  // The conversation id rides along so the mail can drop them straight back into
+  // that chat — the point of the ping is the message she is holding, and /me was
+  // an account page they then had to navigate out of.
+  const byUser = new Map<string, { nick: string; imageUrl?: string; convId: string }>();
   for (const c of convos ?? []) {
     if (!byUser.has(c.user_id)) {
       const nick = (c as any).user_personalities?.nickname ?? "She";
       const imageUrl = (c as any).user_personalities?.companions?.image_url;
-      byUser.set(c.user_id, { nick, imageUrl });
+      byUser.set(c.user_id, { nick, imageUrl, convId: (c as any).id });
     }
   }
 
@@ -67,9 +70,10 @@ async function reengage({ request }: { request: Request }) {
     if (processed >= 100) break; // keep within the function time budget
     processed++;
 
-    const { nick, imageUrl } = info;
+    const { nick, imageUrl, convId } = info;
     const title = `${nick} misses you 💌`;
     const body = `Come back and see what ${nick} sent you…`;
+    const chatPath = convId ? `/chat/${convId}` : "/me";
 
     const { data: subs } = await supabaseAdmin
       .from("push_subscriptions")
@@ -77,7 +81,7 @@ async function reengage({ request }: { request: Request }) {
       .eq("user_id", uid);
     for (const s of subs ?? []) {
       try {
-        await sendPush(s as any, { title, body, url: "/me" });
+        await sendPush(s as any, { title, body, url: chatPath });
         pushSent++;
       } catch (e: any) {
         const code = String(e?.statusCode ?? "");
@@ -90,7 +94,11 @@ async function reengage({ request }: { request: Request }) {
     try {
       const { data: u } = await supabaseAdmin.auth.admin.getUserById(uid);
       if (u.user?.email) {
-        await sendEmail(u.user.email, title, notificationEmailHtml(title, body, `${site}/me`, imageUrl));
+        await sendEmail(
+          u.user.email,
+          title,
+          notificationEmailHtml(title, body, `${site}${chatPath}`, imageUrl),
+        );
         emailSent++;
       }
     } catch {

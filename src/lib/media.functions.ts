@@ -121,6 +121,10 @@ export const generateSelfie = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!conv) throw new Error("Conversation not found");
 
+    if (await mediaJobInFlight(supabase, data.conversationId, "image")) {
+      throw new Error("She's already taking one for you — hold on 📸");
+    }
+
     const userPrompt = data.prompt?.trim();
     // Safety gate on the image request (blocks minors / illegal even for photos).
     const screen = screenUserMessage(userPrompt ?? "");
@@ -155,6 +159,28 @@ export const generateSelfie = createServerFn({ method: "POST" })
 
     return { jobId, status: "pending", balance };
   });
+
+// One job of a kind per conversation at a time.
+//
+// Generation runs for minutes with no way to tell from the outside that it is
+// working, so people ask again — and the second ask was charged and rendered as
+// a duplicate of the same picture. The typed path, the 📷 button and the 🎬
+// button all reach this before spending anything, so a retry from any of them
+// lands on the job already running instead of starting a new one.
+export async function mediaJobInFlight(
+  supabase: any,
+  conversationId: string,
+  kind: "image" | "video",
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("media_jobs")
+    .select("id")
+    .eq("conversation_id", conversationId)
+    .eq("kind", kind)
+    .in("status", ["pending", "processing"])
+    .limit(1);
+  return Boolean(data?.length);
+}
 
 // Create a media_jobs row and fire the async selfie generation. The caller must
 // have ALREADY charged SELFIE_COST; on any launch failure this marks the job
@@ -350,6 +376,10 @@ export const requestVideo = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!conv) throw new Error("Conversation not found");
 
+    if (await mediaJobInFlight(supabase, data.conversationId, "video")) {
+      throw new Error("She's still filming the last one — give her a sec 🎬");
+    }
+
     const userPrompt = data.prompt?.trim();
     if (userPrompt) {
       const screen = screenUserMessage(userPrompt);
@@ -451,7 +481,13 @@ export async function startVideoJob(
   supabase: any,
   userId: string,
   conversationId: string,
-  companion: { name: string; gender?: string | null; imageUrl?: string | null; age?: number; ethnicity?: string },
+  companion: {
+    name: string;
+    gender?: string | null;
+    imageUrl?: string | null;
+    age?: number;
+    ethnicity?: string;
+  },
   userReq: string | undefined,
   balance: { free: number; paid: number },
   seconds?: number,

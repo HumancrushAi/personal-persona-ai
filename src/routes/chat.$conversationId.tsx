@@ -39,7 +39,11 @@ export const Route = createFileRoute("/chat/$conversationId")({
 // Progress copy in her voice. A bare "131s elapsed" reads as a build log, but
 // with no signal at all a two-minute wait feels broken — so the line moves on as
 // the wait grows instead of counting at the user.
-function waitLine(seconds: number, kind: "photo" | "video"): string {
+function waitLine(seconds: number, kind: "photo" | "video" | "voice"): string {
+  if (kind === "voice") {
+    if (seconds < 15) return "thinking what to say…";
+    return "almost done…";
+  }
   if (seconds < 20) return "finding the light…";
   if (seconds < 60)
     return kind === "video" ? "getting the shot right…" : "getting the angle right…";
@@ -897,16 +901,18 @@ function ChatPage() {
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5">
                           <div className="font-semibold text-sm text-white/90">
-                            Recording Audio...
+                            {p?.nickname ? `${p.nickname} is recording…` : "Recording one for you…"}
                           </div>
                           <div className="text-[11px] text-muted-foreground">
-                            {Math.max(
-                              0,
-                              Math.round(
-                                (Date.now() - new Date((m as any).created_at).getTime()) / 1000,
+                            {waitLine(
+                              Math.max(
+                                0,
+                                Math.round(
+                                  (Date.now() - new Date((m as any).created_at).getTime()) / 1000,
+                                ),
                               ),
+                              "voice",
                             )}
-                            s elapsed
                           </div>
                         </div>
                       </div>

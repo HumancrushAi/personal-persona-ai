@@ -7,7 +7,7 @@ import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 import { chatComplete } from "./ai";
 import { wantsSelfie, wantsVideo, checkCrossGenderRequest } from "./selfie";
 import { deductCredits } from "./credit-wallet";
-import { startImageJob, startVideoJob } from "./media.functions";
+import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 import { getAppSetting, settingNumber } from "./app-settings.server";
 
@@ -93,22 +93,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // already on its way — so users asked again, and were charged again for a
     // second copy of the same picture. If one is already rendering, say so in
     // character and let the text path answer instead of queueing another.
-    const mediaAlreadyComing =
-      wantsVideo(data.content) || wantsSelfie(data.content)
-        ? ((
-            await supabase
-              .from("media_jobs")
-              .select("kind")
-              .eq("conversation_id", data.conversationId)
-              .in("status", ["pending", "processing"])
-              .in("kind", ["image", "video"])
-              .limit(1)
-          ).data?.[0]?.kind ?? null)
+    const askedFor = wantsVideo(data.content)
+      ? ("video" as const)
+      : wantsSelfie(data.content)
+        ? ("image" as const)
         : null;
+    const mediaAlreadyComing =
+      askedFor !== null && (await mediaJobInFlight(supabase, data.conversationId, askedFor));
 
     if (mediaAlreadyComing) {
       const reply =
-        mediaAlreadyComing === "video"
+        askedFor === "video"
           ? "still filming that one for you, baby — give me a sec 🎬"
           : "i'm already taking one for you, hold on 📸";
       await supabase.from("messages").insert({

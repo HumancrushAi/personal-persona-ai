@@ -84,9 +84,10 @@ function actionTags(req: string, isMale: boolean): string {
         : "female masturbation, fingering, hand between legs, spread legs, pleasuring herself, touching her pussy",
     );
   if (has(KW.toys)) {
-    const toyTag = !isMale && has(KW.pussy)
-      ? "sex toy, dildo, holding a dildo, using sex toy, dildo inserted in her pussy, female anatomy, no penis"
-      : "sex toy, dildo, holding a dildo, using sex toy";
+    const toyTag =
+      !isMale && has(KW.pussy)
+        ? "sex toy, dildo, holding a dildo, using sex toy, dildo inserted in her pussy, female anatomy, no penis"
+        : "sex toy, dildo, holding a dildo, using sex toy";
     ex.push(toyTag);
   }
   if (has(KW.anal)) ex.push("anal, insertion, bent over, ass, presenting");
@@ -210,7 +211,13 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
 // the model a composition to build, instead of a rule to obey. Same request,
 // same start frame, same negatives: subject-anchored framing produced head to
 // feet with the face in shot.
-function framingFor(noun: string, poss: string, posed: boolean, hasReq: boolean, name?: string): string {
+function framingFor(
+  noun: string,
+  poss: string,
+  posed: boolean,
+  hasReq: boolean,
+  name?: string,
+): string {
   let stance = " standing";
   if (posed || hasReq) {
     stance = "";
@@ -236,7 +243,8 @@ const POSTURE_RE =
 // side. It helps; it does not fully solve it.
 function objectClause(req: string, isMale: boolean): string {
   if (!kw(KW.toys).test(req)) return "";
-  const toyDescription = "The sex toy is a separate solid object with smooth silicone material and clean defined edges, held in her hand but clearly distinct from it, correct proportions, fingers wrapped around it and still countable as fingers. The toy is not merged into her hand or body.";
+  const toyDescription =
+    "The sex toy is a separate solid object with smooth silicone material and clean defined edges, held in her hand but clearly distinct from it, correct proportions, fingers wrapped around it and still countable as fingers. The toy is not merged into her hand or body.";
   if (!isMale && kw("pussy|vagina|vulva|cunt|slit|clit").test(req)) {
     return `${toyDescription} She has normal female anatomy, a natural pussy, and no penis. The toy is inserted into her pussy.`;
   }
@@ -389,9 +397,28 @@ export function wantsSelfie(t: string): boolean {
     )
   )
     return true;
+
+  // "show me what you're wearing", "show me what you have on". Deliberately
+  // narrow: "show me how you feel" and "show me why" are ordinary chat.
+  if (/\bshow me what (?:you'?re|you are|you)\b/.test(s)) return true;
+
+  // "let me see you in the shower", "can i see you naked" — asking to see HER,
+  // not her photos. "see you tomorrow/later/soon" is a goodbye, not a request.
+  if (
+    /\b(?:lemme|let me|can i|could i|wanna|i wanna|i want to)\s+see (?:you|u)\b/.test(s) &&
+    !/\bsee (?:you|u)\s+(?:tomorrow|later|soon|then|around|next|in a bit|in a min)/.test(s)
+  )
+    return true;
+
+  // A message that is essentially just the noun: "pic please", "photo?",
+  // "gimme a pic babe". Capped at five words so "i really loved those pics you
+  // sent me earlier" stays a comment about photos rather than a new order.
+  const words = s.split(/\s+/).filter(Boolean);
+  if (words.length <= 5 && /\b(?:pic|pics|picture|photo|selfie|nude|nudes)\b/.test(s)) return true;
+
   // Verb + (within ~30 chars) a concrete picture/body object.
   const verbs =
-    "send|show|snap|take|lemme see|let me see|can i see|could i see|wanna see|i wanna see|i want to see|i'?d love to see|i want a|i want some|give me";
+    "send|show|snap|take|lemme see|let me see|can i see|could i see|wanna see|i wanna see|i want to see|i'?d love to see|i want a|i want some|give me|gimme|can i get|could i get|lemme get|let me get|get me";
   const re = new RegExp(`\\b(?:${verbs})\\b[^.?!]{0,30}\\b(?:${SELFIE_OBJECT})\\b`, "i");
   return re.test(s);
 }
@@ -414,6 +441,9 @@ export function wantsVideo(t: string): boolean {
     ).test(s)
   )
     return true;
+  // "record yourself twerking", "film yourself dancing" — the camera verb plus
+  // herself is a video request even with no "video"/"clip" noun in the message.
+  if (/\b(?:record|film)\s+(?:yourself|you|u)\b/.test(s)) return true;
   return false;
 }
 

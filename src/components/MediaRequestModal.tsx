@@ -159,7 +159,9 @@ export function MediaRequestModal({
             Generate · {cost} credits
           </Button>
           <p className="text-center text-[10px] text-muted-foreground">
-            {kind === "photo" ? "Takes about a minute and a half." : "Takes a couple of minutes."}
+            {kind === "photo"
+              ? "She'll have it for you in a minute or two."
+              : "Give her a couple of minutes to film it."}
           </p>
         </div>
       </div>

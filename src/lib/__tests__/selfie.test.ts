@@ -124,7 +124,13 @@ describe("selfiePrompt", () => {
   });
 
   it("builds a male booru prompt that includes the user's request and backstory", () => {
-    const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
+    const maleC = {
+      name: "Kaito",
+      age: 25,
+      ethnicity: "Japanese",
+      gender: "male",
+      short_bio: "athletic",
+    };
     const p = selfiePrompt(maleC, "flexing his muscles", "gym rat");
     expect(p).toMatch(/1boy/);
     expect(p).toContain("flexing his muscles");
@@ -133,7 +139,13 @@ describe("selfiePrompt", () => {
   });
 
   it("builds a booru 1boy prompt with genitalia for nude male companions", () => {
-    const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
+    const maleC = {
+      name: "Kaito",
+      age: 25,
+      ethnicity: "Japanese",
+      gender: "male",
+      short_bio: "athletic",
+    };
     const p = selfiePrompt(maleC, "send me a nude", "casual");
     expect(p).toMatch(/1boy/);
     expect(p).toMatch(/penis/i);
@@ -151,7 +163,13 @@ describe("selfiePrompt", () => {
   });
 
   it("does not force nudity on a clothed male request", () => {
-    const maleC = { name: "Kaito", age: 25, ethnicity: "Japanese", gender: "male", short_bio: "athletic" };
+    const maleC = {
+      name: "Kaito",
+      age: 25,
+      ethnicity: "Japanese",
+      gender: "male",
+      short_bio: "athletic",
+    };
     const p = selfiePrompt(maleC, "wearing a suit at dinner", "casual");
     expect(p).not.toMatch(/penis|testicles/i);
     expect(p).toMatch(/1boy/);
@@ -173,5 +191,50 @@ describe("selfiePrompt", () => {
     const p = selfiePrompt(nbC, "touch yourself for me", "");
     expect(p).toMatch(/naked|nude/i);
     expect(p).toMatch(/masturbation|fingering|pleasuring/i);
+  });
+});
+
+// Real phrasings from the chat that produced no picture at all: the ask was
+// answered with text, so the user paid for a message and got nothing they
+// wanted. The negatives matter just as much — a false positive silently spends
+// 8 credits on what was meant to be conversation.
+describe("media intent on real phrasings", () => {
+  const photos = [
+    "take a pic eating a taco with lingerie and legs spread",
+    "can i get a photo of you",
+    "show me what you're wearing",
+    "pic please",
+    "photo?",
+    "gimme a pic babe",
+    "let me see you in the shower",
+    "can you take a picture eating a taco",
+  ];
+  const videos = ["record yourself twerking", "film yourself dancing"];
+  const neither = [
+    "i miss you",
+    "see you tomorrow",
+    "see you later babe",
+    "show me how you feel",
+    "i loved those pics you sent me earlier so much",
+    "you look amazing in that picture",
+    "tell me about your day",
+  ];
+
+  it("routes picture asks to the photo pipeline", () => {
+    for (const t of photos) {
+      expect(wantsVideo(t), t).toBe(false);
+      expect(wantsSelfie(t), t).toBe(true);
+    }
+  });
+
+  it("routes camera-verb asks to the video pipeline", () => {
+    for (const t of videos) expect(wantsVideo(t), t).toBe(true);
+  });
+
+  it("leaves ordinary conversation alone", () => {
+    for (const t of neither) {
+      expect(wantsVideo(t), t).toBe(false);
+      expect(wantsSelfie(t), t).toBe(false);
+    }
   });
 });

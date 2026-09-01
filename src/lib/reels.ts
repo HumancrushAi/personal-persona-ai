@@ -52,8 +52,9 @@ const MISMATCHED_REELS = new Set([
   "1a649d81-a21d-4ac2-a27f-5c4978e1f3da", // Sunny
 ]);
 
-export function getEffectiveCompanionReel(c: { id?: string; name?: string | null; gender?: string | null }): string | null {
+export function getEffectiveCompanionReel(c: { id?: string; name?: string | null; gender?: string | null; created_by?: string | null }): string | null {
   if (!c || !c.id) return null;
+  if (c.created_by) return null; // Custom companions don't have pre-recorded reels
   if (MISMATCHED_REELS.has(c.id)) return null;
   return companionReelUrl(c.id);
 }

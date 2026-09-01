@@ -45,5 +45,17 @@ describe("generateCompanionPortrait", () => {
     await generateCompanionPortrait("a goth woman on a balcony");
     expect(sent.image).toBeUndefined();
     expect(sent.prompt).toBe("a goth woman on a balcony");
+    expect(sent.aspect_ratio).toBe("3:4");
+  });
+
+  it("passes custom aspectRatio when specified", async () => {
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_url: string, init?: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(JSON.stringify({ data: [{ b64_json: "AAAA" }] }), { status: 200 });
+    });
+    await generateCompanionPortrait("a goth woman on a balcony", { aspectRatio: "9:16" });
+    expect(sent.aspect_ratio).toBe("9:16");
   });
 });

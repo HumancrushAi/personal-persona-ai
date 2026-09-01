@@ -7,24 +7,32 @@ import { Label } from "@/components/ui/label";
 import { Heart, Eye, EyeOff, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { z } from "zod";
+
+const authSearchSchema = z.object({
+  companion: z.string().optional(),
+  redirect: z.string().optional(),
+});
+
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search) => authSearchSchema.parse(search),
   head: () => ({ meta: [{ title: "Sign in — HumanCrush.com" }] }),
   component: AuthPage,
 });
 
-// Optional ?companion=<id> on the URL — the model the user tapped before login.
-function pendingCompanion(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-  return new URLSearchParams(window.location.search).get("companion") ?? undefined;
-}
-
 function AuthPage() {
   const navigate = useNavigate();
-  // After auth, go straight to the model they tapped (if any), else browse.
+  const { companion, redirect } = Route.useSearch();
+
+  // After auth, go straight to the redirected page, companion, or browse.
   const goAfterAuth = () => {
-    const companion = pendingCompanion();
-    if (companion) navigate({ to: "/companion/$id", params: { id: companion } });
-    else navigate({ to: "/browse" });
+    if (redirect) {
+      navigate({ to: redirect as any });
+    } else if (companion) {
+      navigate({ to: "/companion/$id", params: { id: companion } });
+    } else {
+      navigate({ to: "/browse" });
+    }
   };
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -117,9 +125,8 @@ function AuthPage() {
   async function handleGoogle() {
     setLoading(true);
     try {
-      // Supabase-native OAuth: redirects the browser to Google, then back to /browse.
-      const companion = pendingCompanion();
-      const dest = companion ? `/companion/${companion}` : "/browse";
+      // Supabase-native OAuth: redirects the browser to Google, then back.
+      const dest = redirect ? redirect : (companion ? `/companion/${companion}` : "/browse");
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: `${window.location.origin}${dest}` },

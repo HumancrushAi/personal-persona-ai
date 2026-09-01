@@ -27,7 +27,7 @@ function CamsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companions")
-        .select("id, name, age, ethnicity, image_url, gender")
+        .select("id, name, age, ethnicity, image_url, gender, created_by")
         .order("sort_order");
       if (error) throw error;
       return data;

@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateCompanionPortrait } from "./portrait.server";
@@ -17,6 +17,7 @@ const Input = z.object({
   vibe: z.string().max(200).optional(),
   breastSize: z.string().max(20).optional(),
   buttSize: z.string().max(20).optional(),
+  publish: z.boolean().optional(),
 });
 
 export const generateCharacter = createServerFn({ method: "POST" })
@@ -115,6 +116,7 @@ export const generateCharacter = createServerFn({ method: "POST" })
         base_personality: data.vibe ?? "warm, flirty, curious about you",
         sort_order: sort,
         created_by: userId,
+        status: data.publish ? "active" : "private",
       })
       .select("id")
       .single();

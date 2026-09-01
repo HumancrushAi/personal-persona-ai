@@ -73,13 +73,16 @@ export const Route = createFileRoute("/api/public/authnet-webhook")({
               const newPaid = (bal?.paid_credits ?? 0) + tier.monthlyCredits;
               await supabaseAdmin
                 .from("credit_balances")
-                .update({ paid_credits: newPaid })
-                .eq("user_id", userId);
+                .upsert({
+                  user_id: userId,
+                  paid_credits: newPaid,
+                  free_messages_remaining: bal?.free_messages_remaining ?? 25,
+                }, { onConflict: "user_id" });
               await supabaseAdmin.from("credit_ledger").insert({
                 user_id: userId,
                 delta: tier.monthlyCredits,
                 reason: "subscription_credit",
-                balance_after: (bal?.free_messages_remaining ?? 0) + newPaid,
+                balance_after: (bal?.free_messages_remaining ?? 25) + newPaid,
                 idempotency_key: `authnet-webhook-${transactionId}`,
               });
 

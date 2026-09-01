@@ -109,21 +109,25 @@ export const purchaseCredits = createServerFn({ method: "POST" })
       const subscriptionId: string = result.subscriptionId!;
 
       // Grant first month immediately
-      const { data: bal } = await supabase
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: bal } = await supabaseAdmin
         .from("credit_balances")
         .select("free_messages_remaining, paid_credits")
         .eq("user_id", userId)
         .maybeSingle();
       const newPaid = (bal?.paid_credits ?? 0) + credits;
-      await supabase
+      await supabaseAdmin
         .from("credit_balances")
-        .update({ paid_credits: newPaid })
-        .eq("user_id", userId);
-      await supabase.from("credit_ledger").insert({
+        .upsert({
+          user_id: userId,
+          paid_credits: newPaid,
+          free_messages_remaining: bal?.free_messages_remaining ?? 25,
+        }, { onConflict: "user_id" });
+      await supabaseAdmin.from("credit_ledger").insert({
         user_id: userId,
         delta: credits,
         reason: "subscription_credit",
-        balance_after: (bal?.free_messages_remaining ?? 0) + newPaid,
+        balance_after: (bal?.free_messages_remaining ?? 25) + newPaid,
         idempotency_key: `authnet-sub-${subscriptionId}`,
       });
 
@@ -139,7 +143,6 @@ export const purchaseCredits = createServerFn({ method: "POST" })
         })
         .eq("id", userId);
 
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("transactions").insert({
         user_id: userId,
         amount_cents: item.priceCents,
@@ -185,22 +188,28 @@ export const purchaseCredits = createServerFn({ method: "POST" })
     }
     const transId: string = result.transId!;
 
-    const { data: bal } = await supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: bal } = await supabaseAdmin
       .from("credit_balances")
       .select("free_messages_remaining, paid_credits")
       .eq("user_id", userId)
       .maybeSingle();
     const newPaid = (bal?.paid_credits ?? 0) + credits;
-    await supabase.from("credit_balances").update({ paid_credits: newPaid }).eq("user_id", userId);
-    await supabase.from("credit_ledger").insert({
+    await supabaseAdmin
+      .from("credit_balances")
+      .upsert({
+        user_id: userId,
+        paid_credits: newPaid,
+        free_messages_remaining: bal?.free_messages_remaining ?? 25,
+      }, { onConflict: "user_id" });
+    await supabaseAdmin.from("credit_ledger").insert({
       user_id: userId,
       delta: credits,
       reason: "purchase_credit",
-      balance_after: (bal?.free_messages_remaining ?? 0) + newPaid,
+      balance_after: (bal?.free_messages_remaining ?? 25) + newPaid,
       idempotency_key: `authnet-pack-${transId}`,
     });
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("transactions").insert({
       user_id: userId,
       amount_cents: item.priceCents,

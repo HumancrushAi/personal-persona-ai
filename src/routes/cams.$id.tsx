@@ -49,7 +49,7 @@ function CamView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companions")
-        .select("id, name, age, ethnicity, image_url, gender")
+        .select("id, name, age, ethnicity, image_url, gender, created_by")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;

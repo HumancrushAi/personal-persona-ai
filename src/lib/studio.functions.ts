@@ -58,6 +58,7 @@ export const studioGenerate = createServerFn({ method: "POST" })
         count: z.number().int().min(1).max(MAX_VARIATIONS).default(2),
         referenceUrl: z.string().url().optional(),
         companionId: z.string().uuid().optional(),
+        aspectRatio: z.string().optional(),
       })
       .parse(d),
   )
@@ -79,7 +80,10 @@ export const studioGenerate = createServerFn({ method: "POST" })
     // settled rather than raced.
     const results = await Promise.allSettled(
       Array.from({ length: data.count }, () =>
-        generateCompanionPortrait(prompt, { referenceUrl: data.referenceUrl ?? null }),
+        generateCompanionPortrait(prompt, {
+          referenceUrl: data.referenceUrl ?? null,
+          aspectRatio: data.aspectRatio ?? "3:4",
+        }),
       ),
     );
 

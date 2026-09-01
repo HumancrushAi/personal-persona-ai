@@ -153,6 +153,7 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 import { BottomNav } from "../components/BottomNav";
+import { SupportWidget } from "../components/SupportWidget";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -162,6 +163,7 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <BottomNav />
+      <SupportWidget />
       <AdminFooterLink />
       <Toaster richColors position="top-center" />
     </QueryClientProvider>

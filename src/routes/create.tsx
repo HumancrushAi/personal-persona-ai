@@ -197,8 +197,38 @@ function CreatePage() {
   const [breast, setBreast] = useState("Medium");
   const [butt, setButt] = useState("Medium");
   const [loading, setLoading] = useState(false);
+  const [publish, setPublish] = useState(true);
 
   const isWoman = gender === "female" || gender === "trans-female";
+
+  // Restore draft character from sessionStorage if present
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("hc_draft_character");
+      if (stored) {
+        const draft = JSON.parse(stored);
+        if (draft.name) setName(draft.name);
+        if (draft.gender) setGender(draft.gender);
+        if (draft.artStyle) setArtStyle(draft.artStyle);
+        if (draft.ethnicity) setEthnicity(draft.ethnicity);
+        if (draft.age) setAge(draft.age);
+        if (draft.body) setBody(draft.body);
+        if (draft.hair) setHair(draft.hair);
+        if (draft.eyes) setEyes(draft.eyes);
+        if (draft.outfit) setOutfit(draft.outfit);
+        if (draft.fit) setFit(draft.fit);
+        if (draft.vibe) setVibe(draft.vibe);
+        if (draft.breast) setBreast(draft.breast);
+        if (draft.butt) setButt(draft.butt);
+        if (draft.publish !== undefined) setPublish(draft.publish);
+        if (draft.step !== undefined) setStep(draft.step);
+
+        sessionStorage.removeItem("hc_draft_character");
+      }
+    } catch (e) {
+      console.error("Failed to restore character draft", e);
+    }
+  }, []);
 
   // Each step is its own screen, so landing mid-page after "Next" reads as a
   // half-loaded page. Jump back to the top on every move.
@@ -213,7 +243,25 @@ function CreatePage() {
     }
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) {
-      navigate({ to: "/auth" });
+      const draft = {
+        name,
+        gender,
+        artStyle,
+        ethnicity,
+        age,
+        body,
+        hair,
+        eyes,
+        outfit,
+        fit,
+        vibe,
+        breast,
+        butt,
+        publish,
+        step: LAST_STEP,
+      };
+      sessionStorage.setItem("hc_draft_character", JSON.stringify(draft));
+      navigate({ to: "/auth", search: { redirect: "/create" } as any });
       return;
     }
     setLoading(true);
@@ -233,6 +281,7 @@ function CreatePage() {
           vibe,
           breastSize: isWoman ? breast : undefined,
           buttSize: isWoman ? butt : undefined,
+          publish,
         },
       });
       toast("She's ready 💋");
@@ -375,6 +424,26 @@ function CreatePage() {
                 autoFocus
                 className="h-14 rounded-2xl border-white/15 bg-white/5 text-lg"
               />
+            </Section>
+
+            <Section label="Visibility">
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 animate-fade-in">
+                <input
+                  id="publish"
+                  type="checkbox"
+                  checked={publish}
+                  onChange={(e) => setPublish(e.target.checked)}
+                  className="mt-0.5 h-5 w-5 rounded border-white/20 bg-white/10 text-primary accent-primary focus:ring-primary cursor-pointer shrink-0"
+                />
+                <div>
+                  <label htmlFor="publish" className="text-sm font-semibold text-white cursor-pointer select-none">
+                    Publish to community gallery
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    Makes your custom character visible on the home page for everyone to discover and chat with.
+                  </p>
+                </div>
+              </div>
             </Section>
 
             <Section label="Your crush">

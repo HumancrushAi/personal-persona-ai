@@ -180,7 +180,7 @@ function ChatPage() {
       const { data, error } = await supabase
         .from("conversations")
         .select(
-          "id, personality_id, scenario, relationship_level, relationship_xp, user_personalities(nickname, companion_id, companions(name, image_url))",
+          "id, personality_id, scenario, relationship_level, relationship_xp, user_personalities(nickname, companion_id, companions(name, image_url, created_by))",
         )
         .eq("id", conversationId)
         .maybeSingle();
@@ -620,19 +620,20 @@ function ChatPage() {
             id: p?.companion_id,
             name: p?.companions?.name,
             gender: (p?.companions as any)?.gender,
+            created_by: p?.companions?.created_by,
           });
           return reelUrl ? (
             <AutoPlayVideo
               key={p.companion_id}
               src={reelUrl}
               poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
-              className="relative z-[1] h-full w-full object-contain object-top animate-live"
+              className="relative z-[1] h-full w-full object-cover object-top animate-live"
             />
           ) : p?.companions?.image_url ? (
             <img
               src={companionImage(p.companions.image_url)}
               alt={p?.nickname ?? ""}
-              className="relative z-[1] h-full w-full object-contain object-top animate-live"
+              className="relative z-[1] h-full w-full object-cover object-top animate-live"
             />
           ) : null;
         })()}
@@ -726,6 +727,7 @@ function ChatPage() {
                 id: p?.companion_id,
                 name: p?.companions?.name,
                 gender: (p?.companions as any)?.gender,
+                created_by: p?.companions?.created_by,
               });
               return reelUrl ? (
                 <AutoPlayVideo
@@ -734,13 +736,13 @@ function ChatPage() {
                   poster={
                     p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined
                   }
-                  className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+                  className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
                 />
               ) : p?.companions?.image_url ? (
                 <img
                   src={companionImage(p.companions.image_url)}
                   alt={p?.nickname ?? ""}
-                  className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+                  className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
                 />
               ) : null;
             })()}

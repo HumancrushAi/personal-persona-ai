@@ -21,7 +21,12 @@ const UNAVAILABLE =
 
 export async function generateCompanionPortrait(
   prompt: string,
-  opts?: { gender?: string | null; noNudity?: boolean; referenceUrl?: string | null },
+  opts?: {
+    gender?: string | null;
+    noNudity?: boolean;
+    referenceUrl?: string | null;
+    aspectRatio?: string | null;
+  },
 ): Promise<string> {
   const key = process.env.XAI_API_KEY;
   if (!key) throw new Error(UNAVAILABLE);
@@ -35,6 +40,7 @@ export async function generateCompanionPortrait(
       ? `Exact same woman as the reference image, identical face, same hair, same skin. ${prompt}`
       : prompt,
     n: 1,
+    aspect_ratio: opts?.aspectRatio || "3:4",
   };
   if (opts?.referenceUrl) body.image = opts.referenceUrl;
 

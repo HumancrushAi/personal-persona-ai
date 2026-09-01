@@ -114,8 +114,12 @@ function Page() {
 
   // View freely; the chat/save actions below prompt sign-in when needed.
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      setAuthed(!!data.user);
+      setCurrentUserId(data.user?.id ?? null);
+    });
   }, []);
 
   const { data: companion } = useQuery({
@@ -165,6 +169,7 @@ function Page() {
   const [scenario, setScenario] = useState<string>("open");
   const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
 
   // Hydrate once from companion or existing personality
   useEffect(() => {
@@ -177,9 +182,11 @@ function Page() {
       setBoundariesText((existing as any).boundaries ?? "");
       setInterestsText(existing.interests ?? "");
       setBackstory(existing.style_backstory ?? "");
+      setIsPublic(companion?.status === "active");
       setHydrated(true);
     } else if (companion && !edit && !personalityId) {
       setNickname(companion.name);
+      setIsPublic(companion.status === "active");
       setHydrated(true);
     }
   }, [existing, companion, edit, personalityId, hydrated]);
@@ -202,6 +209,16 @@ function Page() {
     setSaving(true);
     try {
       const { data: user } = await supabase.auth.getUser();
+      
+      // Update companion status if this is the creator
+      if (companion && companion.created_by === currentUserId) {
+        const { error: compErr } = await supabase
+          .from("companions")
+          .update({ status: isPublic ? "active" : "private" })
+          .eq("id", id);
+        if (compErr) throw compErr;
+      }
+
       const payload = {
         nickname: nickname || companion!.name,
         identity,
@@ -324,6 +341,26 @@ function Page() {
               required
             />
           </div>
+
+          {companion.created_by === currentUserId && (
+            <div className="flex items-start gap-3 pt-1 animate-fade-in">
+              <input
+                id="isPublic"
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/10 text-primary accent-primary focus:ring-primary cursor-pointer shrink-0"
+              />
+              <div>
+                <label htmlFor="isPublic" className="text-sm font-semibold text-white cursor-pointer select-none">
+                  Publish to community gallery
+                </label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Makes this character visible on the home page for everyone to discover and chat with.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div>
             <Label>Identity</Label>

@@ -31,8 +31,8 @@ describe("portraitPrompt", () => {
   it("keeps public portraits clothed", () => {
     for (const g of ["female", "male", "non-binary"]) {
       const p = portraitPrompt(subject("Test", g));
-      expect(p, g).toMatch(/fully clothed/);
-      expect(p, g).toMatch(/revealing but covered/);
+      expect(p, g).toMatch(/wearing revealing sexy/);
+      expect(p, g).toMatch(/provocative/);
     }
   });
 

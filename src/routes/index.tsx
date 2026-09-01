@@ -135,6 +135,7 @@ type Companion = {
   gender: string;
   orientation: string;
   art_style: string;
+  created_by?: string | null;
 };
 
 const CATEGORIES = [
@@ -239,7 +240,7 @@ function Landing() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companions")
-        .select("id, name, age, ethnicity, short_bio, image_url, gender, orientation, art_style")
+        .select("id, name, age, ethnicity, short_bio, image_url, gender, orientation, art_style, created_by")
         .order("sort_order");
       if (error) throw error;
       return data as Companion[];

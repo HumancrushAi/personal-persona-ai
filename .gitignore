@@ -52,3 +52,7 @@ dist-ssr
 # promo video intermediates — regenerate with scripts/generate-social-reels.ts
 marketing/reels/work/
 marketing/adult/reels/work/
+
+# Upscaled banner plates are large and reproducible from the source plate:
+#   npx vite-node --config vitest.config.ts scripts/upscale-plate.ts -- couch 6 clarity
+marketing/adult-explicit/plates/*-hi.png

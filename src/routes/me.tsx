@@ -6,7 +6,9 @@ import { companionImage } from "@/lib/companion-images";
 import { enablePush } from "@/lib/push-client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Plus, Coins, Shield, Bell } from "lucide-react";
+import { Heart, MessageCircle, Plus, Coins, Shield, Bell, LifeBuoy } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { mySupportTickets } from "@/lib/support.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/me")({
@@ -190,7 +192,65 @@ function MePage() {
             );
           })}
         </div>
+
+        <SupportThreads />
       </section>
+    </div>
+  );
+}
+
+// A staff reply is emailed, but a push notification saying "Support replied"
+// has to lead somewhere — this is where it lands. Renders nothing at all when
+// the account has never opened a ticket, so it stays out of the way.
+function SupportThreads() {
+  const fetchTickets = useServerFn(mySupportTickets);
+  const { data } = useQuery({
+    queryKey: ["my-support-tickets"],
+    queryFn: () => fetchTickets({} as any) as any,
+    staleTime: 30_000,
+  });
+
+  const tickets = (data as any)?.tickets ?? [];
+  if (!tickets.length) return null;
+
+  return (
+    <div className="mt-12">
+      <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-semibold">
+        <LifeBuoy className="h-5 w-5 text-primary" /> Support
+      </h2>
+      <div className="space-y-3">
+        {tickets.map((t: any) => (
+          <div key={t.id} className="glass rounded-2xl p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-[10px] text-primary">
+                #{String(t.id).slice(0, 8)}
+              </span>
+              <span className="text-sm font-medium">{t.subject}</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {t.status}
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {t.messages.map((m: any) => (
+                <div
+                  key={m.id}
+                  className={`rounded-lg p-2.5 text-xs ${
+                    m.direction === "in"
+                      ? "border-l-2 border-white/25 bg-black/30"
+                      : "border-l-2 border-primary bg-primary/10"
+                  }`}
+                >
+                  <p className="mb-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+                    {m.direction === "in" ? "You" : "Support"} ·{" "}
+                    {new Date(m.created_at).toLocaleString()}
+                  </p>
+                  <p className="whitespace-pre-wrap leading-relaxed">{m.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -155,15 +156,27 @@ function RootShell({ children }: { children: ReactNode }) {
 import { BottomNav } from "../components/BottomNav";
 import { SupportWidget } from "../components/SupportWidget";
 
+// The support widget sits on the landing page and the sign-up page only.
+//
+// It is a floating button in the bottom-right, which is where the chat composer,
+// the send control and the media buttons also live — on a conversation it covers
+// the app rather than helping. It also reads as a support desk hovering over an
+// intimate conversation, which is the wrong note in the wrong place. Someone who
+// needs help mid-chat still has the FAQ and the account page.
+const SUPPORT_WIDGET_PATHS = ["/", "/auth"];
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Trailing slashes are normalised so "/auth/" matches too.
+  const showSupport = SUPPORT_WIDGET_PATHS.includes(pathname.replace(/(.)\/+$/, "$1"));
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <BottomNav />
-      <SupportWidget />
+      {showSupport && <SupportWidget />}
       <AdminFooterLink />
       <Toaster richColors position="top-center" />
     </QueryClientProvider>

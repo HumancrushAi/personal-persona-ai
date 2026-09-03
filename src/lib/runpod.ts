@@ -32,11 +32,76 @@ const RUNPOD_BASE = "https://api.runpod.ai/v2";
 const IMAGE_ENDPOINT = process.env.RUNPOD_IMAGE_ENDPOINT || "";
 const VIDEO_ENDPOINT = process.env.RUNPOD_VIDEO_ENDPOINT || "";
 
+// FLUX.1 Kontext, kept in its OWN variable rather than in IMAGE_ENDPOINT above.
+//
+// It is a fast, good image-to-image editor that carries a face perfectly, and it
+// is the right renderer for clothed promo and banner plates. It is NOT a
+// replacement for the uncensored path, and the two must not share a variable:
+// IMAGE_ENDPOINT is read by the paid chat selfie in startImageJob, so pointing
+// that at Kontext would silently bill users for clothed photos.
+//
+// Re-verified 2026-09-02 on a real job rather than trusting the note above:
+// prompt "completely nude, topless, bare breasts fully exposed, no bra, no
+// underwear", negatives "clothing, bra, briefs, lingerie, top, underwear,
+// covered", enable_safety_checker false. The result kept the black lace bra on
+// while obeying every other edit in the prompt. COMPLETED, no error, $0.025.
+// The alignment is in the weights; no flag reaches it.
+const KONTEXT_ENDPOINT = process.env.RUNPOD_KONTEXT_ENDPOINT || "";
+
 export function runpodEndpoint(kind: string): string | null {
   if (!process.env.RUNPOD_API_KEY) return null;
-  if (kind === "image") return IMAGE_ENDPOINT || null;
+  // With no image endpoint configured, an image job is LAUNCHED on the video
+  // endpoint and a frame of the result is cut out as the still — see
+  // startImageJob. Resolving "image" to null here left checkMediaJob unable to
+  // find the job it had just started, so the status poll returned "processing"
+  // forever and completion depended entirely on the webhook landing. The
+  // fallback has to match where the job was actually sent.
+  if (kind === "image") return IMAGE_ENDPOINT || VIDEO_ENDPOINT || null;
   if (kind === "video") return VIDEO_ENDPOINT || null;
+  if (kind === "kontext") return KONTEXT_ENDPOINT || null;
   return null;
+}
+
+// Run and wait, for endpoints fast enough that queueing a media_jobs row and
+// polling it is more machinery than the job is worth — Kontext returns in about
+// ten seconds. /runsync can still time out into the queue on a slow cold start,
+// so the job id is polled in that case rather than treated as a failure.
+export async function runpodRunSync(
+  endpoint: string,
+  input: Record<string, unknown>,
+  timeoutMs = 180_000,
+): Promise<{ output?: any; error?: any }> {
+  const key = process.env.RUNPOD_API_KEY;
+  if (!key) throw new Error("RUNPOD_API_KEY not configured");
+
+  const res = await fetch(`${RUNPOD_BASE}/${endpoint}/runsync`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ input }),
+  });
+
+  const text = await res.text();
+  if (!res.ok) throw new Error(`RunPod ${endpoint} error: ${res.status} ${text.slice(0, 300)}`);
+
+  let json: any;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`RunPod ${endpoint}: unreadable response ${text.slice(0, 200)}`);
+  }
+
+  if (runpodStatusOf(json.status) !== "processing")
+    return { output: json.output, error: json.error };
+
+  if (!json.id) throw new Error(`RunPod ${endpoint}: no job id to follow`);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const poll = await runpodGet(endpoint, json.id);
+    if (runpodStatusOf(poll.status) !== "processing")
+      return { output: poll.output, error: poll.error };
+  }
+  throw new Error(`RunPod ${endpoint}: timed out after ${Math.round(timeoutMs / 1000)}s`);
 }
 
 // RunPod's states, normalized onto the same vocabulary the Replicate path uses
@@ -142,3 +207,20 @@ export function runpodOutputError(output: any, error: any): string | null {
   }
   return null;
 }
+
+// The endpoint's tuned LoRA weights, exactly as its operator specified them.
+// These are what the endpoint is tuned WITH; leaving the key out runs it at
+// whatever defaults the worker falls back to, which is not what the endpoint was
+// built and tested against. The public cams clips (scripts/generate-reels.ts)
+// deliberately omit these — those are SFW idle loops, and they render fine
+// without, so the key is optional rather than required.
+export const VIDEO_LORA_STRENGTHS = {
+  "HIGH Lora 3": 1,
+  "HIGH Lora 4": 0.6,
+  "HIGH Lora 5": 0.6,
+  "HIGH Lora 6": 0.6,
+  "LOW Lora 3": 0.6,
+  "LOW Lora 4": 0.6,
+  "LOW Lora 5": 0.6,
+  "LOW Lora 6": 0.6,
+};

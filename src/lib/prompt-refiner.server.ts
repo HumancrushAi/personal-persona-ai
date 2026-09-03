@@ -361,3 +361,106 @@ export async function refinePromoPrompt(
   // Fallback to OpenRouter (uncensored model) if Grok is not configured or failed/timed out
   return refinePromoWithOpenRouter(req, hasReference);
 }
+
+// Ad copy is a third job again: not a render prompt at all, but the two lines of
+// headline and the button label that go ON a banner. Kept here because it shares
+// the Grok-then-OpenRouter fallback chain and the refusal screening — the studio
+// should never be blocked on the copywriter being down, it just leaves the
+// fields for the admin to fill in.
+const BANNER_COPY_SYSTEM = `You write direct-response ad copy for HumanCrush.com, an adults-only AI companion app where users chat with and get photos from an AI girlfriend.
+
+Given a description of the photo the banner will use, write:
+- HEADLINE: exactly two short lines. Each line at most 18 characters. Together they are one sentence or one tight pair of phrases. Punchy, second person, implies she is available right now. Examples of the register: "She'll send you" / "anything." — "Your AI girl." / "Your rules." — "She always" / "texts back."
+- CTA: two or three words for the button. Examples: "Chat free", "Start free", "Try free", "Meet her".
+
+Rules: no emoji, no hashtags, no quotation marks in the output, no exclamation stacking. Never reference a specific price. Never describe anyone as young, teen, or a minor. Do not describe explicit acts — the banner runs on ad networks that reject them even when the site behind the ad is explicit.
+
+Output EXACTLY three lines and nothing else:
+<headline line 1>
+<headline line 2>
+<cta>`;
+
+function parseBannerCopy(raw: string): { headline: string[]; cta: string } | null {
+  const lines = raw
+    .split(/\n+/)
+    .map((l) => l.replace(/^\s*(?:HEADLINE|CTA|LINE\s*\d)\s*[:-]\s*/i, "").trim())
+    .map((l) => l.replace(/^["']|["']$/g, "").trim())
+    .filter(Boolean);
+  if (lines.length < 3) return null;
+  return { headline: [lines[0], lines[1]], cta: lines[2] };
+}
+
+export async function refineBannerCopy(
+  description: string,
+): Promise<{ headline: string[]; cta: string } | null> {
+  const req = (description ?? "").trim();
+  if (!req) return null;
+
+  const isRefusal = (s: string) => /^(i (can'?t|cannot|won'?t)|i'm sorry|as an ai|sorry,)/i.test(s);
+
+  const key = process.env.XAI_API_KEY;
+  if (key) {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 30_000);
+    try {
+      const res = await fetch(XAI_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        signal: abort.signal,
+        body: JSON.stringify({
+          model: process.env.XAI_MODEL || "grok-4.6",
+          temperature: 0.9,
+          max_tokens: 120,
+          messages: [
+            { role: "system", content: BANNER_COPY_SYSTEM },
+            { role: "user", content: req },
+          ],
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const out = (json.choices?.[0]?.message?.content ?? "").trim();
+        if (out && !isRefusal(out)) {
+          const parsed = parseBannerCopy(out);
+          if (parsed) {
+            clearTimeout(timer);
+            return parsed;
+          }
+        }
+      }
+    } catch {
+      // Ignored: proceed to OpenRouter fallback
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  const orKey = process.env.OPENROUTER_API_KEY;
+  if (!orKey) return null;
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 20_000);
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${orKey}`, "Content-Type": "application/json" },
+      signal: abort.signal,
+      body: JSON.stringify({
+        model: process.env.OPENROUTER_MODEL || "sao10k/l3.1-euryale-70b",
+        temperature: 0.9,
+        messages: [
+          { role: "system", content: BANNER_COPY_SYSTEM },
+          { role: "user", content: req },
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const out = (json.choices?.[0]?.message?.content ?? "").trim();
+    if (!out || isRefusal(out)) return null;
+    return parseBannerCopy(out);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

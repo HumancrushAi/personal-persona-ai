@@ -24,14 +24,19 @@ export async function sendPush(sub: PushSub, payload: PushPayload) {
   );
 }
 
-export async function sendEmail(to: string, subject: string, html: string) {
+// `replyTo` is what makes support work without an inbound mail pipeline: the
+// alert we send to staff carries the customer's address, so hitting reply in a
+// normal inbox writes to the customer, and the reply we send the customer
+// carries the support address, so hitting reply writes back to staff. Both sides
+// can hold a conversation with nothing but their own email client.
+export async function sendEmail(to: string, subject: string, html: string, replyTo?: string) {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error("Email not configured (RESEND_API_KEY missing)");
   const from = process.env.EMAIL_FROM || "HumanCrush <notifications@humancrush.com>";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to, subject, html }),
+    body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
   });
   if (!res.ok) throw new Error(`Email error: ${res.status} ${(await res.text()).slice(0, 150)}`);
 }

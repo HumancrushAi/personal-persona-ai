@@ -1,4 +1,4 @@
- import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateCompanionPortrait } from "./portrait.server";
@@ -61,7 +61,7 @@ export const generateCharacter = createServerFn({ method: "POST" })
           ? "outfit fit: relaxed and loose, oversized silhouette"
           : "outfit fit: regular",
       data.vibe ? `personality/vibe is ${data.vibe}` : "",
-      "sultry, seductive, flirty eye contact, confident alluring pose, revealing form-fitting sexy outfit, cleavage, intimate warm lighting, head and shoulders to waist portrait"
+      "sultry, seductive, flirty eye contact, confident alluring pose, revealing form-fitting sexy outfit, cleavage, intimate warm lighting, head and shoulders to waist portrait",
     ]
       .filter(Boolean)
       .join(", ");
@@ -69,17 +69,41 @@ export const generateCharacter = createServerFn({ method: "POST" })
     const { refinePromoPrompt } = await import("./prompt-refiner.server");
     const refinedPromo = await refinePromoPrompt(baseDescription);
 
-    const prompt = [
-      genderTag,
-      style,
-      refinedPromo || baseDescription,
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const prompt = [genderTag, style, refinedPromo || baseDescription].filter(Boolean).join(" ");
 
     // Pass gender so the render uses the matching negative prompt — omitting it
     // defaulted every model to the female negatives.
-    const dataUrl = await generateCompanionPortrait(prompt, { gender: data.gender, noNudity: true });
+    const dataUrl = await generateCompanionPortrait(prompt, {
+      gender: data.gender,
+      noNudity: true,
+    });
+
+    // The portrait is HOSTED, not stored inline.
+    //
+    // generateCompanionPortrait hands back a base64 data: URL, and this used to
+    // go straight into companions.image_url. Two things broke as a result. A
+    // RunPod worker fetches the source photo over the network with
+    // requests.get(), so it cannot read a data: URI at all — every companion
+    // built from /create failed her first selfie with "no hosted photo to edit"
+    // and the credits were refunded, which reads to the user as the product
+    // being broken. It also put roughly half a megabyte of base64 in a row that
+    // gets selected on nearly every chat query.
+    //
+    // The admin regenerate path already uploaded to storage and saved a public
+    // URL; this is the same thing, done here.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    try {
+      await supabaseAdmin.storage.createBucket("avatars", { public: true });
+    } catch {
+      /* already exists */
+    }
+    const bytes = Buffer.from(dataUrl.split(",")[1] ?? "", "base64");
+    const path = `companions/created-${crypto.randomUUID()}.png`;
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("avatars")
+      .upload(path, bytes, { contentType: "image/png", upsert: true });
+    if (upErr) throw new Error(`Could not store the portrait: ${upErr.message}`);
+    const imageUrl = supabaseAdmin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
 
     const bio = data.vibe
       ? data.vibe.slice(0, 140)
@@ -111,7 +135,7 @@ export const generateCharacter = createServerFn({ method: "POST" })
         gender: data.gender,
         orientation,
         art_style: data.artStyle,
-        image_url: dataUrl,
+        image_url: imageUrl,
         short_bio: bio,
         base_personality: data.vibe ?? "warm, flirty, curious about you",
         sort_order: sort,
@@ -122,5 +146,5 @@ export const generateCharacter = createServerFn({ method: "POST" })
       .single();
 
     if (error || !companion) throw new Error(error?.message ?? "Insert failed");
-    return { id: companion.id as string, imageUrl: dataUrl };
+    return { id: companion.id as string, imageUrl };
   });

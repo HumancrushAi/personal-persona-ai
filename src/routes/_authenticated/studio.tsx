@@ -2,7 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { amIAdmin, adminAddCompanionMedia, adminDeleteCompanionMedia } from "@/lib/admin.functions";
-import { studioGenerate, studioClip, studioDelete, refineStudioPrompt } from "@/lib/studio.functions";
+import {
+  studioGenerate,
+  studioGenerateExplicit,
+  studioClip,
+  studioDelete,
+  refineStudioPrompt,
+  studioBanner,
+  studioBannerCopy,
+} from "@/lib/studio.functions";
 import { checkMediaJob } from "@/lib/media.functions";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +44,8 @@ import {
   Eye,
   SlidersHorizontal,
   Package,
+  Flame,
+  Type,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -78,6 +88,9 @@ type Shot = {
 function StudioPage() {
   const checkAdmin = useServerFn(amIAdmin);
   const generate = useServerFn(studioGenerate);
+  const generateExplicit = useServerFn(studioGenerateExplicit);
+  const composeBanner = useServerFn(studioBanner);
+  const suggestCopy = useServerFn(studioBannerCopy);
   const makeClip = useServerFn(studioClip);
   const removeShot = useServerFn(studioDelete);
   const checkJob = useServerFn(checkMediaJob);
@@ -113,6 +126,23 @@ function StudioPage() {
   const [motionSeconds, setMotionSeconds] = useState(5);
   const [refiningMotion, setRefiningMotion] = useState(false);
   const [galleryFilter, setGalleryFilter] = useState<"all" | "images" | "videos">("all");
+
+  // Explicit mode routes generation away from xAI Imagine (clothed-only) to the
+  // uncensored RunPod endpoint. It edits an existing photo, so it needs a
+  // reference — see studioGenerateExplicit.
+  const [explicit, setExplicit] = useState(false);
+
+  // Banner composition: the headline and CTA that get drawn ONTO the shot.
+  const [bannerShot, setBannerShot] = useState<Shot | null>(null);
+  const [bannerSizeId, setBannerSizeId] = useState<string>("300x250");
+  const [bannerFocal, setBannerFocal] = useState<FocalPoint>("face");
+  const [headline1, setHeadline1] = useState("She'll send you");
+  const [headline2, setHeadline2] = useState("anything.");
+  const [bannerCta, setBannerCta] = useState("Chat free");
+  const [bannerWordmark, setBannerWordmark] = useState(true);
+  const [composing, setComposing] = useState(false);
+  const [suggestingCopy, setSuggestingCopy] = useState(false);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
 
   const { data: companions } = useQuery({
     queryKey: ["studio-companions"],
@@ -214,11 +244,93 @@ function StudioPage() {
     return true;
   });
 
+  // Explicit generation is a job queue, not a synchronous call: the uncensored
+  // endpoint is async, so each variation is a media_jobs row that gets polled to
+  // completion the same way a clip does.
+  async function runExplicit(p: string) {
+    if (!reference) {
+      toast.error("Explicit mode edits an existing photo — pick a persona, or set a shot as the reference first.");
+      return;
+    }
+    const res: any = await generateExplicit({
+      data: {
+        prompt: p,
+        count,
+        referenceUrl: reference,
+        companionId: selectedCompanionId ?? undefined,
+      },
+    });
+
+    // A clothed request comes back already rendered from Kontext; only actual
+    // nudity has to go through the slow queued endpoint.
+    if (res.images?.length) {
+      setShots((prev) => [
+        ...res.images.map((img: { id?: string; url: string }) => ({
+          id: img.id,
+          url: img.url,
+          prompt: p,
+          reference,
+          aspectRatio: selectedSize.nativeRatio,
+        })),
+        ...prev,
+      ]);
+      if (res.errors?.length) toast.warning(`${res.errors.length} of ${count} failed`);
+      return;
+    }
+
+    toast.info(`${res.jobIds.length} explicit render${res.jobIds.length > 1 ? "s" : ""} queued — this takes a minute.`);
+
+    const settled = await Promise.all(
+      res.jobIds.map(async (jobId: string) => {
+        for (let i = 0; i < 120; i++) {
+          await new Promise((r) => setTimeout(r, 3000));
+          let j: any = null;
+          try {
+            j = await checkJob({ data: { jobId } });
+          } catch {
+            continue;
+          }
+          if (j?.status === "completed" && j.mediaUrl) return j.mediaUrl as string;
+          if (j?.status === "failed") return null;
+        }
+        return null;
+      }),
+    );
+
+    const done = settled.filter(Boolean) as string[];
+    if (!done.length) throw new Error("Every explicit render failed — check the RunPod endpoint.");
+
+    // The finished files live in media storage, so they are attached to the
+    // persona's gallery here rather than by the server fn, which never sees them.
+    const added = await Promise.all(
+      done.map(async (url) => {
+        let id: string | undefined;
+        if (selectedCompanionId) {
+          try {
+            const r = await addMedia({ data: { companionId: selectedCompanionId, mediaUrl: url } });
+            id = r.id;
+          } catch {
+            /* the shot is still usable even if the gallery row fails */
+          }
+        }
+        return { id, url, prompt: p, reference, aspectRatio: selectedSize.nativeRatio } as Shot;
+      }),
+    );
+
+    setShots((prev) => [...added, ...prev]);
+    if (done.length < res.jobIds.length)
+      toast.warning(`${res.jobIds.length - done.length} of ${res.jobIds.length} failed`);
+  }
+
   async function run() {
     const p = prompt.trim();
     if (!p || busy) return;
     setBusy(true);
     try {
+      if (explicit) {
+        await runExplicit(p);
+        return;
+      }
       const res: any = await generate({
         data: {
           prompt: p,
@@ -363,6 +475,67 @@ function StudioPage() {
       }
     }
     toast.success(`Successfully exported ${count} ad formats!`);
+  }
+
+  // --- Banner composition -------------------------------------------------
+  //
+  // Cropping a shot to 728x90 gives a 90px slice of a photo, which is not an ad
+  // unit. The server composites the copy panel, headline, CTA and wordmark onto
+  // it and hands back a stored JPEG.
+
+  function openBanner(shot: Shot) {
+    setBannerShot(shot);
+    setBannerUrl(null);
+    setBannerSizeId(selectedSize.w && selectedSize.h ? selectedSize.id : "300x250");
+    setBannerFocal(focalPoint);
+  }
+
+  async function handleSuggestCopy() {
+    const brief = (bannerShot?.prompt || prompt).trim();
+    if (!brief || suggestingCopy) {
+      if (!brief) toast.error("No brief to write from — type a prompt first.");
+      return;
+    }
+    setSuggestingCopy(true);
+    try {
+      const res: any = await suggestCopy({ data: { prompt: brief } });
+      setHeadline1(res.headline?.[0] ?? headline1);
+      setHeadline2(res.headline?.[1] ?? headline2);
+      setBannerCta(res.cta ?? bannerCta);
+      toast.success("Copy written — edit it if you want");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Copywriter failed");
+    } finally {
+      setSuggestingCopy(false);
+    }
+  }
+
+  async function handleCompose() {
+    if (!bannerShot || composing) return;
+    const lines = [headline1.trim(), headline2.trim()].filter(Boolean);
+    if (!lines.length || !bannerCta.trim()) {
+      toast.error("A banner needs at least one headline line and a button label.");
+      return;
+    }
+    setComposing(true);
+    try {
+      const res: any = await composeBanner({
+        data: {
+          imageUrl: bannerShot.url,
+          sizeId: bannerSizeId,
+          headline: lines,
+          cta: bannerCta.trim(),
+          focalPoint: bannerFocal,
+          wordmark: bannerWordmark,
+        },
+      });
+      setBannerUrl(res.url);
+      toast.success(`Composited ${res.dimensions}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Banner composition failed");
+    } finally {
+      setComposing(false);
+    }
   }
 
   // Batch download all visible shots
@@ -550,7 +723,9 @@ function StudioPage() {
               className="h-8 rounded-full border-white/10 bg-white/5 text-[11px] text-white/80 hover:bg-white/10"
             >
               <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5 text-primary" />
-              {showAllSizes ? "Hide Size Catalog" : "Explore All Sizes (18 Formats)"}
+              {showAllSizes
+                ? "Hide Size Catalog"
+                : `Explore All Sizes (${STUDIO_SIZES.length} Formats)`}
             </Button>
           </div>
 
@@ -775,6 +950,59 @@ function StudioPage() {
             </div>
           )}
 
+          {/* Explicit / clothed routing. These are two different providers, not a
+              phrasing difference — see studioGenerateExplicit. */}
+          <div
+            className={`mt-3 flex flex-col gap-2 rounded-2xl border p-3 transition-colors ${
+              explicit ? "border-red-500/40 bg-red-500/10" : "border-white/10 bg-black/30"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Flame className={`h-4 w-4 ${explicit ? "text-red-400" : "text-white/40"}`} />
+                <span className="text-xs font-semibold text-white">Explicit mode</span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={explicit}
+                onClick={() => setExplicit(!explicit)}
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${
+                  explicit ? "border-red-400/60 bg-red-500/70" : "border-white/15 bg-white/10"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4.5 w-4.5 rounded-full bg-white transition-all ${
+                    explicit ? "left-[22px]" : "left-0.5"
+                  }`}
+                  style={{ height: "18px", width: "18px" }}
+                />
+              </button>
+            </div>
+            <p className="text-[10px] leading-relaxed text-white/55">
+              {explicit ? (
+                <>
+                  Renders on the uncensored RunPod endpoint with Grok writing the prompt — your
+                  wording is followed, nude included.{" "}
+                  <span className="text-red-300">
+                    Requires a reference photo (pick a persona, or use “Same person” on a shot).
+                  </span>{" "}
+                  Async: each render takes a minute.
+                </>
+              ) : (
+                <>
+                  Off: renders on xAI Imagine, which appends a fully-clothed instruction and applies
+                  its own policy. Nudity requests are stripped on this path.
+                </>
+              )}
+            </p>
+            {explicit && !reference && (
+              <p className="text-[10px] font-medium text-red-300">
+                No reference set — generation will be refused.
+              </p>
+            )}
+          </div>
+
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <div className="flex gap-1.5">
               {[1, 2, 3, 4].map((n) => (
@@ -798,7 +1026,12 @@ function StudioPage() {
             >
               {busy ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                  {explicit ? "Rendering (async)…" : "Generating…"}
+                </>
+              ) : explicit ? (
+                <>
+                  <Flame className="mr-2 h-4 w-4" /> Render {count} explicit
                 </>
               ) : (
                 <>
@@ -808,7 +1041,9 @@ function StudioPage() {
             </Button>
           </div>
           <p className="mt-2 text-[10px] text-muted-foreground">
-            Each image is billed by xAI. Clothed promo assets for marketing funnels and socials.
+            {explicit
+              ? "Rendered on your own RunPod endpoint at no credit cost. Output is uncensored — do not send it to a mainstream ad network."
+              : "Each image is billed by xAI. Clothed promo assets for marketing funnels and socials."}
           </p>
         </div>
 
@@ -1076,6 +1311,19 @@ function StudioPage() {
                       </div>
 
                       <div className="flex items-center gap-0.5">
+                        {/* Composite into a real ad unit: photo + headline + CTA */}
+                        {!s.clipUrl && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="min-h-9 px-2 text-[11px] text-primary"
+                            title="Build an ad banner with headline and CTA"
+                            onClick={() => openBanner(s)}
+                          >
+                            <Type className="mr-1 h-3.5 w-3.5" /> Banner
+                          </Button>
+                        )}
+
                         {/* Adjust & Fine-tune crop dialog */}
                         {!s.clipUrl && (
                           <Button
@@ -1132,7 +1380,7 @@ function StudioPage() {
                                   className="cursor-pointer text-xs text-primary focus:bg-white/10"
                                 >
                                   <Package className="mr-2 h-3.5 w-3.5 text-primary" />
-                                  1-Click Core Ad Pack (6 Formats)
+                                  Core Photo Plates, 6 Sizes (no copy)
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-white/10" />
                                 <DropdownMenuItem
@@ -1203,6 +1451,228 @@ function StudioPage() {
             </div>
           </div>
         )}
+
+        {/* Modal: Ad Banner Builder — photo + headline + CTA composited server-side */}
+        <Dialog
+          open={!!bannerShot}
+          onOpenChange={(open) => {
+            if (!open) {
+              setBannerShot(null);
+              setBannerUrl(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl border-white/10 bg-card text-white">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <Type className="h-4 w-4 text-primary" /> Ad Banner Builder
+              </DialogTitle>
+              <DialogDescription className="text-xs text-white/60">
+                Composites the shot with a headline, CTA button and wordmark into a finished ad
+                unit — not just a crop.
+              </DialogDescription>
+            </DialogHeader>
+
+            {bannerShot && (
+              <div className="space-y-4 pt-2">
+                {/* Result / source preview */}
+                <div className="flex flex-col items-center justify-center rounded-xl border border-white/10 bg-black/60 p-4">
+                  {bannerUrl ? (
+                    <img
+                      src={bannerUrl}
+                      alt="Composited banner"
+                      className="max-h-64 w-auto max-w-full rounded-lg border border-primary/40"
+                    />
+                  ) : (
+                    <>
+                      <img
+                        src={bannerShot.url}
+                        alt="Source shot"
+                        className="max-h-48 w-auto rounded-lg border border-white/10 opacity-60"
+                      />
+                      <p className="mt-2 text-[11px] text-white/50">
+                        Source shot — press Compose to build the banner.
+                      </p>
+                    </>
+                  )}
+                  <div className="mt-2 flex w-full items-center justify-between text-[11px] text-white/60">
+                    <span className="font-semibold text-white">
+                      {getStudioSizeById(bannerSizeId).name}
+                    </span>
+                    <span className="font-mono text-primary">
+                      {getStudioSizeById(bannerSizeId).dimensions} px
+                    </span>
+                  </div>
+                </div>
+
+                {/* Copy */}
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="text-xs font-semibold text-white/70">Headline & CTA</label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleSuggestCopy}
+                      disabled={suggestingCopy}
+                      className="h-7 px-2 text-[10px] text-primary hover:bg-white/5"
+                    >
+                      {suggestingCopy ? (
+                        <>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Writing…
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-1 h-3 w-3" /> Suggest with AI
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <input
+                      value={headline1}
+                      onChange={(e) => setHeadline1(e.target.value)}
+                      maxLength={40}
+                      placeholder="Headline line 1"
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-primary/50"
+                    />
+                    <input
+                      value={headline2}
+                      onChange={(e) => setHeadline2(e.target.value)}
+                      maxLength={40}
+                      placeholder="Headline line 2 (optional)"
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-primary/50"
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      value={bannerCta}
+                      onChange={(e) => setBannerCta(e.target.value)}
+                      maxLength={24}
+                      placeholder="Button label"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-primary/50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setBannerWordmark(!bannerWordmark)}
+                      className={`shrink-0 rounded-xl border px-3 py-2 text-[10px] font-medium transition-colors ${
+                        bannerWordmark
+                          ? "border-primary/60 bg-primary/20 text-white"
+                          : "border-white/10 bg-black/40 text-white/50"
+                      }`}
+                    >
+                      {bannerWordmark ? "Logo on" : "Logo off"}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-white/45">
+                    Short lines only — a 728×90 unit fits roughly 18 characters per line. Line 2
+                    renders in the accent colour. Units under 600px wide join both lines into one.
+                  </p>
+                </div>
+
+                {/* Unit + focal */}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-white/70">
+                      Ad unit
+                    </label>
+                    <select
+                      value={bannerSizeId}
+                      onChange={(e) => {
+                        setBannerSizeId(e.target.value);
+                        setBannerUrl(null);
+                      }}
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none focus:border-primary/50"
+                    >
+                      <optgroup label="Display & Ad Banners">
+                        {STUDIO_SIZES.filter((s) => s.category === "banner").map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.dimensions} px)
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Social & Mobile">
+                        {STUDIO_SIZES.filter((s) => s.category === "social").map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.dimensions} px)
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-white/70">
+                      Focal anchor
+                    </label>
+                    <div className="flex rounded-xl border border-white/10 bg-black/40 p-0.5">
+                      {(
+                        [
+                          { id: "face", label: "Face / Top" },
+                          { id: "center", label: "Center" },
+                          { id: "bottom", label: "Bottom" },
+                        ] as const
+                      ).map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            setBannerFocal(f.id);
+                            setBannerUrl(null);
+                          }}
+                          className={`flex-1 rounded-lg px-2 py-1.5 text-[10px] font-medium transition-colors ${
+                            bannerFocal === f.id
+                              ? "bg-primary text-primary-foreground"
+                              : "text-white/60 hover:text-white"
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    className="flex-1 bg-grad-primary text-primary-foreground shadow-glow"
+                    disabled={composing}
+                    onClick={handleCompose}
+                  >
+                    {composing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Compositing…
+                      </>
+                    ) : (
+                      <>
+                        <Type className="mr-2 h-4 w-4" /> {bannerUrl ? "Re-compose" : "Compose"}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/10"
+                    disabled={!bannerUrl}
+                    onClick={async () => {
+                      if (!bannerUrl) return;
+                      try {
+                        await saveCroppedFile({
+                          url: bannerUrl,
+                          filename: `humancrush-banner-${bannerSizeId}-${Date.now()}.jpg`,
+                        });
+                        toast.success("Downloaded");
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "Download failed");
+                      }
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" /> Download
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Modal: Interactive Crop, Focal Framing, & Export Dialog */}
         <Dialog open={!!adjustShot} onOpenChange={(open) => !open && setAdjustShot(null)}>

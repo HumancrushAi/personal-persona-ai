@@ -23,6 +23,7 @@ import {
   adminAddCompanionMedia,
   adminDeleteCompanionMedia,
 } from "@/lib/admin.functions";
+import { adminListSupportTickets, adminReplySupportTicket } from "@/lib/support.functions";
 import type { EvalResult } from "@/lib/eval-suite";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,7 @@ import { companionImage } from "@/lib/companion-images";
 import { ClipMaker } from "@/components/ClipMaker";
 import { formatPrice } from "@/lib/credit-packs";
 import { toast } from "sonner";
-import { Shield, Search, UserPlus, RefreshCw, Receipt } from "lucide-react";
+import { Shield, Search, UserPlus, RefreshCw, Receipt, LifeBuoy, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -213,6 +214,7 @@ function AdminPage() {
           <TabsTrigger value="pricing">Plans & Pricing</TabsTrigger>
           <TabsTrigger value="aiconfig">AI Config</TabsTrigger>
           <TabsTrigger value="content">Platform Content</TabsTrigger>
+          <TabsTrigger value="support">Support</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -503,6 +505,10 @@ function AdminPage() {
 
         <TabsContent value="aiconfig">
           <SettingsPanel category="aiconfig" />
+        </TabsContent>
+
+        <TabsContent value="support">
+          <SupportPanel />
         </TabsContent>
 
         <TabsContent value="content">
@@ -1479,6 +1485,230 @@ function EvalPanel() {
           </table>
         </div>
       )}
+    </section>
+  );
+}
+
+// Support tickets raised from the widget on the landing and sign-up pages.
+//
+// Replying here rather than from the email inbox is what records the reply on
+// the ticket and delivers it in-app and by push as well as by email. A reply
+// sent straight from the inbox reaches the customer too — the alert email's
+// Reply-To is their address — it just isn't recorded here.
+type SupportMessage = {
+  id: string;
+  direction: "in" | "out";
+  body: string;
+  created_at: string;
+};
+
+type SupportTicket = {
+  id: string;
+  ref: string;
+  user_id: string | null;
+  email: string;
+  name: string | null;
+  subject: string;
+  status: string;
+  created_at: string;
+  last_message_at: string;
+  messages: SupportMessage[];
+};
+
+function SupportPanel() {
+  const fetchTickets = useServerFn(adminListSupportTickets);
+  const reply = useServerFn(adminReplySupportTicket);
+
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [showClosed, setShowClosed] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res: any = await fetchTickets({} as any);
+      setTickets(res.tickets ?? []);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not load tickets");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function send(ticket: SupportTicket, close: boolean) {
+    if (!draft.trim() || sending) return;
+    setSending(true);
+    try {
+      const res: any = await reply({
+        data: { ticketId: ticket.id, body: draft.trim(), close },
+      });
+      // The reply is stored even when a channel fails, so a delivery problem is
+      // reported without pretending the reply was lost.
+      if (res.errors?.length) toast.warning(`Sent, but: ${res.errors.join("; ")}`);
+      else toast.success(close ? "Replied and closed" : "Reply sent");
+      setDraft("");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Reply failed");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const visible = tickets.filter((t) => showClosed || t.status !== "closed");
+  const openCount = tickets.filter((t) => t.status === "open").length;
+
+  return (
+    <section className="glass rounded-2xl p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 font-display text-lg">
+          <LifeBuoy className="h-5 w-5 text-primary" /> Support tickets
+          {openCount > 0 && (
+            <Badge className="bg-primary text-primary-foreground">{openCount} open</Badge>
+          )}
+        </h2>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowClosed(!showClosed)}
+            className="text-xs"
+          >
+            {showClosed ? "Hide closed" : "Show closed"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={load} disabled={loading} className="text-xs">
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+        </div>
+      </div>
+
+      {loading && tickets.length === 0 && (
+        <p className="py-6 text-center text-sm text-muted-foreground">Loading tickets…</p>
+      )}
+
+      {!loading && visible.length === 0 && (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          No tickets yet. They arrive from the support button on the home and sign-up pages.
+        </p>
+      )}
+
+      <div className="space-y-2">
+        {visible.map((t) => {
+          const isOpen = openId === t.id;
+          return (
+            <div
+              key={t.id}
+              className="overflow-hidden rounded-xl border border-white/10 bg-white/5"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenId(isOpen ? null : t.id);
+                  setDraft("");
+                }}
+                className="flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-white/5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[10px] text-primary">#{t.ref}</span>
+                    <span className="truncate text-sm font-medium text-white">{t.subject}</span>
+                    <Badge
+                      variant={t.status === "open" ? "default" : "secondary"}
+                      className="text-[9px]"
+                    >
+                      {t.status}
+                    </Badge>
+                    {!t.user_id && (
+                      <Badge variant="outline" className="text-[9px] text-white/50">
+                        signed out
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {t.name ? `${t.name} · ` : ""}
+                    {t.email} · {new Date(t.last_message_at).toLocaleString()}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">{isOpen ? "−" : "+"}</span>
+              </button>
+
+              {isOpen && (
+                <div className="border-t border-white/10 p-3">
+                  <div className="mb-3 space-y-2">
+                    {t.messages.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`rounded-lg p-2.5 text-xs ${
+                          m.direction === "in"
+                            ? "border-l-2 border-white/30 bg-black/30 text-white/90"
+                            : "border-l-2 border-primary bg-primary/10 text-white"
+                        }`}
+                      >
+                        <p className="mb-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+                          {m.direction === "in" ? t.email : "You"} ·{" "}
+                          {new Date(m.created_at).toLocaleString()}
+                        </p>
+                        <p className="whitespace-pre-wrap leading-relaxed">{m.body}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    rows={4}
+                    maxLength={4000}
+                    placeholder={`Reply to ${t.email}…`}
+                    className="text-xs"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => send(t, false)}
+                      disabled={sending || !draft.trim()}
+                      className="text-xs"
+                    >
+                      {sending ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Sending…
+                        </>
+                      ) : (
+                        "Send reply"
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => send(t, true)}
+                      disabled={sending || !draft.trim()}
+                      className="text-xs"
+                    >
+                      Reply &amp; close
+                    </Button>
+                    <a
+                      href={`mailto:${t.email}?subject=${encodeURIComponent(`Re: ${t.subject} [#${t.ref}]`)}`}
+                      className="inline-flex items-center text-[11px] text-muted-foreground underline-offset-2 transition-colors hover:text-primary hover:underline"
+                    >
+                      Open in mail app instead
+                    </a>
+                  </div>
+                  <p className="mt-2 text-[10px] text-muted-foreground">
+                    Sending here emails {t.email}
+                    {t.user_id ? ", and also delivers in-app and by push." : "."}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }

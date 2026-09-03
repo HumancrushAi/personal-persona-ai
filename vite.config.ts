@@ -1,5 +1,5 @@
 import { defineConfig, type PluginOption } from "vite";
-import { copyFileSync, chmodSync, mkdirSync, existsSync } from "node:fs";
+import { copyFileSync, chmodSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { resolve as resolvePath, join as joinPath } from "node:path";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -36,6 +36,28 @@ function bundleFfmpeg(): PluginOption {
   };
 }
 
+// The banner compositor draws its type as glyph outlines read straight from
+// these .ttf files (see src/lib/banner-compositor.server.ts). Like the ffmpeg
+// binary they are runtime assets rather than imports, so Nitro's tracer never
+// sees them and they have to be copied in by hand. Without them the compositor
+// throws on the first banner instead of silently rendering a blank one.
+function bundleFonts(): PluginOption {
+  return {
+    name: "bundle-fonts",
+    apply: "build",
+    async closeBundle() {
+      const fnDir = resolvePath(".vercel/output/functions/__server.func");
+      const srcDir = resolvePath("fonts");
+      if (!existsSync(fnDir) || !existsSync(srcDir)) return;
+      const destDir = joinPath(fnDir, "fonts");
+      mkdirSync(destDir, { recursive: true });
+      for (const file of readdirSync(srcDir)) {
+        copyFileSync(joinPath(srcDir, file), joinPath(destDir, file));
+      }
+    },
+  };
+}
+
 // Standalone TanStack Start config (previously wrapped by
 // @lovable.dev/vite-tanstack-config). Builds a Nitro server targeting Vercel
 // (outputs .vercel/output via Vercel Build Output API v3).
@@ -68,6 +90,7 @@ export default defineConfig({
     // Vercel Pro/Fluid max (capped down automatically on smaller plans).
     nitro({ preset: "vercel", vercel: { functions: { maxDuration: 300 } } }),
     bundleFfmpeg(),
+    bundleFonts(),
     viteReact(),
   ],
 });

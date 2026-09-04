@@ -66,10 +66,61 @@ export const generateCharacter = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join(", ");
 
+    // A retry must not make a second companion.
+    //
+    // Generating a portrait takes one to two minutes. A phone that switches
+    // network, or a browser that gives up on the request, shows "Failed to
+    // fetch" while the server carries on and finishes — so the user presses the
+    // button again and gets another model. That is exactly what happened: three
+    // identical Sandys, created 10:57:03, 10:58:48 and 11:00:02, one per press.
+    //
+    // Checking first makes the button idempotent for the window that matters.
+    // Someone who genuinely wants two companions with the same name a few
+    // minutes apart is a far rarer case than a retry after a dropped request,
+    // and they can rename or make the second one later.
+    const RETRY_WINDOW_MS = 15 * 60 * 1000;
+    const { data: recent } = await supabase
+      .from("companions")
+      .select("id, created_at")
+      .eq("created_by", userId)
+      .eq("name", data.name)
+      .gte("created_at", new Date(Date.now() - RETRY_WINDOW_MS).toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (recent?.id) {
+      const { data: existing } = await supabase
+        .from("companions")
+        .select("image_url")
+        .eq("id", recent.id)
+        .maybeSingle();
+      return { id: recent.id as string, imageUrl: (existing?.image_url as string) ?? "" };
+    }
+
     const { refinePromoPrompt } = await import("./prompt-refiner.server");
     const refinedPromo = await refinePromoPrompt(baseDescription);
 
-    const prompt = [genderTag, style, refinedPromo || baseDescription].filter(Boolean).join(" ");
+    // Framing is appended AFTER the refiner, and is not negotiable.
+    //
+    // This portrait is not just the card on the home page — it is the reference
+    // frame every future selfie and video of her is generated from. The refiner
+    // is told to write "setting with real detail" and "pose and expression",
+    // which invites environmental compositions, and it produced one companion
+    // shot from behind leaning on a marble counter with her reflection beside
+    // her: two faces, both small, neither facing camera. Handed to an
+    // image-to-image model as the identity reference that returns a DIFFERENT
+    // WOMAN, because there is no single clear face to carry over. The user saw
+    // exactly that — a redhead whose selfies came back as someone else.
+    //
+    // Appending beats instructing, for the same reason PROMO_STYLE is appended
+    // in studio.functions.ts: the constraint must not depend on the refiner
+    // having behaved.
+    const PORTRAIT_FRAMING =
+      "Exactly one person alone in the frame. Facing the camera directly, full face clearly visible, sharp and well lit, eyes toward the lens. Head-and-shoulders to waist framing, subject fills the frame. No mirror, no reflection, no second person, no crowd, no view from behind, no face turned away, no face cropped or obscured, no back of head, no sunglasses or mask covering the face.";
+
+    const prompt = [genderTag, style, refinedPromo || baseDescription, PORTRAIT_FRAMING]
+      .filter(Boolean)
+      .join(" ");
 
     // Pass gender so the render uses the matching negative prompt — omitting it
     // defaulted every model to the female negatives.

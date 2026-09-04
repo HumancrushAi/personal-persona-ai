@@ -287,7 +287,20 @@ function CreatePage() {
       toast("She's ready 💋");
       navigate({ to: "/companion/$id", params: { id } });
     } catch (e: any) {
-      toast(`Generation failed: ${e.message ?? "try again"}`);
+      const msg = String(e?.message ?? "");
+      // "Failed to fetch" is the browser giving up on the request, not the
+      // server refusing it — and the portrait takes a minute or two, so the
+      // server usually finished anyway. Saying "generation failed" sent people
+      // round again and made duplicates. generateCharacter now returns the
+      // companion it already built for a repeat within fifteen minutes, so
+      // pressing again is safe and is the right advice.
+      if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
+        toast(
+          "Connection dropped while she was being made — press Create My Model again to pick her up.",
+        );
+      } else {
+        toast(`Generation failed: ${msg || "try again"}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -436,11 +449,15 @@ function CreatePage() {
                   className="mt-0.5 h-5 w-5 rounded border-white/20 bg-white/10 text-primary accent-primary focus:ring-primary cursor-pointer shrink-0"
                 />
                 <div>
-                  <label htmlFor="publish" className="text-sm font-semibold text-white cursor-pointer select-none">
+                  <label
+                    htmlFor="publish"
+                    className="text-sm font-semibold text-white cursor-pointer select-none"
+                  >
                     Publish to community gallery
                   </label>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                    Makes your custom character visible on the home page for everyone to discover and chat with.
+                    Makes your custom character visible on the home page for everyone to discover
+                    and chat with.
                   </p>
                 </div>
               </div>
@@ -518,11 +535,11 @@ function CreatePage() {
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating your model…
                 </>
               ) : (
                 <>
-                  <Wand2 className="mr-2 h-4 w-4" /> Generate her
+                  <Wand2 className="mr-2 h-4 w-4" /> Create My Model
                 </>
               )}
             </Button>

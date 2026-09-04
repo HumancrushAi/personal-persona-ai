@@ -453,7 +453,6 @@ function negativeFor(userReq: string | undefined): string {
   return requestIsNude(userReq ?? "") ? `${CLOTHING_NEGATIVE}, ${VIDEO_NEGATIVE}` : VIDEO_NEGATIVE;
 }
 
-
 // Create a media_jobs row and fire the async image-to-video job, using the
 // companion's photo as the start frame so the clip looks like HER. Prefers the
 // RunPod WAN endpoint (runs the weights on RunPod, nothing screened upstream)
@@ -485,12 +484,6 @@ export async function startVideoJob(
   const totalSeconds = seconds ?? 5;
   const sceneCount = Math.max(1, Math.min(4, Math.round(totalSeconds / 5)));
 
-  const { refineMediaPrompt } = await import("./prompt-refiner.server");
-  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount);
-  const scenePrompts = refinedVideo?.length
-    ? refinedVideo
-    : [videoActionPrompt(companion, userReq)];
-  const videoPrompt = scenePrompts.join("\n\n");
   const cost = VIDEO_COST;
 
   const runpodVideo = runpodEndpoint("video");
@@ -502,6 +495,19 @@ export async function startVideoJob(
   }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+  // The job row is written FIRST, before any slow work.
+  //
+  // Credits are debited by the caller before this function runs, and the
+  // refiner below can take a minute — Grok is allowed 60s and the OpenRouter
+  // fallback another 20. Refining first meant the user was charged and then sat
+  // through a minute of silence with no row anywhere; a phone that dropped the
+  // request in that window cancelled the function, so no job existed, no refund
+  // path had been reached, and the credits were simply gone. Measured on a real
+  // request: debit at 12:37:41, job row at 12:38:44, sixty-three seconds apart.
+  //
+  // With the row written up front, an interrupted request leaves a pending job
+  // that checkMediaJob's stale sweep can fail and refund, and the prompt is
+  // filled in below once it exists.
   const { data: job, error: jobErr } = await supabaseAdmin
     .from("media_jobs")
     .insert({
@@ -509,7 +515,7 @@ export async function startVideoJob(
       conversation_id: conversationId,
       kind: "video",
       status: "pending",
-      prompt: videoPrompt,
+      prompt: "",
       provider: "runpod",
       cost,
     })
@@ -535,6 +541,15 @@ export async function startVideoJob(
     );
     throw new Error("No fetchable companion image for video generation");
   }
+
+  // Now the slow part, with a job row already standing behind it.
+  const { refineMediaPrompt } = await import("./prompt-refiner.server");
+  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount);
+  const scenePrompts = refinedVideo?.length
+    ? refinedVideo
+    : [videoActionPrompt(companion, userReq)];
+  const videoPrompt = scenePrompts.join("\n\n");
+  await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
 
   // Same centre-crop problem as photos: hand the endpoint a square that keeps
   // her whole body rather than letting it slice the frame down to a torso.
@@ -603,8 +618,6 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     if (job.status === "completed")
       return { status: "completed", mediaUrl: (job as any).media_url };
     if (job.status === "failed") return { status: "failed" };
-    if (!(job as any).replicate_id) return { status: job.status };
-
     const { completeMediaJob: complete, failMediaJob: fail } =
       await import("./media-finalize.server");
 
@@ -612,11 +625,23 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     // the row stayed "processing" forever, nothing was ever posted to the chat,
     // and the credits were never returned. Nothing else would ever have closed
     // it out — the webhook only fires on a terminal state, which never came.
+    //
+    // This check now runs BEFORE the replicate_id one below. A job that was
+    // written but never reached the provider — the request was cancelled while
+    // the prompt was still being refined, say — has no provider id at all, so
+    // returning early on that skipped the sweep entirely and stranded the row in
+    // "pending" for good, with the credits still spent. Age is what decides
+    // whether a job is dead, and that is true whether or not it was ever
+    // launched.
     const ageMs = Date.now() - new Date((job as any).created_at).getTime();
     if (ageMs > STALE_JOB_MS) {
       await fail(job as any, "Generation timed out — the provider never finished this job.");
       return { status: "failed" };
     }
+
+    // Written but not yet launched, and not old enough to give up on. The
+    // caller keeps polling.
+    if (!(job as any).replicate_id) return { status: job.status };
 
     // RunPod jobs need no face-swap chaining: the image path edits her real
     // photo and the video path animates it, so identity is already hers.

@@ -433,6 +433,40 @@ function ChatPage() {
     }
   }
 
+  // A dropped request is not the same as a failed one.
+  //
+  // Triggering a clip takes a while server-side — the prompt is refined and a
+  // start frame built before the call returns — and a phone that changes
+  // network in that window fails the fetch while the server carries on and
+  // creates the job anyway. Reporting "Failed to fetch" then was wrong twice
+  // over: the work was usually running, and it invited a retry that spends
+  // credits again. The job row is now written before the slow part, so if one
+  // exists we attach to it instead of crying failure.
+  async function attachToUnfinished(label: "photo" | "video"): Promise<boolean> {
+    const { data: unfinished } = await supabase
+      .from("media_jobs")
+      .select("id, kind")
+      .eq("conversation_id", conversationId)
+      .eq("kind", label === "video" ? "video" : "image")
+      .in("status", ["pending", "processing"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const job = unfinished?.[0];
+    if (!job) return false;
+    toast.info(
+      label === "video"
+        ? "Connection dropped, but she's still filming — it'll land here shortly."
+        : "Connection dropped, but the photo is still coming.",
+    );
+    pollMediaJob(job.id, label).catch(() => {
+      /* recorded on the job row */
+    });
+    return true;
+  }
+
+  const isNetworkError = (msg: string) =>
+    /failed to fetch|networkerror|load failed|network request failed/i.test(msg);
+
   // Pick up jobs left mid-flight. A closed tab, a dropped connection, or a
   // generation slower than the window above strands a job in "processing"
   // forever otherwise: the poll is what finalizes jobs now, the webhook is only
@@ -503,6 +537,7 @@ function ChatPage() {
         return next;
       });
       const msg = err?.message ?? "Error";
+      if (isNetworkError(msg) && (await attachToUnfinished("photo"))) return;
       if (msg.includes("OUT_OF_CREDITS")) {
         toast.error("Not enough credits — selfies cost 8");
         navigate({ to: "/credits" });
@@ -585,6 +620,7 @@ function ChatPage() {
         return next;
       });
       const msg = err?.message ?? "Error";
+      if (isNetworkError(msg) && (await attachToUnfinished("video"))) return;
       if (msg.includes("OUT_OF_CREDITS")) {
         toast.error("Not enough credits — videos cost 15");
         navigate({ to: "/credits" });

@@ -50,32 +50,121 @@ async function probeSeconds(file: string, ffmpegPath: string): Promise<number | 
 // the frame earlier was tried to dodge the camera drift that crops her head on
 // act-heavy prompts; on a test clip the drift had already happened by then, so
 // it bought nothing and the offset stayed where it was.
+//
+// Which frame, though, used to be "whichever one is 0.3s from the end" — and
+// that is a coin toss. A video model does not hold an object still: across the
+// last second a prop smears, fuses into the hand and comes back, and the photo
+// the user paid for was simply whichever of those the clock landed on. So
+// several candidates are cut instead and the sharpest is kept.
+//
+// It costs nothing worth measuring: the clip is already downloaded, ffmpeg
+// decodes the same tail either way, and sharp is already a dependency. It is
+// also not magic — sharpness rejects the smeared and half-melted frames, which
+// is most of what reads as cheap, but a crisply rendered wrong object still
+// scores well. That one needs a better renderer, not a better frame.
+const FRAME_WINDOW_SECONDS = 1.2;
+const FRAME_SAMPLE_FPS = 5;
+
+/**
+ * How much fine detail a frame carries.
+ *
+ * Variance of the Laplacian, the standard cheap focus measure: crisp edges give
+ * a wide spread of second-derivative values, a smeared frame a narrow one.
+ *
+ * Computed on raw pixels rather than through sharp's convolve, which clamps.
+ * Clamping throws the answer away here — the Laplacian of a hard edge is a
+ * large positive and a large negative right next to each other, the negative
+ * half floors at zero, and what survives is a thin saturated line through a
+ * field of zeros. That scores LOWER than the broad mid-grey response of a
+ * blurred edge, so the clamped version reliably picked the blurriest frame.
+ * Measured on a test pattern: crisp 84, blurred 96.
+ *
+ * Frames are reduced to a common size first. That costs a little absolute
+ * sensitivity and bounds the work at a fixed cost per frame, and since every
+ * candidate gets the same treatment the ordering — the only thing used — holds.
+ */
+async function sharpness(png: Buffer): Promise<number> {
+  try {
+    const sharp = (await import("sharp")).default;
+    const { data, info } = await sharp(png)
+      .greyscale()
+      .resize(512, 512, { fit: "inside" })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const { width: w, height: h } = info;
+    if (w < 3 || h < 3) return 0;
+
+    let sum = 0;
+    let sumSq = 0;
+    let n = 0;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        const lap = data[i - 1] + data[i + 1] + data[i - w] + data[i + w] - 4 * data[i];
+        sum += lap;
+        sumSq += lap * lap;
+        n++;
+      }
+    }
+    if (!n) return 0;
+    const mean = sum / n;
+    return sumSq / n - mean * mean;
+  } catch {
+    return 0;
+  }
+}
+
+/** The crispest of the candidates. Exported for the test; not used elsewhere. */
+export async function pickSharpest(frames: Buffer[]): Promise<Buffer | null> {
+  if (!frames.length) return null;
+  const scored = await Promise.all(frames.map(async (f) => ({ f, score: await sharpness(f) })));
+  return scored.reduce((best, cur) => (cur.score > best.score ? cur : best)).f;
+}
+
 async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
   const { execFile } = await import("node:child_process");
   const { promisify } = await import("node:util");
-  const { writeFile, readFile, unlink, mkdtemp } = await import("node:fs/promises");
+  const { writeFile, readFile, readdir, mkdtemp, rm } = await import("node:fs/promises");
   const { join: joinPath } = await import("node:path");
   const { tmpdir } = await import("node:os");
   const ffmpegPath = await ffmpegBin();
+  const run = promisify(execFile);
 
   const dir = await mkdtemp(joinPath(tmpdir(), "still-"));
   const inPath = joinPath(dir, "in.mp4");
-  const outPath = joinPath(dir, "out.png");
   try {
     await writeFile(inPath, mp4);
-    await promisify(execFile)(ffmpegPath, [
+
+    // Sample the tail of the clip, where the pose has resolved.
+    await run(ffmpegPath, [
       "-y",
       "-sseof",
-      "-0.3",
+      `-${FRAME_WINDOW_SECONDS}`,
       "-i",
       inPath,
+      "-vf",
+      `fps=${FRAME_SAMPLE_FPS}`,
       "-frames:v",
-      "1",
-      outPath,
-    ]);
+      String(Math.ceil(FRAME_WINDOW_SECONDS * FRAME_SAMPLE_FPS)),
+      joinPath(dir, "cand-%02d.png"),
+    ]).catch(() => {
+      /* fall through to the single-frame path below */
+    });
+
+    const names = (await readdir(dir)).filter((n) => n.startsWith("cand-")).sort();
+    const frames = await Promise.all(names.map((n) => readFile(joinPath(dir, n))));
+    const best = await pickSharpest(frames.map((f) => Buffer.from(f)));
+    if (best) return best;
+
+    // Nothing landed — a very short clip, or an ffmpeg build that dislikes the
+    // filter. Fall back to exactly what this function used to do, because an
+    // image job that returns no image is worse than an unchosen frame.
+    const outPath = joinPath(dir, "out.png");
+    await run(ffmpegPath, ["-y", "-sseof", "-0.3", "-i", inPath, "-frames:v", "1", outPath]);
     return Buffer.from(await readFile(outPath));
   } finally {
-    await Promise.all([unlink(inPath).catch(() => {}), unlink(outPath).catch(() => {})]);
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 }
 

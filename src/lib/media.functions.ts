@@ -335,13 +335,23 @@ export async function startImageJob(
           enable_safety_checker: false,
         }
       : {
-          // Shorter than a real clip — only the end frame is shown, so the extra
+          // Shorter than a real clip — only one frame is shown, so the extra
           // frames are wasted generation time.
+          //
+          // Steps raised from 24 to 32. Objects and hands are the first things
+          // a diffusion model gets wrong at a low step count: they are small,
+          // high-frequency and structurally unforgiving, which is exactly the
+          // complaint about props. It costs roughly a third more GPU time per
+          // photo. To buy that back, drop RUNPOD_STILL_FRAMES — 36 frames at 32
+          // steps is about the same work as 49 at 24 — but test it first: the
+          // clip has to be long enough to move from her clothed portrait into
+          // the requested pose, and if it is not, the photo comes back
+          // half-undressed. Both are env vars; neither needs a code change.
           image_url: startFrame,
           fps: 16,
           frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "49"),
           num_scenes: 1,
-          sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "24"),
+          sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "32"),
           prompts: [imagePrompt],
           negative_prompt: negativeFor(userRequest),
           lora_strengths: VIDEO_LORA_STRENGTHS,

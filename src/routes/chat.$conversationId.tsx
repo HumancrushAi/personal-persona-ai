@@ -340,7 +340,7 @@ function ChatPage() {
       if (autoJobId) {
         const label = (res as any)?.kind === "video_pending" ? "video" : "photo";
         pollMediaJob(autoJobId, label).catch((e: any) =>
-          toast.error(e?.message ?? `${label === "video" ? "Video" : "Photo"} generation failed`),
+          toast.error(humanError(String(e?.message ?? ""), label)),
         );
       }
     } catch (err: any) {
@@ -350,7 +350,7 @@ function ChatPage() {
         navigate({ to: "/credits" });
       } else if (msg.includes("BLOCKED_CONTENT")) {
         toast.error(msg.split("BLOCKED_CONTENT:")[1]?.trim() || "That request isn't allowed.");
-      } else toast.error(msg);
+      } else toast.error(humanError(msg));
       setInput(content);
       setPendingUser(null);
     } finally {
@@ -465,7 +465,23 @@ function ChatPage() {
   }
 
   const isNetworkError = (msg: string) =>
-    /failed to fetch|networkerror|load failed|network request failed/i.test(msg);
+    /failed to fetch|networkerror|load failed|network request failed|aborted|timeout/i.test(msg);
+
+  // Nothing raw from the browser ever reaches the user.
+  //
+  // "Failed to fetch" is what fetch() says when the request never completed —
+  // usually a phone changing network mid-request. It is not a product error, it
+  // means nothing to the person reading it, and it is alarming precisely when
+  // the work is most likely still running. Everything user-facing goes through
+  // here so a transport failure reads as what it is.
+  const humanError = (msg: string, label?: "photo" | "video" | "voice") => {
+    if (isNetworkError(msg)) {
+      return label
+        ? `Connection dropped. If she'd already started, your ${label} will still arrive here — check back in a minute.`
+        : "Connection dropped — check your signal and try again.";
+    }
+    return msg || "Something went wrong — try again.";
+  };
 
   // Pick up jobs left mid-flight. A closed tab, a dropped connection, or a
   // generation slower than the window above strands a job in "processing"
@@ -543,7 +559,7 @@ function ChatPage() {
         navigate({ to: "/credits" });
       } else if (msg.includes("BLOCKED_CONTENT")) {
         toast.error("She can't take that kind of pic — no credits used.");
-      } else toast.error(msg);
+      } else toast.error(humanError(msg, "photo"));
     }
   }
 
@@ -568,7 +584,7 @@ function ChatPage() {
       if (msg.includes("OUT_OF_CREDITS")) {
         toast.error("Not enough credits — voice notes cost 3");
         navigate({ to: "/credits" });
-      } else toast.error(msg);
+      } else toast.error(humanError(msg, "voice"));
     } finally {
       mediaBusyRef.current = false;
       setMediaBusy(null);
@@ -626,7 +642,7 @@ function ChatPage() {
         navigate({ to: "/credits" });
       } else if (msg.includes("BLOCKED_CONTENT")) {
         toast.error("She can't make that kind of video — no credits used.");
-      } else toast.error(msg);
+      } else toast.error(humanError(msg, "video"));
     }
   }
 

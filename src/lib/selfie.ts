@@ -1,6 +1,8 @@
 // Builds the image prompt for a companion selfie. Shared by the camera button
 // (media.functions) and the auto-selfie when a user asks for a pic in chat.
 
+import { TOY_VOCAB, propClause } from "./props";
+
 function genderNoun(gender?: string | null): string {
   const g = (gender ?? "female").toLowerCase();
   if (g === "male" || g === "trans-male") return "man";
@@ -26,7 +28,7 @@ const KW = {
   ass: "ass|asshole|butthole|butt|buttocks|booty|bum|cheeks|anus|rear end",
   masturbation:
     "masturbat\\w*|finger\\w*|rub\\w*|touch\\w*\\s+(?:her|him|your|my)self|touch\\w*\\s+(?:her|him|your|my)?\\s*(?:pussy|dick|cock|clit|genital\\w*|crotch|nipples?)|play\\w*\\s+with\\s+(?:her|him|your|my)self|play\\w*\\s+with\\s+(?:her|him|your|my)?\\s*(?:pussy|dick|clit|genital\\w*|nipples?)|pleasur\\w*|hand\\s+(?:in|on|down|inside|between|up)|fingers?\\s+(?:in|inside|deep)|jerk\\w*|jack\\w*\\s*off|strok\\w*|edg\\w*|grind\\w*",
-  toys: "dildo|vibrator|sex\\s*toy|butt\\s*plug|plug|magic wand|strap[- ]?on|anal beads|fleshlight",
+  toys: TOY_VOCAB,
   oral: "blow\\s*job|blowjob|bj|suck\\w*|oral|deep\\s*throat|fellati\\w*|lick\\w*|cunnilingus|rim\\w*|tongue|69",
   anal: "anal|butt\\s*plug|up (?:her|your|my) ass|in (?:her|your|my) ass|ass\\s*fuck\\w*|sodom\\w*|butt stuff",
   sex: "fuck\\w*|sex|penetrat\\w*|insert\\w*|creampie|gape|missionary|reverse cowgirl|gangbang|threesome|orgy",
@@ -236,21 +238,6 @@ const POSTURE_RE =
 
 // Photographic language, not render language. "8k masterpiece" vocabulary is
 // what produces the airbrushed CG look that reads as AI on sight.
-// Props are the weakest thing this model renders: asked for a dildo it fused the
-// toy into the hand holding it, so the result read as a fist. Naming it as a
-// separate solid object with its own material and edges, and saying explicitly
-// that it is not part of her hand, is the only lever available from the prompt
-// side. It helps; it does not fully solve it.
-function objectClause(req: string, isMale: boolean): string {
-  if (!kw(KW.toys).test(req)) return "";
-  const toyDescription =
-    "The sex toy is a separate solid object with smooth silicone material and clean defined edges, held in her hand but clearly distinct from it, correct proportions, fingers wrapped around it and still countable as fingers. The toy is not merged into her hand or body.";
-  if (!isMale && kw("pussy|vagina|vulva|cunt|slit|clit").test(req)) {
-    return `${toyDescription} She has normal female anatomy, a natural pussy, and no penis. The toy is inserted into her pussy.`;
-  }
-  return toyDescription;
-}
-
 const QUALITY =
   "Candid photograph, natural available light, true-to-life colour, real untouched skin with visible pores and natural texture, natural asymmetry, no airbrushing or smoothing. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
 
@@ -282,7 +269,7 @@ export function videoStillPrompt(
     framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
-    objectClause(req, isMale),
+    propClause(req, { isMale }),
     QUALITY,
     "The camera stays wide and does not move closer. Settles into a still held pose at the end.",
   ]
@@ -318,7 +305,7 @@ export function videoActionPrompt(
     framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
-    objectClause(req, isMale),
+    propClause(req, { isMale }),
     QUALITY,
     "Smooth natural lifelike motion throughout, consistent face and body. The camera stays wide and does not move closer.",
   ]

@@ -21,6 +21,7 @@ import {
   requestIsNude,
   checkCrossGenderRequest,
 } from "./selfie";
+import { propClause, propNegative } from "./props";
 import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
@@ -248,11 +249,27 @@ export async function startImageJob(
   // keyword builder is the fallback when no key is set or the call fails.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
   const refined = await refineMediaPrompt("photo", userRequest ?? "", companion);
-  const imagePrompt =
+
+  // The prop specification is appended to whatever prompt we end up with, and
+  // that includes the refined one.
+  //
+  // This is where the baseball bat came from. The builders below already
+  // described the toy properly, but a successful refine REPLACED the builder
+  // output wholesale, so on the path that actually runs in production the prop
+  // spec was never sent at all — it only existed in the fallback nobody hits.
+  // Grok is told to describe props well and usually does, but "usually" is not
+  // a constraint, and the one it wrote was the abstract "correct size" that the
+  // renderer cannot act on.
+  const props = propClause(userRequest ?? "", { isMale: isMaleCompanion(companion.gender) });
+  const imagePrompt = [
     refined?.[0] ??
-    (imageEndpoint
-      ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
-      : videoStillPrompt(companion, userRequest));
+      (imageEndpoint
+        ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
+        : videoStillPrompt(companion, userRequest)),
+    refined?.[0] ? props : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   // The endpoint centre-crops to a square, which decapitated the result. Square
   // it ourselves, keeping the whole figure, before handing it over.
@@ -301,8 +318,12 @@ export async function startImageJob(
     const input = imageEndpoint
       ? {
           prompt: imagePrompt,
-          negative_prompt:
+          negative_prompt: [
             "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
+            propNegative(userRequest ?? ""),
+          ]
+            .filter(Boolean)
+            .join(", "),
           seed: -1,
           num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
           guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
@@ -450,7 +471,19 @@ const CLOTHING_NEGATIVE =
   "clothed, wearing clothes, dressed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, dress, swimsuit, fabric covering body, partially undressed";
 
 function negativeFor(userReq: string | undefined): string {
-  return requestIsNude(userReq ?? "") ? `${CLOTHING_NEGATIVE}, ${VIDEO_NEGATIVE}` : VIDEO_NEGATIVE;
+  const base = requestIsNude(userReq ?? "")
+    ? `${CLOTHING_NEGATIVE}, ${VIDEO_NEGATIVE}`
+    : VIDEO_NEGATIVE;
+  const props = propNegative(userReq ?? "");
+  return props ? `${base}, ${props}` : base;
+}
+
+// The companion's own sex, which decides whether the prop spec asserts female
+// anatomy. Kept next to the negative builder because both are per-request
+// plumbing rather than part of any public surface.
+function isMaleCompanion(gender: string | null | undefined): boolean {
+  const g = (gender ?? "female").toLowerCase();
+  return g === "male" || g === "trans-male";
 }
 
 // Create a media_jobs row and fire the async image-to-video job, using the
@@ -545,8 +578,11 @@ export async function startVideoJob(
   // Now the slow part, with a job row already standing behind it.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
   const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount);
+  // Same reason as the photo path: a successful refine replaces the builder, so
+  // the prop spec is re-appended to every scene rather than lost.
+  const videoProps = propClause(userReq ?? "", { isMale: isMaleCompanion(companion.gender) });
   const scenePrompts = refinedVideo?.length
-    ? refinedVideo
+    ? refinedVideo.map((p) => (videoProps ? `${p} ${videoProps}` : p))
     : [videoActionPrompt(companion, userReq)];
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);

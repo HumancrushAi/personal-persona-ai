@@ -56,7 +56,7 @@ ${
 }
 - the explicit act, in the user's own vocabulary: tits, pussy, ass, nipples, cock, dildo. Do not euphemise
 - the POSTURE, which you must INFER from the act rather than wait to be told. State the body posture clearly and explicitly to avoid awkward default standing poses. For explicit or intimate acts, always choose a natural, flattering posture: fingering or masturbating means lying on her back, reclining on a bed with legs spread, or sitting with knees parted; riding means straddling, knees on the bed; twerking or from-behind means on all fours or bent over at the waist. Never default to standing unless the user explicitly requests standing (e.g. "standing in the shower"). Never leave the posture implied or undefined
-- any prop or sex toy as its own solid object: name the material (silicone, glass, latex), give it clean edges and a correct size relative to her hand and body, and state that it is separate from her hand and not merged into it
+- any prop or sex toy as its own solid object: name the material (matte silicone, glass, latex) and a solid colour, give it clean edges, and anchor its SIZE against her own body in words the renderer can act on — "about as long as her hand from wrist to fingertip", "roughly two fingers thick". Never write "correct size", "correct proportions" or "appropriately sized": those are abstract rules the renderer cannot act on, and what comes back is a tan wood-grained pole the length of her arm. A large toy is still at most the length of her forearm. State that the object is separate from her hand and not merged into it
 - where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
 ${
   nude
@@ -249,7 +249,7 @@ Include, in this order:
 - setting with real detail, and the specific light in it (window light, golden hour, overcast, lamplight)
 - camera language: shot on a full-frame DSLR, 50mm or 85mm lens, shallow depth of field, natural bokeh
 - realism markers: real skin texture with visible pores and fine lines, natural asymmetry, flyaway hairs, subtle skin tone variation, no airbrushing, no smoothing, no beauty filter
-- any object or prop as a separate solid item with its own material, weight and clean edges, correctly proportioned and distinct from her hands
+- any object or prop as a separate solid item with its own material, colour, weight and clean edges, distinct from her hands, and sized against her body in concrete terms ("about as long as her forearm") rather than as "correctly proportioned", which the renderer cannot act on
 
 Never write "8k", "masterpiece", "ultra HD" or similar render tags — they push the image toward looking generated. Aim for a real photograph taken by a real person.
 

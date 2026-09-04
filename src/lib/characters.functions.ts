@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateCompanionPortrait } from "./portrait.server";
+import { screenCharacterSpec, BLOCKED_CONTENT } from "./safety";
 
 const Input = z.object({
   name: z.string().min(1).max(40),
@@ -25,6 +26,28 @@ export const generateCharacter = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => Input.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Every free-text field is screened before anything is generated.
+    //
+    // The zod schema bounds age to 18-60 and nothing else was checked, so a
+    // companion could be created with an adult age and a vibe, outfit or name
+    // describing a child — text that went straight into the portrait prompt and
+    // was rendered. The site is 18+ and this is the one rule that has to hold
+    // whatever anyone types, so it is enforced here, before a single credit or
+    // API call is spent, rather than left to the image provider's own filter.
+    const screen = screenCharacterSpec({
+      age: data.age,
+      fields: [
+        data.name,
+        data.vibe,
+        data.outfit,
+        data.hair,
+        data.eyes,
+        data.bodyType,
+        data.ethnicity,
+      ],
+    });
+    if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
 
     const genderWord =
       data.gender === "male" || data.gender === "trans-male"

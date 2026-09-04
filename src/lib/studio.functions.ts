@@ -92,6 +92,13 @@ export const studioGenerate = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+
+    // Admin-only is not a reason to skip this. The 18+ rule is absolute and
+    // applies to every path that can reach an image model, whoever is signed in.
+    const { screenUserMessage, BLOCKED_CONTENT } = await import("./safety");
+    const screen = screenUserMessage(data.prompt);
+    if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Grok expands the short description into a full photographic prompt. The
@@ -165,6 +172,10 @@ export const studioClip = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+
+    const { screenUserMessage, BLOCKED_CONTENT } = await import("./safety");
+    const explicitScreen = screenUserMessage(data.prompt ?? "");
+    if (!explicitScreen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${explicitScreen.reason}`);
 
     const { runpodEndpoint, runpodRun } = await import("./runpod");
     const endpoint = runpodEndpoint("video");
@@ -297,6 +308,11 @@ export const studioGenerateExplicit = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+
+    const { screenUserMessage: screenExplicit, BLOCKED_CONTENT: BLOCKED } =
+      await import("./safety");
+    const nudeScreen = screenExplicit(data.prompt);
+    if (!nudeScreen.allowed) throw new Error(`${BLOCKED}: ${nudeScreen.reason}`);
 
     const { runpodEndpoint, runpodRun } = await import("./runpod");
     // A ComfyUI endpoint on RUNPOD_IMAGE_ENDPOINT is the one-shot render and the

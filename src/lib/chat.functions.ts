@@ -6,6 +6,7 @@ import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 import { hasUsableName, extractName, askedForName } from "./user-name";
 import { chatComplete } from "./ai";
+import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
 import { wantsSelfie, wantsVideo, checkCrossGenderRequest } from "./selfie";
 import { deductCredits } from "./credit-wallet";
 import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.functions";
@@ -54,7 +55,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name")
+      .select("display_name, user_memory")
       .eq("id", userId)
       .maybeSingle();
 
@@ -295,7 +296,16 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const scenario = getScenario((conv as any).scenario);
     const level = (conv as any).relationship_level ?? 1;
-    const memory = ((conv as any).memory ?? "").trim();
+    // What she knows about the person, as opposed to about this conversation.
+    //
+    // The store moved from conversations.memory to profiles.user_memory so that
+    // every companion shares it — the same reasoning as the name, and the same
+    // thing the user asked for: tell one of them, and they all know. The old
+    // per-conversation rows are still read here and folded in, so nobody loses
+    // the memory they have already built up and no backfill is needed.
+    const legacyMemory = ((conv as any).memory ?? "").trim();
+    const knownFacts = mergeFacts(parseMemory(profile?.user_memory), parseMemory(legacyMemory));
+    const memory = formatMemory(knownFacts);
     const summary = ((conv as any).summary ?? "").trim();
 
     const systemPrompt = [
@@ -426,30 +436,33 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       }
     }
 
-    // Memory extraction: every 4 user messages do a cheap extraction
-    let newMemory = memory;
-    if (newXp % 4 === 0) {
+    // Learn from this message.
+    //
+    // This used to run on every fourth message (newXp % 4), which meant three
+    // disclosures out of four were never seen at all — say what you do for a
+    // living on the wrong turn and she simply never knew it. It now runs on any
+    // message that could plausibly carry a durable fact, which is a cheap local
+    // regex rather than a model call, so it costs less on the "mmm" messages
+    // and catches the ones that matter.
+    //
+    // It also merges rather than appends: a single-value key like city
+    // overwrites in place, so telling her you moved corrects her instead of
+    // leaving both answers in a prompt headed "do not contradict".
+    if (looksFactual(data.content)) {
       try {
-        const extracted = await chatComplete(
-          [
-            {
-              role: "system",
-              content:
-                "Extract ONE short factual line about the user from their latest message (name, job, where they live, what they like, mood, plans). Reply with only the fact, no preamble, max 100 chars. If nothing notable, reply with exactly: NONE",
-            },
-            { role: "user", content: data.content },
-          ],
-          { maxTokens: 60 },
-        );
-        if (extracted && !/^none/i.test(extracted)) {
-          const trimmed = extracted.replace(/^[-•*]\s*/, "").slice(0, 120);
-          newMemory = (memory ? memory + "\n" : "") + "- " + trimmed;
-          // cap memory at ~40 lines
-          const lines = newMemory.split("\n").slice(-40);
-          newMemory = lines.join("\n");
+        const { extractUserFacts } = await import("./memory.server");
+        const lastLine = [...(history ?? [])]
+          .reverse()
+          .find((m) => m.role === "assistant")?.content;
+        const learned = await extractUserFacts(data.content, lastLine);
+        if (learned.length) {
+          await supabase
+            .from("profiles")
+            .update({ user_memory: formatMemory(mergeFacts(knownFacts, learned)) })
+            .eq("id", userId);
         }
       } catch {
-        /* ignore */
+        /* never let learning break a paid reply */
       }
     }
 
@@ -459,7 +472,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
         relationship_xp: newXp,
         relationship_level: newLevel,
-        memory: newMemory,
         summary: newSummary,
       })
       .eq("id", data.conversationId);

@@ -286,6 +286,7 @@ export type Database = {
           avatar_url: string | null;
           created_at: string;
           display_name: string | null;
+          user_memory: string | null;
           id: string;
           last_reengaged_at: string | null;
           subscription_id: string | null;
@@ -301,6 +302,7 @@ export type Database = {
           avatar_url?: string | null;
           created_at?: string;
           display_name?: string | null;
+          user_memory?: string | null;
           id: string;
           last_reengaged_at?: string | null;
           subscription_id?: string | null;
@@ -316,6 +318,7 @@ export type Database = {
           avatar_url?: string | null;
           created_at?: string;
           display_name?: string | null;
+          user_memory?: string | null;
           id?: string;
           last_reengaged_at?: string | null;
           subscription_id?: string | null;

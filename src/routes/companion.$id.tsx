@@ -203,13 +203,16 @@ function Page() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!authed) {
-      navigate({ to: "/auth" });
+      // Carry the companion through, so signing up lands back on her rather
+      // than on a generic browse page — the whole reason they were sent away
+      // was that they wanted to talk to this one.
+      navigate({ to: "/auth", search: { companion: id } as any });
       return;
     }
     setSaving(true);
     try {
       const { data: user } = await supabase.auth.getUser();
-      
+
       // Update companion status if this is the creator
       if (companion && companion.created_by === currentUserId) {
         const { error: compErr } = await supabase
@@ -352,11 +355,15 @@ function Page() {
                 className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/10 text-primary accent-primary focus:ring-primary cursor-pointer shrink-0"
               />
               <div>
-                <label htmlFor="isPublic" className="text-sm font-semibold text-white cursor-pointer select-none">
+                <label
+                  htmlFor="isPublic"
+                  className="text-sm font-semibold text-white cursor-pointer select-none"
+                >
                   Publish to community gallery
                 </label>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Makes this character visible on the home page for everyone to discover and chat with.
+                  Makes this character visible on the home page for everyone to discover and chat
+                  with.
                 </p>
               </div>
             </div>

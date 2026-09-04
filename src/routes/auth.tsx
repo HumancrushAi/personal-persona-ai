@@ -12,17 +12,18 @@ import { z } from "zod";
 const authSearchSchema = z.object({
   companion: z.string().optional(),
   redirect: z.string().optional(),
+  mode: z.enum(["signin", "signup"]).optional(),
 });
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search) => authSearchSchema.parse(search),
-  head: () => ({ meta: [{ title: "Sign in — HumanCrush.com" }] }),
+  head: () => ({ meta: [{ title: "Create your account — HumanCrush.com" }] }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { companion, redirect } = Route.useSearch();
+  const { companion, redirect, mode: modeParam } = Route.useSearch();
 
   // After auth, go straight to the redirected page, companion, or browse.
   const goAfterAuth = () => {
@@ -34,7 +35,15 @@ function AuthPage() {
       navigate({ to: "/browse" });
     }
   };
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  // Signing up is the default, not signing in.
+  //
+  // Everyone who lands here from a gated action — tapping chat on a companion,
+  // finishing the create wizard — is by definition someone without an account,
+  // and showing them a login form asks them to remember a password they never
+  // set. The toggle to sign in is right below the button for the minority who
+  // already have one, and ?mode=signin still opens straight on it for a link
+  // that knows better.
+  const [mode, setMode] = useState<"signin" | "signup">(modeParam ?? "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -126,7 +135,7 @@ function AuthPage() {
     setLoading(true);
     try {
       // Supabase-native OAuth: redirects the browser to Google, then back.
-      const dest = redirect ? redirect : (companion ? `/companion/${companion}` : "/browse");
+      const dest = redirect ? redirect : companion ? `/companion/${companion}` : "/browse";
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: `${window.location.origin}${dest}` },
@@ -157,8 +166,8 @@ function AuthPage() {
         </h1>
         <p className="mt-1 text-center text-sm text-muted-foreground">
           {mode === "signin"
-             ? "Sign in to keep your chats and credits."
-             : "25 free messages, no card needed. 18+ only."}
+            ? "Sign in to keep your chats and credits."
+            : "25 free messages, no card needed. 18+ only."}
         </p>
 
         {googleEnabled && (
@@ -223,8 +232,13 @@ function AuthPage() {
                 onChange={(e) => setAgreedAge(e.target.checked)}
                 className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/10 text-primary accent-primary focus:ring-primary cursor-pointer"
               />
-              <label htmlFor="age18" className="text-xs text-muted-foreground leading-snug cursor-pointer select-none">
-                I confirm I am <span className="font-semibold text-foreground">18 years of age or older</span> (21+ where required) and agree to the Terms of Service & Privacy Policy 🔞
+              <label
+                htmlFor="age18"
+                className="text-xs text-muted-foreground leading-snug cursor-pointer select-none"
+              >
+                I confirm I am{" "}
+                <span className="font-semibold text-foreground">18 years of age or older</span> (21+
+                where required) and agree to the Terms of Service & Privacy Policy 🔞
               </label>
             </div>
           )}

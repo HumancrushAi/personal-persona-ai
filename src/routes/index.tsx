@@ -30,7 +30,12 @@ import {
   UserPlus,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
-import { companionForReel, companionReelUrl, getCompanionReel, getEffectiveCompanionReel } from "@/lib/reels";
+import {
+  companionForReel,
+  companionReelUrl,
+  getCompanionReel,
+  getEffectiveCompanionReel,
+} from "@/lib/reels";
 import { useCloseOnBack } from "@/hooks/use-close-on-back";
 import { FAQSection } from "@/components/FAQSection";
 
@@ -240,7 +245,9 @@ function Landing() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companions")
-        .select("id, name, age, ethnicity, short_bio, image_url, gender, orientation, art_style, created_by")
+        .select(
+          "id, name, age, ethnicity, short_bio, image_url, gender, orientation, art_style, created_by",
+        )
         .order("sort_order");
       if (error) throw error;
       return data as Companion[];
@@ -295,7 +302,9 @@ function Landing() {
   const bannerSlides = useMemo(() => {
     if (!companions || companions.length === 0) return [];
     return BANNERS.map((b) => {
-      const comp = companions.find((c) => c.id === b.id) || companions.find((c) => c.name.toLowerCase() === b.name.toLowerCase());
+      const comp =
+        companions.find((c) => c.id === b.id) ||
+        companions.find((c) => c.name.toLowerCase() === b.name.toLowerCase());
       if (!comp) return null;
       const reel = getEffectiveCompanionReel(comp) || "";
       return {
@@ -317,13 +326,17 @@ function Landing() {
       if (activeCat === "Anime" || q.includes("anime")) {
         list = list.filter((c) => c.gender === "female" || c.gender === "trans-female");
       } else {
-        list = list.filter((c) => (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime");
+        list = list.filter(
+          (c) => (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime",
+        );
       }
     } else if (topTab === "guys") {
       if (activeCat === "Anime" || q.includes("anime")) {
         list = list.filter((c) => c.gender === "male" || c.gender === "trans-male");
       } else {
-        list = list.filter((c) => (c.gender === "male" || c.gender === "trans-male") && c.art_style !== "anime");
+        list = list.filter(
+          (c) => (c.gender === "male" || c.gender === "trans-male") && c.art_style !== "anime",
+        );
       }
     }
 
@@ -414,10 +427,18 @@ function Landing() {
             <span className="text-base">🇺🇸</span> English
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-1.5 px-3 text-[11px] text-white/40">
-            <a href="#" className="hover:underline">Discord</a>
-            <a href="#" className="hover:underline">Help Center</a>
-            <a href="#" className="hover:underline">Contact</a>
-            <a href="#" className="hover:underline">Affiliate</a>
+            <a href="#" className="hover:underline">
+              Discord
+            </a>
+            <a href="#" className="hover:underline">
+              Help Center
+            </a>
+            <a href="#" className="hover:underline">
+              Contact
+            </a>
+            <a href="#" className="hover:underline">
+              Affiliate
+            </a>
           </div>
         </div>
       </aside>
@@ -431,7 +452,6 @@ function Landing() {
         {/* TOP HEADER */}
         <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/85 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-8">
-            
             {/* Mobile Logo & Desktop-Hidden Menu Toggle indicator */}
             <Link to="/" className="flex items-center gap-1.5 lg:hidden shrink-0">
               <Heart className="h-5 w-5 fill-primary text-primary animate-pulse" />
@@ -444,7 +464,7 @@ function Landing() {
             <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-full border border-white/10 shrink-0">
               {[
                 { id: "girls", label: "♀ Girls" },
-                { id: "guys", label: "♂ Guys" }
+                { id: "guys", label: "♂ Guys" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -464,10 +484,19 @@ function Landing() {
             <div className="flex items-center gap-2 shrink-0">
               {authed ? (
                 <>
-                  <Button asChild variant="ghost" size="sm" className="h-8 rounded-full px-2.5 text-[11px] sm:text-sm sm:h-9 sm:px-3">
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-full px-2.5 text-[11px] sm:text-sm sm:h-9 sm:px-3"
+                  >
                     <Link to="/me">Chats</Link>
                   </Button>
-                  <Button asChild size="sm" className="h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow">
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow"
+                  >
                     <Link to="/browse">
                       <Sparkles className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" /> Enter
                     </Link>
@@ -475,16 +504,26 @@ function Landing() {
                 </>
               ) : (
                 <>
-                  <Button asChild variant="ghost" size="sm" className="h-8 rounded-full px-2.5 text-[11px] sm:text-sm text-white/80 sm:h-9 sm:px-3">
-                    <Link to="/auth">Login</Link>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-full px-2.5 text-[11px] sm:text-sm text-white/80 sm:h-9 sm:px-3"
+                  >
+                    <Link to="/auth" search={{ mode: "signin" } as any}>
+                      Login
+                    </Link>
                   </Button>
-                  <Button asChild size="sm" className="h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow">
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow"
+                  >
                     <Link to="/auth">Sign Up</Link>
                   </Button>
                 </>
               )}
             </div>
-
           </div>
         </header>
 
@@ -503,7 +542,7 @@ function Landing() {
             {/* Background glowing blobs */}
             <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-pink-500/10 blur-3xl group-hover:bg-pink-500/20 transition-all duration-700" />
             <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl group-hover:bg-purple-500/20 transition-all duration-700" />
-            
+
             <div className="flex items-center gap-4 z-10">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-2xl shadow-glow">
                 ✨
@@ -513,11 +552,12 @@ function Landing() {
                   EXCLUSIVE SPECIAL OFFER
                 </p>
                 <p className="text-xs text-white/70 mt-0.5 font-light">
-                  Get <strong className="text-white font-semibold">25 Free Messages</strong> instantly on registration · No credit card required.
+                  Get <strong className="text-white font-semibold">25 Free Messages</strong>{" "}
+                  instantly on registration · No credit card required.
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2 shrink-0 z-10">
               <span className="rounded-full bg-white text-black px-5 py-2 text-xs font-extrabold tracking-wider uppercase shadow-lg group-hover:bg-pink-500 group-hover:text-white transition-all duration-300">
                 Claim Free Chats
@@ -533,7 +573,10 @@ function Landing() {
 
         {/* NEW EXPERIENCES — Candy.ai Style Cards */}
         <section className="mx-auto mt-6 max-w-7xl px-4 md:px-6">
-          <SectionTitle title="🔥 New Experiences" subtitle="explore exclusive features & create your companion" />
+          <SectionTitle
+            title="🔥 New Experiences"
+            subtitle="explore exclusive features & create your companion"
+          />
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {/* Card 1: Create Your Own Character */}
             <Link
@@ -545,7 +588,9 @@ function Landing() {
                 <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 border border-pink-500/30">
                   <Sparkles className="h-3 w-3" /> Custom AI
                 </span>
-                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">CREATE YOUR OWN MODEL</h3>
+                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">
+                  CREATE YOUR OWN MODEL
+                </h3>
                 <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
                   Build your dream AI companion. Pick face, body type, personality & style.
                 </p>
@@ -567,7 +612,9 @@ function Landing() {
                 <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 border border-rose-500/30">
                   <Circle className="h-2 w-2 fill-rose-500 animate-pulse" /> Live Cams
                 </span>
-                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">BUILD YOUR VIDEO</h3>
+                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">
+                  BUILD YOUR VIDEO
+                </h3>
                 <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
                   Super hot models in motion. Real video loops, live interaction & camera scenes.
                 </p>
@@ -589,7 +636,9 @@ function Landing() {
                 <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400 border border-indigo-500/30">
                   <Lock className="h-3 w-3" /> Exclusive
                 </span>
-                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">PRIVATE CONTENT</h3>
+                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">
+                  PRIVATE CONTENT
+                </h3>
                 <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
                   Unlock exclusive secret photos, voice notes, and private album collections.
                 </p>
@@ -649,7 +698,9 @@ function Landing() {
                     <p className="font-display text-base font-semibold text-white drop-shadow">
                       {c.name}, {c.age}
                     </p>
-                    <p className="line-clamp-1 text-[11px] text-white/80">{c.short_bio || c.ethnicity}</p>
+                    <p className="line-clamp-1 text-[11px] text-white/80">
+                      {c.short_bio || c.ethnicity}
+                    </p>
                   </div>
                 </button>
               );
@@ -661,10 +712,12 @@ function Landing() {
         <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-white/5 pb-4">
             <div>
-              <h2 className="font-display text-xl font-bold tracking-tight md:text-2xl text-white">Explore Featured Characters</h2>
+              <h2 className="font-display text-xl font-bold tracking-tight md:text-2xl text-white">
+                Explore Featured Characters
+              </h2>
               <p className="text-xs text-white/50 mt-0.5">tap anyone — they message you first</p>
             </div>
-            
+
             {/* Search + Category Filter Strip */}
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {/* Search Bar */}
@@ -716,7 +769,7 @@ function Landing() {
                       loading="lazy"
                       className="h-full w-full object-cover object-top transition duration-700 ease-out group-hover:scale-[1.05]"
                     />
-                    
+
                     {/* Badge: NEW */}
                     {isNew && (
                       <div className="absolute left-3 top-3 z-10 rounded-md bg-grad-primary px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-primary-foreground shadow-glow animate-pulse">
@@ -726,7 +779,8 @@ function Landing() {
 
                     {/* Online status indicator */}
                     <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[9px] backdrop-blur border border-white/10">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> online
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />{" "}
+                      online
                     </div>
 
                     {/* Quick action buttons / icons overlay (lock, video) */}
@@ -742,18 +796,20 @@ function Landing() {
                     </div>
 
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a070e] via-transparent to-transparent pointer-events-none" />
-                    
+
                     <div className="absolute inset-x-0 bottom-0 p-3.5 pt-6 z-10">
                       <div className="flex items-baseline justify-between">
                         <h3 className="font-display text-base font-bold text-white md:text-lg drop-shadow">
                           {c.name}, {c.age}
                         </h3>
                       </div>
-                      <p className="text-[10px] uppercase tracking-wider text-pink-400 font-bold">{c.ethnicity}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-pink-400 font-bold">
+                        {c.ethnicity}
+                      </p>
                       <p className="mt-0.5 line-clamp-1 text-[11px] text-white/70 leading-relaxed font-light">
                         {c.short_bio}
                       </p>
-                      
+
                       <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-3.5 py-1.5 text-[10px] font-bold text-white shadow-md transition-all duration-300 group-hover:scale-105 group-hover:brightness-110">
                         <MessageCircle className="h-3.5 w-3.5" /> Chat now
                       </span>
@@ -767,7 +823,9 @@ function Landing() {
 
         {/* ANIME COMPANIONS SECTION (Bottom of homepage) */}
         {(() => {
-          const animeComps = (companions ?? []).filter((c) => c.art_style === "anime" || (c.image_url || "").includes("anime"));
+          const animeComps = (companions ?? []).filter(
+            (c) => c.art_style === "anime" || (c.image_url || "").includes("anime"),
+          );
           if (!animeComps.length) return null;
           return (
             <section className="mx-auto mt-14 max-w-7xl px-4 lg:px-6">
@@ -791,7 +849,7 @@ function Landing() {
                           loading="lazy"
                           className="h-full w-full object-cover object-top transition duration-700 ease-out group-hover:scale-[1.05]"
                         />
-                        
+
                         {/* Quick action buttons / icons overlay (lock, video) */}
                         <div className="absolute right-3 top-3 flex flex-col gap-1.5">
                           {reel && (
@@ -805,16 +863,18 @@ function Landing() {
                         </div>
 
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0a070e] via-transparent to-transparent pointer-events-none" />
-                        
+
                         <div className="absolute inset-x-0 bottom-0 p-3.5 pt-6 z-10">
                           <h3 className="font-display text-sm font-bold text-white drop-shadow">
                             {c.name}, {c.age}
                           </h3>
-                          <p className="text-[9px] uppercase tracking-wider text-purple-400 font-bold">{c.ethnicity} · Anime</p>
+                          <p className="text-[9px] uppercase tracking-wider text-purple-400 font-bold">
+                            {c.ethnicity} · Anime
+                          </p>
                           <p className="mt-0.5 line-clamp-1 text-[10px] text-white/70 leading-relaxed font-light">
                             {c.short_bio}
                           </p>
-                          
+
                           <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 text-[9px] font-bold text-white shadow-md transition-all duration-300 group-hover:scale-105 group-hover:brightness-110">
                             <MessageCircle className="h-3 w-3" /> Chat now
                           </span>
@@ -919,7 +979,9 @@ function SectionTitle({
         <h2 className="font-display text-base font-extrabold tracking-wider uppercase text-white md:text-lg drop-shadow-sm">
           {title}
         </h2>
-        {subtitle && <p className="text-[11px] text-white/50 mt-0.5 font-light tracking-wide">{subtitle}</p>}
+        {subtitle && (
+          <p className="text-[11px] text-white/50 mt-0.5 font-light tracking-wide">{subtitle}</p>
+        )}
       </div>
       {cta}
     </div>
@@ -986,7 +1048,9 @@ function Nav() {
               size="sm"
               className="h-10 rounded-full bg-grad-primary px-3 text-xs text-primary-foreground sm:px-3.5 sm:text-sm"
             >
-              <Link to="/auth">Sign in</Link>
+              <Link to="/auth" search={{ mode: "signin" } as any}>
+                Sign in
+              </Link>
             </Button>
           )}
         </nav>
@@ -1032,7 +1096,10 @@ function StoryViewer({
       >
         {/* Progress Bar */}
         <div className="absolute inset-x-3 top-3 z-20 h-1 overflow-hidden rounded-full bg-white/20">
-          <div className="h-full bg-white transition-all duration-75" style={{ width: `${progress}%` }} />
+          <div
+            className="h-full bg-white transition-all duration-75"
+            style={{ width: `${progress}%` }}
+          />
         </div>
 
         {/* Header Header */}
@@ -1046,7 +1113,9 @@ function StoryViewer({
               />
             </span>
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-white leading-tight">{companion.name}, {companion.age}</span>
+              <span className="text-sm font-bold text-white leading-tight">
+                {companion.name}, {companion.age}
+              </span>
               <span className="text-[10px] text-primary/90 font-medium">Online now</span>
             </div>
           </div>
@@ -1099,9 +1168,7 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
   const [reelFailed, setReelFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const reel = !reelFailed
-    ? getEffectiveCompanionReel(companion)
-    : null;
+  const reel = !reelFailed ? getEffectiveCompanionReel(companion) : null;
 
   useEffect(() => {
     const t1 = setTimeout(() => {
@@ -1197,7 +1264,8 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
                 </span>
               ) : (
                 <span className="text-emerald-400 flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling at
+                  you 💋
                 </span>
               )}
             </div>
@@ -1334,7 +1402,7 @@ function AutoPlayVideo({
           }
         });
       },
-      { threshold: 0.01 }
+      { threshold: 0.01 },
     );
 
     observer.observe(video);

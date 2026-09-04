@@ -77,7 +77,9 @@ export function SiteHeader({ right }: { right?: ReactNode }) {
               size="sm"
               className="h-10 rounded-full px-2.5 text-xs sm:px-3 sm:text-sm"
             >
-              <Link to="/auth">Sign in</Link>
+              <Link to="/auth" search={{ mode: "signin" } as any}>
+                Sign in
+              </Link>
             </Button>
           )}
           {right}

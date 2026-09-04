@@ -251,6 +251,58 @@ async function muxAudio(mp4: Buffer): Promise<Buffer> {
   }
 }
 
+// Chat photos are delivered at 640x640, and that is most of why they look cheap.
+//
+// The endpoint renders a 640-square clip (see start-frame.server.ts, which
+// exists entirely to work around that crop), one frame of which becomes the
+// photo. 640px is a small picture on a phone that will draw it at three device
+// pixels per CSS pixel, and no amount of prompt work fixes a picture that is
+// simply too small — the softness people read as "AI-looking" is partly just
+// upscaling done by the browser, badly.
+//
+// Lanczos plus a light unsharp does that resize properly. It adds no detail
+// that was not rendered; it stops the detail that WAS rendered from being
+// smeared on the way to the screen. The sharpen is deliberately gentle: this
+// codebase already learned that oversharpening is itself an AI tell.
+//
+// JPEG rather than PNG, because a photograph is what this is. A 1280 JPEG at
+// q90 is roughly half the bytes of the 640 PNG it replaces, so the picture gets
+// both bigger and faster. Nothing reads the stored extension — it is a URL in a
+// message row — so the format is free to change.
+const STILL_TARGET = 1280;
+
+type Encoded = { buf: Buffer; ext: string; mime: string };
+
+const AS_PNG = (buf: Buffer): Encoded => ({ buf, ext: "png", mime: "image/png" });
+
+export async function enhanceStill(png: Buffer): Promise<Encoded> {
+  try {
+    const sharp = (await import("sharp")).default;
+    const { width = 0, height = 0 } = await sharp(png).metadata();
+    const side = Math.max(width, height);
+    if (!side) return AS_PNG(png);
+
+    let img = sharp(png);
+    // Only ever enlarged, and never past 2x — beyond that Lanczos is inventing
+    // pixels and it starts to look like exactly what it is. A larger render
+    // (a real image endpoint, one day) is left alone.
+    if (side < STILL_TARGET) {
+      const scale = Math.min(2, STILL_TARGET / side);
+      img = img
+        .resize(Math.round(width * scale), Math.round(height * scale), { kernel: "lanczos3" })
+        .sharpen({ sigma: 0.7, m1: 0.4, m2: 1.2 });
+    }
+
+    const buf = await img
+      .jpeg({ quality: 90, mozjpeg: true, chromaSubsampling: "4:4:4" })
+      .toBuffer();
+    return { buf, ext: "jpg", mime: "image/jpeg" };
+  } catch {
+    // A photo that stores is worth more than a photo that is slightly crisper.
+    return AS_PNG(png);
+  }
+}
+
 // Moaning belongs on a chat clip of a female companion, not on a promo clip
 // bound for a public page and not on a male companion. Studio jobs carry no
 // conversation, which is also how they are excluded.
@@ -286,9 +338,23 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
     buf = await muxAudio(buf);
   }
 
+  // Chat photos only. A studio job has no conversation, and its plate goes on to
+  // the banner compositor, which does its own grading and sharpening — running
+  // this first would sharpen it twice and re-encode a source that is about to be
+  // re-encoded again. The banner pipeline is settled; leave it exactly as it is.
+  let still: Encoded | null = null;
+  if (job.kind === "image" && job.conversation_id) {
+    still = await enhanceStill(buf);
+    buf = still.buf;
+  }
+
   const isVideo = job.kind === "video";
-  const fileExt = isVideo ? "mp4" : job.kind === "voice" ? "mp3" : "png";
-  const mimeType = isVideo ? "video/mp4" : job.kind === "voice" ? "audio/mpeg" : "image/png";
+  const fileExt = isVideo ? "mp4" : job.kind === "voice" ? "mp3" : (still?.ext ?? "png");
+  const mimeType = isVideo
+    ? "video/mp4"
+    : job.kind === "voice"
+      ? "audio/mpeg"
+      : (still?.mime ?? "image/png");
   const path = `generated/${job.user_id}/${job.id}.${fileExt}`;
 
   try {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
+import { hasUsableName, extractName, askedForName } from "./user-name";
 import { chatComplete } from "./ai";
 import { wantsSelfie, wantsVideo, checkCrossGenderRequest } from "./selfie";
 import { deductCredits } from "./credit-wallet";
@@ -56,11 +57,46 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .select("display_name")
       .eq("id", userId)
       .maybeSingle();
-    const userName = profile?.display_name || "User";
+
+    // What to call them, and whether we actually know it.
+    //
+    // profiles.display_name is seeded from the email local part, so it holds
+    // things like "lgtopseller" and "nft.king137" — and companions opened with
+    // "Hey there, lgtopseller", which tells the user they are talking to a
+    // database row. The address it was seeded from is what makes the two
+    // distinguishable; the string alone is not.
+    const { data: authUser } = await supabase.auth.getUser();
+    const email = authUser?.user?.email ?? null;
+    let userName = hasUsableName(profile?.display_name, email)
+      ? (profile!.display_name as string)
+      : "";
 
     // Safety gate: block prohibited/minor content before storing or charging.
     const screen = screenUserMessage(data.content);
     if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
+
+    // If we do not know their name yet, this message may be them telling us.
+    //
+    // Stored on the profile rather than the conversation, because the ask was
+    // for every companion to know it — a name given to one of them is a name
+    // given to the site. A bare "Dave" only counts when her previous line
+    // actually asked; without that context it is as likely to be anything else.
+    if (!userName) {
+      const { data: lastAssistant } = await supabase
+        .from("messages")
+        .select("content")
+        .eq("conversation_id", data.conversationId)
+        .eq("role", "assistant")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const captured = extractName(data.content, askedForName(lastAssistant?.content));
+      if (captured) {
+        userName = captured;
+        await supabase.from("profiles").update({ display_name: captured }).eq("id", userId);
+      }
+    }
 
     const { data: bal } = await supabase
       .from("credit_balances")
@@ -265,7 +301,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const systemPrompt = [
       `You are ${p.nickname}, the user's adult (18+) AI girlfriend in an explicit, consenting roleplay. Stay in character at all times. Never break the fourth wall. Never say you are an AI, a model, a chatbot, or "just" anything.`,
       `Visual / base identity: ${c.age}-year-old ${c.ethnicity} woman named ${c.name}. Base personality: ${c.base_personality}`,
-      `The user's name is ${userName}. Address them as ${userName} naturally in conversation when appropriate.`,
+      userName
+        ? `The user's name is ${userName}. Use it naturally in conversation — greeting them, teasing them, during intimate moments — the way someone who knows them would. Do not use it in every single message; that reads as a script.`
+        : `YOU DO NOT KNOW THEIR NAME YET, and you want to. Early on — in your first or second reply, whenever it fits — ask what to call them, once, in your own voice and in character ("wait, i don't even know your name yet — what do i call you?"). Ask ONCE. If they dodge or refuse, drop it completely and never ask again. Until they tell you, just talk to them directly; never invent a name, never guess one, and never call them "User" or anything from their email address.`,
       p.identity ? `Identity (user-customized): ${p.identity}` : "",
       p.personality_traits ? `Personality traits: ${p.personality_traits}` : "",
       p.tone ? `Tone of voice (match this when you reply): ${p.tone}` : "",

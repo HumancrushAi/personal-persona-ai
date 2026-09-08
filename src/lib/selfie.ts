@@ -193,18 +193,6 @@ function booruPonyPrompt(
   ];
   return tags.filter(Boolean).join(", ");
 }
-    "source_photo, realistic, photorealistic, raw photo",
-    who,
-    `mature adult ${c.ethnicity} ${noun}, ${c.age} years old`,
-    body,
-    "full body, mirror selfie, holding phone, indoor, detailed skin",
-    nudeTags,
-    explicit,
-    req || "looking at viewer, seductive",
-    styleBackstory || "",
-  ];
-  return tags.filter(Boolean).join(", ");
-}
 
 // FLUX.1 Kontext (RunPod) EDITS the companion's own photo instead of generating
 // a body from scratch, so identity comes from the input frame and the prompt is

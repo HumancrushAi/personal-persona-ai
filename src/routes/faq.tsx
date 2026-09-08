@@ -12,7 +12,7 @@ export const Route = createFileRoute("/faq")({
       {
         name: "description",
         content:
-          "Answers about HumanCrush.com — pricing, credits, subscriptions, NSFW, custom AI companions, privacy, and more.",
+          "Answers about HumanCrush.com — pricing, credits, subscriptions, custom AI companions, privacy, and more.",
       },
       { property: "og:title", content: "FAQ — HumanCrush.com" },
       {

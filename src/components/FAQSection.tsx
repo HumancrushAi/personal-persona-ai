@@ -20,8 +20,8 @@ export const FAQS: { q: string; a: string }[] = [
     a: "Yes. Your chats, custom characters, and memories are tied to your account and never shared. We don't sell your data, and you can delete your account and chat history at any time.",
   },
   {
-    q: "Is HumanCrush.com NSFW?",
-    a: "HumanCrush.com is an 18+ platform. Spicy and NSFW roleplay is unlocked for verified adult users. You're always in control — set tone and boundaries per companion, and adjust them at any time from the chat header.",
+    q: "Is HumanCrush.com suitable for adults?",
+    a: "HumanCrush.com is designed for users 18 and older. You can engage in deep, personalized conversations and custom roleplay scenarios. You are always in control — set tone and boundaries per companion, and adjust them at any time from the chat header.",
   },
   {
     q: "How do credits and subscriptions work?",

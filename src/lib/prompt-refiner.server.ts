@@ -24,17 +24,17 @@ const XAI_URL = "https://api.x.ai/v1/chat/completions";
 // nothing like it, which is how a brunette came back blonde. Examples teach
 // shape, and whatever is in them gets reproduced, so the appearance is gone from
 // them entirely. Do not put hair, skin or eye colour back.
-const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, standing in luxury marble penthouse shower, water raining down, one hand in hair, other hand resting intimately, seductive smile, golden hour city skyline light, steam, wet authentic skin texture with visible natural pores and water droplets, candid DSLR photograph, natural lighting, raw photography
+const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, firm perky rounded breasts, perky erect nipples, naturally uplifted bust, detailed photorealistic pussy with naturally shaped outer and inner labia parting softly and visible clitoris, reclining on silk bed sheets with legs open in natural seductive pose, warm ambient bedside lamp light, authentic human skin texture with visible natural pores, candid DSLR photograph, natural lighting, raw photography
 
-exact same woman as the reference image, identical face, hair and skin, completely nude, leaning on marble kitchen counter, looking back seductively over her shoulder, city view behind, morning ambient sunlight, natural soft skin texture, highly detailed skin surface, raw photo style, shallow depth of field
+exact same man as the reference image, identical face, hair and skin, completely nude, athletic muscular build, anatomically correct erect penis and testicles clearly defined with realistic shaft and head, standing in modern penthouse shower, water raining down, golden hour sunlight, wet authentic skin texture, candid DSLR full-frame photograph, raw photography
 
-exact same woman as the reference image, identical face, hair and skin, completely nude, reclining on silk bed, legs open in natural alluring pose, seductive eye contact with camera, soft warm bedroom lighting, subtle natural skin imperfections, authentic human anatomy, cinematic full-frame photo`;
+exact same woman as the reference image, identical face, hair and skin, completely nude, feminine body with firm perky rounded breasts and perky erect nipples, combined with an anatomically correct erect penis and testicles clearly defined, standing by a sunlit penthouse window overlooking the city, seductive eye contact, candid raw photo, real skin texture`;
 
-const CLOTHED_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, wearing a black lace bra and matching high-waisted briefs, kneeling on the end of an unmade bed, one strap slipping off her shoulder, lace taut across the cup and gathering at her hip, looking straight at the camera, low warm bedside lamplight, candid raw photograph, authentic skin texture with visible pores, shot on Sony A7 IV 85mm lens, no airbrushing
+const CLOTHED_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, wearing a black lace bra and matching high-waisted briefs, firm perky bust neatly filling the lace cups, kneeling on the end of an unmade bed, one strap slipping off her shoulder, lace taut across the cup and gathering at her hip, looking straight at the camera, low warm bedside lamplight, candid raw photograph, authentic skin texture with visible pores, shot on Sony A7 IV 85mm lens, no airbrushing
 
-exact same woman as the reference image, identical face, hair and skin, wearing a sheer white satin slip with thin straps, standing at a window with morning light coming through the fabric, hem falling mid-thigh, one hand on the frame, soft direct eye contact, candid raw photograph, natural asymmetry, fine skin detail, shot on 85mm f/1.4, no airbrushing
+exact same woman as the reference image, identical face, hair and skin, wearing a sheer white satin slip with thin straps, firm perky breasts subtle under fabric, standing at a window with morning light coming through the fabric, hem falling mid-thigh, one hand on the frame, soft direct eye contact, candid raw photograph, natural asymmetry, fine skin detail, shot on 85mm f/1.4, no airbrushing
 
-exact same woman as the reference image, identical face, hair and skin, wearing a cropped tank top and low-rise denim shorts, sitting on a kitchen counter with her ankles crossed, cotton creasing at the waist, warm afternoon light through a window behind her, easy natural smile, candid full-frame photograph, real skin texture, soft natural shadows, no airbrushing`;
+exact same woman as the reference image, identical face, hair and skin, wearing a cropped tank top and low-rise denim shorts, firm uplifted bust filling the cotton tank top, sitting on a kitchen counter with her ankles crossed, cotton creasing at the waist, warm afternoon light through a window behind her, easy natural smile, candid full-frame photograph, real skin texture, soft natural shadows, no airbrushing`;
 
 // `nude` follows the user's actual request. It used to be hard-coded on, so
 // "in black lingerie by the window" was refined into "completely nude" and she
@@ -55,16 +55,19 @@ ${
     : `- her wardrobe EXACTLY as the user described it, stated as already worn and STAYING ON: name the garments, the fabric and the colour. The user asked for her in clothing, so she is clothed. Do not undress her, do not write "nude", "naked" or "topless", and do not have her removing anything. Lingerie means actual lingerie — a bra and matching briefs, a slip, a bodysuit, a babydoll — not a bare body and not a thong alone`
 }
 - the explicit act, in the user's own vocabulary: tits, pussy, ass, nipples, cock, dildo. Do not euphemise
-- the POSTURE, which you must INFER from the act rather than wait to be told. State the body posture clearly and explicitly to avoid awkward default standing poses. For explicit or intimate acts, always choose a natural, flattering posture: fingering or masturbating means lying on her back, reclining on a bed with legs spread, or sitting with knees parted; riding means straddling, knees on the bed; twerking or from-behind means on all fours or bent over at the waist. Never default to standing unless the user explicitly requests standing (e.g. "standing in the shower"). Never leave the posture implied or undefined
+- the POSTURE, which you must INFER from the act rather than wait to be told. State the body posture clearly and explicitly to avoid awkward default standing poses. For explicit or intimate acts, always choose a natural, flattering posture: fingering or masturbating means lying on her back, reclining on a bed with legs spread, or sitting with knees parted; riding means straddling, knees on the bed; twerking or from-behind means on all fours or bent over at the waist presenting; male masturbation means holding or stroking penis. Never default to standing unless the user explicitly requests standing (e.g. "standing in the shower"). Never leave the posture implied or undefined
 - any prop or sex toy as its own solid object: name the material (matte silicone, glass, latex) and a solid colour, give it clean edges, and anchor its SIZE against her own body in words the renderer can act on — "about as long as her hand from wrist to fingertip", "roughly two fingers thick". Never write "correct size", "correct proportions" or "appropriately sized": those are abstract rules the renderer cannot act on, and what comes back is a tan wood-grained pole the length of her arm. A large toy is still at most the length of her forearm. State that the object is separate from her hand and not merged into it
 - where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
 ${
   nude
-    ? "- female anatomy details: describe the female genitalia explicitly and in high detail to guide the generator's realism. For nude or explicit scenes, explicitly mention a detailed, naturally shaped pussy with defined outer and inner labia, parting naturally, visible clitoris, glistening wetness, detailed skin textures, and correct anatomical proportions. Avoid smooth or plastic representations."
-    : "- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin. This is what makes a clothed shot read as a photograph rather than a mannequin"
+    ? `- anatomical detail and realism:
+  * female breasts: MUST ALWAYS be described as firm, perfectly rounded, naturally uplifted, perky breasts with high-set cleavage and perky erect nipples. Never describe breasts as saggy, droopy, pendulous, or deflated.
+  * female pussy / genitalia: describe female genitalia explicitly in photorealistic detail: a naturally shaped, attractive pussy with defined outer and inner labia parting naturally, visible clitoris, glistening wetness, detailed skin texture, and realistic anatomical proportions. Avoid smooth plastic blurs or featureless crotches.
+  * male penis / genitalia: for a male subject (or male partner), describe an anatomically correct, well-proportioned penis and testicles (erect cock or flaccid as requested), with a clearly defined shaft, veins, glans (head), and natural testicles. Ensure the penis is rendered cleanly as a distinct male organ, never fused, deformed, doubled, or looking like a female part.
+  * transgender female / futa genitalia: if the subject is a transgender woman, trans female, or futa (or if requested), describe her as a beautiful female with a gorgeous face, feminine body, firm perky rounded breasts, AND an anatomically correct penis and testicles (erect cock, defined shaft, testicles, smooth groin). Explicitly combine female breasts and body with a realistic penis.`
+    : "- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin. Also state her firm perky bust fills the garment neatly. This is what makes a clothed shot read as a photograph rather than a mannequin"
 }
-- anatomy correctness: hands with five correct fingers, limbs in natural proportion. For a male subject or a visible partner, an anatomically correct penis and testicles of realistic proportion and natural shape — never deformed, doubled, or fused to the body
-- female anatomy correctness: a female subject has standard female anatomy, a natural pussy (vagina and vulva), and NO penis. Any sex toy (like a dildo or vibrator) is a separate object inserted into her pussy, she does not have a penis. Never render a female subject with male genitalia unless explicitly requested.
+- anatomy correctness: hands with 5 correct fingers, limbs in natural proportion, torsos naturally aligned. Female breasts are firm, perky, symmetrical, and naturally uplifted. Penis is anatomically correct with defined shaft and testicles, never deformed, doubled, fused, or looking like female genitalia.
 - setting and specific lighting
 - "full body visible, head to feet in frame, face clearly visible, not cropped, not a close-up"
 - photographic realism tail: "candid raw photograph, authentic human skin texture, visible natural pores and fine skin details, natural asymmetry, soft natural shadows, shot on Sony A7 IV 85mm lens, no airbrushing, no plastic textures, no CGI rendering"
@@ -166,12 +169,26 @@ export async function refineMediaPrompt(
   const nude = requestIsNude(req);
 
   const g = (companion.gender ?? "").toLowerCase();
-  const noun =
-    g === "male" || g === "trans-male"
-      ? "man"
-      : g === "non-binary"
-        ? "androgynous person"
-        : "woman";
+  const reqLower = req.toLowerCase();
+  const isTransFemale =
+    g.includes("trans-female") ||
+    g.includes("trans_female") ||
+    g.includes("transwoman") ||
+    g.includes("futa") ||
+    g.includes("shemale") ||
+    /\b(trans|transgender|futa|futanari|shemale|ladyboy|dickgirl)\b/i.test(reqLower);
+  const isTransMale = g.includes("trans-male") || g.includes("trans_male") || g.includes("transman");
+  const isMale = !isTransFemale && (g === "male" || isTransMale);
+
+  let noun = "woman";
+  if (isTransFemale) {
+    noun = "transgender woman (female body with firm perky breasts and an anatomically correct penis)";
+  } else if (isMale) {
+    noun = "man";
+  } else if (g === "non-binary") {
+    noun = "androgynous person";
+  }
+
   const subject = [
     companion.age ? `${companion.age}-year-old` : "",
     companion.ethnicity ?? "",

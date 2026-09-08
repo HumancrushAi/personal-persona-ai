@@ -33,13 +33,13 @@ const TONE_PRESETS = [
   "Playful & bratty",
   "Sultry & slow",
   "Sweet & innocent",
-  "Filthy & explicit",
+  "Bold & passionate",
   "Sarcastic & witty",
 ];
 
 const BOUNDARY_PRESETS = [
   "No degrading language",
-  "No pain / rough kink",
+  "No harsh language",
   "No pet names",
   "No jealousy / possessive talk",
   "Keep it SFW",

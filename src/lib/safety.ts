@@ -15,14 +15,19 @@ const MINOR_TERMS = [
   "toddler",
   "infant",
   "newborn",
-  "baby girl",
-  "baby boy",
   "preteen",
   "pre-teen",
   "underage",
   "underaged",
   "under age",
   "minor",
+  "minors",
+  "pedophile",
+  "paedophile",
+  "pedophilia",
+  "paedophilia",
+  "pedo",
+  "paedo",
   "little girl",
   "little boy",
   "young girl",
@@ -113,11 +118,11 @@ export function screenUserMessage(text: string): Screen {
     return {
       allowed: false,
       category: "minor",
-      reason: "This request involves a minor and cannot be processed.",
+      reason: MINOR_REFUSAL,
     };
   }
   if (hasUnderageAge(text)) {
-    return { allowed: false, category: "minor", reason: "All characters must be adults (18+)." };
+    return { allowed: false, category: "minor", reason: MINOR_REFUSAL };
   }
   const illegal = hasTerm(s, ILLEGAL_TERMS);
   if (illegal) {
@@ -136,7 +141,7 @@ export const BLOCKED_CONTENT = "BLOCKED_CONTENT";
 // What a user is told when a request is refused for involving a minor.
 // One line, no lecture, and it names the rule rather than the person.
 export const MINOR_REFUSAL =
-  "Sorry — this site is strictly 18+ and every character must be an adult. I can't create or talk about anyone under 18.";
+  "Our website does not support content involving minors or underage individuals.";
 
 /**
  * Screen a character being created or edited.

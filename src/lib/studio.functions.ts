@@ -371,7 +371,7 @@ export const studioGenerateExplicit = createServerFn({ method: "POST" })
           const res = await runpodRunSync(kontext, {
             prompt: imagePrompt,
             negative_prompt:
-              "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
+              "different person, different face, changed identity, deformed, extra limbs, bad anatomy, saggy breasts, droopy breasts, pendulous breasts, deflated breasts, blurry, cartoon, anime, watermark, text",
             seed: -1,
             num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
             guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
@@ -460,7 +460,7 @@ export const studioGenerateExplicit = createServerFn({ method: "POST" })
         ? {
             prompt: imagePrompt,
             negative_prompt:
-              "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
+              "different person, different face, changed identity, deformed, extra limbs, bad anatomy, saggy breasts, droopy breasts, pendulous breasts, deflated breasts, blurry, cartoon, anime, watermark, text",
             seed: -1,
             num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
             guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
@@ -479,7 +479,7 @@ export const studioGenerateExplicit = createServerFn({ method: "POST" })
             sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "24"),
             prompts: [imagePrompt],
             negative_prompt:
-              "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text, clothed, dressed",
+              "different person, different face, changed identity, deformed, extra limbs, bad anatomy, saggy breasts, droopy breasts, pendulous breasts, deflated breasts, blurry, cartoon, anime, watermark, text, clothed, dressed",
           };
 
       try {

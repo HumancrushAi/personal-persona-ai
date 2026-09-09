@@ -176,3 +176,173 @@ describe("refinePromoPrompt", () => {
     expect(sent.messages[0].content).toMatch(/never describe the subject as young/i);
   });
 });
+
+// The refiner writes the prompt that production actually renders — a successful
+// refine replaces the keyword builder wholesale. So every rule the builders
+// enforce has to be enforced here too, starting with the one that broke:
+// nothing in the positive prompt may negate.
+describe("the refiner never lets a negation reach the renderer", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  const systemPromptFor = async (req: string, companion: any = subject) => {
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_u: string, init: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content:
+                  "exact same woman as the reference image, completely nude, bare breasts and detailed pussy, lying back on the bed, warm lamplight, candid raw photograph with visible pores",
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    await refineMediaPrompt("photo", req, companion);
+    return sent.messages[0].content as string;
+  };
+
+  it("tells the model, in the system prompt, that the renderer cannot negate", async () => {
+    const sys = await systemPromptFor("stick a dildo in your pussy");
+    expect(sys).toMatch(/renderer cannot read negation/i);
+    expect(sys).toMatch(/WRITE ONLY WHAT IS IN THE PICTURE/);
+  });
+
+  // The old rules ORDERED the negation: "completely away from her face, mouth,
+  // and chest" and "never allow it to look like a smoking pipe, bong, or
+  // bottle". Grok obeyed, and the user was sent the bong.
+  it("no longer orders the model to write the anti-face wording", async () => {
+    const sys = await systemPromptFor("stick a dildo in your pussy");
+    expect(sys).not.toMatch(/away from (?:her )?face/i);
+    expect(sys).not.toMatch(/smoking pipe, bong/i);
+  });
+
+  it("asks for exactly one framing instead of making the model choose", async () => {
+    const wide = await systemPromptFor("stick a dildo in your pussy");
+    expect(wide).toMatch(/from the top of her head down to her knees/);
+    expect(wide).not.toMatch(/close-up point-of-view photograph taken from between/);
+
+    const close = await systemPromptFor("show me your pussy close to my face");
+    expect(close).toMatch(/close-up point-of-view photograph taken from between/);
+    expect(close).not.toMatch(/from the top of her head down to her knees, her face clearly/);
+  });
+
+  // A female companion's system prompt used to carry two paragraphs of penis
+  // anatomy and two worked examples of nude men.
+  it("describes only the anatomy the companion actually has", async () => {
+    const female = await systemPromptFor("get naked", subject);
+    expect(female).not.toMatch(/erect cock|testicles/i);
+
+    const male = await systemPromptFor("get naked", { gender: "male", age: 30 });
+    expect(male).toMatch(/testicles/i);
+    expect(male).not.toMatch(/naturally shaped attractive pussy/i);
+  });
+
+  it("strips a negation the model wrote anyway", async () => {
+    process.env.XAI_API_KEY = "test";
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content:
+                    "exact same woman as the reference image, completely nude, bare breasts and detailed pussy, dildo inserted between her thighs, sex toy held away from her face and mouth, warm bedside lamplight, candid raw photograph, not cropped, real skin with visible pores",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    );
+    const out = await refineMediaPrompt("photo", "stick a dildo in your pussy", subject);
+    expect(out?.[0]).not.toMatch(/away from her face/i);
+    expect(out?.[0]).not.toMatch(/not cropped/i);
+    // and the rest of the prompt survives intact
+    expect(out?.[0]).toMatch(/dildo inserted between her thighs/);
+    expect(out?.[0]).toMatch(/warm bedside lamplight/);
+  });
+
+  // A sanitised prompt passes the "I'm sorry" check and then silently replaces
+  // the explicit builder — the user pays 8 credits for a portrait.
+  it("rejects an answer that came back scrubbed of anything explicit", async () => {
+    process.env.XAI_API_KEY = "test";
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content:
+                    "exact same woman as the reference image, identical face and hair, wearing a flowing summer dress, standing in a sunlit meadow, soft golden light, candid raw photograph, authentic skin texture with visible pores, shot on 85mm",
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    );
+    expect(await refineMediaPrompt("photo", "get completely naked for me", subject)).toBeNull();
+  });
+
+  it("still passes a clothed request through, where explicit words are wrong", async () => {
+    process.env.XAI_API_KEY = "test";
+    const dressed =
+      "exact same woman as the reference image, identical face and hair, wearing a red silk slip dress, seated at a candlelit table, warm restaurant light, candid raw photograph, authentic skin texture with visible pores";
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(JSON.stringify({ choices: [{ message: { content: dressed } }] }), {
+          status: 200,
+        }),
+    );
+    expect(await refineMediaPrompt("photo", "wearing your red dress at dinner", subject)).toEqual([
+      dressed,
+    ]);
+  });
+});
+
+describe("stripNegations", () => {
+  it("drops the whole fragment, so the stray noun goes with it", async () => {
+    const { stripNegations } = await import("../prompt-refiner.server");
+    const out = stripNegations(
+      "exact same woman as the reference image, completely nude, sex toy held away from her face, " +
+        "lying back on the bed, warm bedside lamplight, candid raw photograph with visible pores",
+    );
+    expect(out).not.toMatch(/away from/);
+    // and the fragment goes as a unit, taking the stray `face` with it
+    expect(out).not.toMatch(/\bface\b/);
+    expect(out).toBe(
+      "exact same woman as the reference image, completely nude, lying back on the bed, " +
+        "warm bedside lamplight, candid raw photograph with visible pores",
+    );
+  });
+
+  it("leaves a clean prompt untouched", async () => {
+    const { stripNegations } = await import("../prompt-refiner.server");
+    const clean = "nude woman, dildo inserted between her thighs, bedroom, warm light";
+    expect(stripNegations(clean)).toBe(clean);
+  });
+
+  // An empty prompt renders a stranger, which is worse than a prompt with one
+  // negation left in it.
+  it("keeps the original when stripping would gut it", async () => {
+    const { stripNegations } = await import("../prompt-refiner.server");
+    const mostlyNegation = "not cropped, not a close-up, no watermark, woman";
+    expect(stripNegations(mostlyNegation)).toBe(mostlyNegation);
+  });
+});

@@ -20,11 +20,27 @@ export async function squareStartFrame(portraitUrl: string, key: string): Promis
   if (!res.ok) throw new Error(`Could not fetch companion photo (${res.status})`);
   const src = Buffer.from(await res.arrayBuffer());
 
-  // Blurred cover fills the square; the untouched portrait sits on top, fully
+  // A colour wash fills the square; the untouched portrait sits on top, fully
   // contained, so no part of her is cut off.
-  const backdrop = await sharp(src)
-    .resize(SIDE, SIDE, { fit: "cover" })
-    .blur(28)
+  //
+  // This used to be a blur of the portrait itself at radius 28. Blur is not
+  // erasure — it leaves structure, and `fit: "cover"` centre-crops a portrait,
+  // so what got enlarged and smeared across the frame was her head and hair.
+  // The portrait then sits in the top 62%, which means the bottom of the frame
+  // — precisely where legs, thighs and a crotch have to be generated on a nude
+  // request — was seeded with a dark blurred enlargement of her hair. The model
+  // does not ignore that; it grows a lower body out of it, which is where the
+  // fused, hair-textured, oddly masculine groin in the reported screenshots
+  // comes from.
+  //
+  // Reducing to 12x12 first destroys the structure instead of smearing it, so
+  // what is left is her palette with no edges in it: still a soft studio
+  // backdrop rather than black bars, but nothing for the renderer to mistake
+  // for anatomy.
+  const wash = await sharp(src).resize(12, 12, { fit: "cover" }).toBuffer();
+  const backdrop = await sharp(wash)
+    .resize(SIDE, SIDE, { fit: "fill", kernel: "cubic" })
+    .blur(40)
     .modulate({ brightness: 0.75 })
     .toBuffer();
 

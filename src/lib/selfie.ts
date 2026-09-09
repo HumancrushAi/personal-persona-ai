@@ -1,7 +1,7 @@
 // Builds the image prompt for a companion selfie. Shared by the camera button
 // (media.functions) and the auto-selfie when a user asks for a pic in chat.
 
-import { TOY_VOCAB, propClause } from "./props";
+import { TOY_VOCAB, propClause, propIsInserted } from "./props";
 
 function genderNoun(gender?: string | null): string {
   const g = (gender ?? "female").toLowerCase();
@@ -108,11 +108,14 @@ function actionTags(req: string, isMale: boolean, isTransFemale?: boolean): stri
           ? "male masturbation, hand on penis, stroking erect cock, groin visible"
           : "female masturbation, fingering, hand between legs, spread legs, pleasuring herself, touching her pussy, reclining on bed",
     );
+  // No "away from face and mouth" here — see the header of props.ts. Tags are
+  // a bag of concepts; "away from face" is the concepts `face` and `mouth`
+  // attached to the toy, which is how the toy ended up at her mouth.
   if (has(KW.toys)) {
     const toyTag =
       !isMale && has(KW.pussy)
-        ? "sex toy, dildo, dildo inserted in her pussy down at her crotch, hands low between her legs, sex toy away from face and mouth, female anatomy"
-        : "sex toy, dildo, using sex toy, hands low away from face";
+        ? "sex toy, dildo, dildo inserted in her pussy, dildo between her thighs, hands low at her hips, female anatomy"
+        : "sex toy, dildo, using sex toy, hands low at her hips";
     ex.push(toyTag);
   }
   if (has(KW.anal)) ex.push("anal, insertion, bent over, ass, presenting");
@@ -166,7 +169,7 @@ function booruPonyPrompt(
   if (isNude) {
     if (isMale) {
       nudeTags =
-        "nude, completely naked, no clothing, standing, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, male anatomy";
+        "nude, completely naked, bare skin, standing, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, male anatomy";
     } else if (isTransFemale) {
       nudeTags =
         "nude, completely naked, 1girl, trans female, futanari, firm perky bare breasts, rounded uplifted bust, perky erect nipples, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, female body with male genitalia";
@@ -238,7 +241,117 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   s = s.replace(/^\s*you\b\s*/i, "");
   s = s.replace(/\byou\b/gi, subject);
 
+  // The person asking is not in the picture — they are behind the lens. Left
+  // alone, "your pussy close to my face" reached the renderer as "close to my
+  // face" and it drew a face there, which is one of the reasons that request
+  // came back as a composition nobody asked for. Translating the asker's face
+  // into the camera turns the same words into the viewpoint instruction they
+  // were always meant to be. Only proximity phrasings are rewritten; a stray
+  // "my" elsewhere is left alone rather than guessed at.
+  s = s.replace(/\b(?:right\s+)?(?:up\s+)?(?:close|next)\s+to\s+my\s+face\b/gi, "close to the camera");
+  s = s.replace(/\bin(?:to)?\s+my\s+face\b/gi, "close to the camera");
+  s = s.replace(/\bin\s+front\s+of\s+my\s+face\b/gi, "close to the camera");
+  s = s.replace(/\b(?:for|at)\s+me\b/gi, "at the camera");
+  s = s.replace(/\btowards?\s+me\b/gi, "toward the camera");
+
   return s.replace(/^[\s,.:;-]+/, "").trim();
+}
+
+// Body-part and object nouns that can open a request, used only to decide
+// whether the action needs a verb in front of it.
+const BARE_NOUN_START = new RegExp(
+  `^(?:${[TOY_VOCAB, "tits|titties|boobs|boobies|breasts?|nipples?|cleavage|pussy|vagina|clit\\w*|labia|cunt|ass|asshole|butt|booty|cheeks|dick|cock|penis|balls|body|legs|thighs|feet"].join("|")})\\b`,
+  "i",
+);
+
+// People ask in the imperative — "get naked", "spread your legs", "put your
+// tits in my face" — and an imperative dropped into "She is ___." is broken
+// English: "She is get naked." The renderer's text encoder is a language model,
+// so a sentence it cannot parse is conditioning wasted on the one clause that
+// says what the picture is of.
+//
+// A lookup rather than a morphology engine. English gerund spelling needs the
+// consonant-doubling rule and the silent-e rule and then still gets `lie`
+// wrong, and none of that is worth writing for a list this short — these are
+// simply the verbs people actually type into this app.
+const IMPERATIVE_GERUND: Record<string, string> = {
+  arch: "arching",
+  bend: "bending",
+  bounce: "bouncing",
+  crawl: "crawling",
+  cum: "cumming",
+  dance: "dancing",
+  finger: "fingering",
+  flash: "flashing",
+  fuck: "fucking",
+  get: "getting",
+  grab: "grabbing",
+  grind: "grinding",
+  hold: "holding",
+  insert: "inserting",
+  jerk: "jerking",
+  kneel: "kneeling",
+  lay: "laying",
+  lick: "licking",
+  lie: "lying",
+  lift: "lifting",
+  masturbate: "masturbating",
+  open: "opening",
+  play: "playing",
+  pose: "posing",
+  pull: "pulling",
+  push: "pushing",
+  put: "putting",
+  ride: "riding",
+  rub: "rubbing",
+  shove: "shoving",
+  show: "showing",
+  sit: "sitting",
+  slide: "sliding",
+  spread: "spreading",
+  squat: "squatting",
+  squeeze: "squeezing",
+  straddle: "straddling",
+  stand: "standing",
+  stick: "sticking",
+  strip: "stripping",
+  stroke: "stroking",
+  suck: "sucking",
+  take: "taking",
+  tease: "teasing",
+  touch: "touching",
+  twerk: "twerking",
+  use: "using",
+  wear: "wearing",
+};
+
+/**
+ * "She is ___." with the blank filled grammatically.
+ *
+ * normalizeRequest returns the user's own words, and those are not always a
+ * predicate: "show me your tits" normalizes to "her tits", which the old
+ * builder dropped straight in as "She is her tits." — and "send me a nude pic
+ * with your pussy close to my face" became "She is her pussy close to my face."
+ * Both are the exact requests users complained about. Broken grammar is not
+ * cosmetic here: the renderer's text encoder is a language model, and a
+ * sentence it cannot parse is conditioning thrown away on the one clause that
+ * says what the picture is of.
+ *
+ * An imperative becomes a gerund, a noun phrase gets a verb, and anything that
+ * already reads as a predicate — a gerund, a preposition, a state ("naked in
+ * the shower") — is left exactly as the user wrote it.
+ */
+export function actionSentence(subject: "she" | "he" | "they", action: string): string {
+  const a = action.trim();
+  const verb = subject === "they" ? "are" : "is";
+  const Subject = `${subject[0].toUpperCase()}${subject.slice(1)}`;
+  if (!a) return "";
+
+  const gerund = IMPERATIVE_GERUND[a.split(/\s+/)[0].toLowerCase()];
+  if (gerund) return `${Subject} ${verb} ${gerund}${a.slice(a.split(/\s+/)[0].length)}.`;
+
+  const needsVerb = /^(?:her|his|their|its|a|an|the)\b/i.test(a) || BARE_NOUN_START.test(a);
+  return `${Subject} ${verb} ${needsVerb ? "showing " : ""}${a}.`;
 }
 
 // Detects close-up / POV / close proximity requests so framing doesn't force a wide camera shot.
@@ -251,10 +364,25 @@ export const CLOSE_UP_RE =
 // An abstract instruction ("Wide full body shot, nothing cropped") does NOT
 // work: tested against the live endpoint, an act-heavy request still came back
 // with the head cut off at the mouth. What works is describing a PHOTOGRAPH OF A
-// PERSON STANDING IN A ROOM — naming the subject and a standing posture gives
-// the model a composition to build, instead of a rule to obey. Same request,
-// same start frame, same negatives: subject-anchored framing produced head to
-// feet with the face in shot.
+// PERSON IN A ROOM — naming the subject, the posture and the camera distance
+// gives the model a composition to build, instead of a rule to obey.
+//
+// Two things changed here after users reported that explicit photos look bad.
+//
+// 1. "Not a close-up, not cropped" is gone. It is a negation, and the renderer's
+//    text encoder cannot negate — it reads `close-up, cropped`, which is a
+//    request for the headless torso crop that was reported. The whole argument
+//    is in the header of props.ts. Framing is now stated only as what IS in the
+//    frame and where the camera stands.
+//
+// 2. The camera is no longer "far away across the room". A chat photo is one
+//    frame of a 640px clip. Put a whole standing body in 640px and her groin is
+//    forty pixels across — there is no amount of anatomical description that
+//    survives that, and "the nudes look bad" is partly just this. So an act
+//    request is framed head-to-knees, which roughly doubles the linear detail on
+//    everything that matters while keeping the face in shot; a plain selfie
+//    keeps the full figure but at a conversational distance rather than across
+//    a room.
 function framingFor(
   noun: string,
   poss: string,
@@ -263,19 +391,34 @@ function framingFor(
   name?: string,
   isCloseUp?: boolean,
 ): string {
+  // "pussy close to my face" is not a zoom setting, it is a viewpoint: the
+  // camera is where the person asking is. Describing that viewpoint as a real
+  // photograph — where the lens is, what fills the foreground, what is behind
+  // it — is what the model can build. The old wording ("close to her body,
+  // focus sharp on her body and details") named no vantage point and no
+  // subject, so the renderer chose both, and chose badly.
+  //
+  // Her face is named as part of the composition, further up the frame beyond
+  // the foreground. That is deliberate: a close-up prompt with no face in it is
+  // how a picture comes back as an anonymous crop of a torso.
   if (isCloseUp) {
-    return `Intimate close-up POV photograph of a ${noun}, camera positioned close to ${poss} body from a first-person perspective, focus sharp on ${poss} body and details, natural intimate angle.`;
+    return `Close-up point-of-view photograph of a ${noun}, taken from between ${poss} open thighs looking up along ${poss} body, ${poss} groin filling the centre foreground in sharp focus, ${poss} stomach and breasts beyond it and ${poss} face looking down into the lens at the top of the frame, lens about thirty centimetres away.`;
   }
-  let stance = " standing";
+
+  // An act request gets a medium shot: the act is at the centre of the frame at
+  // usable size, and the face is still in it.
   if (posed || hasReq) {
-    stance = "";
-  } else if (name) {
+    return `Photograph of a ${noun} indoors, framed from the top of ${poss} head down to ${poss} knees, ${poss} face clearly visible in the upper third of the frame and ${poss} hips in the middle of the frame, camera about two metres away at chest height.`;
+  }
+
+  let stance = " standing";
+  if (name) {
     // Pick an intimate, natural posture instead of default standing
     const postures = ["lying on bed", "sitting on the edge of the bed", "reclining on a couch"];
     const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     stance = " " + postures[hash % postures.length];
   }
-  return `Wide full body photograph of a ${noun}${stance} in a room, ${poss} whole body visible from head to feet, ${poss} face clearly visible at the top of the frame, camera far away across the room. Not a close-up, not cropped.`;
+  return `Full length photograph of a ${noun}${stance} in a room, ${poss} whole body in frame from ${poss} head to ${poss} feet, ${poss} face clearly visible at the top of the frame, camera about three metres away.`;
 }
 
 // Requests that carry their own posture, which "standing" would fight.
@@ -284,8 +427,14 @@ const POSTURE_RE =
 
 // Photographic language, not render language. "8k masterpiece" vocabulary is
 // what produces the airbrushed CG look that reads as AI on sight.
+//
+// This used to end "no airbrushing or smoothing… not a render. No text, no
+// watermark." — four negations, and therefore the tokens `airbrushing`,
+// `smoothing`, `render`, `text` and `watermark` in the conditioning of every
+// picture the app has ever sent. All five are already in QUALITY_NEGATIVE in
+// media.functions.ts, which is the one place a renderer can act on them.
 const QUALITY =
-  "Candid photograph, 35mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and natural texture, micro skin details, fine peach fuzz, natural skin sheen, natural asymmetry, no airbrushing or smoothing. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
+  "Candid photograph, 35mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, natural skin sheen, natural asymmetry. Looks like a real photo taken on a real camera.";
 
 export function videoStillPrompt(
   c: { gender?: string | null; name?: string },
@@ -308,10 +457,10 @@ export function videoStillPrompt(
 
   const undress = requestIsNude(req)
     ? isMale
-      ? `${subject} is already completely naked with no clothing on at all, anatomically correct erect penis and cock and testicles visible, male anatomy, bare skin`
+      ? `${subject} is already completely naked with bare skin everywhere, anatomically correct erect penis and cock and testicles visible, male anatomy, bare skin`
       : isTransFemale
-        ? `${subject} is already completely naked with no clothing on at all, firm perky bare breasts and perky erect nipples visible, rounded uplifted bust, combined with an anatomically correct erect penis and cock and testicles visible, transgender female anatomy`
-        : `${subject} is already completely naked with no clothing on at all, firm perky bare breasts and perky nipples visible, rounded uplifted bust, highly detailed photorealistic pussy with naturally shaped vulva and labia visible, clitoris visible, wet glistening skin, female anatomy`
+        ? `${subject} is already completely naked with bare skin everywhere, firm perky bare breasts and perky erect nipples visible, rounded uplifted bust, combined with an anatomically correct erect penis and cock and testicles visible, transgender female anatomy`
+        : `${subject} is already completely naked with bare skin everywhere, firm perky bare breasts and perky nipples visible, rounded uplifted bust, highly detailed photorealistic pussy with naturally shaped vulva and labia visible, clitoris visible, wet glistening skin, female anatomy`
     : `${subject} holds the pose`;
 
   // NOTE: deliberately no actionTags here. Those are booru tags ("bent over,
@@ -326,13 +475,13 @@ export function videoStillPrompt(
 
   return [
     framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
-    `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
-    `${undress}.`,
+    actionSentence(subject, action),
+    `${undress[0].toUpperCase()}${undress.slice(1)}.`,
     propClause(req, { isMale }),
     QUALITY,
     isCloseUp
-      ? "Intimate POV perspective, camera stays close in focus. Settles into a still held pose at the end."
-      : "The camera stays wide and does not move closer. Settles into a still held pose at the end.",
+      ? "The camera holds its position close in. She settles into a still held pose at the end."
+      : "The camera holds its position. She settles into a still held pose at the end.",
   ]
     .filter(Boolean)
     .join(" ");
@@ -363,10 +512,10 @@ export function videoActionPrompt(
 
   const undress = requestIsNude(req)
     ? isMale
-      ? `${subject} is already completely naked with no clothing on at all, anatomically correct erect penis and cock and testicles visible, male anatomy, bare skin throughout`
+      ? `${subject} is already completely naked with bare skin everywhere, anatomically correct erect penis and cock and testicles visible, male anatomy, bare skin throughout`
       : isTransFemale
-        ? `${subject} is already completely naked with no clothing on at all, firm perky bare breasts and perky erect nipples visible, rounded uplifted bust, combined with an anatomically correct erect penis and cock and testicles visible throughout, transgender female anatomy`
-        : `${subject} is already completely naked with no clothing on at all, firm perky bare breasts and perky nipples visible, rounded uplifted bust, highly detailed photorealistic pussy with naturally shaped vulva and labia visible, clitoris visible, wet glistening skin throughout, female anatomy`
+        ? `${subject} is already completely naked with bare skin everywhere, firm perky bare breasts and perky erect nipples visible, rounded uplifted bust, combined with an anatomically correct erect penis and cock and testicles visible throughout, transgender female anatomy`
+        : `${subject} is already completely naked with bare skin everywhere, firm perky bare breasts and perky nipples visible, rounded uplifted bust, highly detailed photorealistic pussy with naturally shaped vulva and labia visible, clitoris visible, wet glistening skin throughout, female anatomy`
     : `${subject} moves seductively for the camera`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
@@ -377,13 +526,13 @@ export function videoActionPrompt(
 
   return [
     framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
-    `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
-    `${undress}.`,
+    actionSentence(subject, action),
+    `${undress[0].toUpperCase()}${undress.slice(1)}.`,
     propClause(req, { isMale }),
     QUALITY,
     isCloseUp
-      ? "Smooth natural lifelike motion throughout, consistent face and body. Intimate POV camera perspective."
-      : "Smooth natural lifelike motion throughout, consistent face and body. The camera stays wide and does not move closer.",
+      ? "Smooth natural lifelike motion throughout, consistent face and body. The camera holds its close point-of-view position."
+      : "Smooth natural lifelike motion throughout, consistent face and body. The camera holds its position.",
   ]
     .filter(Boolean)
     .join(" ");
@@ -416,10 +565,10 @@ export function kontextSelfiePrompt(
 
   const state = requestIsNude(req)
     ? isMale
-      ? "completely naked, no clothing, anatomically correct penis and cock and groin visible"
+      ? "completely naked, bare skin, anatomically correct penis and cock and groin visible"
       : isTransFemale
-        ? "completely naked, no clothing, firm perky bare breasts, nipples, and anatomically correct penis and cock visible, trans female anatomy"
-        : "completely naked, no clothing, firm perky bare breasts, nipples, and detailed photorealistic pussy visible, female anatomy"
+        ? "completely naked, bare skin, firm perky bare breasts, nipples, and anatomically correct penis and cock visible, trans female anatomy"
+        : "completely naked, bare skin, firm perky bare breasts, nipples, and detailed photorealistic pussy visible, female anatomy"
     : `wearing what ${subject} has on`;
 
   return [
@@ -428,10 +577,105 @@ export function kontextSelfiePrompt(
     `Now show ${object} ${req || "taking a seductive selfie, looking at the camera"}, ${state}.`,
     explicit,
     styleBackstory || "",
-    "Photorealistic amateur selfie, full body in frame, natural indoor lighting, detailed skin, sharp focus, no text, no watermark.",
+    "Photorealistic amateur selfie, full body in frame, natural indoor lighting, detailed skin, sharp focus.",
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+// The renderer's text encoder takes a fixed number of tokens and silently drops
+// everything past it. Measured on the prompt that produced the reported failure:
+// "Send me a picture of you sticking a dildo in your pussy" built a 607-word
+// prompt, comfortably past that limit — so the realism tail and the held-pose
+// instruction, both written last on purpose, were never seen by the renderer at
+// all. The picture was rendered from the first half of a prompt whose second
+// half was the half about it looking like a photograph.
+//
+// A word budget rather than a token count: this is a guardrail, not an exact
+// accounting, and the ratio is stable enough for prose. The tail is preserved
+// across the cut, because dropping the middle of a description costs less than
+// dropping the instruction that says "photograph, not render".
+const PROMPT_WORD_BUDGET = 300;
+
+const REALISM_TAIL =
+  "Candid raw photograph on a real camera, authentic skin texture with visible pores, natural asymmetry, natural available light.";
+
+const STILL_CUE = "The pose is held completely still and the camera is locked off.";
+const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;
+
+export function capPromptWords(prompt: string, max = PROMPT_WORD_BUDGET): string {
+  const text = prompt.trim();
+  const words = text.split(/\s+/);
+  if (words.length <= max) return text;
+
+  const tailLength = REALISM_TAIL.split(/\s+/).length;
+  const kept = words.slice(0, Math.max(1, max - tailLength)).join(" ");
+  // Back off to the last clean break so the cut never lands mid-clause.
+  const boundary = Math.max(kept.lastIndexOf(". "), kept.lastIndexOf(", "));
+  const body = boundary > kept.length / 2 ? kept.slice(0, boundary) : kept;
+  return `${body.replace(/[\s,;:.]+$/, "")}. ${REALISM_TAIL}`;
+}
+
+/**
+ * The last step before a prompt is sent, shared by photos and videos.
+ *
+ * `base` is whatever we ended up with — the refiner's prompt, or one of the
+ * builders above when it failed. Everything that must be true regardless of
+ * which of those it is belongs here rather than in either one.
+ *
+ * The prop specification is appended rather than trusted to the refiner for the
+ * reason recorded in props.ts: Grok is asked to describe props well and usually
+ * does, but "usually" is not a constraint, and a successful refine replaces the
+ * builder wholesale — so the one path that runs in production is the one path
+ * the spec would otherwise miss.
+ */
+export function finishMediaPrompt(
+  base: string,
+  req: string,
+  opts: { isMale?: boolean; appendProps?: boolean; still?: boolean } = {},
+): string {
+  let out = (base ?? "").trim();
+  const request = (req ?? "").trim();
+
+  if (opts.appendProps) {
+    const props = propClause(request, { isMale: opts.isMale });
+    // The refiner writes comma-separated fragments with no terminating full
+    // stop, so a bare space ran its last fragment into the first sentence of
+    // the spec ("…shot on Sony A7 IV 85mm lens The toy is inserted into her").
+    if (props) out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${props}`;
+  }
+
+  // A toy the user asked to have inserted, described as being held, is the
+  // single failure this whole path exists to prevent — and "holding a dildo" in
+  // front of her is one short step from the vertical crotch-to-chin cylinder a
+  // user was actually sent. Rewritten positively: where it is, and what her
+  // hand is doing there.
+  if (propIsInserted(request)) {
+    const poss = opts.isMale ? "his" : "her";
+    out = out.replace(
+      /\b(?:holding|holds|gripping|grips|clutching|raising|lifting)\s+(?:a|an|the|her|his)?\s*(?:large |big |thick |huge )?(?:silicone |matte |black )*(?:dildo|sex toy|toy|vibrator|plug|wand)\b/gi,
+      `with the toy inserted between ${poss} open thighs, ${poss} fingers closed on its base`,
+    );
+  }
+
+  // A photo is one frame cut out of the tail of a clip, so the clip has to
+  // arrive somewhere and stop. The builders end this way already; a refined
+  // prompt does not unless the refiner remembered to, and when it did not the
+  // frame we pulled was whatever the motion happened to be doing.
+  //
+  // Capped BEFORE this rather than after. The still cue is the last thing in
+  // the prompt and the cap takes from the end, so checking for it first and
+  // appending after meant the cap could quietly delete the cue the builder had
+  // already written — measured on the dildo request, which is exactly the one
+  // where a mid-motion frame does the most damage.
+  const capped = capPromptWords(out, opts.still ? PROMPT_WORD_BUDGET - STILL_CUE_WORDS : undefined);
+  // Specific phrases, not the bare word "still" — the prop clause contains
+  // "only the flared base still visible", which matched and silently suppressed
+  // the cue on the one request that most needs it.
+  if (opts.still && !/held pose|locked off|held completely still/i.test(capped)) {
+    return `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${STILL_CUE}`;
+  }
+  return capped;
 }
 
 export function selfiePrompt(

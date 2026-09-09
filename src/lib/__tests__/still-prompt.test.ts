@@ -32,19 +32,24 @@ describe("videoStillPrompt", () => {
     expect(p).not.toMatch(/standing/i);
   });
 
-  it("handles toys realistically and specifies no penis for females", () => {
+  it("handles toys realistically and asserts female anatomy positively", () => {
     const p = videoStillPrompt({ gender: "female" }, "dildo in pussy");
-    expect(p).toMatch(/female anatomy/i);
-    expect(p).toMatch(/no penis/i);
+    expect(p).toMatch(/natural female anatomy/i);
     expect(p).toMatch(/inserted/i);
-    expect(p).toMatch(/down between her legs at her crotch/i);
+    expect(p).toMatch(/between her open thighs/i);
     expect(p).not.toMatch(/standing/i);
+    // "no penis" used to be here. It put `penis` in the conditioning of every
+    // female nude, and the render came back with masculine legs and a fused
+    // groin — the failure a user reported. Male anatomy is suppressed in the
+    // negative prompt now, which is where suppression works.
+    expect(p).not.toMatch(/penis/i);
   });
 
-  it("uses intimate POV framing when user asks for a close-up or close to face pic", () => {
+  it("uses a described point of view when the user asks for a close-up", () => {
     const p = videoStillPrompt({ gender: "female" }, "pussy close to my face");
-    expect(p).toMatch(/intimate close-up pov photograph/i);
-    expect(p).not.toMatch(/camera far away across the room/i);
+    expect(p).toMatch(/close-up point-of-view photograph/i);
+    expect(p).toMatch(/from between her open thighs/i);
+    expect(p).not.toMatch(/camera about three metres away/i);
   });
 });
 
@@ -56,7 +61,12 @@ describe("realism tail", () => {
     const p = videoStillPrompt({ gender: "female" }, "");
     expect(p).toMatch(/candid photograph/i);
     expect(p).toMatch(/pores/i);
-    expect(p).toMatch(/no airbrushing|no retouching/i);
+    // It used to close "no airbrushing or smoothing… not a render", which is
+    // how `airbrushing`, `smoothing` and `render` got into every prompt. The
+    // realism ask is now entirely positive; the artefacts are negated in
+    // QUALITY_NEGATIVE, in media.functions.ts.
+    expect(p).toMatch(/real untouched skin/i);
+    expect(p).not.toMatch(/no airbrushing|not a render/i);
   });
 
   it("does not use the AI-slop quality words", () => {

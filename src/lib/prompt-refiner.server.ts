@@ -14,6 +14,8 @@
 // all fall back to the builder, which still works alone. It must never be the
 // reason a paid request fails.
 
+import type { GenderKind } from "./anatomy";
+
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 
 // Real prompts from this endpoint's own tuning set, used as few-shot examples.
@@ -47,7 +49,11 @@ const MALE_EXAMPLES = `exact same man as the reference image, identical face, ha
 
 exact same man as the reference image, identical face, hair and skin, completely nude, lying back against the headboard with one knee raised, his hand closed around his erect cock, defined shaft and natural testicles, framed from his head to his knees with his face in the upper third, warm bedside lamplight, real skin texture with visible pores, candid raw photograph`;
 
-const TRANS_FEMALE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, feminine body with firm perky rounded breasts and perky erect nipples, combined with an anatomically correct erect penis and testicles clearly defined, standing by a sunlit penthouse window framed from her head to her knees, seductive eye contact, candid raw photo, real skin texture`;
+const TRANS_FEMALE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, feminine body with firm rounded breasts and perky erect nipples, feminine hips and waist, and at her groin an erect cock with a defined shaft and natural testicles below it, standing by a sunlit penthouse window framed from her head to her knees, seductive eye contact, candid raw photo, real skin texture`;
+
+// A trans man had no example of his own, so the model was shown two nude men
+// with cocks and asked to write a prompt for him.
+const TRANS_MALE_EXAMPLES = `exact same man as the reference image, identical face, hair and skin, completely nude, lean masculine build with a flat chest, flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, and between his open thighs a detailed vulva with outer labia parting around visible inner labia and a prominent clitoral hood, lying back on the bed framed from his head to his knees with his face in the upper third, warm bedside lamplight, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
 
 // "no airbrushing" used to close all three of these. Examples teach shape, and
 // what these were teaching was a negation — so every clothed prompt Grok wrote
@@ -84,23 +90,33 @@ The renderer cannot read negation. It has no representation of "not", "never", "
 So: state where things ARE, what touches what, and what is visible. If something must not appear, do not mention it at all — say what occupies that space instead. Do not use the words not, no, never, without, away from, avoid, or any other negation anywhere in your output.`;
 
 /** Which anatomy the subject actually has, so only that is described. */
-type SubjectKind = "female" | "male" | "trans-female" | "nb";
+type SubjectKind = GenderKind;
 
 // One bullet, chosen by the companion's own sex.
 //
-// All four used to be sent every time. A female companion's system prompt
+// All of them used to be sent every time. A female companion's system prompt
 // therefore carried two paragraphs about erect cocks, shafts and testicles, and
 // two of the five worked examples were of men — which is both a large slice of
-// a 150-word budget spent on anatomy she does not have, and a steady supply of
-// male tokens to a prompt that has to render a woman. The reported failure on
-// "pussy close to my face" was a groin that came back masculine.
+// a tight word budget spent on anatomy she does not have, and a steady supply
+// of male tokens to a prompt that has to render a woman. The reported failure
+// on "pussy close to my face" was a groin that came back masculine.
+//
+// Each bullet names sub-structures instead of reaching for "anatomically
+// correct" and "well-proportioned", which are adjectives a renderer cannot act
+// on — the same lesson props.ts learned when "correct size" lost to "about as
+// long as her hand". Naming parts that have to stay distinguishable from each
+// other is what stops the fused, featureless, smooth-plastic look.
 const ANATOMY: Record<SubjectKind, string> = {
   female:
-    "- her anatomy in photorealistic detail: firm, perfectly rounded, naturally uplifted perky breasts with high-set cleavage and erect nipples; a naturally shaped attractive pussy with defined outer and inner labia parting naturally, visible clitoris, glistening wetness, detailed skin texture and realistic proportions",
-  male: "- his anatomy in photorealistic detail: an anatomically correct, well-proportioned penis and testicles (erect or flaccid as the request implies), clearly defined shaft, visible veins, natural glans, reading cleanly as a distinct male organ; muscular chest and stomach",
+    "- her anatomy in photorealistic detail: firm rounded breasts sitting naturally on her chest, softly weighted rather than spherical, with defined areolae and erect nipples; between her thighs a detailed vulva, outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light",
+  male: "- his anatomy in photorealistic detail: a lean muscular chest and stomach, and at his groin an erect penis with a clearly defined shaft, a distinct ridge below the glans, soft surface veining, and testicles hanging naturally below in a separate lightly textured sac, each part distinguishable from the next",
   "trans-female":
-    "- her anatomy in photorealistic detail: a beautiful woman with a feminine body, firm perky rounded breasts and erect nipples, combined with an anatomically correct penis and testicles — defined shaft, natural glans, smooth groin. State the breasts and the cock together in the same clause",
-  nb: "- the body in photorealistic detail: lean androgynous build, soft natural skin texture, realistic proportions",
+    "- her anatomy in photorealistic detail, as ONE body in a single clause: firm rounded breasts with defined areolae and erect nipples, feminine hips and waist, and at her groin an erect penis with a defined shaft, distinct glans and natural testicles below it. Both in frame and both in focus",
+  // The kind that had no bullet at all. A trans man was described to the model
+  // as a plain man and rendered with a cock he does not have.
+  "trans-male":
+    "- his anatomy in photorealistic detail: a flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach; between his thighs a detailed vulva, outer labia parting around visible inner labia, a prominent clitoral hood above them",
+  nb: "- the body in photorealistic detail: lean androgynous build, a flat soft chest, narrow hips, skin evenly lit with visible pores and fine texture throughout",
 };
 
 const rules = (
@@ -151,14 +167,23 @@ function systemFor(
   closeUp: boolean,
   subject: SubjectKind,
 ): string {
-  const base =
-    subject === "male"
-      ? MALE_EXAMPLES
-      : subject === "trans-female"
-        ? `${TRANS_FEMALE_EXAMPLES}\n\n${NUDE_EXAMPLES}`
-        : NUDE_EXAMPLES;
+  // Examples are the strongest instruction in this file, so a companion is only
+  // ever shown examples of a body like theirs. A trans man used to be shown two
+  // nude men with cocks; a woman used to be shown them too.
+  const EXAMPLES_FOR: Record<SubjectKind, string> = {
+    female: NUDE_EXAMPLES,
+    male: MALE_EXAMPLES,
+    "trans-female": `${TRANS_FEMALE_EXAMPLES}\n\n${NUDE_EXAMPLES}`,
+    "trans-male": TRANS_MALE_EXAMPLES,
+    nb: NUDE_EXAMPLES,
+  };
+  const base = EXAMPLES_FOR[subject];
+  // The POV example is of a vulva between open thighs, so it only helps someone
+  // who has one.
   const nudeExamples =
-    closeUp && subject !== "male" ? `${POV_EXAMPLE}\n\n${base}` : base;
+    closeUp && subject !== "male" && subject !== "trans-female"
+      ? `${POV_EXAMPLE}\n\n${base}`
+      : base;
   const examples = nude ? nudeExamples : CLOTHED_EXAMPLES;
   if (kind === "photo") {
     // 110-170, up from 90-150. The bullet list above is long and roughly 60 of
@@ -313,30 +338,20 @@ export async function refineMediaPrompt(
   const nude = requestIsNude(req);
   const closeUp = CLOSE_UP_RE.test(req);
 
-  const g = (companion.gender ?? "").toLowerCase();
-  const reqLower = req.toLowerCase();
-  const isTransFemale =
-    g.includes("trans-female") ||
-    g.includes("trans_female") ||
-    g.includes("transwoman") ||
-    g.includes("futa") ||
-    g.includes("shemale") ||
-    /\b(trans|transgender|futa|futanari|shemale|ladyboy|dickgirl)\b/i.test(reqLower);
-  const isTransMale = g.includes("trans-male") || g.includes("trans_male") || g.includes("transman");
-  const isMale = !isTransFemale && (g === "male" || isTransMale);
-
-  let noun = "woman";
-  let subjectKind: SubjectKind = "female";
-  if (isTransFemale) {
-    noun = "transgender woman (female body with firm perky breasts and an anatomically correct penis)";
-    subjectKind = "trans-female";
-  } else if (isMale) {
-    noun = "man";
-    subjectKind = "male";
-  } else if (g === "non-binary") {
-    noun = "androgynous person";
-    subjectKind = "nb";
-  }
+  // This file's own copy of the trans detection is gone. It read the user's
+  // message as well as the companion's gender, so "show me your cock trans"
+  // told Grok to write a prompt for a transgender woman no matter who it was
+  // actually talking about — and it had no branch for a trans man at all, so he
+  // was described to Grok as a plain man. anatomyOf is the single authority now.
+  const { anatomyOf } = await import("./anatomy");
+  const a = anatomyOf(companion.gender);
+  const subjectKind: SubjectKind = a.kind;
+  const noun =
+    a.kind === "trans-female"
+      ? "transgender woman (feminine body with firm perky breasts and an anatomically correct penis)"
+      : a.kind === "trans-male"
+        ? "transgender man (masculine build and flat chest, with a vulva)"
+        : a.noun;
 
   const subject = [
     companion.age ? `${companion.age}-year-old` : "",

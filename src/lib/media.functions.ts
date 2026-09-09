@@ -61,12 +61,6 @@ const MOTION_NEGATIVE =
 const CLOTHING_NEGATIVE =
   "clothed, wearing clothes, dressed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, dress, swimsuit, fabric covering body, partially undressed";
 
-const FEMALE_NUDE_NEGATIVE =
-  "penis, cock, erect cock, testicles, male genitalia, male chest, muscular male torso, male arms, hairy legs, beard, mustache, male body, male structure, male pelvis, masculine groin, masculine thighs";
-
-const MALE_NUDE_NEGATIVE =
-  "female breasts, pussy, vulva, female genitalia, cleavage, female body, feminine hips";
-
 // `moving` says whether the output is a clip (true) or one still frame cut out
 // of one (false). It is not a detail: see MOTION_NEGATIVE above.
 //
@@ -83,28 +77,22 @@ export function negativeFor(
   const quality = opts.moving ? `${QUALITY_NEGATIVE}, ${MOTION_NEGATIVE}` : QUALITY_NEGATIVE;
   let base = isNude ? `${CLOTHING_NEGATIVE}, ${quality}` : quality;
 
-  // Add gender-appropriate anatomy negatives for nude requests
-  const g = (gender ?? "female").toLowerCase();
-  const isTransFemale =
-    g.includes("trans-female") ||
-    g.includes("trans_female") ||
-    g.includes("transwoman") ||
-    g.includes("futa") ||
-    g.includes("shemale");
-  const isMale = !isTransFemale && (g === "male" || g === "trans-male");
-
+  // The two hand-rolled lists that used to live here — one for women, one for
+  // men — had no branch for a trans man at all, and the trans-female branch
+  // suppressed nothing, so a trans woman's render had nothing pushing a vulva
+  // out of her groin. crossSexNegative covers all five kinds off the same table
+  // the positive anatomy clause is built from, so the two halves cannot
+  // disagree about which body this is.
   if (isNude) {
-    if (isMale) {
-      base = `${base}, ${MALE_NUDE_NEGATIVE}`;
-    } else if (!isTransFemale) {
-      base = `${base}, ${FEMALE_NUDE_NEGATIVE}`;
-    }
+    const cross = crossSexNegative(gender);
+    if (cross) base = `${base}, ${cross}`;
   }
 
   const props = propNegative(req);
   return props ? `${base}, ${props}` : base;
 }
-import { propClause, propNegative, hasProp } from "./props";
+import { propClause, propNegative } from "./props";
+import { anatomyOf, crossSexNegative } from "./anatomy";
 import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
@@ -352,7 +340,7 @@ export async function startImageJob(
         : videoStillPrompt(companion, userRequest)),
     reqText,
     {
-      isMale: isMaleCompanion(companion.gender),
+      anatomy: anatomyOf(companion.gender),
       appendProps: Boolean(refined?.[0]),
       // Only when the photo is being cut out of a clip. A real image endpoint
       // renders a still by definition and does not need telling.
@@ -538,6 +526,14 @@ export const requestVideo = createServerFn({ method: "POST" })
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
 
+    // The video path never had this check. The 📷 button and the chat
+    // auto-selfie both refused a request for anatomy the companion does not
+    // have; the 🎬 button rendered it, which made the gate decorative — ask for
+    // it as a video and you got it. Checked before the debit, so a refusal
+    // never costs the 15 credits.
+    const crossGenderWarning = checkCrossGenderRequest(c.gender, userPrompt ?? "");
+    if (crossGenderWarning) throw new Error(crossGenderWarning);
+
     const { free, paid } = await ensureBalance(supabase, userId, VIDEO_COST);
     const balance = await deductCredits(supabase, userId, VIDEO_COST, "video_debit", free, paid);
 
@@ -687,10 +683,10 @@ export async function startVideoJob(
   // Same reason as the photo path: a successful refine replaces the builder, so
   // the prop spec is re-appended to every scene rather than lost.
   const rawReq = userReq ?? "";
-  const isMale = isMaleCompanion(companion.gender);
+  const anatomy = anatomyOf(companion.gender);
   const refinedScenes = refinedVideo?.length ? refinedVideo : null;
   const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq)]).map((p) =>
-    finishMediaPrompt(p, rawReq, { isMale, appendProps: Boolean(refinedScenes) }),
+    finishMediaPrompt(p, rawReq, { anatomy, appendProps: Boolean(refinedScenes) }),
   );
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);

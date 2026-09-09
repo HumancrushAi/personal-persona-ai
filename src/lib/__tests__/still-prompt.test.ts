@@ -34,7 +34,7 @@ describe("videoStillPrompt", () => {
 
   it("handles toys realistically and asserts female anatomy positively", () => {
     const p = videoStillPrompt({ gender: "female" }, "dildo in pussy");
-    expect(p).toMatch(/natural female anatomy/i);
+    expect(p).toMatch(/natural soft vulva/i);
     expect(p).toMatch(/inserted/i);
     expect(p).toMatch(/between her open thighs/i);
     expect(p).not.toMatch(/standing/i);

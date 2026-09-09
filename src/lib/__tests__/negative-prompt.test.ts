@@ -36,7 +36,16 @@ describe("negativeFor", () => {
       // cock, male genitalia" in its negative prompt.
       const male = negativeFor("get naked", "male", { moving: false });
       expect(male).not.toMatch(/\bmasculine groin\b/);
-      expect(male).toMatch(/female breasts/);
+      expect(male).toMatch(/\bvulva\b/);
+    });
+
+    // The kind that had no branch at all: he was folded in with cis men, so his
+    // negative prompt suppressed the vulva he has and left the cock he does not.
+    it("gives a trans man his own anatomy, not a cis man's", () => {
+      const n = negativeFor("get naked", "trans-male", { moving: false });
+      expect(n).toMatch(/\bpenis\b/);
+      expect(n).toMatch(/\bbreasts\b/);
+      expect(n).not.toMatch(/\bvulva\b|\blabia\b/);
     });
 
     it("leaves a trans-female companion both sets of anatomy", () => {

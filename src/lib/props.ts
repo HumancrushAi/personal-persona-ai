@@ -53,6 +53,8 @@
 // feet long and reaching her chin, so the length is bounded by the geometry
 // rather than by an adjective.
 
+import { type Anatomy, anatomyOf } from "./anatomy";
+
 /** Toy vocabulary, owned here and re-exported into selfie.ts's KW table. */
 export const TOY_VOCAB = String.raw`dildos?|vibrators?|sex\s*toys?|butt\s*plugs?|plugs?|magic wands?|strap[- ]?ons?|anal beads|fleshlights?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo|clit vibrator|bullet vibrator|rabbit vibrator`;
 
@@ -147,13 +149,19 @@ const BIG_CLAUSE =
 const HAND_CLAUSE =
   "Her hand closes around it with five separate countable fingers and a clean visible edge between skin and silicone.";
 
-// The subject is a woman, stated once, positively. This used to read "…and no
-// penis — the toy is a separate object, not part of her body", which put both
-// `penis` and `part of her body` into a female nude prompt. Masculine legs and a
-// fused groin came back. Male anatomy is suppressed in FEMALE_NUDE_NEGATIVE in
-// media.functions.ts, which is where a suppression can actually work.
-const FEMALE_ANATOMY =
-  "She is a woman with natural female anatomy; the toy is a separate manufactured object against her skin.";
+// Whose body the toy is against, stated once, positively.
+//
+// This used to read "…and no penis — the toy is a separate object, not part of
+// her body", which put both `penis` and `part of her body` into a female nude
+// prompt. Masculine legs and a fused groin came back. Male anatomy is
+// suppressed in crossSexNegative (anatomy.ts), which is where a suppression can
+// actually work.
+//
+// It also used to say "She is a woman", chosen by an isMale flag that counted a
+// trans man as male — so he got no vulva assertion at all while the request
+// being answered was for a toy inside one.
+const vulvaAnatomy = (a: Anatomy) =>
+  `${a.subject[0].toUpperCase()}${a.subject.slice(1)} has a natural soft vulva; the toy is a separate manufactured object against ${a.poss} skin.`;
 
 // Where the toy IS. Nothing about where it is not.
 //
@@ -207,16 +215,17 @@ export function propIsInserted(req: string): boolean {
  * spec ahead of any statement of where the thing was, and placement is the part
  * that was going wrong.
  */
-export function propClause(req: string, opts: { isMale?: boolean } = {}): string {
+export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): string {
   const text = (req ?? "").trim();
   const prop = propFor(text);
   if (!prop) return "";
 
+  const a = opts.anatomy ?? anatomyOf("female");
   const inserted = INSERTED_RE.test(text);
   const parts = inserted ? [INSERTED_CLAUSE, prop.spec] : [prop.spec];
   if (BIG_RE.test(text)) parts.push(BIG_CLAUSE);
   parts.push(HAND_CLAUSE);
-  if (!opts.isMale) parts.push(FEMALE_ANATOMY);
+  if (a.hasVulva) parts.push(vulvaAnatomy(a));
   return parts.join(" ");
 }
 

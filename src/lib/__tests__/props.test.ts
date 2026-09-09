@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { propClause, propNegative, hasProp, propIsInserted } from "../props";
+import { anatomyOf } from "../anatomy";
 
 describe("propClause", () => {
   it("says nothing when no prop was asked for", () => {
@@ -48,17 +49,27 @@ describe("propClause", () => {
     expect(propClause("holding a dildo")).toContain("five separate countable fingers");
   });
 
-  it("asserts female anatomy for a female companion, not a male one", () => {
+  // Keyed off whether this companion HAS a vulva, not off an isMale flag. The
+  // flag counted a trans man as male, so a request to put a toy inside him
+  // asserted no anatomy at all for the part it was going inside.
+  it("asserts the anatomy the toy is against, for whoever actually has it", () => {
     // Stated positively. It used to read "…and no penis", which put `penis` in
     // the conditioning of every female nude — and the render came back with
     // masculine legs and a fused groin. Male anatomy is suppressed in the
-    // NEGATIVE prompt (FEMALE_NUDE_NEGATIVE), where suppression works.
-    const female = propClause("using a dildo", { isMale: false });
-    expect(female).toContain("natural female anatomy");
+    // NEGATIVE prompt (crossSexNegative), where suppression works.
+    const female = propClause("using a dildo", { anatomy: anatomyOf("female") });
+    expect(female).toContain("natural soft vulva");
     expect(female).not.toMatch(/penis/i);
-    expect(propClause("using a fleshlight", { isMale: true })).not.toMatch(
-      /natural female anatomy/i,
+
+    expect(propClause("using a dildo", { anatomy: anatomyOf("trans-male") })).toContain(
+      "He has a natural soft vulva",
     );
+
+    for (const g of ["male", "trans-female"]) {
+      expect(`${g} -> ${propClause("using a fleshlight", { anatomy: anatomyOf(g) })}`).not.toMatch(
+        /natural soft vulva/i,
+      );
+    }
   });
 
   // "a dildo in her hand" and "a dildo in pussy" differ only by the word after

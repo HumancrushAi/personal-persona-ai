@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
+import { anatomyOf } from "../anatomy";
 import {
   videoStillPrompt,
   videoActionPrompt,
   capPromptWords,
   finishMediaPrompt,
 } from "../selfie";
+
+const FEMALE = anatomyOf("female");
 
 // Regression: an act-heavy request pulled the camera into the act and the head
 // fell out of frame, because framing was appended AFTER the explicit tags and
@@ -150,7 +153,7 @@ describe("capPromptWords", () => {
       "fuck yourself with a magic wand while bent over",
     ]) {
       const p = finishMediaPrompt(videoStillPrompt({ gender: "female", name: "Raven" }, req), req, {
-        isMale: false,
+        anatomy: FEMALE,
       });
       expect(`${req} -> ${p.split(/\s+/).length <= 300}`).toBe(`${req} -> true`);
     }
@@ -169,14 +172,14 @@ describe("finishMediaPrompt on the refined path", () => {
     "dildo inserted into her pussy, warm bedside lamplight, candid raw photograph";
 
   it("appends the prop specification, which the refiner cannot be trusted to write", () => {
-    const p = finishMediaPrompt(refined, req, { isMale: false, appendProps: true });
+    const p = finishMediaPrompt(refined, req, { anatomy: FEMALE, appendProps: true });
     expect(p).toMatch(/matte silicone/);
     expect(p).toMatch(/as long as her hand/);
   });
 
   it("ends the refiner's last fragment before starting the specification", () => {
     // A bare space ran them together: "…candid raw photograph The toy is…".
-    const p = finishMediaPrompt(refined, req, { isMale: false, appendProps: true });
+    const p = finishMediaPrompt(refined, req, { anatomy: FEMALE, appendProps: true });
     expect(p).not.toMatch(/photograph The toy/);
     expect(p).toMatch(/photograph\. The toy/);
   });
@@ -185,7 +188,7 @@ describe("finishMediaPrompt on the refined path", () => {
     const p = finishMediaPrompt(
       "exact same woman as the reference image, completely nude, holding a large dildo, bedroom",
       req,
-      { isMale: false, appendProps: false },
+      { anatomy: FEMALE, appendProps: false },
     );
     expect(p).not.toMatch(/holding a large dildo/);
     expect(p).toMatch(/inserted between her open thighs/);
@@ -193,13 +196,13 @@ describe("finishMediaPrompt on the refined path", () => {
 
   it("leaves a toy alone when the request really was for her to hold it", () => {
     const held = "exact same woman as the reference image, completely nude, holding a dildo";
-    expect(finishMediaPrompt(held, "holding a dildo and smiling", { isMale: false })).toMatch(
+    expect(finishMediaPrompt(held, "holding a dildo and smiling", { anatomy: FEMALE })).toMatch(
       /holding a dildo/,
     );
   });
 
   it("keeps the refined path inside the budget too", () => {
-    const p = finishMediaPrompt(refined, req, { isMale: false, appendProps: true });
+    const p = finishMediaPrompt(refined, req, { anatomy: FEMALE, appendProps: true });
     expect(p.split(/\s+/).length).toBeLessThanOrEqual(300);
   });
 });
@@ -212,14 +215,14 @@ describe("a photo prompt ends somewhere still", () => {
     const p = finishMediaPrompt(
       "exact same woman as the reference image, completely nude, lying back on the bed, warm lamplight, candid raw photograph",
       "get naked",
-      { isMale: false, still: true },
+      { anatomy: FEMALE, still: true },
     );
     expect(p).toMatch(/held completely still and the camera is locked off/);
   });
 
   it("does not repeat itself when the builder already said so", () => {
     const built = videoStillPrompt({ gender: "female", name: "Raven" }, "get naked");
-    const p = finishMediaPrompt(built, "get naked", { isMale: false, still: true });
+    const p = finishMediaPrompt(built, "get naked", { anatomy: FEMALE, still: true });
     expect(p.match(/still held pose|held completely still/g)).toHaveLength(1);
   });
 
@@ -230,7 +233,7 @@ describe("a photo prompt ends somewhere still", () => {
   it("survives the cap on the longest prompt this app builds", () => {
     const req = "send me a picture of you sticking a big dildo in your pussy";
     const p = finishMediaPrompt(videoStillPrompt({ gender: "female", name: "Raven" }, req), req, {
-      isMale: false,
+      anatomy: FEMALE,
       still: true,
     });
     expect(p).toMatch(/held pose|held completely still/);
@@ -239,7 +242,7 @@ describe("a photo prompt ends somewhere still", () => {
 
   it("leaves a video alone, which is supposed to move", () => {
     const p = finishMediaPrompt("a woman dancing in a bedroom, warm light", "dance for me", {
-      isMale: false,
+      anatomy: FEMALE,
     });
     expect(p).not.toMatch(/locked off/);
   });

@@ -2,15 +2,7 @@
 // (media.functions) and the auto-selfie when a user asks for a pic in chat.
 
 import { TOY_VOCAB, propClause, propIsInserted } from "./props";
-
-function genderNoun(gender?: string | null): string {
-  const g = (gender ?? "female").toLowerCase();
-  if (g === "male" || g === "trans-male" || g === "transman") return "man";
-  if (g.includes("trans-female") || g.includes("trans_female") || g.includes("transwoman") || g.includes("futa") || g.includes("shemale"))
-    return "transgender woman";
-  if (g === "non-binary" || g === "nb") return "androgynous person";
-  return "woman";
-}
+import { type Anatomy, type GenderKind, anatomyOf, nudeAnatomy } from "./anatomy";
 
 // Explicit request vocabulary, grouped by category so the nudity gate and the
 // pose-tag builder share one source of truth. Add synonyms here and both the
@@ -65,33 +57,36 @@ export function requestIsNude(req: string): boolean {
 
 // Maps request keywords to explicit booru pose/act tags so the picture actually
 // shows what was asked (a plain selfie otherwise ignores the described act).
-function actionTags(req: string, isMale: boolean, isTransFemale?: boolean): string {
+//
+// Takes the resolved Anatomy rather than an isMale/isTransFemale pair. Two
+// independent booleans can disagree — isMale && isTransFemale was reachable —
+// and between them they could not express a trans man at all, so he fell into
+// the female branch and was given a pussy tag while every other builder in this
+// file was rendering him as a man. The flags on Anatomy cannot contradict
+// themselves, and there are three of them because there are three parts.
+function actionTags(req: string, a: Anatomy): string {
   const ex: string[] = [];
   const has = (src: string) => kw(src).test(req);
 
-  // Anatomy on display (gender-gated; trans female / futa has penis AND breasts).
-  if (isTransFemale) {
-    if (has(KW.penis))
-      ex.push(
-        "trans female, futanari, anatomically correct penis, erect cock, penis shaft, testicles, full frontal nudity, groin visible, female body with male genitalia",
-      );
-    if (has(KW.pussy)) ex.push("pussy, detailed pussy, spread pussy, spread legs, presenting");
-    if (has(KW.breasts))
-      ex.push("firm perky bare breasts, rounded uplifted bust, perky erect nipples");
-  } else if (isMale) {
-    if (has(KW.penis))
-      ex.push(
-        "anatomically correct penis, erect cock, penis shaft, testicles, full frontal nudity, groin visible, male focus",
-      );
-    if (has(KW.breasts)) ex.push("muscular male chest, abs");
-  } else {
-    if (has(KW.pussy))
-      ex.push(
-        "photorealistic pussy, detailed naturally shaped pussy, soft outer and inner labia, visible clitoris, glistening wetness, spread pussy, spread legs, presenting",
-      );
-    if (has(KW.breasts))
-      ex.push("firm perky bare breasts, rounded uplifted bust, perky erect nipples");
-  }
+  // Anatomy on display. Keyed off what this companion HAS, not off a gender
+  // label — a request for a part they do not have never reaches here, because
+  // refuseWrongAnatomy turns it away before any prompt is built.
+  if (a.hasPenis && has(KW.penis))
+    ex.push(
+      a.hasBreasts
+        ? "trans female, futanari, anatomically correct penis, erect cock, penis shaft, testicles, full frontal nudity, groin visible, female body with male genitalia"
+        : "anatomically correct penis, erect cock, penis shaft, testicles, full frontal nudity, groin visible, male focus",
+    );
+  if (a.hasVulva && has(KW.pussy))
+    ex.push(
+      "photorealistic pussy, detailed naturally shaped pussy, soft outer and inner labia, visible clitoris, glistening wetness, spread pussy, spread legs, presenting",
+    );
+  if (has(KW.breasts))
+    ex.push(
+      a.hasBreasts
+        ? "firm perky bare breasts, rounded uplifted bust, perky erect nipples"
+        : "flat muscular male chest, abs",
+    );
 
   // Poses.
   if (has(KW.ass) || has("bent?\\s*over|from\\s+behind|doggy|twerk\\w*"))
@@ -99,23 +94,24 @@ function actionTags(req: string, isMale: boolean, isTransFemale?: boolean): stri
   if (has(POSES_NUDE)) ex.push("spread legs, presenting");
   if (has("riding|cowgirl|straddl\\w*")) ex.push("straddling, riding pose");
 
-  // Acts.
+  // Acts. What the hands are doing follows the anatomy: a trans man
+  // masturbating is fingering himself, which the old isMale branch got wrong.
   if (has(KW.masturbation))
     ex.push(
-      isTransFemale
-        ? "futanari masturbation, hand on penis, stroking erect cock, bare breasts, perky erect nipples, groin visible"
-        : isMale
-          ? "male masturbation, hand on penis, stroking erect cock, groin visible"
-          : "female masturbation, fingering, hand between legs, spread legs, pleasuring herself, touching her pussy, reclining on bed",
+      a.hasPenis
+        ? a.hasBreasts
+          ? "futanari masturbation, hand on penis, stroking erect cock, bare breasts, perky erect nipples, groin visible"
+          : "male masturbation, hand on penis, stroking erect cock, groin visible"
+        : `masturbation, fingering, hand between legs, spread legs, pleasuring ${a.refl}, touching ${a.poss} pussy, reclining on bed`,
     );
   // No "away from face and mouth" here — see the header of props.ts. Tags are
   // a bag of concepts; "away from face" is the concepts `face` and `mouth`
   // attached to the toy, which is how the toy ended up at her mouth.
   if (has(KW.toys)) {
     const toyTag =
-      !isMale && has(KW.pussy)
-        ? "sex toy, dildo, dildo inserted in her pussy, dildo between her thighs, hands low at her hips, female anatomy"
-        : "sex toy, dildo, using sex toy, hands low at her hips";
+      a.hasVulva && has(KW.pussy)
+        ? `sex toy, dildo, dildo inserted in ${a.poss} pussy, dildo between ${a.poss} thighs, hands low at ${a.poss} hips`
+        : `sex toy, dildo, using sex toy, hands low at ${a.poss} hips`;
     ex.push(toyTag);
   }
   if (has(KW.anal)) ex.push("anal, insertion, bent over, ass, presenting");
@@ -138,50 +134,44 @@ function booruPonyPrompt(
   c: { age: number; ethnicity: string; gender?: string | null },
   req: string,
   styleBackstory: string | null | undefined,
-  kind: "male" | "female" | "trans-female" | "nb",
+  a: Anatomy,
 ): string {
-  const isMale = kind === "male";
-  const isTransFemale = kind === "trans-female";
   const isNude = requestIsNude(req);
-  const noun = isMale
-    ? "man"
-    : isTransFemale
-      ? "transgender woman"
-      : kind === "nb"
-        ? "androgynous person"
-        : "woman";
-  const who = isMale
-    ? "1boy, solo, male focus"
-    : isTransFemale
-      ? "1girl, solo, trans female, futanari"
-      : kind === "nb"
-        ? "androgynous, solo"
-        : "1girl, solo";
-  const body = isMale
-    ? "muscular, abs, handsome male"
-    : isTransFemale
-      ? "curvy, feminine, attractive, firm perky breasts, female body with male genitalia"
-      : kind === "nb"
-        ? "androgynous, lean"
-        : "curvy, feminine, attractive, firm perky breasts";
+  const { noun, kind } = a;
+  const WHO: Record<GenderKind, string> = {
+    male: "1boy, solo, male focus",
+    female: "1girl, solo",
+    "trans-female": "1girl, solo, trans female, futanari",
+    "trans-male": "1boy, solo, trans male, female genitalia",
+    nb: "androgynous, solo",
+  };
+  const BODY: Record<GenderKind, string> = {
+    male: "muscular, abs, handsome male",
+    female: "curvy, feminine, attractive, firm perky breasts",
+    "trans-female": "curvy, feminine, attractive, firm perky breasts, female body with male genitalia",
+    "trans-male": "lean masculine build, flat chest, top surgery scars, male body with female genitalia",
+    nb: "androgynous, lean",
+  };
+  const NUDE_TAGS: Record<GenderKind, string> = {
+    male: "nude, completely naked, bare skin, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, male anatomy",
+    female:
+      "nude, completely naked, firm perky bare breasts, rounded uplifted bust, perky erect nipples, detailed photorealistic pussy, vulva, labia, clitoris, pubic hair, groin visible",
+    "trans-female":
+      "nude, completely naked, 1girl, trans female, futanari, firm perky bare breasts, rounded uplifted bust, perky erect nipples, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, female body with male genitalia",
+    // The case that had no branch at all before: he fell through to the female
+    // tags and was rendered with breasts.
+    "trans-male":
+      "nude, completely naked, trans male, flat masculine chest, top surgery scars, detailed pussy, vulva, labia, clitoris, pubic hair, groin visible",
+    nb: "nude, completely naked, androgynous body, flat soft chest, bare skin",
+  };
 
-  let nudeTags = "clothed";
-  if (isNude) {
-    if (isMale) {
-      nudeTags =
-        "nude, completely naked, bare skin, standing, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, male anatomy";
-    } else if (isTransFemale) {
-      nudeTags =
-        "nude, completely naked, 1girl, trans female, futanari, firm perky bare breasts, rounded uplifted bust, perky erect nipples, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, female body with male genitalia";
-    } else {
-      nudeTags =
-        "nude, completely naked, firm perky bare breasts, rounded uplifted bust, perky erect nipples, detailed photorealistic pussy, vulva, labia, clitoris, pubic hair, groin visible";
-    }
-  }
+  const who = WHO[kind];
+  const body = BODY[kind];
+  const nudeTags = isNude ? NUDE_TAGS[kind] : "clothed";
 
-  // Pose/act tags follow the request regardless of gender; anatomy in actionTags
-  // is keyed off the requested body parts, not the companion's kind.
-  const explicit = actionTags(req, isMale, isTransFemale);
+  // Pose/act tags follow the request; the anatomy inside actionTags is keyed
+  // off what this companion has.
+  const explicit = actionTags(req, a);
 
   const tags = [
     "source_photo, realistic, photorealistic, raw photo",
@@ -251,7 +241,8 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   s = s.replace(/\b(?:right\s+)?(?:up\s+)?(?:close|next)\s+to\s+my\s+face\b/gi, "close to the camera");
   s = s.replace(/\bin(?:to)?\s+my\s+face\b/gi, "close to the camera");
   s = s.replace(/\bin\s+front\s+of\s+my\s+face\b/gi, "close to the camera");
-  s = s.replace(/\b(?:for|at)\s+me\b/gi, "at the camera");
+  s = s.replace(/\bat\s+me\b/gi, "at the camera");
+  s = s.replace(/\bfor\s+me\b/gi, "for the camera");
   s = s.replace(/\btowards?\s+me\b/gi, "toward the camera");
 
   return s.replace(/^[\s,.:;-]+/, "").trim();
@@ -383,6 +374,10 @@ export const CLOSE_UP_RE =
 //    everything that matters while keeping the face in shot; a plain selfie
 //    keeps the full figure but at a conversational distance rather than across
 //    a room.
+// "a androgynous person" — the only noun in the table that starts with a vowel,
+// and the framing sentence is the first thing the renderer reads.
+const article = (noun: string) => (/^[aeiou]/i.test(noun) ? "an" : "a");
+
 function framingFor(
   noun: string,
   poss: string,
@@ -402,13 +397,13 @@ function framingFor(
   // the foreground. That is deliberate: a close-up prompt with no face in it is
   // how a picture comes back as an anonymous crop of a torso.
   if (isCloseUp) {
-    return `Close-up point-of-view photograph of a ${noun}, taken from between ${poss} open thighs looking up along ${poss} body, ${poss} groin filling the centre foreground in sharp focus, ${poss} stomach and breasts beyond it and ${poss} face looking down into the lens at the top of the frame, lens about thirty centimetres away.`;
+    return `Close-up point-of-view photograph of ${article(noun)} ${noun}, taken from between ${poss} open thighs looking up along ${poss} body, ${poss} groin filling the centre foreground in sharp focus, ${poss} stomach and breasts beyond it and ${poss} face looking down into the lens at the top of the frame, lens about thirty centimetres away.`;
   }
 
   // An act request gets a medium shot: the act is at the centre of the frame at
   // usable size, and the face is still in it.
   if (posed || hasReq) {
-    return `Photograph of a ${noun} indoors, framed from the top of ${poss} head down to ${poss} knees, ${poss} face clearly visible in the upper third of the frame and ${poss} hips in the middle of the frame, camera about two metres away at chest height.`;
+    return `Photograph of ${article(noun)} ${noun} indoors, framed from the top of ${poss} head down to ${poss} knees, ${poss} face clearly visible in the upper third of the frame and ${poss} hips in the middle of the frame, camera about two metres away at chest height.`;
   }
 
   let stance = " standing";
@@ -418,7 +413,7 @@ function framingFor(
     const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     stance = " " + postures[hash % postures.length];
   }
-  return `Full length photograph of a ${noun}${stance} in a room, ${poss} whole body in frame from ${poss} head to ${poss} feet, ${poss} face clearly visible at the top of the frame, camera about three metres away.`;
+  return `Full length photograph of ${article(noun)} ${noun}${stance} in a room, ${poss} whole body in frame from ${poss} head to ${poss} feet, ${poss} face clearly visible at the top of the frame, camera about three metres away.`;
 }
 
 // Requests that carry their own posture, which "standing" would fight.
@@ -441,27 +436,16 @@ export function videoStillPrompt(
   userPrompt?: string | null,
 ): string {
   const req = (userPrompt ?? "").trim();
-  const g = (c.gender ?? "").toLowerCase();
-  const reqLower = req.toLowerCase();
-  const isTransFemale =
-    g.includes("trans-female") ||
-    g.includes("trans_female") ||
-    g.includes("transwoman") ||
-    g.includes("futa") ||
-    g.includes("shemale") ||
-    /\b(trans|transgender|futa|futanari|shemale|ladyboy|dickgirl)\b/i.test(reqLower);
-
-  const noun = isTransFemale ? "transgender woman" : genderNoun(c.gender);
-  const isMale = noun === "man";
-  const subject = isMale ? "he" : noun === "woman" || isTransFemale ? "she" : "they";
+  // One resolver, and it reads ONLY the companion's stored gender. Each builder
+  // in this file used to re-derive this with its own copy-pasted block that
+  // also sniffed the user's message for "trans" and "futa" — so typing those
+  // words changed whose body was rendered. See the header of anatomy.ts.
+  const a = anatomyOf(c.gender);
+  const { noun, subject, poss } = a;
 
   const undress = requestIsNude(req)
-    ? isMale
-      ? `${subject} is already completely naked with bare skin everywhere, anatomically correct erect penis and cock and testicles visible, male anatomy, bare skin`
-      : isTransFemale
-        ? `${subject} is already completely naked with bare skin everywhere, firm perky bare breasts and perky erect nipples visible, rounded uplifted bust, combined with an anatomically correct erect penis and cock and testicles visible, transgender female anatomy`
-        : `${subject} is already completely naked with bare skin everywhere, firm perky bare breasts and perky nipples visible, rounded uplifted bust, highly detailed photorealistic pussy with naturally shaped vulva and labia visible, clitoris visible, wet glistening skin, female anatomy`
-    : `${subject} holds the pose`;
+    ? `${subject} ${a.is} already completely naked, bare skin everywhere. ${nudeAnatomy(c.gender)}`
+    : `${subject} hold${a.s} the pose.`;
 
   // NOTE: deliberately no actionTags here. Those are booru tags ("bent over,
   // presenting, ass, rear view") written for the Pony IMAGE model, and feeding
@@ -470,18 +454,19 @@ export function videoStillPrompt(
   // matter what the framing text said. The user's own words in plain language
   // render the same act and keep the camera wide.
   const action = normalizeRequest(req, subject) || "posing seductively for the camera";
-  const poss = isMale ? "his" : "her";
   const isCloseUp = CLOSE_UP_RE.test(req);
+  const Subject = `${subject[0].toUpperCase()}${subject.slice(1)}`;
+  const settles = `settle${a.s}`;
 
   return [
     framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
     actionSentence(subject, action),
-    `${undress[0].toUpperCase()}${undress.slice(1)}.`,
-    propClause(req, { isMale }),
+    `${undress[0].toUpperCase()}${undress.slice(1)}`,
+    propClause(req, { anatomy: a }),
     QUALITY,
     isCloseUp
-      ? "The camera holds its position close in. She settles into a still held pose at the end."
-      : "The camera holds its position. She settles into a still held pose at the end.",
+      ? `The camera holds its position close in. ${Subject} ${settles} into a still held pose at the end.`
+      : `The camera holds its position. ${Subject} ${settles} into a still held pose at the end.`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -496,39 +481,23 @@ export function videoActionPrompt(
   userPrompt?: string | null,
 ): string {
   const req = (userPrompt ?? "").trim();
-  const g = (c.gender ?? "").toLowerCase();
-  const reqLower = req.toLowerCase();
-  const isTransFemale =
-    g.includes("trans-female") ||
-    g.includes("trans_female") ||
-    g.includes("transwoman") ||
-    g.includes("futa") ||
-    g.includes("shemale") ||
-    /\b(trans|transgender|futa|futanari|shemale|ladyboy|dickgirl)\b/i.test(reqLower);
-
-  const noun = isTransFemale ? "transgender woman" : genderNoun(c.gender);
-  const isMale = noun === "man";
-  const subject = isMale ? "he" : noun === "woman" || isTransFemale ? "she" : "they";
+  const a = anatomyOf(c.gender);
+  const { noun, subject, poss } = a;
 
   const undress = requestIsNude(req)
-    ? isMale
-      ? `${subject} is already completely naked with bare skin everywhere, anatomically correct erect penis and cock and testicles visible, male anatomy, bare skin throughout`
-      : isTransFemale
-        ? `${subject} is already completely naked with bare skin everywhere, firm perky bare breasts and perky erect nipples visible, rounded uplifted bust, combined with an anatomically correct erect penis and cock and testicles visible throughout, transgender female anatomy`
-        : `${subject} is already completely naked with bare skin everywhere, firm perky bare breasts and perky nipples visible, rounded uplifted bust, highly detailed photorealistic pussy with naturally shaped vulva and labia visible, clitoris visible, wet glistening skin throughout, female anatomy`
-    : `${subject} moves seductively for the camera`;
+    ? `${subject} ${a.is} already completely naked, bare skin everywhere throughout. ${nudeAnatomy(c.gender)}`
+    : `${subject} move${a.s} seductively for the camera.`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
   const action =
     normalizeRequest(req, subject) || "performing a slow seductive striptease for the camera";
-  const poss = isMale ? "his" : "her";
   const isCloseUp = CLOSE_UP_RE.test(req);
 
   return [
     framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
     actionSentence(subject, action),
-    `${undress[0].toUpperCase()}${undress.slice(1)}.`,
-    propClause(req, { isMale }),
+    `${undress[0].toUpperCase()}${undress.slice(1)}`,
+    propClause(req, { anatomy: a }),
     QUALITY,
     isCloseUp
       ? "Smooth natural lifelike motion throughout, consistent face and body. The camera holds its close point-of-view position."
@@ -544,36 +513,17 @@ export function kontextSelfiePrompt(
   styleBackstory?: string | null,
 ): string {
   const req = (userPrompt ?? "").trim();
-  const g = (c.gender ?? "").toLowerCase();
-  const reqLower = req.toLowerCase();
-  const isTransFemale =
-    g.includes("trans-female") ||
-    g.includes("trans_female") ||
-    g.includes("transwoman") ||
-    g.includes("futa") ||
-    g.includes("shemale") ||
-    /\b(trans|transgender|futa|futanari|shemale|ladyboy|dickgirl)\b/i.test(reqLower);
-
-  const noun = isTransFemale ? "transgender woman" : genderNoun(c.gender);
-  const isMale = noun === "man";
-  const [subject, object] = isMale
-    ? ["he", "him"]
-    : noun === "woman" || isTransFemale
-      ? ["she", "her"]
-      : ["they", "them"];
-  const explicit = actionTags(req, isMale, isTransFemale);
+  const a = anatomyOf(c.gender);
+  const { noun, subject, object } = a;
+  const explicit = actionTags(req, a);
 
   const state = requestIsNude(req)
-    ? isMale
-      ? "completely naked, bare skin, anatomically correct penis and cock and groin visible"
-      : isTransFemale
-        ? "completely naked, bare skin, firm perky bare breasts, nipples, and anatomically correct penis and cock visible, trans female anatomy"
-        : "completely naked, bare skin, firm perky bare breasts, nipples, and detailed photorealistic pussy visible, female anatomy"
+    ? `completely naked, bare skin. ${nudeAnatomy(c.gender)}`
     : `wearing what ${subject} has on`;
 
   return [
-    `Keep the exact same ${noun} from the photo — identical face, hair, skin tone and body. Do not change who ${subject} is.`,
-    `${subject[0].toUpperCase()}${subject.slice(1)} is a ${c.age}-year-old ${c.ethnicity} ${noun}.`,
+    `Keep the exact same ${noun} from the photo — identical face, hair, skin tone and body. Do not change who ${subject} ${a.is}.`,
+    `${subject[0].toUpperCase()}${subject.slice(1)} ${a.is} a ${c.age}-year-old ${c.ethnicity} ${noun}.`,
     `Now show ${object} ${req || "taking a seductive selfie, looking at the camera"}, ${state}.`,
     explicit,
     styleBackstory || "",
@@ -632,13 +582,14 @@ export function capPromptWords(prompt: string, max = PROMPT_WORD_BUDGET): string
 export function finishMediaPrompt(
   base: string,
   req: string,
-  opts: { isMale?: boolean; appendProps?: boolean; still?: boolean } = {},
+  opts: { anatomy?: Anatomy; appendProps?: boolean; still?: boolean } = {},
 ): string {
   let out = (base ?? "").trim();
   const request = (req ?? "").trim();
+  const a = opts.anatomy ?? anatomyOf("female");
 
   if (opts.appendProps) {
-    const props = propClause(request, { isMale: opts.isMale });
+    const props = propClause(request, { anatomy: a });
     // The refiner writes comma-separated fragments with no terminating full
     // stop, so a bare space ran its last fragment into the first sentence of
     // the spec ("…shot on Sony A7 IV 85mm lens The toy is inserted into her").
@@ -651,7 +602,7 @@ export function finishMediaPrompt(
   // user was actually sent. Rewritten positively: where it is, and what her
   // hand is doing there.
   if (propIsInserted(request)) {
-    const poss = opts.isMale ? "his" : "her";
+    const poss = a.poss;
     out = out.replace(
       /\b(?:holding|holds|gripping|grips|clutching|raising|lifting)\s+(?:a|an|the|her|his)?\s*(?:large |big |thick |huge )?(?:silicone |matte |black )*(?:dildo|sex toy|toy|vibrator|plug|wand)\b/gi,
       `with the toy inserted between ${poss} open thighs, ${poss} fingers closed on its base`,
@@ -690,25 +641,7 @@ export function selfiePrompt(
   styleBackstory?: string | null,
 ): string {
   const req = (userPrompt ?? "").trim();
-  const g = (c.gender ?? "").toLowerCase();
-  const reqLower = req.toLowerCase();
-  const isTransFemale =
-    g.includes("trans-female") ||
-    g.includes("trans_female") ||
-    g.includes("transwoman") ||
-    g.includes("futa") ||
-    g.includes("shemale") ||
-    /\b(trans|transgender|futa|futanari|shemale|ladyboy|dickgirl)\b/i.test(reqLower);
-
-  const noun = genderNoun(c.gender);
-  const kind = isTransFemale
-    ? "trans-female"
-    : noun === "man"
-      ? "male"
-      : noun === "androgynous person"
-        ? "nb"
-        : "female";
-  return booruPonyPrompt(c, req, styleBackstory, kind);
+  return booruPonyPrompt(c, req, styleBackstory, anatomyOf(c.gender));
 }
 
 // True when the user's message is asking her to send a picture/selfie/nude.
@@ -778,40 +711,25 @@ export function wantsVideo(t: string): boolean {
   return false;
 }
 
-// Checks if the user is requesting a cross-gender body part from the companion
-export function checkCrossGenderRequest(
-  gender: string | null | undefined,
-  prompt: string,
-): string | null {
-  const g = (gender ?? "female").toLowerCase();
-  const p = prompt.toLowerCase();
-
-  // Transgender females / futas have male genitalia (penis/cock) and female body/breasts
-  const isTransFemale =
-    g.includes("trans-female") ||
-    g.includes("trans_female") ||
-    g.includes("transwoman") ||
-    g.includes("futa") ||
-    g.includes("shemale") ||
-    g.includes("ladyboy") ||
-    /\b(trans|transgender|futa|futanari|shemale|ladyboy|dickgirl)\b/i.test(p);
-
-  if (isTransFemale) {
-    // Trans females / futas can send both breasts/pussy and penis/cock
-    return null;
-  }
-
-  const maleTerms = /\b(dick|cock|penis|balls|male chest|man chest|guy chest|male body)\b/;
-  const femaleTerms = /\b(pussy|vagina|clit|vulva|female body|breasts|tits|boobs)\b/;
-
-  if (g === "female") {
-    if (maleTerms.test(p)) {
-      return "No silly, I'm a girl! 😅 I can only send pics of my own body.";
-    }
-  } else if (g === "male" || g === "trans-male") {
-    if (femaleTerms.test(p)) {
-      return "No silly, I'm a guy! 😅 I can only send pics of my own body.";
-    }
-  }
-  return null;
-}
+/**
+ * The in-character refusal when a request names anatomy this companion does
+ * not have, or null when there is nothing to refuse.
+ *
+ * Kept as a re-export under its original name because three call sites import
+ * it; the implementation now lives in anatomy.ts beside the table it has to
+ * agree with. The old one here had four faults, every one of them reproduced
+ * against the live code:
+ *
+ *   - it read the USER'S MESSAGE for "trans" and "futa" and unlocked
+ *     everything when it matched, so "send me a pic of your dick you futa"
+ *     rendered a penis on an ordinary female companion;
+ *   - it had trans men exactly backwards, refusing a request for his own pussy
+ *     and accepting one for a cock he does not have;
+ *   - it let a trans woman be asked for a vulva, which produced the fused,
+ *     ambiguous groin rather than a refusal;
+ *   - it matched the bare word anywhere in the message, so "my ex had a huge
+ *     dick lol" — ordinary conversation — was answered with "No silly, I'm a
+ *     girl!". A gate that refuses people for talking about their lives is
+ *     worse than the thing it was written to prevent.
+ */
+export { refuseWrongAnatomy as checkCrossGenderRequest } from "./anatomy";

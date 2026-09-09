@@ -161,6 +161,22 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // the same async job pipeline as the 🎬 button. Checked BEFORE the selfie
     // path so "send me a video of you…" doesn't get answered with a photo.
     if (wantsVideo(data.content) && totalCredits(bal) >= VIDEO_COST) {
+      // Same gate the auto-selfie below has run for a while, and the same
+      // reason: a request for anatomy this companion does not have is refused
+      // in character rather than rendered. It was missing on both video paths,
+      // so "send me a video of your pussy" to a male companion rendered one.
+      // Before the debit, so a refusal never costs credits.
+      const crossGenderWarning = checkCrossGenderRequest(c.gender, data.content);
+      if (crossGenderWarning) {
+        await supabase.from("messages").insert({
+          conversation_id: data.conversationId,
+          user_id: userId,
+          role: "assistant",
+          content: crossGenderWarning,
+        });
+        return { reply: crossGenderWarning };
+      }
+
       const balAfter = await deductCredits(
         supabase,
         userId,

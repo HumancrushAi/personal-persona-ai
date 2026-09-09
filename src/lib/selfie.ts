@@ -111,8 +111,8 @@ function actionTags(req: string, isMale: boolean, isTransFemale?: boolean): stri
   if (has(KW.toys)) {
     const toyTag =
       !isMale && has(KW.pussy)
-        ? "sex toy, dildo, holding a dildo, using sex toy, dildo inserted in her pussy, female anatomy"
-        : "sex toy, dildo, holding a dildo, using sex toy";
+        ? "sex toy, dildo, dildo inserted in her pussy down at her crotch, hands low between her legs, sex toy away from face and mouth, female anatomy"
+        : "sex toy, dildo, using sex toy, hands low away from face";
     ex.push(toyTag);
   }
   if (has(KW.anal)) ex.push("anal, insertion, bent over, ass, presenting");
@@ -241,6 +241,10 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   return s.replace(/^[\s,.:;-]+/, "").trim();
 }
 
+// Detects close-up / POV / close proximity requests so framing doesn't force a wide camera shot.
+export const CLOSE_UP_RE =
+  /\b(close[- ]?ups?|close to|in my face|to my face|in front of my face|against the camera|near camera|close to camera|pov|point of view|macro|tight shot|intimate view|front of camera|up close|zoom\w*|zoomed|right up|face in your)\b/i;
+
 // The opening sentence of every media prompt, and the only thing that reliably
 // stops the crop.
 //
@@ -257,7 +261,11 @@ function framingFor(
   posed: boolean,
   hasReq: boolean,
   name?: string,
+  isCloseUp?: boolean,
 ): string {
+  if (isCloseUp) {
+    return `Intimate close-up POV photograph of a ${noun}, camera positioned close to ${poss} body from a first-person perspective, focus sharp on ${poss} body and details, natural intimate angle.`;
+  }
   let stance = " standing";
   if (posed || hasReq) {
     stance = "";
@@ -277,7 +285,7 @@ const POSTURE_RE =
 // Photographic language, not render language. "8k masterpiece" vocabulary is
 // what produces the airbrushed CG look that reads as AI on sight.
 const QUALITY =
-  "Candid photograph, natural available light, true-to-life colour, real untouched skin with visible pores and natural texture, natural asymmetry, no airbrushing or smoothing. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
+  "Candid photograph, 35mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and natural texture, micro skin details, fine peach fuzz, natural skin sheen, natural asymmetry, no airbrushing or smoothing. Looks like a real photo taken on a real camera, not a render. No text, no watermark.";
 
 export function videoStillPrompt(
   c: { gender?: string | null; name?: string },
@@ -314,14 +322,17 @@ export function videoStillPrompt(
   // render the same act and keep the camera wide.
   const action = normalizeRequest(req, subject) || "posing seductively for the camera";
   const poss = isMale ? "his" : "her";
+  const isCloseUp = CLOSE_UP_RE.test(req);
 
   return [
-    framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name),
+    framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
     propClause(req, { isMale }),
     QUALITY,
-    "The camera stays wide and does not move closer. Settles into a still held pose at the end.",
+    isCloseUp
+      ? "Intimate POV perspective, camera stays close in focus. Settles into a still held pose at the end."
+      : "The camera stays wide and does not move closer. Settles into a still held pose at the end.",
   ]
     .filter(Boolean)
     .join(" ");
@@ -362,14 +373,17 @@ export function videoActionPrompt(
   const action =
     normalizeRequest(req, subject) || "performing a slow seductive striptease for the camera";
   const poss = isMale ? "his" : "her";
+  const isCloseUp = CLOSE_UP_RE.test(req);
 
   return [
-    framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name),
+    framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
     `${subject[0].toUpperCase()}${subject.slice(1)} is ${action}.`,
     `${undress}.`,
     propClause(req, { isMale }),
     QUALITY,
-    "Smooth natural lifelike motion throughout, consistent face and body. The camera stays wide and does not move closer.",
+    isCloseUp
+      ? "Smooth natural lifelike motion throughout, consistent face and body. Intimate POV camera perspective."
+      : "Smooth natural lifelike motion throughout, consistent face and body. The camera stays wide and does not move closer.",
   ]
     .filter(Boolean)
     .join(" ");

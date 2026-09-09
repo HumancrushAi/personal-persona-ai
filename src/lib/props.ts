@@ -19,13 +19,13 @@
 // her hand" is something the renderer can act on and "correct size" is not.
 
 /** Toy vocabulary, owned here and re-exported into selfie.ts's KW table. */
-export const TOY_VOCAB = String.raw`dildos?|vibrators?|sex\s*toys?|butt\s*plugs?|plugs?|magic wands?|strap[- ]?ons?|anal beads|fleshlights?`;
+export const TOY_VOCAB = String.raw`dildos?|vibrators?|sex\s*toys?|butt\s*plugs?|plugs?|magic wands?|strap[- ]?ons?|anal beads|fleshlights?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo|clit vibrator|bullet vibrator|rabbit vibrator`;
 
 const kw = (src: string) => new RegExp(String.raw`\b(?:${src})\b`, "i");
 
 /** Wrong objects the renderer reaches for when a prop is under-specified. */
 const SHARED_NEGATIVE =
-  "baseball bat, cricket bat, club, bat, wooden pole, broom handle, rolling pin, table leg, tree branch, weapon, wood grain, wooden texture, giant novelty prop, oversized prop, cartoon prop, balloon, sausage, melting object, deformed object, object fused to hand, object merging into skin, floating object, duplicated object, extra object";
+  "baseball bat, cricket bat, club, bat, wooden pole, broom handle, rolling pin, table leg, tree branch, weapon, wood grain, wooden texture, giant novelty prop, oversized prop, cartoon prop, balloon, sausage, melting object, deformed object, object fused to hand, object merging into skin, floating object, duplicated object, extra object, bong, pipe, hookah, smoking pipe, vape, bottle, flask, microphone, cylinder held to mouth, object near mouth, object near face, object near chest, smoking device, straw, tube held to mouth";
 
 type Prop = {
   id: string;
@@ -72,8 +72,8 @@ const PROPS: Prop[] = [
   {
     id: "dildo",
     // The default, and the fallback for a bare "sex toy".
-    match: kw(String.raw`dildos?|sex\s*toys?`),
-    spec: "The dildo is a separate solid object: smooth matte silicone in a solid colour, with a soft rounded tip and a flared base, and clean edges that read clearly against her skin. It is about as long as her hand from wrist to fingertip and roughly two fingers thick — a real body-safe sex toy.",
+    match: kw(String.raw`dildos?|sex\s*toys?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo`),
+    spec: "The dildo is a separate solid object: smooth matte silicone in a solid colour, with a soft rounded tip and a flared base, and clean edges that read clearly against her skin. It is positioned down between her legs at her crotch and held low away from her face and mouth. It is about as long as her hand from wrist to fingertip and roughly two fingers thick — a real body-safe sex toy.",
   },
 ];
 
@@ -93,7 +93,7 @@ const FEMALE_ANATOMY =
   "She has normal female anatomy, a natural pussy, and no penis — the toy is a separate object, not part of her body.";
 
 const INSERTED_CLAUSE =
-  "The toy is inserted into her. Where it meets her body the contact is literal and visible: the skin and lips part and press around it, wet and glistening, with the exact point of entry in focus rather than smoothed over.";
+  "The sex toy is inserted into her lower body down at her crotch between her legs. The sex toy is positioned exclusively down at her groin and pussy, inserted vaginally, completely away from her face, head, mouth, and upper chest. Her hands are positioned low down between her thighs holding the base of the toy at her pussy, NEVER held up near her face or chest. Where it meets her body the contact is physical, literal, and visible: naturally parting outer and inner labia pressing around the toy, visible clitoral hood, glistening natural moisture, with the exact point of entry in sharp focus rather than smoothed over.";
 
 // Insertion is a preposition followed by the body part, within a few words —
 // not either half on its own. "a dildo in her hand" and "in pussy" differ only
@@ -101,7 +101,7 @@ const INSERTED_CLAUSE =
 // separately said a toy held in her hand was inserted, and checking only
 // "in her/your/my" missed "dildo in pussy", the plainest phrasing there is.
 const INSERTED_RE =
-  /\b(?:insert\w*|in|into|inside|up|deep|penetrat\w*|stuff\w*|slid\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b[^.?!]{0,20}\b(?:pussy|pussies|vagina|vulvas?|cunt|slit|clit\w*|labia|snatch|coochie|ass|asshole|anus|butt)\b/i;
+  /\b(?:insert\w*|in|into|inside|up|deep|penetrat\w*|stuff\w*|slid\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b[^.?!]{0,25}\b(?:pussy|pussies|vagina|vulvas?|cunt|slit|clit\w*|labia|snatch|coochie|cooch|vag|hole|rear|booty|cheeks|ass|asshole|anus|butt)\b/i;
 
 function propFor(req: string): Prop | null {
   return PROPS.find((p) => p.match.test(req)) ?? null;

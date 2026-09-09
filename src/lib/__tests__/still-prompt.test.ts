@@ -13,7 +13,7 @@ describe("videoStillPrompt", () => {
 
   it("uses male anatomy for male companions", () => {
     const p = videoStillPrompt({ gender: "male" }, "get naked");
-    expect(p).toMatch(/penis and groin/i);
+    expect(p).toMatch(/penis/i);
     expect(p).not.toMatch(/bare breasts/i);
   });
 
@@ -37,7 +37,14 @@ describe("videoStillPrompt", () => {
     expect(p).toMatch(/female anatomy/i);
     expect(p).toMatch(/no penis/i);
     expect(p).toMatch(/inserted/i);
+    expect(p).toMatch(/down between her legs at her crotch/i);
     expect(p).not.toMatch(/standing/i);
+  });
+
+  it("uses intimate POV framing when user asks for a close-up or close to face pic", () => {
+    const p = videoStillPrompt({ gender: "female" }, "pussy close to my face");
+    expect(p).toMatch(/intimate close-up pov photograph/i);
+    expect(p).not.toMatch(/camera far away across the room/i);
   });
 });
 

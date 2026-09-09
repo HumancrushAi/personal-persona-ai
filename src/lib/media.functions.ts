@@ -20,8 +20,61 @@ import {
   videoActionPrompt,
   requestIsNude,
   checkCrossGenderRequest,
+  CLOSE_UP_RE,
 } from "./selfie";
-import { propClause, propNegative } from "./props";
+
+// Motion negative prompt for the RunPod WAN endpoint — the "static/frozen" terms
+// are what stop it returning a near-still clip.
+// The "looks AI-generated" half of this list matters as much as the anatomy
+// half: plastic/waxy/airbrushed skin, CGI and doll-like faces, and the
+// oversaturated over-sharpened HDR look are what give a generated clip away.
+const VIDEO_NEGATIVE =
+  "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, watermark text overlay, distorted hands, extra fingers, fused fingers, saggy breasts, droopy breasts, pendulous breasts, deflated breasts, asymmetric breasts, malformed breasts, deformed penis, mutated penis, fused penis, inverted genitalia, missing penis, penis looking like female genitalia, deformed pussy, distorted crotch, featureless crotch, plastic genitalia, asymmetric eyes, close-up, extreme close-up, cropped head, headless, head out of frame, face cut off, torso only, tight crop, zoomed in, mutated hands, fused fingers, melting object, deformed object, object merging into hand, extra arms, floating limbs, warped anatomy, morphing, flickering, jittery motion, rubbery movement, unnatural motion";
+
+// Applied only when the request implies nudity. Without it nothing pushes back
+// on the clothes already in the start frame, so explicit acts were performed
+// fully dressed.
+const CLOTHING_NEGATIVE =
+  "clothed, wearing clothes, dressed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, dress, swimsuit, fabric covering body, partially undressed";
+
+const FEMALE_NUDE_NEGATIVE =
+  "penis, cock, erect cock, testicles, male genitalia, male chest, muscular male torso, male arms, hairy legs, beard, mustache, male body, male structure, male pelvis, masculine groin, masculine thighs";
+
+const MALE_NUDE_NEGATIVE =
+  "female breasts, pussy, vulva, female genitalia, cleavage, female body, feminine hips";
+
+function negativeFor(userReq: string | undefined, gender?: string | null): string {
+  const req = userReq ?? "";
+  const isNude = requestIsNude(req);
+  let base = isNude ? `${CLOTHING_NEGATIVE}, ${VIDEO_NEGATIVE}` : VIDEO_NEGATIVE;
+
+  // If user requested a close-up / POV, strip close-up negative terms so they don't fight the prompt.
+  if (CLOSE_UP_RE.test(req)) {
+    base = base.replace(/,\s*(?:close-up|extreme close-up|tight crop|zoomed in)\b/gi, "");
+  }
+
+  // Add gender-appropriate anatomy negatives for nude requests
+  const g = (gender ?? "female").toLowerCase();
+  const isTransFemale =
+    g.includes("trans-female") ||
+    g.includes("trans_female") ||
+    g.includes("transwoman") ||
+    g.includes("futa") ||
+    g.includes("shemale");
+  const isMale = !isTransFemale && (g === "male" || g === "trans-male");
+
+  if (isNude) {
+    if (isMale) {
+      base = `${base}, ${MALE_NUDE_NEGATIVE}`;
+    } else if (!isTransFemale) {
+      base = `${base}, ${FEMALE_NUDE_NEGATIVE}`;
+    }
+  }
+
+  const props = propNegative(req);
+  return props ? `${base}, ${props}` : base;
+}
+import { propClause, propNegative, hasProp } from "./props";
 import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
@@ -260,8 +313,9 @@ export async function startImageJob(
   // Grok is told to describe props well and usually does, but "usually" is not
   // a constraint, and the one it wrote was the abstract "correct size" that the
   // renderer cannot act on.
-  const props = propClause(userRequest ?? "", { isMale: isMaleCompanion(companion.gender) });
-  const imagePrompt = [
+  const reqText = userRequest ?? "";
+  const props = propClause(reqText, { isMale: isMaleCompanion(companion.gender) });
+  let imagePrompt = [
     refined?.[0] ??
       (imageEndpoint
         ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
@@ -270,6 +324,25 @@ export async function startImageJob(
   ]
     .filter(Boolean)
     .join(" ");
+
+  // Post-processing overrides for close-up framing & inserted toy crotch positioning
+  if (reqText) {
+    if (CLOSE_UP_RE.test(reqText)) {
+      imagePrompt = imagePrompt.replace(
+        /full body visible,\s*head to feet in frame[^\n,.]*/gi,
+        "intimate close-up POV photograph, camera positioned close to her body from a first-person perspective, focus sharp on her body and pussy",
+      );
+      if (!/close-up|pov/i.test(imagePrompt.slice(0, 80))) {
+        imagePrompt = `Intimate close-up POV photograph, camera positioned close to her body from a first-person perspective, focus sharp on her pussy and lower body. ${imagePrompt}`;
+      }
+    }
+    if (hasProp(reqText)) {
+      imagePrompt = imagePrompt.replace(
+        /holding (?:a|the) (?:dildo|sex toy|vibrator|plug)/gi,
+        "using sex toy inserted down at her crotch between her legs, hands low at her thighs away from face",
+      );
+    }
+  }
 
   // The endpoint centre-crops to a square, which decapitated the result. Square
   // it ourselves, keeping the whole figure, before handing it over.
@@ -466,28 +539,6 @@ function webhookFor(provider: "runpod"): string {
   return `${base}/api/public/${provider}-webhook`;
 }
 
-// Motion negative prompt for the RunPod WAN endpoint — the "static/frozen" terms
-// are what stop it returning a near-still clip.
-// The "looks AI-generated" half of this list matters as much as the anatomy
-// half: plastic/waxy/airbrushed skin, CGI and doll-like faces, and the
-// oversaturated over-sharpened HDR look are what give a generated clip away.
-const VIDEO_NEGATIVE =
-  "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, slow, slow motion, static, still, frozen, stuck, no movement, bad anatomy, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, watermark text overlay, distorted hands, extra fingers, fused fingers, saggy breasts, droopy breasts, pendulous breasts, deflated breasts, asymmetric breasts, malformed breasts, deformed penis, mutated penis, fused penis, inverted genitalia, missing penis, penis looking like female genitalia, deformed pussy, distorted crotch, featureless crotch, plastic genitalia, asymmetric eyes, close-up, extreme close-up, cropped head, headless, head out of frame, face cut off, torso only, tight crop, zoomed in, mutated hands, fused fingers, melting object, deformed object, object merging into hand, extra arms, floating limbs, warped anatomy, morphing, flickering, jittery motion, rubbery movement, unnatural motion";
-
-// Applied only when the request implies nudity. Without it nothing pushes back
-// on the clothes already in the start frame, so explicit acts were performed
-// fully dressed.
-const CLOTHING_NEGATIVE =
-  "clothed, wearing clothes, dressed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, dress, swimsuit, fabric covering body, partially undressed";
-
-function negativeFor(userReq: string | undefined): string {
-  const base = requestIsNude(userReq ?? "")
-    ? `${CLOTHING_NEGATIVE}, ${VIDEO_NEGATIVE}`
-    : VIDEO_NEGATIVE;
-  const props = propNegative(userReq ?? "");
-  return props ? `${base}, ${props}` : base;
-}
-
 // The companion's own sex, which decides whether the prop spec asserts female
 // anatomy. Kept next to the negative builder because both are per-request
 // plumbing rather than part of any public surface.
@@ -591,9 +642,29 @@ export async function startVideoJob(
   // Same reason as the photo path: a successful refine replaces the builder, so
   // the prop spec is re-appended to every scene rather than lost.
   const videoProps = propClause(userReq ?? "", { isMale: isMaleCompanion(companion.gender) });
-  const scenePrompts = refinedVideo?.length
+  const rawReq = userReq ?? "";
+  const scenePrompts = (refinedVideo?.length
     ? refinedVideo.map((p) => (videoProps ? `${p} ${videoProps}` : p))
-    : [videoActionPrompt(companion, userReq)];
+    : [videoActionPrompt(companion, userReq)]
+  ).map((p) => {
+    let prompt = p;
+    if (CLOSE_UP_RE.test(rawReq)) {
+      prompt = prompt.replace(
+        /full body visible,\s*head to feet in frame[^\n,.]*/gi,
+        "intimate close-up POV photograph, camera positioned close to her body from a first-person perspective, focus sharp on her body and pussy",
+      );
+      if (!/close-up|pov/i.test(prompt.slice(0, 80))) {
+        prompt = `Intimate close-up POV photograph, camera positioned close to her body from a first-person perspective, focus sharp on her pussy and lower body. ${prompt}`;
+      }
+    }
+    if (hasProp(rawReq)) {
+      prompt = prompt.replace(
+        /holding (?:a|the) (?:dildo|sex toy|vibrator|plug)/gi,
+        "using sex toy inserted down at her crotch between her legs, hands low at her thighs away from face",
+      );
+    }
+    return prompt;
+  });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
 

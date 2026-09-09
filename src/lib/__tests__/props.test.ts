@@ -91,6 +91,9 @@ describe("propNegative", () => {
     expect(n).toContain("baseball bat");
     expect(n).toContain("wood grain");
     expect(n).toContain("object fused to hand");
+    expect(n).toContain("bong");
+    expect(n).toContain("pipe");
+    expect(n).toContain("object near mouth");
   });
 
   it("adds nothing to an ordinary selfie", () => {

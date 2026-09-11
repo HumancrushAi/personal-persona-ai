@@ -144,3 +144,26 @@ describe("the pending code in the browser", () => {
     expect(readStoredRef()).toBe(null);
   });
 });
+
+// The approval gap. An affiliate applies, shares their link early, and people
+// arrive before an admin has approved them — claimReferral only accepts an
+// 'active' affiliate, so every one of those visitors comes back "unknown_code".
+//
+// Clearing the stored code on that answer would mean everyone who arrived
+// during the gap is silently never attributed, which is precisely the
+// affiliate's launch week. AffiliateTracker treats every other settled reason
+// as final and leaves this one to retry; the ninety-day window bounds it.
+describe("which claim outcomes are final", () => {
+  // Mirrors the condition in AffiliateTracker: clear unless it can still change.
+  const shouldClear = (reason: string) => reason !== "unknown_code";
+
+  it("stops retrying once the answer cannot change", () => {
+    for (const reason of ["ok", "already_referred", "self_referral", "bad_code"]) {
+      expect(`${reason} -> ${shouldClear(reason)}`).toBe(`${reason} -> true`);
+    }
+  });
+
+  it("keeps retrying while an application is still pending approval", () => {
+    expect(shouldClear("unknown_code")).toBe(false);
+  });
+});

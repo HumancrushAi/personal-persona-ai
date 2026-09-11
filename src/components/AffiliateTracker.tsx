@@ -35,7 +35,6 @@ export function AffiliateTracker() {
     // existing code. Attribution is first touch, so the visitor who has already
     // been introduced by someone else stays theirs even if they later arrive on
     // a different affiliate's link.
-    const alreadyHad = readStoredRef();
     storeRef(code);
 
     // The click is still counted when they already had a code — the second
@@ -51,8 +50,6 @@ export function AffiliateTracker() {
       // A tracking failure must never be visible to the visitor. They came here
       // to look at the site.
     });
-
-    void alreadyHad;
   }, [search, pathname]);
 
   // Attribution: the moment we see them signed in with a code pending.
@@ -72,11 +69,16 @@ export function AffiliateTracker() {
 
       try {
         const res = await claimReferral({ data: { code } });
-        // Cleared on any settled outcome, not just success. A code that is
-        // unknown, self-referred, or beaten by an existing referral will never
-        // succeed later either, and leaving it there means retrying it on every
-        // page load for the next ninety days.
-        if (res) clearStoredRef();
+        // Cleared on any SETTLED outcome — attributed, already referred to
+        // somebody else, self-referral, malformed. None of those can change.
+        //
+        // "unknown_code" deliberately is not settled, and this is the case that
+        // matters: an affiliate whose application is still pending does not
+        // match, because claimReferral only accepts active ones. Clearing here
+        // would mean everyone who arrived during the approval gap is silently
+        // never attributed, which is the affiliate's launch week. Left to
+        // retry; the ninety-day window is what bounds it.
+        if (res && res.reason !== "unknown_code") clearStoredRef();
       } catch {
         // Left in place: a network failure IS worth retrying on the next load.
       }

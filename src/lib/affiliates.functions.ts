@@ -226,7 +226,7 @@ export const adminUpsertAffiliate = createServerFn({ method: "POST" })
     }
 
     const supabaseAdmin = await affDb();
-    const row = {
+    const row: Record<string, unknown> = {
       code,
       name: data.name.trim(),
       email: data.email?.trim() || null,
@@ -235,6 +235,15 @@ export const adminUpsertAffiliate = createServerFn({ method: "POST" })
       notes: data.notes?.trim() || null,
       updated_at: new Date().toISOString(),
     };
+    // "Affiliate since", so it records the FIRST approval and a later pause and
+    // resume does not rewrite it. Stamping it on every save would make it mean
+    // "last edited while active", which is what updated_at is already for.
+    if (data.status === "active") {
+      const { data: current } = data.id
+        ? await supabaseAdmin.from("affiliates").select("approved_at").eq("id", data.id).maybeSingle()
+        : { data: null };
+      if (!current?.approved_at) row.approved_at = new Date().toISOString();
+    }
 
     const q = data.id
       ? supabaseAdmin.from("affiliates").update(row).eq("id", data.id).select("id").single()
@@ -349,6 +358,31 @@ export const adminSetCommissionStatus = createServerFn({ method: "POST" })
  * is a straight lookup. Matching stays case-insensitive because "Gary@x.com" on
  * the deal and "gary@x.com" at signup are one person.
  */
+/** One row of the affiliate's own earnings table. */
+type EarningRow = {
+  id: string;
+  grossCents: number;
+  pct: number;
+  commissionCents: number;
+  status: string;
+  createdAt: string;
+};
+
+/**
+ * The caller's email address.
+ *
+ * Taken from the verified JWT claims the auth middleware already decoded, so
+ * this costs nothing. getUser() is the fallback rather than the default: it is
+ * a network round trip to Supabase on every dashboard load, to fetch a value
+ * that is sitting in the token we just validated.
+ */
+async function callerEmail(context: { supabase: any; claims?: any }): Promise<string | null> {
+  const fromClaims = context.claims?.email;
+  if (typeof fromClaims === "string" && fromClaims) return fromClaims;
+  const { data } = await context.supabase.auth.getUser();
+  return data?.user?.email ?? null;
+}
+
 async function affiliateForUser(
   supabaseAdmin: any,
   userId: string,
@@ -388,14 +422,20 @@ async function affiliateForUser(
 export const myAffiliate = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { userId, supabase } = context;
+    const { userId } = context;
     const supabaseAdmin = await affDb();
+    const email = await callerEmail(context);
 
-    const { data: auth } = await supabase.auth.getUser();
-    const email = auth?.user?.email ?? null;
+    // Every branch returns the SAME SHAPE. They did not, and the caller reads
+    // data.earnings unconditionally — on the "not an affiliate" branch, which
+    // carried neither stats nor earnings, that is a crash on the page's most
+    // common state. It type-checked only because a server function's return
+    // widens on the way to the client, so nothing would have caught it before a
+    // real user hit it.
+    const empty = { stats: null, earnings: [] as EarningRow[] };
 
     const aff = await affiliateForUser(supabaseAdmin, userId, email);
-    if (!aff) return { affiliate: null, email };
+    if (!aff) return { affiliate: null, email, ...empty };
 
     // A pending or rejected application has no numbers worth fetching, and
     // showing zeroes next to "under review" reads as a broken dashboard.
@@ -403,8 +443,7 @@ export const myAffiliate = createServerFn({ method: "GET" })
       return {
         affiliate: { code: aff.code, name: aff.name, status: aff.status, pct: aff.commission_pct },
         email,
-        stats: null,
-        earnings: [],
+        ...empty,
       };
     }
 
@@ -490,11 +529,10 @@ export const applyForAffiliate = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { userId, supabase } = context;
+    const { userId } = context;
     const supabaseAdmin = await affDb();
 
-    const { data: auth } = await supabase.auth.getUser();
-    const email = auth?.user?.email ?? null;
+    const email = await callerEmail(context);
     if (!email) throw new Error("Your account needs a confirmed email address first.");
 
     const existing = await affiliateForUser(supabaseAdmin, userId, email);

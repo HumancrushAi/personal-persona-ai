@@ -33,11 +33,20 @@ export const Route = createFileRoute("/affiliate")({
       },
     ],
   }),
+  // ssr:false is load-bearing, not a preference. The guard below runs against
+  // the BROWSER Supabase client, which has no session during server rendering —
+  // so with SSR on, beforeLoad sees "signed out" for everybody and bounces every
+  // signed-in affiliate to the sign-in page. _authenticated/route.tsx carries
+  // the same flag for the same reason, and admin.tsx has a comment explaining
+  // why it gave up on a beforeLoad guard entirely.
+  ssr: false,
   beforeLoad: async () => {
     // Signed out, there is nothing on this page to show: every state depends on
     // who is asking. Sent to sign-in rather than shown an empty shell.
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/auth", search: { mode: "signin" } });
+    // getUser rather than getSession — getSession will hand back a cached,
+    // possibly expired session without checking it.
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw redirect({ to: "/auth", search: { mode: "signin" } });
   },
   component: AffiliatePage,
 });

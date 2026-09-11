@@ -113,6 +113,17 @@ function MePage() {
             >
               <Link to="/history">History</Link>
             </Button>
+            {/* Shown to everyone, not only to existing affiliates: the page is
+                also where you apply, and a link that only appears once you are
+                already an affiliate can never be how anyone becomes one. */}
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-8 rounded-full px-2 text-xs sm:px-3"
+            >
+              <Link to="/affiliate">Earn</Link>
+            </Button>
             {isAdmin && (
               <Button
                 asChild

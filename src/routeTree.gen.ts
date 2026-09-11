@@ -14,6 +14,7 @@ import { Route as MeRouteImport } from './routes/me'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as FaqRouteImport } from './routes/faq'
+import { Route as AffiliateRouteImport } from './routes/affiliate'
 import { Route as CreditsRouteImport } from './routes/credits'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as BrowseRouteImport } from './routes/browse'
@@ -48,6 +49,11 @@ const HistoryRoute = HistoryRouteImport.update({
 const GalleryRoute = GalleryRouteImport.update({
   id: '/gallery',
   path: '/gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AffiliateRoute = AffiliateRouteImport.update({
+  id: '/affiliate',
+  path: '/affiliate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FaqRoute = FaqRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
+  '/affiliate': typeof AffiliateRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
   '/me': typeof MeRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
+  '/affiliate': typeof AffiliateRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
   '/me': typeof MeRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
+  '/affiliate': typeof AffiliateRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
   '/me': typeof MeRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/credits'
     | '/faq'
+    | '/affiliate'
     | '/gallery'
     | '/history'
     | '/me'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/credits'
     | '/faq'
+    | '/affiliate'
     | '/gallery'
     | '/history'
     | '/me'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/credits'
     | '/faq'
+    | '/affiliate'
     | '/gallery'
     | '/history'
     | '/me'
@@ -270,6 +282,7 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   CreditsRoute: typeof CreditsRoute
   FaqRoute: typeof FaqRoute
+  AffiliateRoute: typeof AffiliateRoute
   GalleryRoute: typeof GalleryRoute
   HistoryRoute: typeof HistoryRoute
   MeRoute: typeof MeRoute
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       path: '/gallery'
       fullPath: '/gallery'
       preLoaderRoute: typeof GalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/affiliate': {
+      id: '/affiliate'
+      path: '/affiliate'
+      fullPath: '/affiliate'
+      preLoaderRoute: typeof AffiliateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/faq': {
@@ -449,6 +469,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   CreditsRoute: CreditsRoute,
   FaqRoute: FaqRoute,
+  AffiliateRoute: AffiliateRoute,
   GalleryRoute: GalleryRoute,
   HistoryRoute: HistoryRoute,
   MeRoute: MeRoute,

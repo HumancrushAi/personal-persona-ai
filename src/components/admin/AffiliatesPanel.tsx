@@ -32,6 +32,7 @@ type Affiliate = {
   commission_pct: number;
   status: string;
   notes: string | null;
+  pitch: string | null;
   created_at: string;
   clicks: number;
   signups: number;
@@ -108,7 +109,7 @@ export function AffiliatesPanel() {
           name: editing.name.trim(),
           email: editing.email.trim(),
           commissionPct: Number(editing.commissionPct),
-          status: editing.status as "active" | "paused",
+          status: editing.status as "pending" | "active" | "paused" | "rejected",
           notes: editing.notes.trim(),
         },
       });
@@ -165,7 +166,33 @@ export function AffiliatesPanel() {
     );
   }
 
+  // Applications go to the top and are visually separated. They are the only
+  // rows in this table that need a decision, and burying a new application
+  // underneath twenty live affiliates sorted by date is how someone waits a
+  // fortnight for an answer.
+  const pending = rows.filter((r) => r.status === "pending");
+  const settled = rows.filter((r) => r.status !== "pending");
   const totalOwed = rows.reduce((t, r) => t + r.owedCents, 0);
+
+  async function decide(a: Affiliate, status: "active" | "rejected") {
+    try {
+      await upsert({
+        data: {
+          id: a.id,
+          code: a.code,
+          name: a.name,
+          email: a.email ?? "",
+          commissionPct: a.commission_pct,
+          status,
+          notes: a.notes ?? "",
+        },
+      });
+      toast.success(status === "active" ? `${a.name} approved at ${a.commission_pct}%` : "Rejected");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not update");
+    }
+  }
 
   return (
     <section className="glass rounded-2xl p-4">
@@ -285,8 +312,65 @@ export function AffiliatesPanel() {
         </p>
       )}
 
+      {pending.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-primary">
+            {pending.length} application{pending.length === 1 ? "" : "s"} waiting
+          </h3>
+          {pending.map((a) => (
+            <div key={a.id} className="rounded-xl border border-primary/40 bg-primary/5 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{a.name}</span>
+                <Badge variant="outline" className="font-mono text-[11px]">
+                  {a.code}
+                </Badge>
+                <span className="text-xs text-muted-foreground">{a.email}</span>
+              </div>
+              {a.pitch && (
+                <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{a.pitch}</p>
+              )}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {/* Set the rate BEFORE approving: approving at the default and
+                    fixing it afterwards means the first sales accrue at the
+                    wrong percentage, and those rows keep the rate they were
+                    earned at. */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                  onClick={() =>
+                    setEditing({
+                      id: a.id,
+                      code: a.code,
+                      name: a.name,
+                      email: a.email ?? "",
+                      commissionPct: a.commission_pct,
+                      notes: a.notes ?? "",
+                      status: "pending",
+                    })
+                  }
+                >
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" /> Set rate ({a.commission_pct}%)
+                </Button>
+                <Button size="sm" className="text-xs" onClick={() => decide(a, "active")}>
+                  Approve at {a.commission_pct}%
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs text-muted-foreground"
+                  onClick={() => decide(a, "rejected")}
+                >
+                  Reject
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
-        {rows.map((a) => (
+        {settled.map((a) => (
           <div key={a.id} className="rounded-xl border border-border/60 bg-background/40 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{a.name}</span>

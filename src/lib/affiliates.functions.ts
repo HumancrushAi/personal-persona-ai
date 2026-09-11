@@ -35,6 +35,7 @@ type AffiliateRow = {
   commission_pct: number;
   status: string;
   notes: string | null;
+  pitch: string | null;
   created_at: string;
 };
 type CommissionRow = {
@@ -159,7 +160,7 @@ export const adminListAffiliates = createServerFn({ method: "GET" })
       await Promise.all([
         supabaseAdmin
           .from("affiliates")
-          .select("id, code, name, email, commission_pct, status, notes, created_at")
+          .select("id, code, name, email, commission_pct, status, notes, pitch, created_at")
           .order("created_at", { ascending: false }),
         supabaseAdmin.from("affiliate_clicks").select("affiliate_id"),
         supabaseAdmin.from("affiliate_referrals").select("affiliate_id"),
@@ -201,7 +202,7 @@ const upsertSchema = z.object({
   name: z.string().min(1).max(120),
   email: z.string().email().max(200).or(z.literal("")).optional(),
   commissionPct: z.number().min(0).max(100),
-  status: z.enum(["active", "paused"]).default("active"),
+  status: z.enum(["pending", "active", "paused", "rejected"]).default("active"),
   notes: z.string().max(2000).optional(),
 });
 
@@ -326,4 +327,207 @@ export const adminSetCommissionStatus = createServerFn({ method: "POST" })
       .select("id");
     if (error) throw new Error(error.message);
     return { moved: updated?.length ?? 0 };
+  });
+
+// ── The affiliate's own side ────────────────────────────────────────────────
+//
+// Everything below is read by the affiliate themselves, so every query is
+// scoped to the affiliate row that belongs to the caller. That scoping is the
+// security boundary, and it is why these read through the service role rather
+// than through an RLS policy: a policy wide enough to show someone their own
+// earnings is one affiliate_id away from showing them a competitor's rate.
+
+/**
+ * The caller's affiliate row, binding it to their account on first sight.
+ *
+ * Binding is by EMAIL — the one identifier both sides already have. The admin
+ * types it in to pay them; the affiliate signs up with it. No invite tokens and
+ * nothing to lose in a spam folder: they register with the address the deal was
+ * agreed on and their dashboard is simply there.
+ *
+ * The bind is written back to user_id so it happens once and every later load
+ * is a straight lookup. Matching stays case-insensitive because "Gary@x.com" on
+ * the deal and "gary@x.com" at signup are one person.
+ */
+async function affiliateForUser(
+  supabaseAdmin: any,
+  userId: string,
+  email: string | null,
+): Promise<any | null> {
+  const { data: mine } = await supabaseAdmin
+    .from("affiliates")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (mine) return mine;
+
+  if (!email) return null;
+  const { data: byEmail } = await supabaseAdmin
+    .from("affiliates")
+    .select("*")
+    .ilike("email", email)
+    .maybeSingle();
+  if (!byEmail) return null;
+
+  // Only claim a row that nobody else has claimed. Without this check an
+  // affiliate row whose email was later reused by a different account would be
+  // silently transferred, handing someone else's earnings to a stranger.
+  if (byEmail.user_id && byEmail.user_id !== userId) return null;
+
+  await supabaseAdmin.from("affiliates").update({ user_id: userId }).eq("id", byEmail.id);
+  return { ...byEmail, user_id: userId };
+}
+
+/**
+ * Everything the affiliate dashboard shows.
+ *
+ * Returns { affiliate: null } for an ordinary user rather than throwing — most
+ * people who land on /affiliate are not affiliates yet, and that is the page
+ * doing its job, not an error.
+ */
+export const myAffiliate = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId, supabase } = context;
+    const supabaseAdmin = await affDb();
+
+    const { data: auth } = await supabase.auth.getUser();
+    const email = auth?.user?.email ?? null;
+
+    const aff = await affiliateForUser(supabaseAdmin, userId, email);
+    if (!aff) return { affiliate: null, email };
+
+    // A pending or rejected application has no numbers worth fetching, and
+    // showing zeroes next to "under review" reads as a broken dashboard.
+    if (aff.status === "pending" || aff.status === "rejected") {
+      return {
+        affiliate: { code: aff.code, name: aff.name, status: aff.status, pct: aff.commission_pct },
+        email,
+        stats: null,
+        earnings: [],
+      };
+    }
+
+    const [{ count: clicks }, { count: signups }, { data: commissions }] = await Promise.all([
+      supabaseAdmin
+        .from("affiliate_clicks")
+        .select("id", { count: "exact", head: true })
+        .eq("affiliate_id", aff.id),
+      supabaseAdmin
+        .from("affiliate_referrals")
+        .select("id", { count: "exact", head: true })
+        .eq("affiliate_id", aff.id),
+      supabaseAdmin
+        .from("affiliate_commissions")
+        .select("id, gross_cents, commission_pct, commission_cents, status, created_at, paid_at")
+        .eq("affiliate_id", aff.id)
+        .order("created_at", { ascending: false })
+        .limit(100),
+    ]);
+
+    type Row = {
+      id: string;
+      gross_cents: number;
+      commission_pct: number;
+      commission_cents: number;
+      status: string;
+      created_at: string;
+      paid_at: string | null;
+    };
+    const rows = (commissions ?? []) as Row[];
+    const sum = (pred: (r: Row) => boolean) =>
+      rows.filter(pred).reduce((t, r) => t + (r.commission_cents ?? 0), 0);
+
+    return {
+      affiliate: {
+        code: aff.code,
+        name: aff.name,
+        status: aff.status,
+        pct: aff.commission_pct,
+      },
+      email,
+      stats: {
+        clicks: clicks ?? 0,
+        signups: signups ?? 0,
+        grossCents: rows.filter((r) => r.status !== "void").reduce((t, r) => t + r.gross_cents, 0),
+        owedCents: sum((r) => r.status === "pending" || r.status === "approved"),
+        paidCents: sum((r) => r.status === "paid"),
+      },
+      // No customer emails here. The admin view shows who bought what because
+      // settling a dispute needs it; an affiliate needs the amounts and the
+      // dates, and has no business knowing who their referrals are.
+      earnings: rows.map((r) => ({
+        id: r.id,
+        grossCents: r.gross_cents,
+        pct: r.commission_pct,
+        commissionCents: r.commission_cents,
+        status: r.status,
+        createdAt: r.created_at,
+      })),
+    };
+  });
+
+/**
+ * Apply to become an affiliate.
+ *
+ * Creates the row as 'pending', which is inert everywhere: tracking,
+ * attribution and the commission trigger all filter on 'active', so an
+ * application cannot earn anything until it is approved.
+ *
+ * The applicant proposes a code. It is theirs if it is free — being told your
+ * preferred code is taken at the moment you type it is far better than finding
+ * out after you have printed it somewhere.
+ */
+export const applyForAffiliate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        name: z.string().min(1).max(120),
+        code: z.string().min(2).max(32),
+        pitch: z.string().min(1).max(2000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId, supabase } = context;
+    const supabaseAdmin = await affDb();
+
+    const { data: auth } = await supabase.auth.getUser();
+    const email = auth?.user?.email ?? null;
+    if (!email) throw new Error("Your account needs a confirmed email address first.");
+
+    const existing = await affiliateForUser(supabaseAdmin, userId, email);
+    if (existing) throw new Error("You have already applied — check the affiliate page.");
+
+    const code = normalizeAffiliateCode(data.code);
+    if (!code) {
+      throw new Error(
+        "A code must be 2-32 characters: letters, numbers, hyphen or underscore, starting with a letter or number.",
+      );
+    }
+
+    const { error } = await supabaseAdmin.from("affiliates").insert({
+      code,
+      name: data.name.trim(),
+      email,
+      user_id: userId,
+      pitch: data.pitch.trim(),
+      status: "pending",
+      applied_at: new Date().toISOString(),
+      // The default rate an application starts at. It is what the admin
+      // renegotiates on approval; it is never what an applicant chooses.
+      commission_pct: 20,
+    });
+
+    if (error) {
+      if (/idx_affiliates_email_ci/.test(error.message)) {
+        throw new Error("There is already an affiliate registered to this email address.");
+      }
+      if (/duplicate key|unique/i.test(error.message)) {
+        throw new Error(`The code "${code}" is taken — pick another.`);
+      }
+      throw new Error(error.message);
+    }
+    return { ok: true };
   });

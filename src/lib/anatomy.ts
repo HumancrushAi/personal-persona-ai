@@ -196,10 +196,17 @@ export function anatomyOf(gender?: string | null): Anatomy {
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
     "Firm rounded bare breasts sitting naturally on her chest, softly weighted rather than spherical, with defined areolae and erect nipples. Between her open thighs a detailed vulva: outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light.",
+  // Pinned the way props.ts pins a toy, and for the same reason: where it is,
+  // which way it points, and how big it is against his own body. Sub-structures
+  // alone were not enough — a render that knows it needs "a penis" but not
+  // where it sits or how long it is produces the small vague nub the user
+  // reported. Scale is anchored to his hand because these models have no
+  // absolute sense of size but render relative body proportion well; that is
+  // the finding props.ts was built on and it transfers directly.
   male:
-    "A lean muscular chest and stomach, and at his groin an erect penis with a clearly defined shaft, a distinct ridge below the glans, soft surface veining, and testicles hanging naturally below in a separate lightly textured sac, each part distinguishable from the next.",
+    "A lean muscular chest and flat stomach. At his groin, below his navel and above his thighs, a thick erect penis standing out and angled slightly upward from his body, about as long as his hand from wrist to fingertip: a clearly defined shaft, a distinct ridge where the shaft meets the smooth rounded glans, soft veining along the length, and a separate lightly textured scrotum hanging below it. The shaft, the glans and the scrotum each read as their own form with clean edges between them.",
   "trans-female":
-    "One body: firm rounded bare breasts with defined areolae and erect nipples on her chest, and at her groin an erect penis with a defined shaft, distinct glans and natural testicles below it. Feminine hips and waist above, cock below, both in the same frame and both in focus.",
+    "One body: firm rounded bare breasts with defined areolae and erect nipples on her chest, feminine hips and a soft waist, and at her groin, below her navel, a thick erect penis standing out from her body and angled slightly upward, about as long as her hand from wrist to fingertip, with a defined shaft, a distinct ridge below the smooth rounded glans and a separate scrotum below. Breasts above and cock below, both in the same frame and both in sharp focus.",
   "trans-male":
     "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a detailed vulva: outer labia parting around visible inner labia, a prominent clitoral hood above them, soft shadow where the surfaces meet.",
   nb: "A lean androgynous body, a flat soft chest, narrow hips and a smooth groin, skin evenly lit with visible pores and fine texture throughout.",

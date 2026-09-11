@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { negativeFor } from "../media.functions";
+import { anatomyOf } from "../anatomy";
 
 // The negative prompt is the half nobody reads, and two of the reported photo
 // failures were coming from it.
@@ -96,5 +97,59 @@ describe("negativeFor", () => {
         /\bbong\b.*\bsmoking\b|\bsmoking\b.*\bbong\b/s,
       );
     });
+  });
+});
+
+// ── Suppressing the thing we asked for ──────────────────────────────────────
+//
+// "Men's penis still looks funny", reported after the positive half of the
+// prompt had already been rebuilt. The reason it was asymmetric — the women got
+// better, the men got worse — was here: QUALITY_NEGATIVE named `penis` three
+// times, `breasts` six times, `crotch` twice, `genitalia` twice and `pussy`
+// once, on EVERY render. Suppressing `penis` is correct for a woman, so her
+// pictures improved. A man's prompt asked for a penis once and forbade it three
+// times, and lost.
+//
+// This is the whole-prompt version of the rule anatomy.test.ts checks on
+// crossSexNegative alone: the two halves are built separately and only this
+// sees them combined.
+describe("the negative prompt never suppresses a part the companion has", () => {
+  const PART_RE = {
+    penis: /\bpenis\b|\bcock\b|\btesticles?\b|\bscrotum\b|\bshaft\b|\bglans\b/i,
+    vulva: /\bvulva\b|\bvagina\b|\blabia\b|\bpussy\b|\bclitoral\b|\bclitoris\b/i,
+    breasts: /\bbreasts?\b|\bnipples?\b|\bareolae?\b|\bcleavage\b|\bbust\b/i,
+  } as const;
+
+  const genders = ["female", "male", "trans-female", "trans-male", "non-binary"];
+
+  for (const gender of genders) {
+    const a = anatomyOf(gender);
+    for (const moving of [false, true]) {
+      it(`leaves a ${gender} companion's own anatomy alone (${moving ? "video" : "photo"})`, () => {
+        const neg = negativeFor("get naked for me", gender, { moving });
+        const leaked: string[] = [];
+        if (a.hasPenis && PART_RE.penis.test(neg)) leaked.push("penis");
+        if (a.hasVulva && PART_RE.vulva.test(neg)) leaked.push("vulva");
+        if (a.hasBreasts && PART_RE.breasts.test(neg)) leaked.push("breasts");
+        expect(`${gender}: ${leaked.join(",") || "clean"}`).toBe(`${gender}: clean`);
+      });
+    }
+  }
+
+  // The part that applies to everyone, so it may not name any of them at all.
+  it("keeps every genital and breast noun out of the shared quality list", () => {
+    // A non-binary companion gets no cross-sex negatives, so this is
+    // QUALITY_NEGATIVE (plus clothing and motion) on its own.
+    const shared = negativeFor("get naked", "non-binary", { moving: true });
+    for (const re of Object.values(PART_RE)) {
+      expect(`shared: ${re.source} -> ${re.test(shared)}`).toBe(`shared: ${re.source} -> false`);
+    }
+  });
+
+  // The positive prompt asks for "natural asymmetry" in the same breath — a
+  // real face and a real body are not symmetrical, and this was the single term
+  // most responsible for a render reading as a photo.
+  it("does not fight the realism tail", () => {
+    expect(negativeFor("get naked", "female", { moving: false })).not.toMatch(/asymmetric/i);
   });
 });

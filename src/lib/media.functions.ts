@@ -39,8 +39,43 @@ import {
 // `torso` pushes her head and face out of the picture. That is the headless
 // torso a user was actually sent. Framing is now stated positively in the
 // prompt (see framingFor in selfie.ts) and negated nowhere.
+// NO BODY PART THAT SHOULD BE IN THE PICTURE IS NAMED HERE. This list used to
+// end "deformed penis, mutated penis, fused penis, inverted genitalia, deformed
+// pussy, distorted crotch, featureless crotch, plastic genitalia" plus six
+// entries naming breasts — so every render was sent `penis` × 3, `breasts` × 6,
+// `crotch` × 2, `genitalia` × 2 and `pussy` × 1 in its NEGATIVE conditioning.
+//
+// A negative prompt pushes on the tokens it contains, not on the adjective they
+// were written next to; this is the same fact the positive half of the prompt
+// was rebuilt around two commits ago. A male nude therefore named `penis` once
+// in the prompt and three times in the negative, and lost 3:1 on the one token
+// that mattered. It is exactly why the reported failure was asymmetric: the
+// women improved when the positive prompt was fixed, because suppressing
+// `penis` is CORRECT for them, while the men got quietly worse. "Men's penis
+// still looks funny" is this line.
+//
+// The distinction that decides what may stay: a negative prompt cannot remove a
+// part the body must have, but it can absolutely leave an OPTIONAL one smooth
+// and unrendered. Hands, fingers, eyes and faces are always present, so
+// "extra fingers, fused fingers, distorted hands" are safe and are kept — that
+// is standard practice and it demonstrably helps. Genitals and breasts are the
+// parts a model will happily just not draw, so they are never named here.
+// Anything cross-sex that must be suppressed is named in crossSexNegative,
+// which knows whose body it is.
+//
+// "asymmetric" is gone too. The positive prompt asks for "natural asymmetry" in
+// the same breath — a real face and a real body are not symmetrical, and this
+// was quietly fighting the one term that most makes a render read as a photo.
+//
+// What is also NOT in here any more: "cropped head, headless, head out of
+// frame, face cut off, close-up, extreme close-up, torso only, tight crop,
+// zoomed in". Those were added to stop the head being cut off and they never
+// worked — start-frame.server.ts records the same attempt failing. Worse than
+// useless, in fact: a list containing `head`, `face` and `torso` pushes her
+// head and face out of the picture. That is the headless torso a user was
+// actually sent. Framing is stated positively now (framingFor in selfie.ts).
 const QUALITY_NEGATIVE =
-  "blurry, low quality, deformed, extra limbs, watermark, text, inconsistent characters, bad anatomy, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, watermark text overlay, distorted hands, extra fingers, fused fingers, mutated hands, saggy breasts, droopy breasts, pendulous breasts, deflated breasts, asymmetric breasts, malformed breasts, deformed penis, mutated penis, fused penis, inverted genitalia, deformed pussy, distorted crotch, featureless crotch, plastic genitalia, asymmetric eyes, melting object, deformed object, object merging into hand, extra arms, floating limbs, warped anatomy, morphing, flickering";
+  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, featureless, smooth blank skin where detail belongs, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, distorted hands, extra fingers, fused fingers, mutated hands, saggy, droopy, pendulous, deflated, melting object, deformed object, object merging into hand, morphing, flickering";
 
 // Motion terms. These stop the endpoint returning a near-still clip, and they
 // belong ONLY on a video.

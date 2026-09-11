@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 import { Shield } from "lucide-react";
 
 import appCss from "../styles.css?url";
+import { AffiliateTracker } from "../components/AffiliateTracker";
 import { supabase } from "../integrations/supabase/client";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -175,6 +176,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      {/* Renders nothing. Here rather than on the landing page because an
+          affiliate link can point at any page, and a ?ref= that only works on
+          "/" quietly loses money on every deep link someone shares. */}
+      <AffiliateTracker />
       <BottomNav />
       {showSupport && <SupportWidget />}
       <AdminFooterLink />

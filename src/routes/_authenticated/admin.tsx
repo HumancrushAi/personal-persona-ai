@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AffiliatesPanel } from "@/components/admin/AffiliatesPanel";
 import { SUPPORTED_LANGUAGES } from "@/lib/languages";
 import { companionImage } from "@/lib/companion-images";
 import { ClipMaker } from "@/components/ClipMaker";
@@ -215,6 +216,7 @@ function AdminPage() {
           <TabsTrigger value="aiconfig">AI Config</TabsTrigger>
           <TabsTrigger value="content">Platform Content</TabsTrigger>
           <TabsTrigger value="support">Support</TabsTrigger>
+          <TabsTrigger value="affiliates">Affiliates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -509,6 +511,10 @@ function AdminPage() {
 
         <TabsContent value="support">
           <SupportPanel />
+        </TabsContent>
+
+        <TabsContent value="affiliates">
+          <AffiliatesPanel />
         </TabsContent>
 
         <TabsContent value="content">

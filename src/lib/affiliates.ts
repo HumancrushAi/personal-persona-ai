@@ -94,3 +94,25 @@ export function formatCents(cents: number): string {
   const sign = cents < 0 ? "-" : "";
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
+
+/**
+ * Whether a claimReferral answer is final, so the browser can forget the code.
+ *
+ * Attributed, already referred to somebody else, self-referral, malformed —
+ * none of those can change, and retrying them would spend a request on every
+ * page load for ninety days.
+ *
+ * "unknown_code" is the exception, and it is the case that matters. An
+ * affiliate whose application is still pending does not match, because
+ * claimReferral only accepts active affiliates. Treating that as final would
+ * mean everyone who arrived during the approval gap is silently never
+ * attributed — which is precisely the affiliate's launch week. It retries, and
+ * the ninety-day window is what bounds it.
+ *
+ * Here rather than inline in AffiliateTracker so the test exercises the real
+ * rule. It used to test a copy of the condition written into the test file,
+ * which would have kept passing after the component changed.
+ */
+export function isFinalClaimOutcome(reason: string): boolean {
+  return reason !== "unknown_code";
+}

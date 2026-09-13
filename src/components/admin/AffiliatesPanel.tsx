@@ -21,6 +21,7 @@ import {
   adminListAffiliates,
   adminSetCommissionStatus,
   adminUpsertAffiliate,
+  adminVoidCommission,
 } from "@/lib/affiliates.functions";
 import { formatCents, normalizeAffiliateCode } from "@/lib/affiliates";
 
@@ -63,6 +64,7 @@ export function AffiliatesPanel() {
   const upsert = useServerFn(adminUpsertAffiliate);
   const detail = useServerFn(adminAffiliateDetail);
   const setStatus = useServerFn(adminSetCommissionStatus);
+  const voidCommission = useServerFn(adminVoidCommission);
 
   const [rows, setRows] = useState<Affiliate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,6 +160,26 @@ export function AffiliatesPanel() {
     }
   }
 
+  // For what the webhook cannot see: a chargeback (Authorize.Net sends no
+  // event for one) and a partial refund (left for a person on purpose).
+  async function voidOne(affiliateId: string, c: Commission) {
+    if (
+      !window.confirm(
+        `Void this ${formatCents(c.commission_cents)} commission? Use this for a chargeback or refund. It can't be undone from here.`,
+      )
+    )
+      return;
+    try {
+      await voidCommission({ data: { commissionId: c.id } });
+      toast.success("Commission voided");
+      await load();
+      const res: any = await detail({ data: { affiliateId } });
+      setCommissions(res.commissions ?? []);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not void");
+    }
+  }
+
   function copyLink(code: string) {
     const url = `${siteOrigin()}/?ref=${code}`;
     navigator.clipboard?.writeText(url).then(
@@ -176,7 +198,7 @@ export function AffiliatesPanel() {
 
   async function decide(a: Affiliate, status: "active" | "rejected") {
     try {
-      await upsert({
+      const res: any = await upsert({
         data: {
           id: a.id,
           code: a.code,
@@ -187,7 +209,17 @@ export function AffiliatesPanel() {
           notes: a.notes ?? "",
         },
       });
-      toast.success(status === "active" ? `${a.name} approved at ${a.commission_pct}%` : "Rejected");
+      // Say whether the approval email actually went. It is best-effort on the
+      // server, and "approved" alone would let an admin assume the affiliate
+      // has their link when a missing RESEND_API_KEY meant they were told
+      // nothing.
+      if (status === "active") {
+        const approved = `${a.name} approved at ${a.commission_pct}%`;
+        if (res?.emailed) toast.success(`${approved} — link emailed`);
+        else toast.warning(`${approved}, but no email was sent — send them their link`);
+      } else {
+        toast.success("Rejected");
+      }
       await load();
     } catch (e: any) {
       toast.error(e?.message ?? "Could not update");
@@ -451,7 +483,10 @@ export function AffiliatesPanel() {
                         <th className="py-1 pr-3 font-normal">Sale</th>
                         <th className="py-1 pr-3 font-normal">Rate</th>
                         <th className="py-1 pr-3 font-normal">Commission</th>
-                        <th className="py-1 font-normal">Status</th>
+                        <th className="py-1 pr-3 font-normal">Status</th>
+                        <th className="py-1 font-normal">
+                          <span className="sr-only">Actions</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -464,7 +499,19 @@ export function AffiliatesPanel() {
                           <td className="py-1 pr-3">{formatCents(c.gross_cents)}</td>
                           <td className="py-1 pr-3">{c.commission_pct}%</td>
                           <td className="py-1 pr-3">{formatCents(c.commission_cents)}</td>
-                          <td className="py-1">{c.status}</td>
+                          <td className="py-1 pr-3">{c.status}</td>
+                          <td className="py-1 text-right">
+                            {(c.status === "pending" || c.status === "approved") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-[11px] text-muted-foreground"
+                                onClick={() => voidOne(a.id, c)}
+                              >
+                                Void
+                              </Button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

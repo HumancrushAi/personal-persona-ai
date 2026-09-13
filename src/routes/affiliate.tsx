@@ -119,8 +119,9 @@ function Pending() {
     <Panel>
       <h2 className="font-display text-xl">Application received</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        We're reviewing it. You'll get an email when it's approved, and your link and earnings will
-        appear on this page. Nothing is tracked until then, so hold off on sharing anything yet.
+        We're reviewing it. We'll email the address on your account when it's approved, and your
+        link and earnings will appear on this page either way. Nothing is tracked until then, so
+        hold off on sharing anything yet.
       </p>
     </Panel>
   );
@@ -131,8 +132,8 @@ function Rejected() {
     <Panel>
       <h2 className="font-display text-xl">Not approved</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        We couldn't approve this application. If you think that's a mistake, reply to the email or
-        contact support and we'll take another look.
+        We couldn't approve this application. If you think that's a mistake, contact support and
+        we'll take another look.
       </p>
     </Panel>
   );
@@ -240,8 +241,8 @@ function Dashboard({ data }: { data: Data }) {
               </div>
             )}
             <p className="mt-3 text-xs text-muted-foreground">
-              Payouts are arranged by email to {data.email}. Commission on a refunded purchase is
-              voided.
+              Payouts are arranged by email to {data.email}. If a purchase is refunded before its
+              commission is paid out, that commission is voided.
             </p>
           </Panel>
         </>

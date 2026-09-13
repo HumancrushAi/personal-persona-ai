@@ -4,6 +4,7 @@ import {
   clearStoredRef,
   commissionCents,
   formatCents,
+  isFinalClaimOutcome,
   normalizeAffiliateCode,
   readStoredRef,
   storeRef,
@@ -154,8 +155,10 @@ describe("the pending code in the browser", () => {
 // affiliate's launch week. AffiliateTracker treats every other settled reason
 // as final and leaves this one to retry; the ninety-day window bounds it.
 describe("which claim outcomes are final", () => {
-  // Mirrors the condition in AffiliateTracker: clear unless it can still change.
-  const shouldClear = (reason: string) => reason !== "unknown_code";
+  // The real predicate AffiliateTracker calls. This used to be a copy of the
+  // condition written into this file, which tested itself and would have kept
+  // passing after the component changed.
+  const shouldClear = isFinalClaimOutcome;
 
   it("stops retrying once the answer cannot change", () => {
     for (const reason of ["ok", "already_referred", "self_referral", "bad_code"]) {

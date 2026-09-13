@@ -143,13 +143,27 @@ export const purchaseCredits = createServerFn({ method: "POST" })
         })
         .eq("id", userId);
 
+      // 'pending', not 'completed': no money has moved yet. Authorize.Net does
+      // not charge a subscription that starts today until after 2 a.m. the next
+      // day — its own recurring-billing guide says so — so at this moment this
+      // is a promise to pay, and the card can still decline tonight.
+      //
+      // It matters because the affiliate commission trigger fires on a
+      // completed transaction. Written as completed, commission was accrued on
+      // a charge that had not happened and might never. The webhook promotes
+      // this row to completed when the first charge actually lands (payNum 1),
+      // and re-keys it from the subscription id to the real transaction id so a
+      // later refund can find it.
+      //
+      // The first month's credits are still granted above, immediately. That is
+      // a product decision about how subscribing feels, and it is unchanged.
       await supabaseAdmin.from("transactions").insert({
         user_id: userId,
         amount_cents: item.priceCents,
         credits_added: credits,
         pack_name: `${tier.name} (subscription)`,
         authnet_transaction_id: subscriptionId,
-        status: "completed",
+        status: "pending",
       });
 
       return {

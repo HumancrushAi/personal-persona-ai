@@ -15,6 +15,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import {
   clearStoredRef,
+  isFinalClaimOutcome,
   normalizeAffiliateCode,
   readStoredRef,
   storeRef,
@@ -69,16 +70,9 @@ export function AffiliateTracker() {
 
       try {
         const res = await claimReferral({ data: { code } });
-        // Cleared on any SETTLED outcome — attributed, already referred to
-        // somebody else, self-referral, malformed. None of those can change.
-        //
-        // "unknown_code" deliberately is not settled, and this is the case that
-        // matters: an affiliate whose application is still pending does not
-        // match, because claimReferral only accepts active ones. Clearing here
-        // would mean everyone who arrived during the approval gap is silently
-        // never attributed, which is the affiliate's launch week. Left to
-        // retry; the ninety-day window is what bounds it.
-        if (res && res.reason !== "unknown_code") clearStoredRef();
+        // Cleared only on an answer that cannot change. See isFinalClaimOutcome
+        // for why a code that matches no active affiliate is kept and retried.
+        if (res && isFinalClaimOutcome(res.reason)) clearStoredRef();
       } catch {
         // Left in place: a network failure IS worth retrying on the next load.
       }

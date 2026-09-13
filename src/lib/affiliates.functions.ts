@@ -235,14 +235,23 @@ export const adminUpsertAffiliate = createServerFn({ method: "POST" })
       notes: data.notes?.trim() || null,
       updated_at: new Date().toISOString(),
     };
+    // Read before the write, because two decisions depend on what the row WAS:
+    // whether this save is the moment of approval, and whether it has ever been
+    // approved before.
+    const { data: current } = data.id
+      ? await supabaseAdmin
+          .from("affiliates")
+          .select("status, approved_at")
+          .eq("id", data.id)
+          .maybeSingle()
+      : { data: null };
+    const becomingActive = data.status === "active" && current?.status !== "active";
+
     // "Affiliate since", so it records the FIRST approval and a later pause and
     // resume does not rewrite it. Stamping it on every save would make it mean
     // "last edited while active", which is what updated_at is already for.
-    if (data.status === "active") {
-      const { data: current } = data.id
-        ? await supabaseAdmin.from("affiliates").select("approved_at").eq("id", data.id).maybeSingle()
-        : { data: null };
-      if (!current?.approved_at) row.approved_at = new Date().toISOString();
+    if (data.status === "active" && !current?.approved_at) {
+      row.approved_at = new Date().toISOString();
     }
 
     const q = data.id
@@ -251,14 +260,46 @@ export const adminUpsertAffiliate = createServerFn({ method: "POST" })
 
     const { data: saved, error } = await q;
     if (error) {
-      // The only constraint an admin can realistically trip, and the generic
-      // Postgres text for it says nothing useful about what to do next.
+      // Checked before the generic unique match: the email index is also a
+      // unique constraint, and reporting it as "code taken" sends the admin off
+      // renaming a code that was never the problem.
+      if (/idx_affiliates_email_ci/.test(error.message)) {
+        throw new Error("Another affiliate is already registered to that email address.");
+      }
       if (/duplicate key|unique/i.test(error.message)) {
         throw new Error(`The code "${code}" is already taken by another affiliate.`);
       }
       throw new Error(error.message);
     }
-    return { id: saved.id };
+
+    // The applicant was told on /affiliate that we would email them. Sent after
+    // the save and best-effort: an unset RESEND_API_KEY or a Resend outage must
+    // never un-approve somebody, and the page shows their link either way.
+    //
+    // No name in the mail. The applicant typed it, and it would be interpolated
+    // into HTML. The code is [a-z0-9_-] by construction and the rate is a number,
+    // so nothing that goes in here needs escaping.
+    let emailed = false;
+    if (becomingActive && typeof row.email === "string" && row.email) {
+      try {
+        const { sendEmail, notificationEmailHtml } = await import("./notify");
+        const site = process.env.PUBLIC_SITE_URL || "https://humancrush.com";
+        await sendEmail(
+          row.email,
+          "You're approved — your HumanCrush affiliate link",
+          notificationEmailHtml(
+            "You're approved",
+            `Your link is ${site}/?ref=${code}. You earn ${data.commissionPct}% of everything the people you send ever spend. Signups and earnings appear on your affiliate page as they happen.`,
+            `${site}/affiliate`,
+          ),
+        );
+        emailed = true;
+      } catch (e) {
+        console.error("[affiliates] approval email not sent:", e);
+      }
+    }
+
+    return { id: saved.id, emailed };
   });
 
 export const adminAffiliateDetail = createServerFn({ method: "GET" })
@@ -304,6 +345,36 @@ export const adminAffiliateDetail = createServerFn({ method: "GET" })
         email: c.user_id ? (emails.get(c.user_id) ?? null) : null,
       })),
     };
+  });
+
+/**
+ * Void one commission by hand.
+ *
+ * The webhook voids a commission when Authorize.Net reports a full refund or a
+ * void. Two cases never reach it: a chargeback, which has no webhook event at
+ * all, and a partial refund, which the webhook deliberately leaves for a person
+ * to judge. This is that person's button.
+ *
+ * Pending and approved only. A paid commission is money already sent, and
+ * voiding it would make the affiliate's paid-to-date drop by money they did
+ * in fact receive.
+ */
+export const adminVoidCommission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ commissionId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const supabaseAdmin = await affDb();
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("affiliate_commissions")
+      .update({ status: "void" })
+      .eq("id", data.commissionId)
+      .in("status", ["pending", "approved"])
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (!updated?.length) throw new Error("Only an unpaid commission can be voided.");
+    return { ok: true };
   });
 
 /**

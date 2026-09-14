@@ -60,6 +60,13 @@ function initialAdminTab(): string {
   return ADMIN_TABS.includes(tab) ? tab : "users";
 }
 
+// Classes for every admin tab. Full-width grid cells on a phone — see the
+// comment on the tab list. The pill background is a plain utility on purpose:
+// under a sm: or max-sm: variant it would be emitted after the trigger's
+// data-[state=active] background and hide which tab is selected.
+const ADMIN_TAB =
+  "w-full min-w-0 bg-white/5 px-2 py-2 text-xs sm:w-auto sm:px-3 sm:py-1 sm:text-sm";
+
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [{ title: "Admin — HumanCrush.com" }, { name: "robots", content: "noindex" }],
@@ -228,20 +235,50 @@ function AdminPage() {
       </header>
 
       <Tabs defaultValue={initialAdminTab()}>
-        {/* Scrolls sideways instead of overflowing. The default list is a
-            centred, non-wrapping row, and nine tabs do not fit a phone — so
-            the ones at the end of the row, Affiliates among them, were simply
-            not reachable on one. Affiliates also sits second now. */}
-        <TabsList className="mb-4 flex h-auto w-full justify-start overflow-x-auto">
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="affiliates">Affiliates</TabsTrigger>
-          <TabsTrigger value="personas">Personas</TabsTrigger>
-          <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
-          <TabsTrigger value="clips">Clips</TabsTrigger>
-          <TabsTrigger value="pricing">Plans & Pricing</TabsTrigger>
-          <TabsTrigger value="aiconfig">AI Config</TabsTrigger>
-          <TabsTrigger value="content">Platform Content</TabsTrigger>
-          <TabsTrigger value="support">Support</TabsTrigger>
+        {/* A 3-column grid of pills on a phone, a wrapping row from sm up.
+
+            It was a single row, and on a phone the labels were drawn on top
+            of each other ("UsersAffiliatesPersons…"). The cause is the
+            touch-target floor in styles.css: every button gets min-width:
+            44px, which REPLACES a flex item's default minimum — its content —
+            so nine tabs shrank to 44-69px while their labels needed up to
+            91px. Measured in headless Chrome at phone width, not guessed.
+
+            In a grid a tab is exactly as wide as its column, so it cannot be
+            squeezed below its label, and every section is visible at once
+            instead of hiding behind a sideways scroll a phone shows no bar
+            for. The two long labels are shortened below sm so they fit a
+            column on a narrow phone; the panels themselves keep full titles. */}
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-3 gap-1.5 p-1.5 sm:flex sm:flex-wrap sm:justify-start">
+          <TabsTrigger value="users" className={ADMIN_TAB}>
+            Users
+          </TabsTrigger>
+          <TabsTrigger value="affiliates" className={ADMIN_TAB}>
+            Affiliates
+          </TabsTrigger>
+          <TabsTrigger value="personas" className={ADMIN_TAB}>
+            Personas
+          </TabsTrigger>
+          <TabsTrigger value="broadcast" className={ADMIN_TAB}>
+            Broadcast
+          </TabsTrigger>
+          <TabsTrigger value="clips" className={ADMIN_TAB}>
+            Clips
+          </TabsTrigger>
+          <TabsTrigger value="pricing" className={ADMIN_TAB}>
+            <span className="sm:hidden">Pricing</span>
+            <span className="hidden sm:inline">Plans &amp; Pricing</span>
+          </TabsTrigger>
+          <TabsTrigger value="aiconfig" className={ADMIN_TAB}>
+            AI Config
+          </TabsTrigger>
+          <TabsTrigger value="content" className={ADMIN_TAB}>
+            <span className="sm:hidden">Content</span>
+            <span className="hidden sm:inline">Platform Content</span>
+          </TabsTrigger>
+          <TabsTrigger value="support" className={ADMIN_TAB}>
+            Support
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -935,9 +972,13 @@ function PersonasPanel() {
       </section>
 
       <section className="glass rounded-2xl p-4">
-        <div className="mb-3 flex items-center justify-between">
+        {/* Wraps. The title and both buttons are wider than a phone, and in a
+            row that could not wrap the buttons were squeezed below their own
+            labels (the touch-target note on the tab list) and pushed past the
+            screen edge, where body's overflow-x: hidden made them unreachable. */}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-lg">All personas ({personas.length})</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -1390,14 +1431,17 @@ function GalleryManager({ companionId }: { companionId: string }) {
 
   return (
     <div className="mt-6 rounded-2xl border border-white/10 p-4">
-      <div className="mb-3 flex items-center justify-between">
+      {/* Wraps, and the file picker is capped at the card's width: its
+          "Choose file / No file chosen" text is wider than the space left
+          beside the title on a phone. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-display text-base">Gallery ({media.length})</h3>
         <input
           type="file"
           accept="image/*"
           onChange={onPickGalleryFile}
           disabled={busy}
-          className="text-xs file:mr-2 file:rounded-full file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-xs file:text-primary"
+          className="max-w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-primary/20 file:px-3 file:py-1.5 file:text-xs file:text-primary"
         />
       </div>
       {media.length === 0 ? (
@@ -1460,15 +1504,18 @@ function EvalPanel() {
 
   return (
     <section className="mt-6 rounded-2xl border border-white/10 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
+      {/* Stacks on a phone. Side by side, the paragraph took the width and the
+          "Run evals" button was pushed past the screen edge, where body's
+          overflow-x: hidden made it impossible to reach. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h3 className="font-display text-base">Persona Eval Suite</h3>
           <p className="text-xs text-muted-foreground">
             Runs scripted chat scenarios against the live model and scores persona consistency,
             naturalness, repetition, and safety.
           </p>
         </div>
-        <Button onClick={runAll} disabled={running}>
+        <Button onClick={runAll} disabled={running} className="shrink-0 self-start sm:self-auto">
           {running
             ? progress
               ? `Running ${progress.done}/${progress.total}…`

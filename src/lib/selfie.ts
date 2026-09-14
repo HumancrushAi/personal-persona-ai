@@ -11,6 +11,12 @@ import { type Anatomy, type GenderKind, anatomyOf, nudeAnatomy } from "./anatomy
 // bestiality, and incest before any of this runs. Each entry is a regex source
 // string (no anchors — `kw()` adds word boundaries).
 const KW = {
+  // Tone, not anatomy: how people ask for an explicit photo without naming what
+  // is in it. Read only by requestIsNude, and only in a message that is already
+  // a request for a photo, so "dirty" here is never someone's dishes. "sexy" is
+  // deliberately absent — a sexy picture in a dress is a real, clothed request.
+  explicitIntent:
+    "nasty|nastier|naughty|naughtier|dirty|dirtier|filthy|slutty|sluttier|lewd|explicit|xxx|x-rated|nsfw|uncensored|horny|freaky|kinky|raunchy|spicy|spicier",
   undress:
     "nude|nudes|naked|nakie|nekkid|unclothed|undress\\w*|strip\\w*|no clothes|without clothes|clothes off|take .{0,10}off|topless|bottomless|bare|exposed|full frontal|birthday suit|in the buff|show everything|show it all|show me all",
   breasts:
@@ -50,9 +56,23 @@ const ACT_RE = kw(
 // deliberately NOT here: it's clothed-sexy, handled as its own tag.
 export function requestIsNude(req: string): boolean {
   if (!req.trim()) return true; // default (no request) selfie in this app trends nude
-  return (
-    kw([KW.undress, KW.breasts, KW.pussy, KW.penis, KW.ass].join("|")).test(req) || ACT_RE.test(req)
-  );
+  if (
+    kw([KW.undress, KW.breasts, KW.pussy, KW.penis, KW.ass].join("|")).test(req) ||
+    ACT_RE.test(req)
+  )
+    return true;
+
+  // Asking for it explicit without naming a body part or an act: "send me a
+  // nasty picture". None of these words used to count, so that request was read
+  // as a clothed one — she "held the pose" in whatever her portrait had her
+  // wearing, the clip barely moved, and the photo that came back was the start
+  // frame itself: lingerie, shorts and the padding around it included.
+  //
+  // Unless they named what she should be wearing. "A naughty pic in lingerie"
+  // is asking to SEE the lingerie, and forcing nudity would take away the one
+  // thing they specified. Lingerie is deliberately not nude (see above), so it
+  // wins over tone.
+  return kw(KW.explicitIntent).test(req) && !kw(KW.lingerie).test(req);
 }
 
 // Maps request keywords to explicit booru pose/act tags so the picture actually

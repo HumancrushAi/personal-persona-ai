@@ -122,6 +122,122 @@ export async function pickSharpest(frames: Buffer[]): Promise<Buffer | null> {
   return scored.reduce((best, cur) => (cur.score > best.score ? cur : best)).f;
 }
 
+// ── The padding around a still that never moved ────────────────────────────
+//
+// squareStartFrame pads the companion's portrait into a square — the portrait
+// at 62% of the height, top-centre, on a structureless colour wash — because
+// the endpoint centre-crops anything that is not square. When a request makes
+// the clip move, the model generates into that space. When it does not — a
+// clothed request, or one it read as clothed — the clip holds the start frame,
+// and the "photo" is the composite itself: a narrow strip of her in the top
+// middle of a blurry square. That is the reported "it's only a partial pic".
+//
+// The wash is MEASURED rather than assumed. Its geometry depends on the
+// portrait's aspect ratio, which is not known here, and on whether the clip
+// generated into it, which is the whole question. A line of wash has almost no
+// detail; anything rendered has texture. Bands are cut from the left, the right
+// and the bottom only while they stay flat, and never from the top, where the
+// portrait is anchored. So wherever the model did generate into the padding —
+// legs into the bottom, an arm into a side — that band has detail and is kept.
+//
+// It fires only when BOTH sides are flat by a real margin. The composite always
+// pads both sides of a portrait. A real photograph with a soft background on
+// one side does not look like that, and is returned exactly as it came.
+const BAND_MIN = 0.06; // a side band narrower than this is not padding
+const FLAT_RATIO = 0.15; // flat = under 15% of the detail across the middle
+
+/** Exported for the test; completeMediaJob is the only caller. */
+export async function trimBackdrop(png: Buffer): Promise<Buffer> {
+  try {
+    const sharp = (await import("sharp")).default;
+    const { data, info } = await sharp(png)
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const w = info.width;
+    const h = info.height;
+    if (w < 64 || h < 64) return png;
+
+    // Detail at each pixel: its difference from the neighbours right and below.
+    const detail = new Float32Array(w * h);
+    for (let y = 0; y < h - 1; y++) {
+      for (let x = 0; x < w - 1; x++) {
+        const i = y * w + x;
+        detail[i] = Math.abs(data[i + 1] - data[i]) + Math.abs(data[i + w] - data[i]);
+      }
+    }
+
+    // Averaged over a few neighbouring lines, so one stray compression artefact
+    // in the wash cannot stop a trim and one soft line of hair cannot start one.
+    // The same radius is then taken back off the edges, because averaging drags
+    // the last few wash lines beside the portrait above the threshold.
+    const radius = Math.max(2, Math.round(Math.max(w, h) / 100));
+    const smooth = (v: Float64Array): Float64Array => {
+      const pre = new Float64Array(v.length + 1);
+      for (let i = 0; i < v.length; i++) pre[i + 1] = pre[i] + v[i];
+      const out = new Float64Array(v.length);
+      for (let i = 0; i < v.length; i++) {
+        const a = Math.max(0, i - radius);
+        const b = Math.min(v.length, i + radius + 1);
+        out[i] = (pre[b] - pre[a]) / (b - a);
+      }
+      return out;
+    };
+
+    const colSum = new Float64Array(w);
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let y = 0; y < h; y++) s += detail[y * w + x];
+      colSum[x] = s / h;
+    }
+    const cols = smooth(colSum);
+
+    const middle = Array.from(cols.slice(Math.floor(w / 3), Math.ceil((2 * w) / 3))).sort(
+      (a, b) => a - b,
+    );
+    const ref = middle[Math.floor(middle.length / 2)];
+    // Nothing in the middle either: a blank or near-blank frame, not a composite.
+    if (!(ref > 2)) return png;
+    const flat = (e: number) => e < ref * FLAT_RATIO;
+
+    let left = 0;
+    while (left < w && flat(cols[left])) left++;
+    let right = w;
+    while (right > left && flat(cols[right - 1])) right--;
+    if (left < w * BAND_MIN || w - right < w * BAND_MIN) return png;
+
+    // Rows are measured only across the columns being kept. Across the full
+    // width, every row would include both side bands and read as half-flat.
+    const rowSum = new Float64Array(h);
+    for (let y = 0; y < h; y++) {
+      let s = 0;
+      for (let x = left; x < right; x++) s += detail[y * w + x];
+      rowSum[y] = s / (right - left);
+    }
+    const rows = smooth(rowSum);
+    let bottom = h;
+    while (bottom > 0 && flat(rows[bottom - 1])) bottom--;
+    const trimBottom = h - bottom >= h * BAND_MIN;
+
+    // In by the smoothing radius plus two: the boundary between portrait and
+    // wash is itself a hard edge, and without this a hairline of wash is left
+    // down each side.
+    const inset = radius + 2;
+    const L = left + inset;
+    const R = right - inset;
+    const B = trimBottom ? bottom - inset : h;
+    if (R - L < w * 0.2 || B < h * 0.4) return png;
+
+    return await sharp(png)
+      .extract({ left: L, top: 0, width: R - L, height: B })
+      .png()
+      .toBuffer();
+  } catch {
+    // An untrimmed photo is worse than a trimmed one and far better than none.
+    return png;
+  }
+}
+
 async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
   const { execFile } = await import("node:child_process");
   const { promisify } = await import("node:util");
@@ -344,6 +460,10 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
   // re-encoded again. The banner pipeline is settled; leave it exactly as it is.
   let still: Encoded | null = null;
   if (job.kind === "image" && job.conversation_id) {
+    // Before the upscale, so the 2x enlargement is spent on her and not on the
+    // padding. Only for a frame cut from a clip: a real image endpoint renders
+    // no start-frame composite, so there is nothing of ours to cut away.
+    if (gotVideo) buf = await trimBackdrop(buf);
     still = await enhanceStill(buf);
     buf = still.buf;
   }

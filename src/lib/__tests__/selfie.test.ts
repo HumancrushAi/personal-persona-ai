@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selfiePrompt, wantsSelfie, wantsVideo } from "../selfie";
+import { requestIsNude, selfiePrompt, wantsSelfie, wantsVideo } from "../selfie";
 
 describe("wantsVideo", () => {
   it("detects video requests", () => {
@@ -236,5 +236,51 @@ describe("media intent on real phrasings", () => {
       expect(wantsVideo(t), t).toBe(false);
       expect(wantsSelfie(t), t).toBe(false);
     }
+  });
+});
+
+// "I said send me a nasty picture and it sent this" — a woman kneeling in the
+// lingerie and shorts from her portrait. No word in the message named a body
+// part or an act, so it was read as a clothed request and she held the pose.
+describe("requestIsNude", () => {
+  it("reads explicit tone as a nude request", () => {
+    for (const t of [
+      "send me a nasty picture",
+      "send me something naughty",
+      "dirty pic please",
+      "a filthy photo of you",
+      "send me a lewd selfie",
+      "something explicit",
+      "send nsfw",
+      "get freaky for me",
+      "send me a spicy pic",
+    ]) {
+      expect(`${t} -> ${requestIsNude(t)}`).toBe(`${t} -> true`);
+    }
+  });
+
+  // Naming the garment is asking to see it. Forcing nudity would take away the
+  // one thing they specified.
+  it("keeps a named garment on even when the tone is explicit", () => {
+    for (const t of [
+      "send me a naughty pic in lingerie",
+      "dirty pic in your thong",
+      "something nasty in stockings",
+    ]) {
+      expect(`${t} -> ${requestIsNude(t)}`).toBe(`${t} -> false`);
+    }
+  });
+
+  // "Sexy" is deliberately not explicit: a sexy picture in a dress is a real
+  // clothed request and must stay one.
+  it("does not treat an ordinary flattering request as explicit", () => {
+    for (const t of ["send me a sexy pic in a red dress", "a cute selfie", "send me a pic"]) {
+      expect(`${t} -> ${requestIsNude(t)}`).toBe(`${t} -> false`);
+    }
+  });
+
+  it("still treats a named body part or act as nude, whatever else is said", () => {
+    expect(requestIsNude("show me your tits in lingerie")).toBe(true);
+    expect(requestIsNude("send me a naughty pic of your pussy")).toBe(true);
   });
 });

@@ -39,6 +39,27 @@ import { formatPrice } from "@/lib/credit-packs";
 import { toast } from "sonner";
 import { Shield, Search, UserPlus, RefreshCw, Receipt, LifeBuoy, Loader2 } from "lucide-react";
 
+// Which tab the console opens on. /admin?tab=affiliates lands straight on that
+// screen — a link that can be sent to someone, and on a phone the one sure way
+// to reach a tab far along the row. Anything unrecognised opens Users, because
+// an unknown value leaves Radix with no tab selected and a blank page.
+const ADMIN_TABS = [
+  "users",
+  "affiliates",
+  "personas",
+  "broadcast",
+  "clips",
+  "pricing",
+  "aiconfig",
+  "content",
+  "support",
+];
+function initialAdminTab(): string {
+  if (typeof window === "undefined") return "users";
+  const tab = new URLSearchParams(window.location.search).get("tab") ?? "";
+  return ADMIN_TABS.includes(tab) ? tab : "users";
+}
+
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [{ title: "Admin — HumanCrush.com" }, { name: "robots", content: "noindex" }],
@@ -206,9 +227,14 @@ function AdminPage() {
         </div>
       </header>
 
-      <Tabs defaultValue="users">
-        <TabsList className="mb-4">
+      <Tabs defaultValue={initialAdminTab()}>
+        {/* Scrolls sideways instead of overflowing. The default list is a
+            centred, non-wrapping row, and nine tabs do not fit a phone — so
+            the ones at the end of the row, Affiliates among them, were simply
+            not reachable on one. Affiliates also sits second now. */}
+        <TabsList className="mb-4 flex h-auto w-full justify-start overflow-x-auto">
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="affiliates">Affiliates</TabsTrigger>
           <TabsTrigger value="personas">Personas</TabsTrigger>
           <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
           <TabsTrigger value="clips">Clips</TabsTrigger>
@@ -216,7 +242,6 @@ function AdminPage() {
           <TabsTrigger value="aiconfig">AI Config</TabsTrigger>
           <TabsTrigger value="content">Platform Content</TabsTrigger>
           <TabsTrigger value="support">Support</TabsTrigger>
-          <TabsTrigger value="affiliates">Affiliates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">

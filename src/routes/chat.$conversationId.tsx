@@ -861,7 +861,15 @@ function ChatPage() {
                         src={m.media_url}
                         alt=""
                         onClick={() => setActiveImageUrl(m.media_url ?? null)}
-                        className="block aspect-square w-72 cursor-pointer object-cover transition-opacity hover:opacity-90"
+                        // Her own shape, not a forced square. A chat photo is
+                        // trimmed to the person now (trimBackdrop), which makes
+                        // it a portrait — and aspect-square + object-cover would
+                        // crop a portrait's head and feet off to fill a square,
+                        // turning "partial pic" into a worse one. Capped, and
+                        // anchored to the top if it ever is cropped, so the
+                        // face is the part that always shows. Older square
+                        // photos render exactly as they did.
+                        className="block h-auto max-h-[36rem] w-72 cursor-pointer object-cover object-top transition-opacity hover:opacity-90"
                       />
                       <DownloadButton
                         url={m.media_url}
@@ -889,7 +897,7 @@ function ChatPage() {
                     </div>
                   )}
                   {m.kind === "image_pending" && (
-                    <div className="relative flex aspect-square w-72 flex-col items-center justify-center bg-black/40 p-4">
+                    <div className="relative flex aspect-[3/4] w-72 flex-col items-center justify-center bg-black/40 p-4">
                       <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 animate-pulse" />
                       <div className="flex flex-col items-center gap-3 text-center">
                         <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">

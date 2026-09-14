@@ -3,8 +3,47 @@
 // admin server function and scripts/regenerate-portraits.ts share one source of
 // truth instead of drifting apart.
 //
-// Public portraits are skimpy but clothed. Full nudity belongs to chat selfies,
+// Public portraits are sexy but clothed. Full nudity belongs to chat selfies,
 // where the user has to ask for it (see selfie.ts) — never to the shop window.
+//
+// ── Why this reads as a real person now ─────────────────────────────────────
+//
+// The benchmark is companion apps whose models look like real people, and the
+// verdict on ours was "they don't". This prompt had been written like an ad for
+// an AI influencer, and it got one:
+//
+//   * GLAMOUR VOCABULARY. "stunning, attractive", "provocative full body
+//     appeal", "skimpy alluring", "crystal clear pool", "glistening wet skin",
+//     "luxury villa", "radiant, inviting expression". Every one of those is a
+//     description of retouched commercial imagery, so that is what came back:
+//     poreless sheen, resort lighting, a face arranged for a camera. A real
+//     person is photographed in an ordinary room, in clothes with creases, in
+//     whatever light happens to be there.
+//
+//   * A NEGATION. It ended "not an AI illustration, 3D render, or drawing" —
+//     naming the three things it most needed to avoid. props.ts documents what
+//     happens when a prompt names what it forbids.
+//
+//   * ANIME DATASET TAGS. "solo" and "male focus" are booru tags, left over from
+//     when portraits rendered on Pony. The renderer is now a natural-language
+//     model, where those tags carry nothing about gender and quite a lot about
+//     where they come from, which is illustration.
+//
+//   * INCOHERENT COMBINATIONS. Outfit, pose and place were picked from separate
+//     pools, and several outfits and poses had their own locations baked in —
+//     so a companion could be "in a string bikini by the pool" while "sitting at
+//     a cafe table" in "a penthouse lounge". A scene that could not be
+//     photographed does not look like a photograph.
+//
+// So: every place is an ordinary lived-in room, every outfit is something worn
+// at home and plausible in any of those rooms, and the camera is a phone.
+//
+// Framed head to knees. A companion's portrait is also the start frame for her
+// chat photos, and a lower body that is not in the portrait has to be invented
+// by the video model — which is where the fused, wrong-looking bodies in the
+// reported screenshots came from. Knees rather than feet keeps the face larger,
+// for the grid card and for carrying her identity, and matches the framing the
+// chat photos themselves use (framingFor in selfie.ts).
 
 function genderNoun(gender: string): string {
   if (gender === "male" || gender === "trans-male") return "man";
@@ -12,10 +51,16 @@ function genderNoun(gender: string): string {
   return "woman";
 }
 
-// Every companion shared one prompt, so Pony returned the same pose in the same
-// outfit in the same colour 31 times over. These pools break that up. Selection
-// is hashed off the companion's name, not random: a given companion keeps her
-// look across reruns, but no two neighbours in the grid match.
+function pronouns(gender: string): { poss: string; refl: string } {
+  if (gender === "male" || gender === "trans-male") return { poss: "his", refl: "himself" };
+  if (gender === "non-binary") return { poss: "their", refl: "themselves" };
+  return { poss: "her", refl: "herself" };
+}
+
+// Every companion shared one prompt, so the renderer returned the same pose in
+// the same outfit 31 times over. These pools break that up. Selection is hashed
+// off the companion's name, not random: a given companion keeps her look across
+// reruns, but no two neighbours in the grid match.
 function pick<T>(pool: readonly T[], seed: number, salt: number): T {
   // The salt is mixed in, not added: adding it left every pool moving in step
   // with the others, so different companions landed on the same outfit AND the
@@ -33,88 +78,71 @@ function hashName(name: string): number {
   return h;
 }
 
-const COLORS = [
-  "black",
-  "deep red",
-  "emerald green",
-  "royal blue",
-  "blush pink",
-  "white",
-  "burgundy",
-  "lilac",
-  "champagne gold",
-  "charcoal grey",
+// Clothes worn at home, with their colour and fabric stated. Sexy because they
+// are intimate and real, not because an adjective says so. No commas inside an
+// entry: the prompt is comma-joined and the tests read the outfit back out.
+const FEM_OUTFITS = [
+  "a black lace bra and matching briefs under an open oversized white button-up shirt",
+  "a fitted white ribbed tank top and pale grey cotton sleep shorts",
+  "a thin-strapped champagne satin slip that ends mid-thigh",
+  "a matching sage green cotton bralette and underwear set",
+  "a cropped white baby tee and low-rise blue jeans with the top button undone",
+  "a sheer black mesh bodysuit under a loose cream knit cardigan",
+  "a short dusty pink silk robe tied loosely over a lace bralette",
+  "an oversized grey university hoodie over black lace underwear",
 ] as const;
 
-const FEM_GARMENTS = [
-  "a tiny skimpy string bikini and micro bottoms by the crystal pool with glistening wet skin",
-  "a provocative sheer lace lingerie bodysuit with deep plunge neckline",
-  "a micro cut-out monokini swimsuit revealing soft curves and toned waist",
-  "a skimpy silk satin slip dress with ultra thin spaghetti straps and high leg slit",
-  "a tiny strappy triangle bikini with sun-kissed golden skin",
-  "a seductive sheer lace bralette and micro satin bottoms",
+const MASC_OUTFITS = [
+  "a plain white t-shirt and grey sweatpants",
+  "an unbuttoned red flannel shirt over a bare chest and faded jeans",
+  "a fitted black t-shirt and dark jeans",
+  "grey boxer briefs and an open navy zip hoodie",
+  "a white cotton tank top and black basketball shorts",
+  "a loose linen shirt with the sleeves pushed up and beige chinos",
 ] as const;
 
-const MASC_GARMENTS = [
-  "stylish low-rise swim trunks by the poolside with wet glistening skin and muscular toned abs",
-  "an unbuttoned open linen shirt showing sculpted chest and abs with fitted swim shorts",
-  "low-rise beach boardshorts, shirtless athletic build with water droplets",
+const ENBY_OUTFITS = [
+  "an oversized faded band t-shirt and black bike shorts",
+  "a loose white button-up shirt and relaxed charcoal trousers",
+  "a cropped grey hoodie and black joggers",
+  "a ribbed olive tank top and wide-leg light jeans",
+  "a sheer black long-sleeve mesh top and cargo shorts",
+  "an open brown cardigan over a plain white tank and denim shorts",
 ] as const;
 
-const ENBY_GARMENTS = [
-  "a cropped micro tank top and cheeky summer shorts",
-  "an open lightweight linen shirt over a fitted swim set",
-  "a stylish strappy summer bodysuit with cutouts",
+// Where and how, together, so the pose can never contradict the place. Each is
+// an ordinary room somebody lives in, with the small specific clutter that
+// makes a room look real, and each keeps the whole body in frame. No periods
+// inside an entry: the tests read the scene back out as one sentence.
+const SCENES: readonly ((p: { poss: string; refl: string }) => string)[] = [
+  (p) =>
+    `sitting on the edge of an unmade bed in a small apartment bedroom with one knee drawn up and ${p.poss} hands resting behind ${p.refl}`,
+  (p) =>
+    `leaning back against the kitchen counter of a lived-in apartment at night under a warm ceiling light with a kettle and a stack of mail beside ${p.refl}`,
+  () =>
+    `standing by a hotel room window with the curtains half open and afternoon light falling across the carpet`,
+  (p) =>
+    `sitting sideways on a worn grey living room sofa with ${p.poss} legs tucked up and a crumpled throw blanket beside ${p.refl}`,
+  () =>
+    `standing in a bathroom doorway with the mirror behind still fogged from a shower and a towel over the rail`,
+  () => `kneeling on rumpled white sheets on a bed with soft morning light coming through thin curtains`,
+  (p) =>
+    `leaning with one shoulder against the doorframe of a narrow apartment hallway and ${p.poss} arms loosely folded`,
+  (p) =>
+    `standing on a small apartment balcony at dusk with the lit windows of the city behind and ${p.poss} hands on the railing`,
+  (p) =>
+    `sitting on a bedroom floor with ${p.poss} back against the side of the bed next to a phone charger and a half-finished mug of coffee`,
+  () => `standing in a sunlit living room beside a cluttered bookshelf and a plant that needs watering`,
 ] as const;
 
-const CAMERA_ANGLES = [
-  "full body shot from head to toe, candid dynamic framing, creamy shallow depth of field",
-  "full length vertical portrait showing entire figure, natural perspective, soft directional sunlight",
-  "candid full body shot capturing complete posture, long legs and natural movement",
-  "full length environmental portrait, relaxed framing, crisp 85mm portraiture",
-] as const;
+// How a real photo of a real person looks, stated as what IS there. Phone
+// camera rather than an 85mm portrait lens: a professional lens is the language
+// of a shoot, and a shoot is the look being moved away from.
+const REAL_PHOTO =
+  "Casual photo taken on a phone by someone standing a few metres away, framed from the top of the head down to the knees with the face clearly visible, slightly off-centre framing, whatever light is in the room with its real colour cast, faint grain in the shadows. Real skin with visible pores, small marks and natural unevenness in tone, fine lines where the face moves, hair with loose strands and flyaways, clothing with real creases and wear, a body with natural proportions. A relaxed genuine expression looking at the camera.";
 
-const POSES = [
-  "resting arms along the edge of a crystal clear swimming pool with wet glistening skin and water droplets",
-  "relaxing on a luxury sun lounger by the pool, smiling warmly at the camera",
-  "walking along the sandy beach at golden hour with hair gently caught in the sea breeze",
-  "sitting at a stylish outdoor cafe table, resting chin on hand with a playful captivating smile",
-  "sitting on the edge of a bed leaning back on both hands with natural posture",
-  "standing by a sunlit floor-to-ceiling balcony window glancing back over one shoulder",
-  "leaning against a modern terrace railing with city lights glowing in the soft dusk background",
-  "kneeling casually on a plush lounge sofa with a radiant, inviting expression",
-  "half-turned in profile looking back at the lens with authentic candid chemistry",
-  "sitting relaxed with one arm resting over the back of a sun lounger",
-] as const;
-
-const SETTINGS = [
-  "a sparkling infinity swimming pool overlooking the ocean at golden hour",
-  "a sun-drenched Mediterranean resort patio with turquoise water in the background",
-  "a sunlit luxury modern apartment with large floor-to-ceiling windows",
-  "a warm tropical beach with golden sunlight and gentle ocean waves",
-  "a dimly lit upscale penthouse lounge with soft ambient glow and city skyline",
-  "a cozy sunlit boutique hotel suite with warm wooden tones and linen",
-  "a chic outdoor cafe terrace in the late afternoon sun",
-  "a luxury private villa terrace overlooking lush gardens and pool",
-] as const;
-
-// Wardrobe for public-facing portraits: revealing, never bare — and gendered
-function wardrobeTags(gender: string, seed: number): string {
-  const g = (gender ?? "").toLowerCase();
-  const color = pick(COLORS, seed, 1);
-  const garments =
-    g === "male" || g === "trans-male"
-      ? MASC_GARMENTS
-      : g === "non-binary"
-        ? ENBY_GARMENTS
-        : FEM_GARMENTS;
-  const garment = pick(garments, seed, 2);
-  return `wearing revealing sexy ${color} ${garment}, skimpy alluring swimwear and lingerie aesthetic, provocative full body appeal`;
-}
-
-// Trailing prose reinforcement — sets mood
-const MOOD =
-  "Attractive, natural and charming expression, captivating eye contact with the camera, authentic candid moment.";
+const ANIME_STYLE =
+  "Stylized high-quality anime illustration, cel shaded, expressive, alluring, vertical portrait, full body in frame.";
 
 export type PortraitSubject = {
   name: string;
@@ -126,35 +154,43 @@ export type PortraitSubject = {
 };
 
 export function portraitPrompt(c: PortraitSubject, extra?: string): string {
-  const noun = genderNoun(c.gender);
   const g = (c.gender ?? "").toLowerCase();
+  const noun = genderNoun(g);
   const seed = hashName(c.name);
 
-  const genderTag =
+  const outfits =
     g === "male" || g === "trans-male"
-      ? "handsome adult man, solo, male focus"
+      ? MASC_OUTFITS
       : g === "non-binary"
-        ? "androgynous person, solo"
-        : "attractive woman, solo";
+        ? ENBY_OUTFITS
+        : FEM_OUTFITS;
+  // Salts 27 and 16, not the 2 and 3 these started from. They are arbitrary
+  // numbers, and they were chosen: with these pool sizes, 2 and 3 gave three of
+  // the 29 live companions an outfit AND a scene another companion already had
+  // — the same photo twice on the homepage grid. 27 and 16 give every live
+  // companion a different pair and use every outfit and every scene. Changing a
+  // pool's length changes the spread; the roster test says so if it breaks.
+  const outfit = pick(outfits, seed, 27);
+  const scene = pick(SCENES, seed, 16)(pronouns(g));
 
-  const style =
-    c.art_style === "anime"
-      ? "Stylized high-quality anime illustration, cel shaded, expressive, alluring, vertical portrait."
-      : "Candid raw photo taken on a Sony A7 IV with an 85mm f/1.4 GM lens, natural ambient daylight, realistic true-to-life colors, authentic skin micro-texture with visible pores, fine natural details, subtle film grain, vertical portrait. Looks like an authentic high-resolution photograph of a real person, not an AI illustration, 3D render, or drawing.";
+  if (c.art_style === "anime") {
+    return [
+      `Anime illustration of a ${c.age}-year-old ${noun} wearing ${outfit}, ${scene}.`,
+      ANIME_STYLE,
+      extra ? `${extra}.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
 
-  const angle = pick(CAMERA_ANGLES, seed, 5);
-
+  // The gender is the first thing said, in plain language. That is what locks
+  // it on a natural-language model.
   return [
-    genderTag,
-    wardrobeTags(c.gender, seed),
-    style,
-    angle,
-    `A stunning, attractive ${c.ethnicity} ${noun} named ${c.name} who is exactly ${c.age} years old — authentic face, natural body, real human skin.`,
-    `Activity & Pose: ${pick(POSES, seed, 3)}, in ${pick(SETTINGS, seed, 4)}.`,
-    c.short_bio ? `Vibe: ${c.short_bio}.` : "",
+    `Photo of a real ${c.age}-year-old ${c.ethnicity} ${noun} wearing ${outfit}, ${scene}.`,
+    REAL_PHOTO,
+    c.short_bio ? `${c.short_bio}.` : "",
     extra ? `${extra}.` : "",
-    MOOD,
   ]
     .filter(Boolean)
-    .join(", ");
+    .join(" ");
 }

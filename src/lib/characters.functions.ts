@@ -56,35 +56,43 @@ export const generateCharacter = createServerFn({ method: "POST" })
           ? "androgynous person"
           : "woman";
 
+    // A real photograph of a real person, described as what is IN it. This was
+    // "Hyper-realistic photograph, shot on 85mm … magazine quality": render
+    // language and retouched-commercial language, which is exactly the look it
+    // produced — the verdict on it was that the models do not look like real
+    // people. Kept device-neutral on purpose: the promo refiner below writes a
+    // camera line of its own, and two contradicting cameras help nobody.
     const style =
       data.artStyle === "anime"
         ? "Stylized anime/manga illustration, cel shaded, expressive eyes, soft gradients, Studio Ghibli x modern anime style, vertical portrait."
-        : "Hyper-realistic photograph, shot on 85mm, soft natural lighting, shallow depth of field, vertical portrait, magazine quality.";
+        : "Candid photograph of a real person in whatever light is in the room, with its real colour cast. Real skin with visible pores, small marks and natural unevenness in tone, fine lines where the face moves, hair with loose strands and flyaways, clothing with real creases, a body with natural proportions, a relaxed genuine expression.";
 
-    // Pony is tag-driven — this booru tag is what actually locks the rendered
-    // sex; the prose "a man named X" below is not enough on its own.
-    const genderTag =
-      genderWord === "man"
-        ? "1boy, solo, male focus"
-        : genderWord === "androgynous person"
-          ? "androgynous, solo"
-          : "1girl, solo";
+    // The sex is stated in plain language, and first. These were booru tags —
+    // "1girl, solo", "1boy, solo, male focus" — left from when portraits
+    // rendered on Pony, a tag-driven model. The renderer is now a
+    // natural-language model: those tags lock nothing for it, and what they do
+    // say, loudly, is "illustration dataset".
+    const genderLead =
+      data.artStyle === "anime" ? `Anime illustration of a ${genderWord}.` : `Photo of a real ${genderWord}.`;
 
     const baseDescription = [
-      `a ${data.ethnicity} ${genderWord} named ${data.name} who is exactly ${data.age} years old and clearly looks ${data.age}`,
+      `a ${data.ethnicity} ${genderWord} who is ${data.age} years old and clearly looks ${data.age}`,
       data.bodyType ? `body type is ${data.bodyType}` : "",
       data.breastSize && genderWord === "woman" ? `breast size is ${data.breastSize}` : "",
       data.buttSize && genderWord === "woman" ? `butt/hips size is ${data.buttSize}` : "",
       data.hair ? `hair is ${data.hair}` : "",
       data.eyes ? `eyes are ${data.eyes}` : "",
-      data.outfit ? `wearing ${data.outfit}` : "wearing a highly sexy, provocative skimpy outfit",
+      // Intimate and real rather than "highly sexy, provocative skimpy": the
+      // clothes someone actually wears at home read as sexier in a photograph
+      // than an adjective does, and they read as a person rather than a costume.
+      data.outfit ? `wearing ${data.outfit}` : "wearing fitted, intimate clothes she would wear at home",
       data.fit === "slim"
         ? "outfit fit: tailored and form-fitting, hugs the figure"
         : data.fit === "loose"
           ? "outfit fit: relaxed and loose, oversized silhouette"
           : "outfit fit: regular",
       data.vibe ? `personality/vibe is ${data.vibe}` : "",
-      "sultry, seductive, flirty eye contact, confident alluring pose, revealing form-fitting sexy outfit, cleavage, intimate warm lighting, head and shoulders to waist portrait",
+      "a flirty, relaxed look straight at the camera, in an ordinary lived-in room",
     ]
       .filter(Boolean)
       .join(", ");
@@ -138,10 +146,24 @@ export const generateCharacter = createServerFn({ method: "POST" })
     // Appending beats instructing, for the same reason PROMO_STYLE is appended
     // in studio.functions.ts: the constraint must not depend on the refiner
     // having behaved.
+    //
+    // Stated as what IS in the frame. This ended with a list of ten things that
+    // must not be — "No mirror, no reflection, no second person, no crowd, no
+    // view from behind … no sunglasses or mask" — which names every one of them
+    // to a renderer that cannot reliably read "no". The incident above was a
+    // companion rendered beside her own reflection; a framing line that says
+    // "mirror" and "reflection" to every portrait is not an innocent bystander
+    // to that. props.ts documents the same failure with a toy and a mouth.
+    //
+    // Head to knees, not head-and-shoulders to waist. This portrait is the start
+    // frame for her chat photos, and a lower body that is not in it has to be
+    // invented by the video model — which is where the fused, wrong-looking
+    // bodies in reported screenshots came from. Knees keep the face large enough
+    // to carry her identity, and match portrait.ts and selfie.ts's framingFor.
     const PORTRAIT_FRAMING =
-      "Exactly one person alone in the frame. Facing the camera directly, full face clearly visible, sharp and well lit, eyes toward the lens. Head-and-shoulders to waist framing, subject fills the frame. No mirror, no reflection, no second person, no crowd, no view from behind, no face turned away, no face cropped or obscured, no back of head, no sunglasses or mask covering the face.";
+      "One person alone in an ordinary room, facing the camera, the whole face clearly visible, sharp and evenly lit, eyes toward the lens. Framed from the top of the head down to the knees.";
 
-    const prompt = [genderTag, style, refinedPromo || baseDescription, PORTRAIT_FRAMING]
+    const prompt = [genderLead, style, refinedPromo || baseDescription, PORTRAIT_FRAMING]
       .filter(Boolean)
       .join(" ");
 

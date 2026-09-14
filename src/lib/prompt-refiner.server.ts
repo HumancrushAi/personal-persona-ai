@@ -427,7 +427,7 @@ Include, in this order:
 - pose and expression, natural and candid rather than posed for a camera
 - setting with real detail, and the specific light in it (window light, golden hour, overcast, lamplight)
 - camera language: shot on a full-frame DSLR, 50mm or 85mm lens, shallow depth of field, natural bokeh
-- realism markers: real skin texture with visible pores and fine lines, natural asymmetry, flyaway hairs, subtle skin tone variation, no airbrushing, no smoothing, no beauty filter
+- realism markers, written as what IS in the photo: real skin texture with visible pores and fine lines, natural asymmetry, flyaway hairs, subtle skin tone variation, clothing with real creases. Describe only what is present; never write what is absent
 - any object or prop as a separate solid item with its own material, colour, weight and clean edges, distinct from her hands, and sized against her body in concrete terms ("about as long as her forearm") rather than as "correctly proportioned", which the renderer cannot act on
 
 Never write "8k", "masterpiece", "ultra HD" or similar render tags — they push the image toward looking generated. Aim for a real photograph taken by a real person.

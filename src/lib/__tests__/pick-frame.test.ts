@@ -75,9 +75,9 @@ describe("enhanceStill", () => {
   });
 
   it("leaves a render that is already big alone", async () => {
-    const out = await enhanceStill(await square(1536));
+    const out = await enhanceStill(await square(1700));
     const meta = await sharp(out.buf).metadata();
-    expect(meta.width).toBe(1536);
+    expect(meta.width).toBe(1700);
   });
 
   it("never enlarges past 2x, where it would be inventing pixels", async () => {

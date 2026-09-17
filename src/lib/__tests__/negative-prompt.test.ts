@@ -84,6 +84,22 @@ describe("negativeFor", () => {
     });
   });
 
+  // "The boobs should not be saggy at all." Shape words, never the noun — and
+  // only for a body that has breasts, because "droopy" on a man's render pushes
+  // against the scrotum his anatomy clause describes.
+  describe("breast shape", () => {
+    it("pushes sagging off a woman, nude or clothed", () => {
+      expect(negativeFor("get naked", "female", { moving: false })).toMatch(/\bsaggy\b/);
+      expect(negativeFor("in your red bikini", "female", { moving: false })).toMatch(/\bsaggy\b/);
+      expect(negativeFor("get naked", "trans-female", { moving: false })).toMatch(/\bpendulous\b/);
+    });
+
+    it("leaves it off a body without breasts", () => {
+      expect(negativeFor("get naked", "male", { moving: false })).not.toMatch(/\bsaggy\b|\bdroopy\b/);
+      expect(negativeFor("get naked", "trans-male", { moving: false })).not.toMatch(/\bdroopy\b/);
+    });
+  });
+
   describe("props", () => {
     it("adds the wrong objects only when a prop was asked for", () => {
       expect(negativeFor("dildo in your pussy", "female", { moving: false })).toMatch(

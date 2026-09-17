@@ -27,6 +27,20 @@ describe("videoStillPrompt", () => {
     expect(videoStillPrompt({ gender: "female" }, "")).toMatch(/completely naked/i);
   });
 
+  // "Show me your pussy" named no posture, so the prompt described open thighs
+  // on a figure with nowhere to be. Propped up keeps her chest lifted.
+  it("gives a nude request with no posture a propped-up one", () => {
+    const p = videoStillPrompt({ gender: "female" }, "show me your pussy");
+    expect(p).toMatch(/reclining back against pillows/i);
+    expect(p).toMatch(/knees apart/i);
+    expect(p).not.toMatch(/standing/i);
+  });
+
+  it("leaves a posture the user asked for alone", () => {
+    const p = videoStillPrompt({ gender: "female" }, "get naked and kneel on the bed");
+    expect(p).not.toMatch(/reclining back against pillows/i);
+  });
+
   it("drops standing when custom request is provided", () => {
     const p = videoStillPrompt({ gender: "female" }, "lying on bed");
     expect(p).not.toMatch(/standing/i);

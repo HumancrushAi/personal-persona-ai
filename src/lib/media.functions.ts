@@ -75,7 +75,7 @@ import {
 // head and face out of the picture. That is the headless torso a user was
 // actually sent. Framing is stated positively now (framingFor in selfie.ts).
 const QUALITY_NEGATIVE =
-  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, poreless, poreless skin, featureless, smooth blank skin where detail belongs, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, saggy, droopy, pendulous, deflated, melting object, deformed object, object merging into hand, morphing, flickering";
+  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, poreless, poreless skin, featureless, smooth blank skin where detail belongs, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, melting object, deformed object, object merging into hand, morphing, flickering";
 
 // Motion terms. These stop the endpoint returning a near-still clip, and they
 // belong ONLY on a video.
@@ -89,6 +89,14 @@ const QUALITY_NEGATIVE =
 // smeared frame, which is treating the symptom of this line.
 const MOTION_NEGATIVE =
   "slow, slow motion, static, still, frozen, stuck, no movement, jittery motion, rubbery movement, unnatural motion";
+
+// Shape words only, for a companion who has breasts, clothed or not. They used
+// to sit in QUALITY_NEGATIVE and go out on every render — a man's included,
+// where "droopy" pushes against the scrotum his own anatomy clause says hangs
+// below his penis. Adjectives and never the noun, for the reason set out above:
+// a negative that names the part flattens it.
+const SAG_NEGATIVE =
+  "saggy, sagging, droopy, drooping, pendulous, deflated, elongated, stretch marks";
 
 // Applied only when the request implies nudity. Without it nothing pushes back
 // on the clothes already in the start frame, so explicit acts were performed
@@ -122,6 +130,7 @@ export function negativeFor(
     const cross = crossSexNegative(gender);
     if (cross) base = `${base}, ${cross}`;
   }
+  if (anatomyOf(gender).hasBreasts) base = `${base}, ${SAG_NEGATIVE}`;
 
   const props = propNegative(req);
   return props ? `${base}, ${props}` : base;
@@ -351,36 +360,11 @@ export async function startImageJob(
     );
   }
 
-  // Grok rewrites the user's line into a full prompt in the house style; the
-  // keyword builder is the fallback when no key is set or the call fails.
-  const { refineMediaPrompt } = await import("./prompt-refiner.server");
-  const refined = await refineMediaPrompt("photo", userRequest ?? "", companion);
-
-  // The prop specification is appended to whatever prompt we end up with, and
-  // that includes the refined one — see finishMediaPrompt.
-  //
-  // The close-up patching that used to sit here is gone. It tried to repair a
-  // refined prompt by find-and-replacing the literal string "full body visible,
-  // head to feet in frame" — text the refiner only produced when the old rules
-  // told it to, and which it no longer writes at all — and then prepended a
-  // second framing sentence when the first was not found, so a close-up request
-  // could end up carrying two contradictory cameras. The refiner is now told
-  // which framing to write (refineMediaPrompt reads CLOSE_UP_RE itself), so
-  // there is one camera in the prompt and nothing to patch afterwards.
-  const reqText = userRequest ?? "";
-  const imagePrompt = finishMediaPrompt(
-    refined?.[0] ??
-      (imageEndpoint
-        ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
-        : videoStillPrompt(companion, userRequest)),
-    reqText,
-    {
-      anatomy: anatomyOf(companion.gender),
-      appendProps: Boolean(refined?.[0]),
-      // Only when the photo is being cut out of a clip. A real image endpoint
-      // renders a still by definition and does not need telling.
-      still: !imageEndpoint,
-    },
+  const imagePrompt = await photoPrompt(
+    companion,
+    userRequest,
+    styleBackstory,
+    Boolean(imageEndpoint),
   );
 
   // The endpoint centre-crops to a square, which decapitated the result. Square
@@ -446,45 +430,18 @@ export async function startImageJob(
           // the output. screenUserMessage already blocked the illegal requests.
           enable_safety_checker: false,
         }
-      : {
-          // The frame count is NOT a cost dial, which is what it was being
-          // treated as. WAN i2v paces an action across a fixed arc — the video
-          // path in this same file uses 82 frames and calls it the endpoint's
-          // tuned default. Run the same model for 49 frames and it does not
-          // perform the action faster; it performs 60% of it and stops. Then
-          // extractLastFrame takes a frame from the last 1.2 seconds of that,
-          // so the photo the user paid for was, by construction, the subject
-          // partway through morphing out of her clothed portrait: half-resolved
-          // limbs, a prop between two positions, a body still forming. That is
-          // most of what "the nudes look bad" was describing.
-          //
-          // 81 frames lets the pose actually arrive. Steps come back down to 26
-          // to pay for it — 81x26 is about a third more work than 49x32, not
-          // triple — because a completed pose at 26 steps beats an unfinished
-          // one at 32. Both stay env-overridable.
-          image_url: startFrame,
-          fps: 16,
-          frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "81"),
-          num_scenes: 1,
-          sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "30"),
-          prompts: [imagePrompt],
-          // `moving: false` — this job is a photo. The clip exists only so one
-          // frame can be cut out of it, so the motion negatives that force a
-          // video to keep moving are left off: they were making every chat
-          // photo a picture of someone mid-movement. And the companion's own
-          // gender is passed at last; without it negativeFor defaulted to
-          // female, so a male companion's nude photo was rendered with "penis,
-          // cock, male genitalia" in its negative prompt.
-          negative_prompt: negativeFor(userRequest, companion.gender, { moving: false }),
-          lora_strengths: VIDEO_LORA_STRENGTHS,
-          // Portrait resolution is WAN's native bucket and roughly doubles
-          // vertical detail on the subject vs the 640×640 default square.
-          // guidance_scale pushes harder toward prompt adherence for stills.
-          ...(process.env.RUNPOD_STILL_SIZE
-            ? { size: process.env.RUNPOD_STILL_SIZE }
-            : { size: "480*832" }),
-          guidance_scale: Number(process.env.RUNPOD_STILL_GUIDANCE || "4.0"),
-        };
+      : // `moving: false` — this job is a photo. The clip exists only so one
+        // frame can be cut out of it, so the motion negatives that force a
+        // video to keep moving are left off: they were making every chat photo
+        // a picture of someone mid-movement. And the companion's own gender is
+        // passed at last; without it negativeFor defaulted to female, so a male
+        // companion's nude photo was rendered with "penis, cock, male
+        // genitalia" in its negative prompt.
+        stillJobInput(
+          startFrame,
+          imagePrompt,
+          negativeFor(userRequest, companion.gender, { moving: false }),
+        );
 
     const result = await runpodRun(runpodImage, input, webhookFor("runpod"));
     await supabaseAdmin
@@ -505,6 +462,98 @@ export async function startImageJob(
   }
 
   return job.id;
+}
+
+/**
+ * The prompt a chat photo is rendered from.
+ *
+ * Its own function so scripts/test-still.ts renders from exactly what a user's
+ * request would, rather than a copy that drifts.
+ */
+export async function photoPrompt(
+  companion: { name: string; age: number; ethnicity: string; gender?: string | null },
+  userRequest: string | undefined,
+  styleBackstory: string | null | undefined,
+  imageEndpoint: boolean,
+): Promise<string> {
+  // Grok rewrites the user's line into a full prompt in the house style; the
+  // keyword builder is the fallback when no key is set or the call fails.
+  const { refineMediaPrompt } = await import("./prompt-refiner.server");
+  const refined = await refineMediaPrompt("photo", userRequest ?? "", companion);
+
+  // The prop specification is appended to whatever prompt we end up with, and
+  // that includes the refined one — see finishMediaPrompt.
+  //
+  // The close-up patching that used to sit here is gone. It tried to repair a
+  // refined prompt by find-and-replacing the literal string "full body visible,
+  // head to feet in frame" — text the refiner only produced when the old rules
+  // told it to, and which it no longer writes at all — and then prepended a
+  // second framing sentence when the first was not found, so a close-up request
+  // could end up carrying two contradictory cameras. The refiner is now told
+  // which framing to write (refineMediaPrompt reads CLOSE_UP_RE itself), so
+  // there is one camera in the prompt and nothing to patch afterwards.
+  return finishMediaPrompt(
+    refined?.[0] ??
+      (imageEndpoint
+        ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
+        : videoStillPrompt(companion, userRequest)),
+    userRequest ?? "",
+    {
+      anatomy: anatomyOf(companion.gender),
+      appendProps: Boolean(refined?.[0]),
+      // Only when the photo is being cut out of a clip. A real image endpoint
+      // renders a still by definition and does not need telling.
+      still: !imageEndpoint,
+    },
+  );
+}
+
+// An env knob that can also be switched off entirely, so the worker falls back
+// to its own tuned value. "off" is how scripts/test-still.ts renders the same
+// request with and without a setting, to see which one actually looks better.
+function stillKnob(name: string, fallback: string): string | null {
+  const v = (process.env[name] ?? fallback).trim();
+  return v && v.toLowerCase() !== "off" ? v : null;
+}
+
+/**
+ * The WAN job body for a chat photo, which is one frame cut out of a clip.
+ * Shared with scripts/test-still.ts for the same reason as photoPrompt.
+ */
+export function stillJobInput(startFrame: string, prompt: string, negative: string) {
+  // Off unless set. A 480*832 size, guidance_scale 4.0 and 30 steps went out
+  // as defaults without a single render to check them against, and photos were
+  // reported as weird and unrealistic straight after. The worker's own tuned
+  // values are the known quantity, so they are the default again; set e.g.
+  // RUNPOD_STILL_SIZE="480*832" and RUNPOD_STILL_GUIDANCE="4.0" to opt back in
+  // once scripts/test-still.ts shows they look better.
+  const size = stillKnob("RUNPOD_STILL_SIZE", "off");
+  const guidance = stillKnob("RUNPOD_STILL_GUIDANCE", "off");
+  return {
+    // The frame count is NOT a cost dial, which is what it was being treated
+    // as. WAN i2v paces an action across a fixed arc — the video path in this
+    // same file uses 82 frames and calls it the endpoint's tuned default. Run
+    // the same model for 49 frames and it does not perform the action faster;
+    // it performs 60% of it and stops. Then extractLastFrame takes a frame from
+    // the last 1.2 seconds of that, so the photo the user paid for was, by
+    // construction, the subject partway through morphing out of her clothed
+    // portrait: half-resolved limbs, a prop between two positions, a body still
+    // forming. That is most of what "the nudes look bad" was describing.
+    //
+    // 81 frames lets the pose actually arrive. Steps come back down to 26 to pay
+    // for it — a completed pose at 26 steps beats an unfinished one at 32.
+    // Both stay env-overridable.
+    image_url: startFrame,
+    fps: 16,
+    frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "81"),
+    num_scenes: 1,
+    sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "26"),
+    prompts: [prompt],
+    negative_prompt: negative,
+    lora_strengths: VIDEO_LORA_STRENGTHS,
+    ...(size ? { size } : {}),
+    ...(guidance ? { guidance_scale: Number(guidance) } : {}),
+  };
 }
 
 export const requestVideo = createServerFn({ method: "POST" })

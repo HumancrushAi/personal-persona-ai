@@ -463,7 +463,8 @@ export function videoStillPrompt(
   const a = anatomyOf(c.gender);
   const { noun, subject, poss } = a;
 
-  const undress = requestIsNude(req)
+  const nude = requestIsNude(req);
+  const undress = nude
     ? `${subject} ${a.is} already completely naked, bare skin everywhere. ${nudeAnatomy(c.gender)}`
     : `${subject} hold${a.s} the pose.`;
 
@@ -478,9 +479,21 @@ export function videoStillPrompt(
   const Subject = `${subject[0].toUpperCase()}${subject.slice(1)}`;
   const settles = `settle${a.s}`;
 
+  // A nude request that names no posture got none, so "show me your pussy"
+  // described open thighs on a figure with nowhere to be, and the model either
+  // stood her up or laid her flat — where breasts spread and sag. Propped up on
+  // pillows keeps the chest lifted and the thighs naturally apart, and one plain
+  // setting leaves the words for her. An empty request is left alone: its
+  // framing sentence already picks a stance.
+  const posture =
+    nude && req && !POSTURE_RE.test(req)
+      ? `${Subject} ${a.is} reclining back against pillows on a bed with plain white sheets, propped up on ${poss} elbows, ${poss} back gently arched and ${poss} knees apart, soft daylight from a window beside ${a.object}.`
+      : "";
+
   return [
     framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
     actionSentence(subject, action),
+    posture,
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a }),
     QUALITY,

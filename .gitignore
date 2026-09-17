@@ -56,3 +56,6 @@ marketing/adult/reels/work/
 # Upscaled banner plates are large and reproducible from the source plate:
 #   npx vite-node --config vitest.config.ts scripts/upscale-plate.ts -- couch 6 clarity
 marketing/adult-explicit/plates/*-hi.png
+
+# Local renders from scripts/test-still.ts
+.stills/

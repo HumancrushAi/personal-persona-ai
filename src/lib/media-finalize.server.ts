@@ -238,7 +238,7 @@ export async function trimBackdrop(png: Buffer): Promise<Buffer> {
   }
 }
 
-async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
+export async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
   const { execFile } = await import("node:child_process");
   const { promisify } = await import("node:util");
   const { writeFile, readFile, readdir, mkdtemp, rm } = await import("node:fs/promises");
@@ -385,7 +385,11 @@ async function muxAudio(mp4: Buffer): Promise<Buffer> {
 // q90 is roughly half the bytes of the 640 PNG it replaces, so the picture gets
 // both bigger and faster. Nothing reads the stored extension — it is a URL in a
 // message row — so the format is free to change.
-const STILL_TARGET = 1280;
+//
+// 1600 rather than 1280 now that stills render as an 832-tall portrait: 1280
+// only took that to 1.5x, which on a 1080-wide phone in the full-screen viewer
+// is still being stretched by the browser. 1600 is 1.9x, inside the 2x cap.
+const STILL_TARGET = 1600;
 
 type Encoded = { buf: Buffer; ext: string; mime: string };
 
@@ -529,6 +533,8 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
         title,
         body,
         url: `/chat/${job.conversation_id}`,
+        // Its own tag, so the text reply that follows does not replace it.
+        tag: `media-${job.id}`,
       });
     } catch {
       /* push best-effort */

@@ -193,9 +193,17 @@ export function anatomyOf(gender?: string | null): Anatomy {
 // No hair, skin or eye colour anywhere: a reference photo of the companion is
 // supplied to the renderer and inventing those fights it, which is how a
 // brunette came back blonde.
+//
+// "Firm perky" on its own still came back sagging. Those are adjectives, and
+// the model's idea of a bare breast follows whatever gravity is doing in the
+// pose. Where the nipple sits is something it can place: level with the middle
+// of her upper arm and pointing forward is what a lifted breast looks like, and
+// the full rounded lower curve is the part that droops when nobody states it.
+// Shaved for the same reason the sub-structures are named: hair is texture laid
+// over exactly the edges that have to read, and a clean surface renders them.
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "Firm perky rounded bare breasts sitting uplifted on her chest, perfectly perk and full bust, with defined areolae and perky erect nipples. Between her open thighs a detailed vulva: outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light.",
+    "Natural firm round bare breasts set high on her chest, full rounded lower curves, taut smooth skin over them, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples. Between her open thighs a smoothly shaved, detailed vulva: outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light.",
   // Pinned the way props.ts pins a toy, and for the same reason: where it is,
   // which way it points, and how big it is against his own body. Sub-structures
   // alone were not enough — a render that knows it needs "a penis" but not
@@ -206,7 +214,7 @@ const NUDE_ANATOMY: Record<GenderKind, string> = {
   male:
     "A lean muscular chest and flat stomach. At his groin, below his navel and above his thighs, a thick erect penis standing out and angled slightly upward from his body, about as long as his hand from wrist to fingertip: a clearly defined shaft, a distinct ridge where the shaft meets the smooth rounded glans, soft veining along the length, and a separate lightly textured scrotum hanging below it. The shaft, the glans and the scrotum each read as their own form with clean edges between them.",
   "trans-female":
-    "One body: firm rounded bare breasts with defined areolae and erect nipples on her chest, feminine hips and a soft waist, and at her groin, below her navel, a thick erect penis standing out from her body and angled slightly upward, about as long as her hand from wrist to fingertip, with a defined shaft, a distinct ridge below the smooth rounded glans and a separate scrotum below. Breasts above and cock below, both in the same frame and both in sharp focus.",
+    "One body: natural firm round breasts set high on her chest, defined areolae and erect nipples pointing forward, feminine hips and a soft waist, and at her groin, below her navel, a thick erect penis standing out from her body and angled slightly upward, about as long as her hand from wrist to fingertip, with a defined shaft, a distinct ridge below the smooth rounded glans and a separate scrotum below. Breasts above and cock below, both in the same frame and both in sharp focus.",
   "trans-male":
     "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a detailed vulva: outer labia parting around visible inner labia, a prominent clitoral hood above them, soft shadow where the surfaces meet.",
   nb: "A lean androgynous body, a flat soft chest, narrow hips and a smooth groin, skin evenly lit with visible pores and fine texture throughout.",

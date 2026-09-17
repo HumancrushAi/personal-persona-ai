@@ -73,7 +73,7 @@ describe("videoStillPrompt", () => {
     const req = "show me your pussy";
     const still = stillImagePrompt({ gender: "female" }, req);
     expect(still).toMatch(/chin down to her knees/i);
-    expect(still).toMatch(/smoothly shaved, detailed vulva/i);
+    expect(still).toMatch(/smoothly shaved vulva/i);
     expect(still).not.toMatch(/still held pose|camera holds its position/i);
     // Same picture, different tail.
     expect(videoStillPrompt({ gender: "female" }, req)).toMatch(/still held pose/i);

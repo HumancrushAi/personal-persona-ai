@@ -99,7 +99,10 @@ function actionTags(req: string, a: Anatomy): string {
     );
   if (a.hasVulva && has(KW.pussy))
     ex.push(
-      "photorealistic pussy, detailed naturally shaped pussy, soft outer and inner labia, visible clitoris, glistening wetness, spread pussy, spread legs, presenting",
+      // "spread pussy" and "inner labia" are gone: both render as tissue pulled
+      // out of the cleft, which is the flap a user sent back. A closed cleft is
+      // what a checkpoint draws cleanly.
+      "photorealistic pussy, smooth shaved pussy, neat closed cleft, plump outer labia, small clitoral hood, spread legs, presenting",
     );
   if (has(KW.breasts))
     ex.push(

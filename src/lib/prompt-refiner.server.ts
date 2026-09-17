@@ -26,11 +26,11 @@ const XAI_URL = "https://api.x.ai/v1/chat/completions";
 // nothing like it, which is how a brunette came back blonde. Examples teach
 // shape, and whatever is in them gets reproduced, so the appearance is gone from
 // them entirely. Do not put hair, skin or eye colour back.
-const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm round breasts set high on her chest, nipples level with the middle of her upper arms and pointing forward, small defined areolae, smoothly shaved detailed photorealistic pussy with naturally shaped outer and inner labia parting softly and visible clitoris, reclining back against pillows propped up on her elbows, back gently arched, legs open, on a bed with plain white sheets, soft daylight from a window beside her, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
+const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm round breasts set high on her chest, nipples level with the middle of her upper arms and pointing forward, small defined areolae, smoothly shaved photorealistic pussy, soft plump outer labia meeting in a neat closed cleft, small clitoral hood at the top, reclining back against pillows propped up on her elbows, back gently arched, legs open, on a bed with plain white sheets, soft daylight from a window beside her, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
 
 exact same woman as the reference image, identical face, hair and skin, completely nude, reclining back against pillows with her shoulders raised, knees up and thighs open, smooth matte silicone dildo inserted into her pussy and angled down between her open thighs, most of the shaft hidden inside her with only the flared base showing, her fingers closed on that base and her wrist against her inner thigh, labia parting and pressing around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees with her face in the upper third, plain white sheets, soft window daylight, authentic skin texture with visible pores, candid DSLR photograph, raw photography
 
-exact same woman as the reference image, identical face, hair and skin, completely nude, sitting upright on the edge of the bed with her shoulders back and her knees apart, framed from the top of her head down to her knees with her face clearly visible in the upper third, natural firm round breasts set high on her chest with erect nipples pointing forward, smoothly shaved detailed pussy with soft parting labia, her hands resting on her thighs, plain white sheets, soft daylight from the side, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+exact same woman as the reference image, identical face, hair and skin, completely nude, sitting upright on the edge of the bed with her shoulders back and her knees apart, framed from the top of her head down to her knees with her face clearly visible in the upper third, natural firm round breasts set high on her chest with erect nipples pointing forward, smoothly shaved pussy with a neat closed cleft and a small clitoral hood, her hands resting on her thighs, plain white sheets, soft daylight from the side, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
 
 // Shown ONLY when the user actually asked for a close-up or a POV shot.
 //
@@ -39,7 +39,7 @@ exact same woman as the reference image, identical face, hair and skin, complete
 // framing at all. Examples are the strongest instruction in the file, so an
 // example of a composition nobody asked for is a standing invitation to compose
 // that way, and a POV crop is one of the ways a photo comes back headless.
-const POV_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus with detailed outer and inner labia and visible clitoris, her stomach and breasts beyond it, her face looking down into the lens at the top of the frame, lens thirty centimetres away, glistening skin texture, warm soft lighting, candid raw photograph, real pores and fine skin detail`;
+const POV_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus, soft plump outer labia meeting in a neat closed cleft with the small clitoral hood at the top, her stomach and breasts beyond it, her face looking down into the lens at the top of the frame, lens thirty centimetres away, glistening skin texture, warm soft lighting, candid raw photograph, real pores and fine skin detail`;
 
 // The male and trans-female examples live apart from the female ones because
 // examples are the strongest instruction in the file and whatever is in them
@@ -53,7 +53,7 @@ const TRANS_FEMALE_EXAMPLES = `exact same woman as the reference image, identica
 
 // A trans man had no example of his own, so the model was shown two nude men
 // with cocks and asked to write a prompt for him.
-const TRANS_MALE_EXAMPLES = `exact same man as the reference image, identical face, hair and skin, completely nude, lean masculine build with a flat chest, flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, and between his open thighs a detailed vulva with outer labia parting around visible inner labia and a prominent clitoral hood, lying back on the bed framed from his head to his knees with his face in the upper third, warm bedside lamplight, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+const TRANS_MALE_EXAMPLES = `exact same man as the reference image, identical face, hair and skin, completely nude, lean masculine build with a flat chest, flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, and between his open thighs a smoothly shaved vulva, soft outer labia meeting in a neat closed cleft with a small clitoral hood at the top, lying back on the bed framed from his head to his knees with his face in the upper third, warm bedside lamplight, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
 
 // "no airbrushing" used to close all three of these. Examples teach shape, and
 // what these were teaching was a negation — so every clothed prompt Grok wrote
@@ -108,14 +108,14 @@ type SubjectKind = GenderKind;
 // other is what stops the fused, featureless, smooth-plastic look.
 const ANATOMY: Record<SubjectKind, string> = {
   female:
-    "- her anatomy in photorealistic detail: natural firm round breasts set high on her chest, full rounded lower curves, taut smooth skin, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples; between her thighs a smoothly shaved, detailed photorealistic vulva, outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light",
+    "- her anatomy in photorealistic detail: natural firm round breasts set high on her chest, full rounded lower curves, taut smooth skin, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples; between her thighs a smoothly shaved photorealistic vulva: soft plump outer labia meeting along a neat closed cleft, the small clitoral hood at the top, everything tucked smoothly inside, skin one even tone with her inner thighs, a faint natural sheen. Describe the cleft as CLOSED — a render told to show the inner labia extrudes them as a flap",
   male: "- his anatomy in photorealistic detail: a lean athletic muscular chest and defined abs, and at his groin an erect thick penis with a clearly defined realistic shaft, a distinct ridge below the glans, soft surface veining, and natural firm testicles hanging neatly below in a separate lightly textured sac, each part distinguishable from the next",
   "trans-female":
     "- her anatomy in photorealistic detail, as ONE body in a single clause: natural firm round breasts set high on her chest with defined areolae and erect nipples pointing forward, feminine hips and waist, and at her groin an erect penis with a defined shaft, distinct glans and natural testicles below it. Both in frame and both in focus",
   // The kind that had no bullet at all. A trans man was described to the model
   // as a plain man and rendered with a cock he does not have.
   "trans-male":
-    "- his anatomy in photorealistic detail: a flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach; between his thighs a detailed vulva, outer labia parting around visible inner labia, a prominent clitoral hood above them",
+    "- his anatomy in photorealistic detail: a flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach; between his thighs a smoothly shaved vulva: soft plump outer labia meeting along a neat closed cleft, a small clitoral hood at the top, everything tucked smoothly inside",
   nb: "- the body in photorealistic detail: lean androgynous build, a flat soft chest, narrow hips, skin evenly lit with visible pores and fine texture throughout",
 };
 
@@ -137,12 +137,12 @@ Leave her hair colour, hair length, eye colour, skin tone and build out entirely
 Every prompt must contain, in this order:
 - "exact same woman as the reference image, identical face, hair and skin" (carries her likeness from the start frame)
 - FRAMING, as the second thing in the prompt. ${
-    closeUp
-      ? `The user asked for a close-up or point-of-view shot, so write the VIEWPOINT as a real photograph: where the lens is, what fills the foreground, and what is behind it. Use this shape — "close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus, her stomach and breasts beyond it, her face looking down into the lens at the top of the frame, lens thirty centimetres away". Her face stays in the frame.`
-      : groinFocus
-        ? `The request is ABOUT her pussy, so the camera comes in close enough for it to render: write "framed from her chin down to her knees with her mouth and chin at the top edge of the frame, her hips and groin in the centre of the frame in sharp focus, camera one metre away at hip height". A head-to-knees frame leaves a vulva about forty pixels wide and it comes back a smear whatever you write about it; this frame gives it nearly twice the detail. Her mouth and chin stay in shot at the top edge — it is a chosen composition, not a crop.`
-        : `Write "framed from the top of her head down to her knees, her face clearly visible in the upper third of the frame, her hips in the middle of the frame, camera two metres away". This picture is delivered small, so a whole standing figure leaves the part that matters a few pixels wide; a head-to-knees frame keeps her face in shot and the act at a usable size.`
-  }
+  closeUp
+    ? `The user asked for a close-up or point-of-view shot, so write the VIEWPOINT as a real photograph: where the lens is, what fills the foreground, and what is behind it. Use this shape — "close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus, her stomach and breasts beyond it, her face looking down into the lens at the top of the frame, lens thirty centimetres away". Her face stays in the frame.`
+    : groinFocus
+      ? `The request is ABOUT her pussy, so the camera comes in close enough for it to render: write "framed from her chin down to her knees with her mouth and chin at the top edge of the frame, her hips and groin in the centre of the frame in sharp focus, camera one metre away at hip height". A head-to-knees frame leaves a vulva about forty pixels wide and it comes back a smear whatever you write about it; this frame gives it nearly twice the detail. Her mouth and chin stay in shot at the top edge — it is a chosen composition, not a crop.`
+      : `Write "framed from the top of her head down to her knees, her face clearly visible in the upper third of the frame, her hips in the middle of the frame, camera two metres away". This picture is delivered small, so a whole standing figure leaves the part that matters a few pixels wide; a head-to-knees frame keeps her face in shot and the act at a usable size.`
+}
 ${
   nude
     ? '- nudity stated as ALREADY TRUE: "completely nude", "fully naked". Write her as already bare rather than undressing'
@@ -153,7 +153,7 @@ ${
 - keep the torso UPRIGHT or PROPPED UP whenever the act allows it: sitting, kneeling upright, or reclining against pillows with her shoulders raised, her back gently arched and her shoulders back so her chest is lifted. Lying flat on her back or leaning forward are for requests that name those positions
 - any prop or sex toy: state WHERE IT IS and HOW MUCH OF IT SHOWS. For an inserted toy write it as angled down along the line between her open thighs, most of the shaft hidden inside her, only the flared base visible with her fingers closed on it and her wrist against her inner thigh. That geometry is what makes the object read as a sex toy at the right scale. Its material and exact size are appended separately, so spend your words on placement and contact
 - where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
-${groinFocus ? "- her pussy is the FOCAL POINT of the photograph: in the centre of the frame, in sharp focus, each fold distinct from the next, the light falling across it so the surfaces separate\n" : ""}${
+${groinFocus ? "- her pussy is the FOCAL POINT of the photograph: in the centre of the frame, in sharp focus, a neat closed cleft between soft plump outer labia with the small clitoral hood at the top, the skin smooth and even, the light falling across it so its shape reads\n" : ""}${
   nude
     ? ANATOMY[kind]
     : "- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin. Also state her firm perky bust fills the garment neatly. This is what makes a clothed shot read as a photograph rather than a mannequin"
@@ -307,8 +307,7 @@ async function refineMediaWithOpenRouter(
     const raw = (json.choices?.[0]?.message?.content ?? "").trim();
     if (!raw) return null;
 
-    if (kind === "photo")
-      return usableRefinement(raw, nude, 60) ? [stripNegations(raw)] : null;
+    if (kind === "photo") return usableRefinement(raw, nude, 60) ? [stripNegations(raw)] : null;
 
     if (!usableRefinement(raw, nude, 40)) return null;
     const parts = raw

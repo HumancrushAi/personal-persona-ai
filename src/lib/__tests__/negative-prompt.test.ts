@@ -100,6 +100,25 @@ describe("negativeFor", () => {
     });
   });
 
+  // The "weird thing sticking out": a render that extrudes tissue from the
+  // cleft. Pushed against for a nude of anyone with a vulva, never for a man,
+  // where "dangling" and "hanging" would fight his own anatomy clause.
+  describe("vulva shape", () => {
+    it("pushes protrusion off a nude with a vulva", () => {
+      expect(negativeFor("show me your pussy", "female", { moving: false })).toMatch(
+        /\bprotruding\b/,
+      );
+      expect(negativeFor("get naked", "trans-male", { moving: false })).toMatch(/\bprotruding\b/);
+    });
+
+    it("leaves it off a man and off a clothed shot", () => {
+      expect(negativeFor("get naked", "male", { moving: false })).not.toMatch(/\bprotruding\b/);
+      expect(negativeFor("in your red bikini", "female", { moving: false })).not.toMatch(
+        /\bprotruding\b/,
+      );
+    });
+  });
+
   describe("props", () => {
     it("adds the wrong objects only when a prop was asked for", () => {
       expect(negativeFor("dildo in your pussy", "female", { moving: false })).toMatch(

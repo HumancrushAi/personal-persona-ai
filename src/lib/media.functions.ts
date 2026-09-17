@@ -99,6 +99,13 @@ const MOTION_NEGATIVE =
 const SAG_NEGATIVE =
   "saggy, sagging, droopy, drooping, pendulous, deflated, elongated, stretch marks";
 
+// The one failure the closed-cleft clause in anatomy.ts cannot suppress on its
+// own: a render that pulls something OUT of it. That is the "weird thing
+// sticking out" a user sent back — a tongue of tissue extruded from the cleft.
+// Things and adjectives only, never the part, for the reason set out above.
+const VULVA_NEGATIVE =
+  "protruding, dangling, hanging flap, flaps, extra folds, elongated, stretched, gaping, tentacle, growth, appendage";
+
 // Applied only when the request implies nudity. Without it nothing pushes back
 // on the clothes already in the start frame, so explicit acts were performed
 // fully dressed.
@@ -127,11 +134,13 @@ export function negativeFor(
   // out of her groin. crossSexNegative covers all five kinds off the same table
   // the positive anatomy clause is built from, so the two halves cannot
   // disagree about which body this is.
+  const a = anatomyOf(gender);
   if (isNude) {
     const cross = crossSexNegative(gender);
     if (cross) base = `${base}, ${cross}`;
+    if (a.hasVulva) base = `${base}, ${VULVA_NEGATIVE}`;
   }
-  if (anatomyOf(gender).hasBreasts) base = `${base}, ${SAG_NEGATIVE}`;
+  if (a.hasBreasts) base = `${base}, ${SAG_NEGATIVE}`;
 
   const props = propNegative(req);
   return props ? `${base}, ${props}` : base;

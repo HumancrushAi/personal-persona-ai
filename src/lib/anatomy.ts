@@ -185,10 +185,18 @@ export function anatomyOf(gender?: string | null): Anatomy {
 // The detail is specific rather than superlative, for the same reason props.ts
 // describes a toy by its material and size instead of calling it "correctly
 // proportioned". "Anatomically correct" and "highly detailed" are adjectives a
-// renderer cannot act on; "outer labia parting around visible inner labia, the
-// clitoral hood above them" names sub-structures it can actually place, and
-// naming sub-structures that must be distinguishable from each other is what
+// renderer cannot act on; "soft plump outer labia meeting along a neat closed
+// cleft, the small clitoral hood at the top" names shapes it can actually
+// place, and naming shapes that must be distinguishable from each other is what
 // stops the fused, melted, featureless look people read as AI.
+//
+// What it must NOT name is the inner labia. "Outer labia parting around visible
+// inner labia" was the clause for a while, and the render took it literally: a
+// large tongue of tissue extruded from the cleft, which is the single "weird
+// thing sticking out" a user sent back. A photoreal checkpoint's idea of
+// "visible inner labia" is a protrusion, every time. A closed cleft with
+// everything tucked inside is both what most real vulvas look like at rest and
+// the one description these models render cleanly.
 //
 // No hair, skin or eye colour anywhere: a reference photo of the companion is
 // supplied to the renderer and inventing those fights it, which is how a
@@ -203,7 +211,7 @@ export function anatomyOf(gender?: string | null): Anatomy {
 // over exactly the edges that have to read, and a clean surface renders them.
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "Natural firm round bare breasts set high on her chest, full rounded lower curves, taut smooth skin over them, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples. Between her open thighs a smoothly shaved, detailed vulva in sharp focus: outer labia parting around visible inner labia, the clitoral hood above them, each fold a separate surface with its own edge, soft shadow where they meet, natural moisture catching the light.",
+    "Natural firm round bare breasts set high on her chest, full rounded lower curves, taut smooth skin over them, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples. Between her open thighs a smoothly shaved vulva in sharp focus: soft plump outer labia meeting along a single neat closed cleft, the small clitoral hood at the top of it, everything tucked smoothly inside, the skin one even tone with her inner thighs, a faint natural sheen.",
   // Pinned the way props.ts pins a toy, and for the same reason: where it is,
   // which way it points, and how big it is against his own body. Sub-structures
   // alone were not enough — a render that knows it needs "a penis" but not
@@ -211,12 +219,11 @@ const NUDE_ANATOMY: Record<GenderKind, string> = {
   // reported. Scale is anchored to his hand because these models have no
   // absolute sense of size but render relative body proportion well; that is
   // the finding props.ts was built on and it transfers directly.
-  male:
-    "A lean muscular chest and flat stomach. At his groin, below his navel and above his thighs, a thick erect penis standing out and angled slightly upward from his body, about as long as his hand from wrist to fingertip: a clearly defined shaft, a distinct ridge where the shaft meets the smooth rounded glans, soft veining along the length, and a separate lightly textured scrotum hanging below it. The shaft, the glans and the scrotum each read as their own form with clean edges between them.",
+  male: "A lean muscular chest and flat stomach. At his groin, below his navel and above his thighs, a thick erect penis standing out and angled slightly upward from his body, about as long as his hand from wrist to fingertip: a clearly defined shaft, a distinct ridge where the shaft meets the smooth rounded glans, soft veining along the length, and a separate lightly textured scrotum hanging below it. The shaft, the glans and the scrotum each read as their own form with clean edges between them.",
   "trans-female":
     "One body: natural firm round breasts set high on her chest, defined areolae and erect nipples pointing forward, feminine hips and a soft waist, and at her groin, below her navel, a thick erect penis standing out from her body and angled slightly upward, about as long as her hand from wrist to fingertip, with a defined shaft, a distinct ridge below the smooth rounded glans and a separate scrotum below. Breasts above and cock below, both in the same frame and both in sharp focus.",
   "trans-male":
-    "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a detailed vulva: outer labia parting around visible inner labia, a prominent clitoral hood above them, soft shadow where the surfaces meet.",
+    "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a smoothly shaved vulva: soft plump outer labia meeting along a neat closed cleft, a small clitoral hood at the top of it, everything tucked smoothly inside.",
   nb: "A lean androgynous body, a flat soft chest, narrow hips and a smooth groin, skin evenly lit with visible pores and fine texture throughout.",
 };
 
@@ -254,7 +261,8 @@ const CROSS_SEX_NEGATIVE: Record<GenderKind, string> = {
   "trans-female":
     "vulva, vagina, labia, female genitalia, beard, mustache, stubble, male chest, muscular male torso, masculine jaw, male body",
   // Has a vulva and a masculine chest, so neither may be listed here.
-  "trans-male": "penis, cock, erect cock, testicles, scrotum, bulge, breasts, cleavage, feminine bust",
+  "trans-male":
+    "penis, cock, erect cock, testicles, scrotum, bulge, breasts, cleavage, feminine bust",
   // Androgynous and permissive: nothing is committed to, so nothing is refused
   // and nothing is suppressed.
   nb: "",

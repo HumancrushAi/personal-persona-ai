@@ -168,8 +168,10 @@ function booruPonyPrompt(
   const BODY: Record<GenderKind, string> = {
     male: "muscular, abs, handsome male",
     female: "curvy, feminine, attractive, firm perky breasts",
-    "trans-female": "curvy, feminine, attractive, firm perky breasts, female body with male genitalia",
-    "trans-male": "lean masculine build, flat chest, top surgery scars, male body with female genitalia",
+    "trans-female":
+      "curvy, feminine, attractive, firm perky breasts, female body with male genitalia",
+    "trans-male":
+      "lean masculine build, flat chest, top surgery scars, male body with female genitalia",
     nb: "androgynous, lean",
   };
   const NUDE_TAGS: Record<GenderKind, string> = {
@@ -258,7 +260,10 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   // into the camera turns the same words into the viewpoint instruction they
   // were always meant to be. Only proximity phrasings are rewritten; a stray
   // "my" elsewhere is left alone rather than guessed at.
-  s = s.replace(/\b(?:right\s+)?(?:up\s+)?(?:close|next)\s+to\s+my\s+face\b/gi, "close to the camera");
+  s = s.replace(
+    /\b(?:right\s+)?(?:up\s+)?(?:close|next)\s+to\s+my\s+face\b/gi,
+    "close to the camera",
+  );
   s = s.replace(/\bin(?:to)?\s+my\s+face\b/gi, "close to the camera");
   s = s.replace(/\bin\s+front\s+of\s+my\s+face\b/gi, "close to the camera");
   s = s.replace(/\bat\s+me\b/gi, "at the camera");
@@ -476,9 +481,39 @@ const POSTURE_RE =
 const QUALITY =
   "Candid photograph, 50mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, matte natural skin finish, subtle skin imperfections, natural asymmetry, soft natural shadows. Looks like a real photo taken on a real camera.";
 
+/**
+ * The same photograph, for a renderer that draws a still directly.
+ *
+ * Everything a chat photo needs — the framing, the inferred posture, the
+ * anatomy clause, the realism tail — is identical whether the picture is cut
+ * out of a clip or rendered in one pass. What differs is the tail: a clip has
+ * to be told to arrive at the pose and hold it, and telling a still image model
+ * that the camera holds its position is at best wasted conditioning.
+ *
+ * The alternative was the booru builder (selfiePrompt), which is what the
+ * ComfyUI path reached for first. It writes "mirror selfie, holding phone,
+ * full body, pubic hair" — a different composition from the one the request
+ * asked for, a phone and a pair of hands to render wrong, and body hair the
+ * anatomy clause says is shaved. One builder, one photograph.
+ */
+export function stillImagePrompt(
+  c: { gender?: string | null; name?: string },
+  userPrompt?: string | null,
+): string {
+  return buildStillPrompt(c, userPrompt, { holdCue: false });
+}
+
 export function videoStillPrompt(
   c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
+): string {
+  return buildStillPrompt(c, userPrompt, { holdCue: true });
+}
+
+function buildStillPrompt(
+  c: { gender?: string | null; name?: string },
+  userPrompt: string | null | undefined,
+  opts: { holdCue: boolean },
 ): string {
   const req = (userPrompt ?? "").trim();
   // One resolver, and it reads ONLY the companion's stored gender. Each builder
@@ -532,9 +567,11 @@ export function videoStillPrompt(
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a }),
     QUALITY,
-    isCloseUp
-      ? `The camera holds its position close in. ${Subject} ${settles} into a still held pose at the end.`
-      : `The camera holds its position. ${Subject} ${settles} into a still held pose at the end.`,
+    opts.holdCue
+      ? isCloseUp
+        ? `The camera holds its position close in. ${Subject} ${settles} into a still held pose at the end.`
+        : `The camera holds its position. ${Subject} ${settles} into a still held pose at the end.`
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -661,7 +698,8 @@ export function finishMediaPrompt(
     // The refiner writes comma-separated fragments with no terminating full
     // stop, so a bare space ran its last fragment into the first sentence of
     // the spec ("…shot on Sony A7 IV 85mm lens The toy is inserted into her").
-    if (props) out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${props}`;
+    if (props)
+      out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${props}`;
   }
 
   // A toy the user asked to have inserted, described as being held, is the

@@ -18,6 +18,7 @@ import {
   kontextSelfiePrompt,
   videoStillPrompt,
   videoActionPrompt,
+  stillImagePrompt,
   requestIsNude,
   checkCrossGenderRequest,
   finishMediaPrompt,
@@ -325,14 +326,11 @@ export async function startImageJob(
   styleBackstory: string | null | undefined,
   balance: { free: number; paid: number },
 ): Promise<string> {
-  // Photos are generated on the VIDEO endpoint, and a frame of the result is
-  // shown as the still. That endpoint is the only uncensored model on the
-  // account: the shared FLUX Kontext image model follows every other instruction
-  // but returns her clothed for any nudity request, which is a property of its
-  // weights and not something a flag turns off. Set RUNPOD_IMAGE_ENDPOINT to a
-  // real (uncensored) image endpoint and photos move back to a one-shot render.
-  const imageEndpoint = process.env.RUNPOD_IMAGE_ENDPOINT;
-  const runpodImage = imageEndpoint ? runpodEndpoint("image") : runpodEndpoint("video");
+  // Which of the three renderers this photo goes to, decided once and then
+  // threaded through the prompt, the start frame and the job body — see
+  // imageProvider.
+  const provider = imageProvider();
+  const runpodImage = runpodEndpoint(provider === "wan" ? "video" : "image");
   if (!runpodImage) {
     await refundCredits(
       supabase,
@@ -346,8 +344,15 @@ export async function startImageJob(
 
   // A RunPod worker fetches the source frame over the network, so only a real
   // http(s) URL works — an inline data: photo can't be reached from outside.
+  //
+  // The ComfyUI path is the exception: nothing is handed to a worker to fetch,
+  // because the reference portrait travels inside the job as base64, and a
+  // workflow that carries her likeness some other way (a LoRA of her, say)
+  // needs no portrait at all. So a missing photo only fails the paths that
+  // literally cannot run without one.
   const sourceImage = resolveHostedImage(companion.imageUrl);
-  if (!sourceImage || !/^https?:/i.test(sourceImage)) {
+  const needsHostedPhoto = provider !== "comfy";
+  if (needsHostedPhoto && (!sourceImage || !/^https?:/i.test(sourceImage))) {
     await refundCredits(
       supabase,
       userId,
@@ -360,20 +365,16 @@ export async function startImageJob(
     );
   }
 
-  const imagePrompt = await photoPrompt(
-    companion,
-    userRequest,
-    styleBackstory,
-    Boolean(imageEndpoint),
-  );
+  const imagePrompt = await photoPrompt(companion, userRequest, styleBackstory, provider);
 
-  // The endpoint centre-crops to a square, which decapitated the result. Square
-  // it ourselves, keeping the whole figure, before handing it over.
-  let startFrame = sourceImage;
-  if (!imageEndpoint) {
+  // The WAN endpoint centre-crops to a square, which decapitated the result.
+  // Square it ourselves, keeping the whole figure, before handing it over. An
+  // image model renders its own frame and needs none of this.
+  let startFrame = sourceImage ?? "";
+  if (provider === "wan") {
     try {
       const { squareStartFrame } = await import("./start-frame.server");
-      startFrame = await squareStartFrame(sourceImage, `img-${userId}-${Date.now()}`);
+      startFrame = await squareStartFrame(startFrame, `img-${userId}-${Date.now()}`);
     } catch {
       /* fall back to the raw portrait rather than failing the whole request */
     }
@@ -409,39 +410,37 @@ export async function startImageJob(
   }
 
   try {
-    // The two endpoints take completely different inputs, so the body is built
-    // per endpoint rather than shared.
-    const input = imageEndpoint
-      ? {
-          prompt: imagePrompt,
-          negative_prompt: [
-            "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
-            propNegative(userRequest ?? ""),
-          ]
-            .filter(Boolean)
-            .join(", "),
-          seed: -1,
-          num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
-          guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
-          image: sourceImage,
-          size: process.env.RUNPOD_IMAGE_SIZE || "1024*1024",
-          output_format: "png",
-          // This app's whole purpose is explicit; the safety checker would blank
-          // the output. screenUserMessage already blocked the illegal requests.
-          enable_safety_checker: false,
-        }
-      : // `moving: false` — this job is a photo. The clip exists only so one
-        // frame can be cut out of it, so the motion negatives that force a
-        // video to keep moving are left off: they were making every chat photo
-        // a picture of someone mid-movement. And the companion's own gender is
-        // passed at last; without it negativeFor defaulted to female, so a male
-        // companion's nude photo was rendered with "penis, cock, male
-        // genitalia" in its negative prompt.
-        stillJobInput(
-          startFrame,
-          imagePrompt,
-          negativeFor(userRequest, companion.gender, { moving: false }),
-        );
+    // Each endpoint takes a completely different input, so the body is built
+    // per provider rather than shared. `moving: false` on the negative — this
+    // job is a photo. The motion negatives that force a video to keep moving
+    // are left off: they were making every chat photo a picture of someone
+    // mid-movement. And the companion's own gender is passed, without which
+    // negativeFor defaulted to female and a male companion's nude photo was
+    // rendered with "penis, cock, male genitalia" in its negative prompt.
+    const negative = negativeFor(userRequest, companion.gender, { moving: false });
+    const input =
+      provider === "comfy"
+        ? await comfyJobInput(imagePrompt, negative, sourceImage)
+        : provider === "kontext"
+          ? {
+              prompt: imagePrompt,
+              negative_prompt: [
+                "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
+                propNegative(userRequest ?? ""),
+              ]
+                .filter(Boolean)
+                .join(", "),
+              seed: -1,
+              num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
+              guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
+              image: sourceImage,
+              size: process.env.RUNPOD_IMAGE_SIZE || "1024*1024",
+              output_format: "png",
+              // This app's whole purpose is explicit; the safety checker would blank
+              // the output. screenUserMessage already blocked the illegal requests.
+              enable_safety_checker: false,
+            }
+          : stillJobInput(startFrame, imagePrompt, negative);
 
     const result = await runpodRun(runpodImage, input, webhookFor("runpod"));
     await supabaseAdmin
@@ -465,16 +464,84 @@ export async function startImageJob(
 }
 
 /**
+ * Which renderer a chat photo goes to.
+ *
+ *   comfy    a ComfyUI endpoint running an uncensored checkpoint. A still,
+ *            rendered as a still, at the size and step count the checkpoint
+ *            was tuned for. The only one of the three that is actually an
+ *            image model on uncensored weights.
+ *   kontext  a Kontext-shaped image endpoint that EDITS her portrait. Carries
+ *            her face natively; refuses nudity on the public FLUX weights, so
+ *            this is only ever right for a privately hosted uncensored one.
+ *   wan      the video endpoint, with one frame cut out of the clip. The
+ *            fallback, and the one everything was rendered on until now.
+ *
+ * Resolved from the env in one place because four separate things branch on
+ * it — the prompt, whether the portrait is squared, the job body, and which
+ * endpoint the job is polled against.
+ */
+export type ImageProvider = "comfy" | "kontext" | "wan";
+
+export function imageProvider(): ImageProvider {
+  if (process.env.RUNPOD_COMFY_ENDPOINT) return "comfy";
+  if (process.env.RUNPOD_IMAGE_ENDPOINT) return "kontext";
+  return "wan";
+}
+
+/**
+ * The ComfyUI job body: the graph with this request substituted into it, plus
+ * her portrait as base64 when the graph asks for a reference.
+ *
+ * The portrait is fetched HERE rather than handed over as a URL, because the
+ * worker's contract takes image bytes, not links.
+ */
+export async function comfyJobInput(
+  prompt: string,
+  negative: string,
+  portraitUrl: string | null,
+): Promise<Record<string, unknown>> {
+  const { comfyInput, comfySettings, comfyTemplate, wantsReference } = await import("./comfy");
+  const template = comfyTemplate();
+
+  let referenceBase64: string | undefined;
+  if (wantsReference(template)) {
+    if (!portraitUrl) {
+      throw new Error(
+        "This workflow needs her portrait and this companion has none — upload one in the admin panel.",
+      );
+    }
+    const res = await fetch(portraitUrl);
+    if (!res.ok) throw new Error(`Could not read her portrait (${res.status})`);
+    const bytes = Buffer.from(await res.arrayBuffer());
+    // RunPod caps a queued job's payload, and base64 is a third larger than the
+    // bytes. A portrait is a few hundred KB; anything near the cap is a sign
+    // something else is being passed and is worth failing loudly for.
+    if (bytes.byteLength > 6_000_000) {
+      throw new Error("Her portrait is too large to send with the job (over 6MB).");
+    }
+    referenceBase64 = bytes.toString("base64");
+  }
+
+  return comfyInput({ ...comfySettings(), prompt, negative }, { template, referenceBase64 });
+}
+
+/**
  * The prompt a chat photo is rendered from.
  *
  * Its own function so scripts/test-still.ts renders from exactly what a user's
  * request would, rather than a copy that drifts.
  */
 export async function photoPrompt(
-  companion: { name: string; age: number; ethnicity: string; gender?: string | null },
+  companion: {
+    name: string;
+    age: number;
+    ethnicity: string;
+    gender?: string | null;
+    short_bio?: string | null;
+  },
   userRequest: string | undefined,
   styleBackstory: string | null | undefined,
-  imageEndpoint: boolean,
+  provider: ImageProvider,
 ): Promise<string> {
   // Grok rewrites the user's line into a full prompt in the house style; the
   // keyword builder is the fallback when no key is set or the call fails.
@@ -492,20 +559,23 @@ export async function photoPrompt(
   // could end up carrying two contradictory cameras. The refiner is now told
   // which framing to write (refineMediaPrompt reads CLOSE_UP_RE itself), so
   // there is one camera in the prompt and nothing to patch afterwards.
-  return finishMediaPrompt(
-    refined?.[0] ??
-      (imageEndpoint
-        ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
-        : videoStillPrompt(companion, userRequest)),
-    userRequest ?? "",
-    {
-      anatomy: anatomyOf(companion.gender),
-      appendProps: Boolean(refined?.[0]),
-      // Only when the photo is being cut out of a clip. A real image endpoint
-      // renders a still by definition and does not need telling.
-      still: !imageEndpoint,
-    },
-  );
+  // The fallback builder has to match the renderer. Kontext is told to EDIT the
+  // photo it is given; ComfyUI draws the same photograph in one pass, so it gets
+  // the same builder without the cue telling a clip to settle; WAN gets the cue.
+  const builder =
+    provider === "kontext"
+      ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
+      : provider === "comfy"
+        ? stillImagePrompt(companion, userRequest)
+        : videoStillPrompt(companion, userRequest);
+
+  return finishMediaPrompt(refined?.[0] ?? builder, userRequest ?? "", {
+    anatomy: anatomyOf(companion.gender),
+    appendProps: Boolean(refined?.[0]),
+    // Only when the photo is being cut out of a clip. A real image endpoint
+    // renders a still by definition and does not need telling.
+    still: provider === "wan",
+  });
 }
 
 // An env knob that can also be switched off entirely, so the worker falls back
@@ -884,7 +954,12 @@ export const checkMediaJob = createServerFn({ method: "POST" })
       }
       const url = runpodOutputUrl(res.output);
       if (!url) {
-        await fail(job as any, "No output from generation model");
+        // A ComfyUI worker that rendered nothing usually says why in `errors`
+        // — a missing checkpoint, a node that is not installed. That belongs in
+        // the job row rather than a flat "no output", because it is the
+        // difference between a bad request and a misconfigured endpoint.
+        const { comfyError } = await import("./comfy");
+        await fail(job as any, comfyError(res.output) || "No output from generation model");
         return { status: "failed" };
       }
       try {

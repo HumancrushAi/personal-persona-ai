@@ -1,8 +1,9 @@
 // RunPod Serverless client for the explicit media pipeline.
 //
-//   images -> FLUX.1 Kontext dev (image-TO-image). The companion's own photo is
-//             the input frame, so her face/body carry over natively and there's
-//             no face-swap pass to chain.
+//   images -> a ComfyUI endpoint on an uncensored checkpoint when one is
+//             configured (RUNPOD_COMFY_ENDPOINT, see comfy.ts); otherwise a
+//             Kontext-shaped image endpoint; otherwise the video endpoint
+//             below, with one frame cut out of the clip.
 //   videos -> a private LoRA-tuned WAN image-to-video endpoint that runs the
 //             weights on RunPod, so nothing is screened upstream.
 //
@@ -10,6 +11,8 @@
 // Same shape as the Replicate path, so media_jobs bookkeeping is unchanged —
 // the RunPod job id lives in media_jobs.replicate_id and provider says "runpod".
 // Server-only: RUNPOD_API_KEY must never reach the client.
+
+import { comfyImageUrl } from "./comfy";
 
 const RUNPOD_BASE = "https://api.runpod.ai/v2";
 
@@ -48,15 +51,25 @@ const VIDEO_ENDPOINT = process.env.RUNPOD_VIDEO_ENDPOINT || "";
 // The alignment is in the weights; no flag reaches it.
 const KONTEXT_ENDPOINT = process.env.RUNPOD_KONTEXT_ENDPOINT || "";
 
+// A ComfyUI serverless endpoint running an uncensored SDXL checkpoint: the one
+// configuration that renders an explicit chat photo as a photo instead of a
+// frame cut out of a video. When it is set it OUTRANKS everything else for
+// images — see runpodEndpoint below and docs/uncensored-image-endpoint.md.
+const COMFY_ENDPOINT = process.env.RUNPOD_COMFY_ENDPOINT || "";
+
 export function runpodEndpoint(kind: string): string | null {
   if (!process.env.RUNPOD_API_KEY) return null;
-  // With no image endpoint configured, an image job is LAUNCHED on the video
-  // endpoint and a frame of the result is cut out as the still — see
-  // startImageJob. Resolving "image" to null here left checkMediaJob unable to
-  // find the job it had just started, so the status poll returned "processing"
-  // forever and completion depended entirely on the webhook landing. The
-  // fallback has to match where the job was actually sent.
-  if (kind === "image") return IMAGE_ENDPOINT || VIDEO_ENDPOINT || null;
+  if (kind === "comfy") return COMFY_ENDPOINT || null;
+  // The whole routing table for a photo, in order: a ComfyUI endpoint renders a
+  // still in one pass; a Kontext-shaped image endpoint edits her portrait; and
+  // with neither, the job is LAUNCHED on the video endpoint and a frame of the
+  // clip is cut out as the still — see startImageJob.
+  //
+  // Resolving "image" to null here left checkMediaJob unable to find the job it
+  // had just started, so the status poll returned "processing" forever and
+  // completion depended entirely on the webhook landing. This has to resolve
+  // the same way startImageJob chose, or a job is polled where it never went.
+  if (kind === "image") return COMFY_ENDPOINT || IMAGE_ENDPOINT || VIDEO_ENDPOINT || null;
   if (kind === "video") return VIDEO_ENDPOINT || null;
   if (kind === "kontext") return KONTEXT_ENDPOINT || null;
   return null;
@@ -168,6 +181,12 @@ export async function runpodGet(
 export function runpodOutputUrl(output: any): string | null {
   if (!output) return null;
   if (typeof output === "string") return isMediaUrl(output) ? output : null;
+
+  // ComfyUI's worker: { images: [{ filename, type: "base64" | "s3_url", data }] }.
+  // Base64 comes back as a data: URL, which fetch reads natively, so the
+  // storage step downloads it like any other output.
+  const comfy = comfyImageUrl(output);
+  if (comfy) return comfy;
   if (Array.isArray(output)) {
     for (const item of output) {
       const found = runpodOutputUrl(item);

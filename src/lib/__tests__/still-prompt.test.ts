@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { videoStillPrompt } from "../selfie";
+import { stillImagePrompt, videoStillPrompt } from "../selfie";
 
 // Photos run on the image-to-video endpoint, so the prompt has to drive the
 // clip INTO the explicit state and hold it — the frame shown is near the end.
@@ -65,6 +65,18 @@ describe("videoStillPrompt", () => {
   it("never crops in on a companion who has no vulva", () => {
     const p = videoStillPrompt({ gender: "male" }, "show me your cock");
     expect(p).not.toMatch(/chin down to his knees/i);
+  });
+
+  // The ComfyUI path renders the same photograph in one pass, so it shares this
+  // builder — minus the cue that tells a CLIP to arrive somewhere and hold it.
+  it("gives an image model the same photograph without the video cue", () => {
+    const req = "show me your pussy";
+    const still = stillImagePrompt({ gender: "female" }, req);
+    expect(still).toMatch(/chin down to her knees/i);
+    expect(still).toMatch(/smoothly shaved, detailed vulva/i);
+    expect(still).not.toMatch(/still held pose|camera holds its position/i);
+    // Same picture, different tail.
+    expect(videoStillPrompt({ gender: "female" }, req)).toMatch(/still held pose/i);
   });
 
   it("drops standing when custom request is provided", () => {

@@ -7,6 +7,11 @@
 //     --companion=Aria --prompt="show me your pussy" --variants=tuned,portrait
 //   npx vite-node --config vitest.config.ts scripts/test-still.ts -- --dry --gender=female
 //
+// With RUNPOD_COMFY_ENDPOINT set it renders on the ComfyUI endpoint instead —
+// one still, one pass, no variants — which is the path docs/uncensored-image-
+// endpoint.md sets up. Use it to check a workflow before it goes near a paying
+// user: it prints the graph it sent and saves the picture that came back.
+//
 // Variants render the same prompt and start frame with different settings:
 //   current   whatever the env and code defaults send today
 //   tuned     the worker's own tuned values: no size, no guidance_scale, 26 steps
@@ -56,7 +61,11 @@ const OUT = resolve(args.out ?? ".stills");
 const VARIANTS: Record<string, Record<string, string | undefined>> = {
   current: {},
   tuned: { RUNPOD_STILL_SIZE: "off", RUNPOD_STILL_GUIDANCE: "off", RUNPOD_STILL_STEPS: "26" },
-  portrait: { RUNPOD_STILL_SIZE: "480*832", RUNPOD_STILL_GUIDANCE: "4.0", RUNPOD_STILL_STEPS: "30" },
+  portrait: {
+    RUNPOD_STILL_SIZE: "480*832",
+    RUNPOD_STILL_GUIDANCE: "4.0",
+    RUNPOD_STILL_STEPS: "30",
+  },
 };
 const chosen = (args.variants ?? "current").split(",").map((v) => v.trim());
 for (const v of chosen) {
@@ -66,16 +75,19 @@ for (const v of chosen) {
   }
 }
 
+const COMFY = Boolean(process.env.RUNPOD_COMFY_ENDPOINT);
 const required = DRY
   ? []
-  : ["RUNPOD_API_KEY", "RUNPOD_VIDEO_ENDPOINT", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
+  : COMFY
+    ? ["RUNPOD_API_KEY", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+    : ["RUNPOD_API_KEY", "RUNPOD_VIDEO_ENDPOINT", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
 const missing = required.filter((k) => !process.env[k]);
 if (missing.length) {
   console.error(`Missing in .env.local: ${missing.join(", ")}`);
   process.exit(1);
 }
-if (process.env.RUNPOD_IMAGE_ENDPOINT) {
-  console.error("RUNPOD_IMAGE_ENDPOINT is set; this script only tests the clip-frame path.");
+if (process.env.RUNPOD_IMAGE_ENDPOINT && !COMFY) {
+  console.error("RUNPOD_IMAGE_ENDPOINT is set; this script tests the ComfyUI and clip paths.");
   process.exit(1);
 }
 
@@ -131,9 +143,15 @@ function withEnv<T>(overrides: Record<string, string | undefined>, fn: () => T):
 }
 
 async function render(variant: string, input: Record<string, unknown>, stamp: string) {
-  const { runpodRun, runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError, runpodEndpoint } =
-    await import("../src/lib/runpod");
-  const endpoint = runpodEndpoint("video")!;
+  const {
+    runpodRun,
+    runpodGet,
+    runpodStatusOf,
+    runpodOutputUrl,
+    runpodOutputError,
+    runpodEndpoint,
+  } = await import("../src/lib/runpod");
+  const endpoint = runpodEndpoint(COMFY ? "comfy" : "video")!;
   const started = Date.now();
   const { id } = await runpodRun(endpoint, input);
   console.log(`[${variant}] queued ${id}`);
@@ -149,16 +167,20 @@ async function render(variant: string, input: Record<string, unknown>, stamp: st
     throw new Error(`[${variant}] ${err ?? res.status}`);
   }
   const url = runpodOutputUrl(res.output);
-  if (!url) throw new Error(`[${variant}] no output URL: ${JSON.stringify(res.output).slice(0, 300)}`);
+  if (!url)
+    throw new Error(`[${variant}] no output URL: ${JSON.stringify(res.output).slice(0, 300)}`);
 
-  const clip = Buffer.from(await (await fetch(url)).arrayBuffer());
-  const { extractLastFrame, trimBackdrop, enhanceStill } = await import(
-    "../src/lib/media-finalize.server"
-  );
-  const still = await enhanceStill(await trimBackdrop(await extractLastFrame(clip)));
+  const raw = Buffer.from(await (await fetch(url)).arrayBuffer());
+  const { extractLastFrame, trimBackdrop, enhanceStill } =
+    await import("../src/lib/media-finalize.server");
+  // The ComfyUI endpoint returns the picture itself. The video endpoint returns
+  // a clip to cut a frame out of, and the clip is kept too — it is the only way
+  // to see whether the pose ever arrived.
+  const frame = COMFY ? raw : await trimBackdrop(await extractLastFrame(raw));
+  const still = await enhanceStill(frame);
 
   const base = join(OUT, `${stamp}-${variant}`);
-  writeFileSync(`${base}.mp4`, clip);
+  if (!COMFY) writeFileSync(`${base}.mp4`, raw);
   writeFileSync(`${base}.${still.ext}`, still.buf);
   console.log(
     `[${variant}] done in ${Math.round((Date.now() - started) / 1000)}s -> ${base}.${still.ext}`,
@@ -167,40 +189,62 @@ async function render(variant: string, input: Record<string, unknown>, stamp: st
 
 async function main() {
   const c = await loadCompanion();
-  const { photoPrompt, stillJobInput, negativeFor } = await import("../src/lib/media.functions");
+  const { photoPrompt, stillJobInput, comfyJobInput, negativeFor, imageProvider } =
+    await import("../src/lib/media.functions");
 
   if (!process.env.XAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
     console.warn("No XAI_API_KEY/OPENROUTER_API_KEY: rendering the fallback builder's prompt.");
   }
-  const prompt = await photoPrompt(c, REQUEST, null, false);
+  const provider = imageProvider();
+  const prompt = await photoPrompt(c, REQUEST, null, provider);
   const negative = negativeFor(REQUEST, c.gender, { moving: false });
 
   mkdirSync(OUT, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 
   let startFrame = hosted(c.image_url) ?? "(no hosted image)";
-  if (!DRY) {
+  if (!DRY && !COMFY) {
     if (!hosted(c.image_url)) throw new Error(`${c.name} has no hosted image_url`);
     const { squareStartFrame } = await import("../src/lib/start-frame.server");
     startFrame = await squareStartFrame(startFrame, `test-${stamp}`);
   }
 
-  const inputs = Object.fromEntries(
-    chosen.map((v) => [v, withEnv(VARIANTS[v], () => stillJobInput(startFrame, prompt, negative))]),
-  );
+  // One render on the ComfyUI path: the settings that made the WAN variants
+  // worth comparing do not exist there, and a checkpoint's own sampler settings
+  // are not something to A/B blind.
+  const inputs = COMFY
+    ? { comfy: await comfyJobInput(prompt, negative, hosted(c.image_url)) }
+    : Object.fromEntries(
+        chosen.map((v) => [
+          v,
+          withEnv(VARIANTS[v], () => stillJobInput(startFrame, prompt, negative)),
+        ]),
+      );
 
   writeFileSync(
     join(OUT, `${stamp}-request.json`),
-    JSON.stringify({ companion: c.name, request: REQUEST, inputs }, null, 2),
+    // Without this the file is mostly a base64 portrait, and the graph — the
+    // thing worth reading when a render comes back wrong — is unfindable in it.
+    JSON.stringify(
+      { companion: c.name, request: REQUEST, prompt, negative, inputs },
+      (k, v) => (k === "image" && typeof v === "string" ? `<${v.length} bytes of base64>` : v),
+      2,
+    ),
   );
-  console.log(`Companion: ${c.name} (${c.gender})\nRequest:   ${REQUEST}\n\nPrompt:\n${prompt}\n`);
+  console.log(
+    `Renderer:  ${provider}\nCompanion: ${c.name} (${c.gender})\nRequest:   ${REQUEST}\n\nPrompt:\n${prompt}\n`,
+  );
   for (const [v, input] of Object.entries(inputs)) {
-    const { prompts: _p, negative_prompt: _n, ...knobs } = input;
+    // The graph and the image bytes are in the saved request file; the console
+    // gets the settings that decide what the picture looks like.
+    const { prompts: _p, negative_prompt: _n, workflow: _w, images: _i, ...knobs } = input as any;
     console.log(`[${v}] ${JSON.stringify(knobs)}`);
   }
   if (DRY) return;
 
-  const results = await Promise.allSettled(chosen.map((v) => render(v, inputs[v], stamp)));
+  const results = await Promise.allSettled(
+    Object.keys(inputs).map((v) => render(v, inputs[v], stamp)),
+  );
   for (const r of results) if (r.status === "rejected") console.error(String(r.reason));
   if (results.some((r) => r.status === "rejected")) process.exit(1);
 }

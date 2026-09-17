@@ -39,3 +39,32 @@ export async function enablePush(): Promise<PushResult> {
   });
   return "enabled";
 }
+
+// Background auto-subscribe if permission is already granted.
+export async function autoSubscribePushIfGranted(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window))
+    return;
+  if (Notification.permission !== "granted") return;
+  const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+  if (!vapid) return;
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    const sub =
+      existing ??
+      (await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapid) as BufferSource,
+      }));
+    const json: any = sub.toJSON();
+    if (json?.endpoint && json?.keys?.p256dh && json?.keys?.auth) {
+      await savePushSubscription({
+        data: { endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth },
+      });
+    }
+  } catch (e) {
+    console.debug("Background push auto-subscribe skipped:", e);
+  }
+}

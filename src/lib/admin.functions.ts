@@ -399,6 +399,7 @@ export const adminBroadcast = createServerFn({ method: "POST" })
           pushSent++;
         } catch (e: any) {
           pushFailed++;
+          console.error("Broadcast sendPush failed for endpoint:", s.endpoint, e);
           const code = String(e?.statusCode ?? "");
           if (code === "410" || code === "404") {
             await supabaseAdmin.from("push_subscriptions").delete().eq("endpoint", s.endpoint);

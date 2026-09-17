@@ -89,7 +89,8 @@ export function isRealName(value: string | null | undefined): boolean {
   if (v.length < 2 || v.length > 40) return false;
   if (/[0-9._@+]/.test(v)) return false;
   if (!/^[\p{L}][\p{L}\s'’-]*$/u.test(v)) return false;
-  if (NOT_NAMES.has(v.toLowerCase())) return false;
+  const words = v.toLowerCase().split(/\s+/);
+  if (words.some((w) => NOT_NAMES.has(w))) return false;
   return true;
 }
 
@@ -157,8 +158,8 @@ export function extractName(text: string, askedForName: boolean): string | null 
   const patterns = [
     /(?:my\s+name\s*(?:is|'s)|name\s*'?s)\s+([\p{L}][\p{L}\s'’-]{1,39})/iu,
     /(?:call\s+me|they\s+call\s+me)\s+([\p{L}][\p{L}\s'’-]{1,39})/iu,
-    /(?:i\s*am|i'm|im)\s+([\p{L}][\p{L}'’-]{1,39})/iu,
-    /(?:it'?s|this\s+is)\s+([\p{L}][\p{L}'’-]{1,39})/iu,
+    /(?:i\s*am|i'm|im)\s+([\p{L}][\p{L}\s'’-]{1,39})/iu,
+    /(?:it'?s|this\s+is)\s+([\p{L}][\p{L}\s'’-]{1,39})/iu,
   ];
   for (const re of patterns) {
     const m = re.exec(t);

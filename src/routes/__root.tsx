@@ -156,6 +156,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 import { BottomNav } from "../components/BottomNav";
 import { SupportWidget } from "../components/SupportWidget";
+import { autoSubscribePushIfGranted } from "../lib/push-client";
 
 // The support widget sits on the landing page and the sign-up page only.
 //
@@ -171,6 +172,10 @@ function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Trailing slashes are normalised so "/auth/" matches too.
   const showSupport = SUPPORT_WIDGET_PATHS.includes(pathname.replace(/(.)\/+$/, "$1"));
+
+  useEffect(() => {
+    autoSubscribePushIfGranted();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

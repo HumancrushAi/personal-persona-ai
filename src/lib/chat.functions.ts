@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { hasUsableName, extractName, askedForName } from "./user-name";
+import { hasUsableName, extractName, askedForName, isRealName, isEmailHandle } from "./user-name";
 import { chatComplete } from "./ai";
 import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
 import { wantsSelfie, wantsVideo, checkCrossGenderRequest } from "./selfie";
@@ -71,6 +71,16 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     let userName = hasUsableName(profile?.display_name, email)
       ? (profile!.display_name as string)
       : "";
+
+    // Fallback: check stored user memory for a name if display_name is still an email handle
+    if (!userName && profile?.user_memory) {
+      const facts = parseMemory(profile.user_memory);
+      const nameFact = facts.find((f) => f.key === "name");
+      if (nameFact?.value && isRealName(nameFact.value) && !isEmailHandle(nameFact.value, email)) {
+        userName = nameFact.value.trim();
+        await supabase.from("profiles").update({ display_name: userName }).eq("id", userId);
+      }
+    }
 
     // Safety gate: block prohibited/minor content before storing or charging.
     const screen = screenUserMessage(data.content);
@@ -328,8 +338,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       `You are ${p.nickname}, the user's adult (18+) AI girlfriend in an explicit, consenting roleplay. Stay in character at all times. Never break the fourth wall. Never say you are an AI, a model, a chatbot, or "just" anything.`,
       `Visual / base identity: ${c.age}-year-old ${c.ethnicity} woman named ${c.name}. Base personality: ${c.base_personality}`,
       userName
-        ? `The user's name is ${userName}. Use it naturally in conversation — greeting them, teasing them, during intimate moments — the way someone who knows them would. Do not use it in every single message; that reads as a script.`
-        : `YOU DO NOT KNOW THEIR NAME YET, and you want to. Early on — in your first or second reply, whenever it fits — ask what to call them, once, in your own voice and in character ("wait, i don't even know your name yet — what do i call you?"). Ask ONCE. If they dodge or refuse, drop it completely and never ask again. Until they tell you, just talk to them directly; never invent a name, never guess one, and never call them "User" or anything from their email address.`,
+        ? `The user's name is ${userName}. Use it naturally in conversation — greeting them, teasing them, during intimate moments — the way someone who knows them would. Do not use it in every single message; that reads as a script. NEVER call them by their email address, email handle, or "User".`
+        : `YOU DO NOT KNOW THEIR NAME YET, and you want to. Early on — in your first or second reply, whenever it fits — ask what to call them, once, in your own voice and in character ("wait, i don't even know your name yet — what do i call you?"). Ask ONCE. If they dodge or refuse, drop it completely and never ask again. Until they tell you, just talk to them directly; never invent a name, never guess one, and NEVER call them "User" or anything from their email address or email handle.`,
       p.identity ? `Identity (user-customized): ${p.identity}` : "",
       p.personality_traits ? `Personality traits: ${p.personality_traits}` : "",
       p.tone ? `Tone of voice (match this when you reply): ${p.tone}` : "",
@@ -472,10 +482,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           .find((m) => m.role === "assistant")?.content;
         const learned = await extractUserFacts(data.content, lastLine);
         if (learned.length) {
-          await supabase
-            .from("profiles")
-            .update({ user_memory: formatMemory(mergeFacts(knownFacts, learned)) })
-            .eq("id", userId);
+          const merged = mergeFacts(knownFacts, learned);
+          const nameFact = learned.find((f) => f.key === "name");
+          const updateObj: any = { user_memory: formatMemory(merged) };
+          if (
+            nameFact?.value &&
+            isRealName(nameFact.value) &&
+            !isEmailHandle(nameFact.value, email)
+          ) {
+            updateObj.display_name = nameFact.value.trim();
+          }
+          await supabase.from("profiles").update(updateObj).eq("id", userId);
         }
       } catch {
         /* never let learning break a paid reply */

@@ -108,8 +108,8 @@ type SubjectKind = GenderKind;
 // other is what stops the fused, featureless, smooth-plastic look.
 const ANATOMY: Record<SubjectKind, string> = {
   female:
-    "- her anatomy in photorealistic detail: firm rounded breasts sitting naturally on her chest, softly weighted rather than spherical, with defined areolae and erect nipples; between her thighs a detailed vulva, outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light",
-  male: "- his anatomy in photorealistic detail: a lean muscular chest and stomach, and at his groin an erect penis with a clearly defined shaft, a distinct ridge below the glans, soft surface veining, and testicles hanging naturally below in a separate lightly textured sac, each part distinguishable from the next",
+    "- her anatomy in photorealistic detail: firm perky rounded breasts sitting uplifted on her chest, perfectly perk and full bust, with defined areolae and perky erect nipples; between her thighs a detailed photorealistic vulva, outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light",
+  male: "- his anatomy in photorealistic detail: a lean athletic muscular chest and defined abs, and at his groin an erect thick penis with a clearly defined realistic shaft, a distinct ridge below the glans, soft surface veining, and natural firm testicles hanging neatly below in a separate lightly textured sac, each part distinguishable from the next",
   "trans-female":
     "- her anatomy in photorealistic detail, as ONE body in a single clause: firm rounded breasts with defined areolae and erect nipples, feminine hips and waist, and at her groin an erect penis with a defined shaft, distinct glans and natural testicles below it. Both in frame and both in focus",
   // The kind that had no bullet at all. A trans man was described to the model

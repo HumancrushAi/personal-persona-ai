@@ -195,7 +195,7 @@ export function anatomyOf(gender?: string | null): Anatomy {
 // brunette came back blonde.
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "Firm rounded bare breasts sitting naturally on her chest, softly weighted rather than spherical, with defined areolae and erect nipples. Between her open thighs a detailed vulva: outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light.",
+    "Firm perky rounded bare breasts sitting uplifted on her chest, perfectly perk and full bust, with defined areolae and perky erect nipples. Between her open thighs a detailed vulva: outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light.",
   // Pinned the way props.ts pins a toy, and for the same reason: where it is,
   // which way it points, and how big it is against his own body. Sub-structures
   // alone were not enough — a render that knows it needs "a penis" but not

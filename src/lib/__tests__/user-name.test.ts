@@ -61,6 +61,7 @@ describe("extractName", () => {
     ["My name's Sarah", "Sarah"],
     ["call me Mike", "Mike"],
     ["i'm Tom", "Tom"],
+    ["i'm Gary Briden", "Gary Briden"],
     ["im Alex", "Alex"],
     ["I am Priya", "Priya"],
     ["it's Jordan", "Jordan"],

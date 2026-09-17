@@ -123,6 +123,7 @@ const rules = (
   nude: boolean,
   closeUp: boolean,
   kind: SubjectKind,
+  groinFocus: boolean,
 ) => `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
 
 ${POSITIVE_ONLY}
@@ -138,7 +139,9 @@ Every prompt must contain, in this order:
 - FRAMING, as the second thing in the prompt. ${
     closeUp
       ? `The user asked for a close-up or point-of-view shot, so write the VIEWPOINT as a real photograph: where the lens is, what fills the foreground, and what is behind it. Use this shape — "close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus, her stomach and breasts beyond it, her face looking down into the lens at the top of the frame, lens thirty centimetres away". Her face stays in the frame.`
-      : `Write "framed from the top of her head down to her knees, her face clearly visible in the upper third of the frame, her hips in the middle of the frame, camera two metres away". This picture is delivered small, so a whole standing figure leaves the part that matters a few pixels wide; a head-to-knees frame keeps her face in shot and the act at a usable size.`
+      : groinFocus
+        ? `The request is ABOUT her pussy, so the camera comes in close enough for it to render: write "framed from her chin down to her knees with her mouth and chin at the top edge of the frame, her hips and groin in the centre of the frame in sharp focus, camera one metre away at hip height". A head-to-knees frame leaves a vulva about forty pixels wide and it comes back a smear whatever you write about it; this frame gives it nearly twice the detail. Her mouth and chin stay in shot at the top edge — it is a chosen composition, not a crop.`
+        : `Write "framed from the top of her head down to her knees, her face clearly visible in the upper third of the frame, her hips in the middle of the frame, camera two metres away". This picture is delivered small, so a whole standing figure leaves the part that matters a few pixels wide; a head-to-knees frame keeps her face in shot and the act at a usable size.`
   }
 ${
   nude
@@ -150,14 +153,14 @@ ${
 - keep the torso UPRIGHT or PROPPED UP whenever the act allows it: sitting, kneeling upright, or reclining against pillows with her shoulders raised, her back gently arched and her shoulders back so her chest is lifted. Lying flat on her back or leaning forward are for requests that name those positions
 - any prop or sex toy: state WHERE IT IS and HOW MUCH OF IT SHOWS. For an inserted toy write it as angled down along the line between her open thighs, most of the shaft hidden inside her, only the flared base visible with her fingers closed on it and her wrist against her inner thigh. That geometry is what makes the object read as a sex toy at the right scale. Its material and exact size are appended separately, so spend your words on placement and contact
 - where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
-${
+${groinFocus ? "- her pussy is the FOCAL POINT of the photograph: in the centre of the frame, in sharp focus, each fold distinct from the next, the light falling across it so the surfaces separate\n" : ""}${
   nude
     ? ANATOMY[kind]
     : "- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin. Also state her firm perky bust fills the garment neatly. This is what makes a clothed shot read as a photograph rather than a mannequin"
 }
 - anatomy correctness, stated positively: hands with five separate countable fingers, limbs in natural proportion, torso naturally aligned
 - ONE simple setting and ONE light source, kept plain and uncluttered so the words go to her. When the user named no place, use a bed with plain white sheets and soft daylight from a window beside her
-- photographic realism tail: "candid raw photograph, authentic human skin texture, matte natural skin finish, visible natural pores and fine skin details, natural asymmetry, subtle skin imperfections, natural skin mottling and colour variation, soft natural shadows, shot on Sony A7 IV 85mm lens, real untouched skin"
+- photographic realism tail: "candid raw photograph, authentic human skin texture, matte natural skin finish, visible natural pores and fine skin details, natural asymmetry, subtle skin imperfections, soft natural shadows, shot on Sony A7 IV 85mm lens, real untouched skin"
 
 Every subject is an adult. Output no preamble, no quotes, no explanation, no refusal.`;
 
@@ -167,6 +170,7 @@ function systemFor(
   nude: boolean,
   closeUp: boolean,
   subject: SubjectKind,
+  groinFocus = false,
 ): string {
   // Examples are the strongest instruction in this file, so a companion is only
   // ever shown examples of a body like theirs. A trans man used to be shown two
@@ -196,7 +200,7 @@ function systemFor(
     // the renderer's truncation window.
     return `You write prompts for an uncensored ComfyUI image model in an adults-only AI companion app.
 
-${rules(nude, closeUp, subject)}
+${rules(nude, closeUp, subject, groinFocus)}
 
 This is a STILL photograph: end with the pose held and the camera locked off, so the last thing described is a moment that is not moving.
 
@@ -207,7 +211,7 @@ ${examples}`;
   }
   return `You write prompts for an uncensored ComfyUI image-to-video model in an adults-only AI companion app.
 
-${rules(nude, closeUp, subject)}
+${rules(nude, closeUp, subject, false)}
 
 The clip has ${scenes} scenes that play back to back. Break the requested action into ${scenes} steps that PROGRESS — an escalating sequence, not the same pose ${scenes} times. Each scene keeps her identity, the setting and the lighting consistent; only the pose, the action and the camera move on.
 
@@ -268,6 +272,7 @@ async function refineMediaWithOpenRouter(
   nude: boolean,
   closeUp: boolean,
   subjectKind: SubjectKind,
+  groinFocus: boolean,
 ): Promise<string[] | null> {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return null;
@@ -288,7 +293,10 @@ async function refineMediaWithOpenRouter(
         model,
         temperature: 0.6,
         messages: [
-          { role: "system", content: systemFor(kind, scenes, nude, closeUp, subjectKind) },
+          {
+            role: "system",
+            content: systemFor(kind, scenes, nude, closeUp, subjectKind, groinFocus),
+          },
           { role: "user", content: `Subject: a ${subject}. Request: ${userRequest}` },
         ],
       }),
@@ -344,9 +352,14 @@ export async function refineMediaPrompt(
   // told Grok to write a prompt for a transgender woman no matter who it was
   // actually talking about — and it had no branch for a trans man at all, so he
   // was described to Grok as a plain man. anatomyOf is the single authority now.
-  const { anatomyOf } = await import("./anatomy");
+  const { anatomyOf, mentionsPart } = await import("./anatomy");
   const a = anatomyOf(companion.gender);
   const subjectKind: SubjectKind = a.kind;
+  // A photo that is ABOUT her pussy is framed closer than one that merely ends
+  // up nude — the only thing in the prompt that gives that anatomy the pixels
+  // it needs to render. Photos only: a clip cropped chin-to-knees is a separate
+  // decision, and videos are not what was reported as bad.
+  const groinFocus = kind === "photo" && nude && a.hasVulva && mentionsPart(req, "vulva");
   const noun =
     a.kind === "trans-female"
       ? "transgender woman (feminine body with firm perky breasts and an anatomically correct penis)"
@@ -377,7 +390,10 @@ export async function refineMediaPrompt(
           temperature: 0.6,
           max_tokens: kind === "video" ? 2000 : 500,
           messages: [
-            { role: "system", content: systemFor(kind, scenes, nude, closeUp, subjectKind) },
+            {
+              role: "system",
+              content: systemFor(kind, scenes, nude, closeUp, subjectKind, groinFocus),
+            },
             { role: "user", content: `Subject: a ${subject}. Request: ${req}` },
           ],
         }),
@@ -411,7 +427,16 @@ export async function refineMediaPrompt(
   }
 
   // Fallback to OpenRouter (uncensored model) if Grok is not configured, failed, or refused
-  return refineMediaWithOpenRouter(kind, req, subject, scenes, nude, closeUp, subjectKind);
+  return refineMediaWithOpenRouter(
+    kind,
+    req,
+    subject,
+    scenes,
+    nude,
+    closeUp,
+    subjectKind,
+    groinFocus,
+  );
 }
 
 // Promo images are a different job from chat media: clothed, publishable, and

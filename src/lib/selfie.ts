@@ -2,7 +2,7 @@
 // (media.functions) and the auto-selfie when a user asks for a pic in chat.
 
 import { TOY_VOCAB, propClause, propIsInserted } from "./props";
-import { type Anatomy, type GenderKind, anatomyOf, nudeAnatomy } from "./anatomy";
+import { type Anatomy, type GenderKind, anatomyOf, mentionsPart, nudeAnatomy } from "./anatomy";
 
 // Explicit request vocabulary, grouped by category so the nudity gate and the
 // pose-tag builder share one source of truth. Add synonyms here and both the
@@ -405,6 +405,7 @@ function framingFor(
   hasReq: boolean,
   name?: string,
   isCloseUp?: boolean,
+  groinFocus?: boolean,
 ): string {
   // "pussy close to my face" is not a zoom setting, it is a viewpoint: the
   // camera is where the person asking is. Describing that viewpoint as a real
@@ -418,6 +419,25 @@ function framingFor(
   // how a picture comes back as an anonymous crop of a torso.
   if (isCloseUp) {
     return `Close-up point-of-view photograph of ${article(noun)} ${noun}, taken from between ${poss} open thighs looking up along ${poss} body, ${poss} groin filling the centre foreground in sharp focus, ${poss} stomach and breasts beyond it and ${poss} face looking down into the lens at the top of the frame, lens about thirty centimetres away.`;
+  }
+
+  // A request that is ABOUT her pussy gets a closer camera than one that merely
+  // ends up nude.
+  //
+  // This is the only lever in the whole prompt that gives that anatomy more
+  // pixels. A head-to-knees frame is about 150cm of body across roughly 640
+  // rendered lines, which leaves a vulva something like forty pixels wide —
+  // below what any description can survive, and the reason it reads as a smear
+  // whatever the words say. Chin-to-knees is about 90cm in the same lines, so
+  // every fold gets nearly twice the detail.
+  //
+  // The cost is the top of her face, and it is a real cost: this codebase has a
+  // long history of pictures coming back as headless torsos and users hating
+  // it. So the crop is stated as a composition with her mouth and chin held at
+  // the top edge — a deliberate photograph rather than an accident — and only
+  // for a request that names the part, never for a plain nude.
+  if (groinFocus) {
+    return `Photograph of ${article(noun)} ${noun} indoors, framed from ${poss} chin down to ${poss} knees with ${poss} mouth and chin at the top edge of the frame, ${poss} hips and groin in the centre of the frame in sharp focus, camera about one metre away at hip height.`;
   }
 
   // An act request gets a medium shot: the act is at the centre of the frame at
@@ -448,8 +468,13 @@ const POSTURE_RE =
 // `smoothing`, `render`, `text` and `watermark` in the conditioning of every
 // picture the app has ever sent. All five are already in QUALITY_NEGATIVE in
 // media.functions.ts, which is the one place a renderer can act on them.
+// "natural skin mottling and colour variation" is gone from all three of these
+// tails. It went out in the same untested batch as the render settings that
+// were rolled back, and mottling is what blotchy, patchy, discoloured skin is
+// called — on a close frame of a vulva that is the difference between real and
+// diseased. Pores, fine texture and a matte finish already carry the realism.
 const QUALITY =
-  "Candid photograph, 35mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, matte natural skin finish, natural skin mottling and colour variation, subtle skin imperfections, natural asymmetry, soft natural shadows. Looks like a real photo taken on a real camera.";
+  "Candid photograph, 50mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, matte natural skin finish, subtle skin imperfections, natural asymmetry, soft natural shadows. Looks like a real photo taken on a real camera.";
 
 export function videoStillPrompt(
   c: { gender?: string | null; name?: string },
@@ -491,7 +516,17 @@ export function videoStillPrompt(
       : "";
 
   return [
-    framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
+    framingFor(
+      noun,
+      poss,
+      POSTURE_RE.test(req),
+      !!req,
+      c.name,
+      isCloseUp,
+      // Only where there is a vulva to point the camera at, and only on a
+      // still: a clip of a chin-to-knees crop is a different decision.
+      a.hasVulva && mentionsPart(req, "vulva"),
+    ),
     actionSentence(subject, action),
     posture,
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
@@ -581,7 +616,7 @@ export function kontextSelfiePrompt(
 const PROMPT_WORD_BUDGET = 300;
 
 const REALISM_TAIL =
-  "Candid raw photograph on a real camera, authentic skin texture with visible pores, matte natural skin finish, natural skin mottling, natural asymmetry, natural available light.";
+  "Candid raw photograph on a real camera, authentic skin texture with visible pores, matte natural skin finish, natural asymmetry, natural available light.";
 
 const STILL_CUE = "The pose is held completely still and the camera is locked off.";
 const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;

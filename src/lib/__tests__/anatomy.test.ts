@@ -3,6 +3,7 @@ import {
   type GenderKind,
   anatomyOf,
   genderKind,
+  mentionsPart,
   nudeAnatomy,
   crossSexNegative,
   refuseWrongAnatomy,
@@ -111,6 +112,23 @@ describe("the positive clause and the negative prompt agree", () => {
     expect(crossSexNegative("male")).toMatch(/\bvulva\b/);
     expect(crossSexNegative("trans-female")).toMatch(/\bvulva\b/);
     expect(crossSexNegative("trans-male")).toMatch(/\bpenis\b/);
+  });
+});
+
+// mentionsPart is deliberately looser than requestedParts: it decides where the
+// camera goes, not whether to refuse someone, so it does not need the "is it
+// hers" and "is it a request" context — but it must stay off the wide
+// euphemisms, or a mention of a peach moves the camera.
+describe("mentionsPart", () => {
+  it("counts a part named anywhere in the message", () => {
+    expect(mentionsPart("pussy pic", "vulva")).toBe(true);
+    expect(mentionsPart("that pussy of yours", "vulva")).toBe(true);
+    expect(mentionsPart("show me your tits", "breasts")).toBe(true);
+  });
+
+  it("stays off the euphemisms that only decide nudity", () => {
+    expect(mentionsPart("send me a peach", "vulva")).toBe(false);
+    expect(mentionsPart("get naked for me", "vulva")).toBe(false);
   });
 });
 

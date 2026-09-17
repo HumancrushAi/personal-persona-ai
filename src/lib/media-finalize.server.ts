@@ -62,8 +62,24 @@ async function probeSeconds(file: string, ffmpegPath: string): Promise<number | 
 // also not magic — sharpness rejects the smeared and half-melted frames, which
 // is most of what reads as cheap, but a crisply rendered wrong object still
 // scores well. That one needs a better renderer, not a better frame.
-const FRAME_WINDOW_SECONDS = 1.2;
-const FRAME_SAMPLE_FPS = 5;
+// 15 candidates rather than 6. The clip is already downloaded and decoded, so
+// the whole cost of doubling the sample rate is a Laplacian over nine more
+// 512px frames — and the odds that at least one frame has a cleanly resolved
+// groin in it go up with every candidate. "No bad output at all" is partly just
+// this: the failures are a minority of frames, so look at more of them.
+const FRAME_WINDOW_SECONDS = 1.5;
+const FRAME_SAMPLE_FPS = 10;
+
+// Where the part that matters actually is.
+//
+// Every one of these compositions puts her hips in the middle of the frame and
+// her body down the centre (framingFor in selfie.ts writes the camera that
+// way), so the anatomy an explicit request is about lands in this box. A whole
+// frame scores well when her face and hair are crisp while the groin is a
+// smear, which is exactly the picture people call bad — so the box is scored on
+// its own and weighted above the frame around it.
+const BODY_REGION = { x0: 0.22, x1: 0.78, y0: 0.42, y1: 0.92 };
+const REGION_WEIGHT = 0.7;
 
 /**
  * How much fine detail a frame carries.
@@ -83,10 +99,25 @@ const FRAME_SAMPLE_FPS = 5;
  * sensitivity and bounds the work at a fixed cost per frame, and since every
  * candidate gets the same treatment the ordering — the only thing used — holds.
  */
-async function sharpness(png: Buffer): Promise<number> {
+async function sharpness(
+  png: Buffer,
+  region?: { x0: number; x1: number; y0: number; y1: number },
+): Promise<number> {
   try {
     const sharp = (await import("sharp")).default;
-    const { data, info } = await sharp(png)
+    let img = sharp(png);
+    if (region) {
+      const { width = 0, height = 0 } = await img.metadata();
+      const left = Math.round(width * region.x0);
+      const top = Math.round(height * region.y0);
+      const w = Math.round(width * (region.x1 - region.x0));
+      const h = Math.round(height * (region.y1 - region.y0));
+      // A frame too small to crop is scored whole rather than not at all.
+      if (w >= 16 && h >= 16 && left + w <= width && top + h <= height) {
+        img = sharp(png).extract({ left, top, width: w, height: h });
+      }
+    }
+    const { data, info } = await img
       .greyscale()
       .resize(512, 512, { fit: "inside" })
       .raw()
@@ -115,10 +146,21 @@ async function sharpness(png: Buffer): Promise<number> {
   }
 }
 
-/** The crispest of the candidates. Exported for the test; not used elsewhere. */
+/**
+ * The candidate whose body is crispest. Exported for the test.
+ *
+ * Both halves count: the body region decides it, and the frame as a whole is
+ * still worth 30% so a frame that is sharp in the middle and falling apart
+ * around it does not win.
+ */
 export async function pickSharpest(frames: Buffer[]): Promise<Buffer | null> {
   if (!frames.length) return null;
-  const scored = await Promise.all(frames.map(async (f) => ({ f, score: await sharpness(f) })));
+  const scored = await Promise.all(
+    frames.map(async (f) => {
+      const [body, whole] = await Promise.all([sharpness(f, BODY_REGION), sharpness(f)]);
+      return { f, score: REGION_WEIGHT * body + (1 - REGION_WEIGHT) * whole };
+    }),
+  );
   return scored.reduce((best, cur) => (cur.score > best.score ? cur : best)).f;
 }
 

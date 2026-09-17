@@ -203,7 +203,7 @@ export function anatomyOf(gender?: string | null): Anatomy {
 // over exactly the edges that have to read, and a clean surface renders them.
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "Natural firm round bare breasts set high on her chest, full rounded lower curves, taut smooth skin over them, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples. Between her open thighs a smoothly shaved, detailed vulva: outer labia parting around visible inner labia, the clitoral hood above them, soft shadow where the surfaces meet, natural moisture catching the light.",
+    "Natural firm round bare breasts set high on her chest, full rounded lower curves, taut smooth skin over them, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples. Between her open thighs a smoothly shaved, detailed vulva in sharp focus: outer labia parting around visible inner labia, the clitoral hood above them, each fold a separate surface with its own edge, soft shadow where they meet, natural moisture catching the light.",
   // Pinned the way props.ts pins a toy, and for the same reason: where it is,
   // which way it points, and how big it is against his own body. Sub-structures
   // alone were not enough — a render that knows it needs "a penis" but not
@@ -315,6 +315,22 @@ function asksFor(prompt: string, part: BodyPart): boolean {
   const owned = new RegExp(`${OWNED}\\b(?:${terms})\\b`, "i");
   const asked = new RegExp(`${ASKED}\\b(?:${terms})\\b`, "i");
   return owned.test(prompt) || asked.test(prompt);
+}
+
+/**
+ * Whether the message names a part at all, without the "is it hers" and "is it
+ * a request" context requestedParts insists on.
+ *
+ * requestedParts decides whether to REFUSE a request, where a false positive
+ * tells a paying user their companion will not send a photo, so it demands
+ * "your pussy" or "send me a pussy pic". Where to put the camera is a different
+ * question with a much cheaper mistake, and "pussy pic" or "that pussy of
+ * yours" should both point it at the same place. Still off the short
+ * unambiguous list rather than selfie.ts's wide one: "peach" must not move a
+ * camera.
+ */
+export function mentionsPart(prompt: string, part: BodyPart): boolean {
+  return new RegExp(`\\b(?:${PART_TERMS[part]})\\b`, "i").test(prompt ?? "");
 }
 
 /** Which parts this message is actually asking to see. */

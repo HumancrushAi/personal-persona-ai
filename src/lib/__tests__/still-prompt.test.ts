@@ -41,6 +41,32 @@ describe("videoStillPrompt", () => {
     expect(p).not.toMatch(/reclining back against pillows/i);
   });
 
+  // At head-to-knees distance a vulva is about forty pixels across and comes
+  // back a smear whatever the words say. A request that names it earns a closer
+  // camera; a plain nude does not, because the crop costs her face.
+  it("brings the camera in when the request is about her pussy", () => {
+    const p = videoStillPrompt({ gender: "female" }, "show me your pussy");
+    expect(p).toMatch(/chin down to her knees/i);
+    expect(p).toMatch(/groin in the centre of the frame in sharp focus/i);
+  });
+
+  it("keeps the wider frame for a plain nude", () => {
+    const p = videoStillPrompt({ gender: "female" }, "get naked for me");
+    expect(p).toMatch(/top of her head down to her knees/i);
+    expect(p).not.toMatch(/chin down to her knees/i);
+  });
+
+  it("leaves a point-of-view request on its own viewpoint", () => {
+    const p = videoStillPrompt({ gender: "female" }, "pussy close to my face");
+    expect(p).toMatch(/point-of-view/i);
+    expect(p).not.toMatch(/chin down to her knees/i);
+  });
+
+  it("never crops in on a companion who has no vulva", () => {
+    const p = videoStillPrompt({ gender: "male" }, "show me your cock");
+    expect(p).not.toMatch(/chin down to his knees/i);
+  });
+
   it("drops standing when custom request is provided", () => {
     const p = videoStillPrompt({ gender: "female" }, "lying on bed");
     expect(p).not.toMatch(/standing/i);

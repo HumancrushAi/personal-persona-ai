@@ -156,6 +156,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 import { BottomNav } from "../components/BottomNav";
 import { SupportWidget } from "../components/SupportWidget";
+import { PushNotificationPrompt } from "../components/PushNotificationPrompt";
 import { autoSubscribePushIfGranted } from "../lib/push-client";
 
 // The support widget sits on the landing page and the sign-up page only.
@@ -186,6 +187,7 @@ function RootComponent() {
           "/" quietly loses money on every deep link someone shares. */}
       <AffiliateTracker />
       <BottomNav />
+      <PushNotificationPrompt />
       {showSupport && <SupportWidget />}
       <AdminFooterLink />
       <Toaster richColors position="top-center" />

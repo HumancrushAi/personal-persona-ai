@@ -24,6 +24,29 @@ export async function sendPush(sub: PushSub, payload: PushPayload) {
   );
 }
 
+// Helper to send a push notification to all subscriptions belonging to a user.
+export async function sendPushToUser(userId: string, payload: PushPayload) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: subs } = await supabaseAdmin
+      .from("push_subscriptions")
+      .select("endpoint, p256dh, auth")
+      .eq("user_id", userId);
+    for (const s of subs ?? []) {
+      try {
+        await sendPush(s as any, payload);
+      } catch (e: any) {
+        const code = String(e?.statusCode ?? "");
+        if (code === "410" || code === "404") {
+          await supabaseAdmin.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+        }
+      }
+    }
+  } catch (e) {
+    console.debug("sendPushToUser best-effort error:", e);
+  }
+}
+
 // `replyTo` is what makes support work without an inbound mail pipeline: the
 // alert we send to staff carries the customer's address, so hitting reply in a
 // normal inbox writes to the customer, and the reply we send the customer

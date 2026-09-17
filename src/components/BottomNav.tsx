@@ -5,6 +5,9 @@ export function BottomNav() {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
 
+  // Hide bottom tab bar on active chat room pages so the chat input form is completely unobstructed
+  if (pathname.startsWith("/chat/")) return null;
+
   const items = [
     { href: "/", label: "Home", icon: Home, active: pathname === "/" },
     { href: "/cams", label: "Private", icon: Lock, active: pathname.startsWith("/cams") || pathname.startsWith("/gallery") },

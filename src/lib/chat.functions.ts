@@ -509,6 +509,21 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       })
       .eq("id", data.conversationId);
 
+    // Send automated push notification for companion reply
+    try {
+      const { sendPushToUser } = await import("@/lib/notify");
+      const nick = p.nickname ?? "She";
+      const title = `${nick} 💬`;
+      const body = reply.slice(0, 120);
+      sendPushToUser(userId, {
+        title,
+        body,
+        url: `/chat/${data.conversationId}`,
+      }).catch(() => {});
+    } catch {
+      /* push best-effort */
+    }
+
     // Delay formula calculation
     const baseDelay = 1000;
     const userReadTime = data.content.length * 15;

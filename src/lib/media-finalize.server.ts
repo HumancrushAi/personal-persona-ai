@@ -510,6 +510,29 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
       kind: job.kind,
       media_url: mediaUrl,
     });
+
+    // Send automated push notification for completed media
+    try {
+      const { sendPushToUser } = await import("@/lib/notify");
+      const { data: conv } = await supabaseAdmin
+        .from("conversations")
+        .select("user_personalities(nickname)")
+        .eq("id", job.conversation_id)
+        .maybeSingle();
+      const nick = (conv as any)?.user_personalities?.nickname ?? "She";
+      const title = `${nick} sent you a ${job.kind === "video" ? "video 🎬" : "photo 📸"}`;
+      const body =
+        job.kind === "video"
+          ? `${nick} made a clip just for you…`
+          : `${nick} took a photo for you…`;
+      await sendPushToUser(job.user_id, {
+        title,
+        body,
+        url: `/chat/${job.conversation_id}`,
+      });
+    } catch {
+      /* push best-effort */
+    }
   }
 
   return mediaUrl;

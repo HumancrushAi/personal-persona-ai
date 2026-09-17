@@ -125,6 +125,7 @@ function ChatPage() {
   const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
   // Which media request dialog is open, if any.
   const [asking, setAsking] = useState<MediaKind | null>(null);
+  const [showMobileLive, setShowMobileLive] = useState(true);
   // Seconds elapsed on the running job. Generation takes 90s+, and a static
   // "taking a pic for you…" with no movement reads as a hang — people gave up
   // and assumed it was broken while the job was in fact still running.
@@ -719,7 +720,7 @@ function ChatPage() {
 
       {/* Chat column */}
       <div className="flex h-dvh flex-1 flex-col min-w-0">
-        <header className="glass flex items-center gap-3 px-4 py-3">
+        <header className="glass flex items-center gap-3 px-4 py-3 shrink-0">
           <Button asChild size="icon" variant="ghost" className="rounded-full">
             <Link to="/me">
               <ArrowLeft className="h-5 w-5" />
@@ -743,6 +744,17 @@ function ChatPage() {
               </span>
             </div>
           </div>
+          {!showMobileLive && (
+            <Button
+              type="button"
+              onClick={() => setShowMobileLive(true)}
+              variant="ghost"
+              size="sm"
+              className="h-8 rounded-full border border-primary/30 px-2.5 text-xs text-primary md:hidden"
+            >
+              <VideoIcon className="mr-1 h-3.5 w-3.5" /> Video
+            </Button>
+          )}
           {p?.companion_id && (
             <Button
               asChild
@@ -764,62 +776,73 @@ function ChatPage() {
           </Link>
         </header>
 
-        {/* Mobile Live Face & Reaction Stage (Candy.ai style) */}
-        <div className="relative mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-md md:hidden shrink-0">
-          <div className="relative h-56 sm:h-64 w-full overflow-hidden">
-            {p?.companions?.image_url && (
-              <img
-                src={companionImage(p.companions.image_url)}
-                alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-xl opacity-40 scale-110"
-              />
-            )}
-            {(() => {
-              const reelUrl = getEffectiveCompanionReel({
-                id: p?.companion_id,
-                name: p?.companions?.name,
-                gender: (p?.companions as any)?.gender,
-                created_by: p?.companions?.created_by,
-              });
-              return reelUrl ? (
-                <AutoPlayVideo
-                  key={p.companion_id}
-                  src={reelUrl}
-                  poster={
-                    p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined
-                  }
-                  className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
-                />
-              ) : p?.companions?.image_url ? (
+        {/* Mobile Live Face & Reaction Stage (Candy.ai style) - Collapsible */}
+        {showMobileLive && (
+          <div className="relative mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-md md:hidden shrink-0 transition-all">
+            <div className="relative h-44 sm:h-56 w-full overflow-hidden">
+              {p?.companions?.image_url && (
                 <img
                   src={companionImage(p.companions.image_url)}
-                  alt={p?.nickname ?? ""}
-                  className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+                  alt=""
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-xl opacity-40 scale-110"
                 />
-              ) : null;
-            })()}
-            <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/25" />
-            <div className="absolute inset-x-0 bottom-2 z-[3] px-3 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs text-white font-medium bg-black/65 px-3 py-1 rounded-full backdrop-blur border border-white/15 shadow-sm">
-                {isBusy ? (
-                  <span className="text-primary flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 animate-spin" /> Typing a message…
+              )}
+              {(() => {
+                const reelUrl = getEffectiveCompanionReel({
+                  id: p?.companion_id,
+                  name: p?.companions?.name,
+                  gender: (p?.companions as any)?.gender,
+                  created_by: p?.companions?.created_by,
+                });
+                return reelUrl ? (
+                  <AutoPlayVideo
+                    key={p.companion_id}
+                    src={reelUrl}
+                    poster={
+                      p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined
+                    }
+                    className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+                  />
+                ) : p?.companions?.image_url ? (
+                  <img
+                    src={companionImage(p.companions.image_url)}
+                    alt={p?.nickname ?? ""}
+                    className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+                  />
+                ) : null;
+              })()}
+              <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/25" />
+              <div className="absolute inset-x-0 bottom-2 z-[3] px-3 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-white font-medium bg-black/65 px-3 py-1 rounded-full backdrop-blur border border-white/15 shadow-sm">
+                  {isBusy ? (
+                    <span className="text-primary flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 animate-spin" /> Typing…
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling
+                      at you 💋
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-white/80 font-medium bg-black/50 px-2.5 py-1 rounded-full backdrop-blur border border-white/10">
+                    <Circle className="inline h-1.5 w-1.5 fill-red-500 text-red-500 mr-1" /> Live
                   </span>
-                ) : (
-                  <span className="text-emerald-400 flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling
-                    at you 💋
-                  </span>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setShowMobileLive(false)}
+                    className="text-[10px] text-white/80 hover:text-white font-medium bg-black/60 px-2 py-1 rounded-full backdrop-blur border border-white/15 transition-colors"
+                  >
+                    Hide
+                  </button>
+                </div>
               </div>
-              <span className="text-[10px] text-white/80 font-medium bg-black/50 px-2.5 py-1 rounded-full backdrop-blur border border-white/10">
-                <Circle className="inline h-1.5 w-1.5 fill-red-500 text-red-500 mr-1" /> Live
-              </span>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="h-1 w-full bg-white/5 mt-2">
+        <div className="h-1 w-full bg-white/5 mt-2 shrink-0">
           <div
             className="h-full bg-grad-primary transition-all"
             style={{ width: `${(xpInLevel / 15) * 100}%` }}
@@ -1026,7 +1049,7 @@ function ChatPage() {
             home indicator, which otherwise sits on top of the buttons. */}
         <form
           onSubmit={handleSend}
-          className="glass px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="glass px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shrink-0 z-10"
         >
           <div className="mx-auto flex max-w-2xl items-center gap-2">
             <Button

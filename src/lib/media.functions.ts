@@ -75,7 +75,7 @@ import {
 // head and face out of the picture. That is the headless torso a user was
 // actually sent. Framing is stated positively now (framingFor in selfie.ts).
 const QUALITY_NEGATIVE =
-  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, airbrushed, oversmoothed, poreless, featureless, smooth blank skin where detail belongs, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, distorted hands, extra fingers, fused fingers, mutated hands, saggy, droopy, pendulous, deflated, melting object, deformed object, object merging into hand, morphing, flickering";
+  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, poreless, poreless skin, featureless, smooth blank skin where detail belongs, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, saggy, droopy, pendulous, deflated, melting object, deformed object, object merging into hand, morphing, flickering";
 
 // Motion terms. These stop the endpoint returning a near-still clip, and they
 // belong ONLY on a video.
@@ -466,26 +466,7 @@ export async function startImageJob(
           fps: 16,
           frames_per_scene: Number(process.env.RUNPOD_STILL_FRAMES || "81"),
           num_scenes: 1,
-          sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "26"),
-          // Opt-in, and unset by default so nothing changes until someone
-          // checks it against the endpoint.
-          //
-          // The job currently sends no resolution at all, so the worker renders
-          // at its own default — a 640x640 square, which start-frame.server.ts
-          // exists entirely to work around. On a head-to-knees frame that
-          // leaves a groin about forty pixels across, and no amount of
-          // anatomical description survives forty pixels. This is the single
-          // biggest remaining lever on how good these pictures can look.
-          //
-          // WAN's native buckets are 480x832 and 720x1280 portrait; either
-          // roughly doubles the vertical resolution on the subject at similar
-          // cost, AND is in-distribution for the model where a square is not.
-          // Whether this endpoint's ComfyUI workflow exposes width/height is a
-          // question for its operator — set RUNPOD_STILL_SIZE="480*832" once
-          // they confirm it, and drop the square-padding step above with it.
-          ...(process.env.RUNPOD_STILL_SIZE
-            ? { size: process.env.RUNPOD_STILL_SIZE }
-            : {}),
+          sampling_steps: Number(process.env.RUNPOD_STILL_STEPS || "30"),
           prompts: [imagePrompt],
           // `moving: false` — this job is a photo. The clip exists only so one
           // frame can be cut out of it, so the motion negatives that force a
@@ -496,6 +477,13 @@ export async function startImageJob(
           // cock, male genitalia" in its negative prompt.
           negative_prompt: negativeFor(userRequest, companion.gender, { moving: false }),
           lora_strengths: VIDEO_LORA_STRENGTHS,
+          // Portrait resolution is WAN's native bucket and roughly doubles
+          // vertical detail on the subject vs the 640×640 default square.
+          // guidance_scale pushes harder toward prompt adherence for stills.
+          ...(process.env.RUNPOD_STILL_SIZE
+            ? { size: process.env.RUNPOD_STILL_SIZE }
+            : { size: "480*832" }),
+          guidance_scale: Number(process.env.RUNPOD_STILL_GUIDANCE || "4.0"),
         };
 
     const result = await runpodRun(runpodImage, input, webhookFor("runpod"));

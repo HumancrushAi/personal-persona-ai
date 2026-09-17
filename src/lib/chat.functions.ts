@@ -524,12 +524,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       /* push best-effort */
     }
 
-    // Delay formula calculation
-    const baseDelay = 1000;
-    const userReadTime = data.content.length * 15;
-    const replyTime = reply.length * 40;
-    const randomVariation = Math.random() * 1500;
-    const totalDelay = Math.min(baseDelay + userReadTime + replyTime + randomVariation, 8000);
+    // Delay formula calculation — fast enough to feel responsive, slow enough to
+    // feel like a person typing a quick reply. The AI model call already takes
+    // 1-3s, so this adds at most 3.5s on top for a total under 6s.
+    const baseDelay = 400;
+    const userReadTime = data.content.length * 8;
+    const replyTime = reply.length * 12;
+    const randomVariation = Math.random() * 600;
+    const totalDelay = Math.min(baseDelay + userReadTime + replyTime + randomVariation, 3500);
 
     return {
       reply,

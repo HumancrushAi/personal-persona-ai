@@ -449,7 +449,7 @@ const POSTURE_RE =
 // picture the app has ever sent. All five are already in QUALITY_NEGATIVE in
 // media.functions.ts, which is the one place a renderer can act on them.
 const QUALITY =
-  "Candid photograph, 35mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, natural skin sheen, natural asymmetry. Looks like a real photo taken on a real camera.";
+  "Candid photograph, 35mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, matte natural skin finish, natural skin mottling and colour variation, subtle skin imperfections, natural asymmetry, soft natural shadows. Looks like a real photo taken on a real camera.";
 
 export function videoStillPrompt(
   c: { gender?: string | null; name?: string },
@@ -568,7 +568,7 @@ export function kontextSelfiePrompt(
 const PROMPT_WORD_BUDGET = 300;
 
 const REALISM_TAIL =
-  "Candid raw photograph on a real camera, authentic skin texture with visible pores, natural asymmetry, natural available light.";
+  "Candid raw photograph on a real camera, authentic skin texture with visible pores, matte natural skin finish, natural skin mottling, natural asymmetry, natural available light.";
 
 const STILL_CUE = "The pose is held completely still and the camera is locked off.";
 const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;

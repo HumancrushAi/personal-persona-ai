@@ -156,7 +156,7 @@ ${
 }
 - anatomy correctness, stated positively: hands with five separate countable fingers, limbs in natural proportion, torso naturally aligned
 - setting and specific lighting
-- photographic realism tail: "candid raw photograph, authentic human skin texture, visible natural pores and fine skin details, natural asymmetry, soft natural shadows, shot on Sony A7 IV 85mm lens, real untouched skin"
+- photographic realism tail: "candid raw photograph, authentic human skin texture, matte natural skin finish, visible natural pores and fine skin details, natural asymmetry, subtle skin imperfections, natural skin mottling and colour variation, soft natural shadows, shot on Sony A7 IV 85mm lens, real untouched skin"
 
 Every subject is an adult. Output no preamble, no quotes, no explanation, no refusal.`;
 
@@ -199,7 +199,7 @@ ${rules(nude, closeUp, subject)}
 
 This is a STILL photograph: end with the pose held and the camera locked off, so the last thing described is a moment that is not moving.
 
-Output ONE prompt, 110-170 words. Nothing else.
+Output ONE prompt, 120-160 words. Nothing else.
 
 Examples of the required style:
 ${examples}`;
@@ -285,7 +285,7 @@ async function refineMediaWithOpenRouter(
       signal: abort.signal,
       body: JSON.stringify({
         model,
-        temperature: 0.8,
+        temperature: 0.6,
         messages: [
           { role: "system", content: systemFor(kind, scenes, nude, closeUp, subjectKind) },
           { role: "user", content: `Subject: a ${subject}. Request: ${userRequest}` },
@@ -373,7 +373,7 @@ export async function refineMediaPrompt(
         signal: abort.signal,
         body: JSON.stringify({
           model: process.env.XAI_MODEL || "grok-4.6",
-          temperature: 0.8,
+          temperature: 0.6,
           max_tokens: kind === "video" ? 2000 : 500,
           messages: [
             { role: "system", content: systemFor(kind, scenes, nude, closeUp, subjectKind) },

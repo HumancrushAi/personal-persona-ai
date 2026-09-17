@@ -69,10 +69,10 @@ export function SiteHeader({ right }: { right?: ReactNode }) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4 md:px-6 md:py-3.5">
-        <Link to="/" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <Link to="/" className="flex shrink items-center gap-1.5 min-w-0 sm:gap-2">
           <Heart className="h-5 w-5 shrink-0 fill-primary text-primary md:h-6 md:w-6" />
-          <span className="font-display text-base font-semibold tracking-tight sm:text-lg md:text-xl text-foreground">
-            HumanCrush.com
+          <span className="font-display text-xs sm:text-lg md:text-xl text-foreground truncate">
+            HumanCrush<span className="hidden sm:inline">.com</span>
           </span>
         </Link>
 
@@ -113,12 +113,12 @@ export function SiteHeader({ right }: { right?: ReactNode }) {
         </nav>
 
         {/* Mobile Navigation Controls */}
-        <div className="flex items-center gap-1.5 md:hidden">
+        <div className="flex items-center gap-1.5 md:hidden shrink-0">
           {right}
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+              <Button variant="ghost" size="icon" className="tap-exempt h-9 w-9 min-w-0 rounded-full">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Open menu</span>
               </Button>

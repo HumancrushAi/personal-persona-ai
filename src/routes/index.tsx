@@ -451,25 +451,26 @@ function Landing() {
         <div className="absolute bottom-0 right-1/4 w-[700px] h-[700px] rounded-full bg-indigo-500/5 blur-[180px] pointer-events-none z-0" />
         {/* TOP HEADER */}
         <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/85 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-8">
-            {/* Mobile Logo & Desktop-Hidden Menu Toggle indicator */}
-            <Link to="/" className="flex items-center gap-1.5 lg:hidden shrink-0">
-              <Heart className="h-5 w-5 fill-primary text-primary animate-pulse" />
-              <span className="font-display text-base font-bold tracking-tight bg-gradient-to-r from-pink-500 to-rose-400 bg-clip-text text-transparent">
-                HumanCrush<span className="text-white">.com</span>
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-1.5 px-2.5 py-2.5 sm:px-6 md:px-8">
+            {/* Mobile Logo */}
+            <Link to="/" className="flex items-center gap-1 sm:gap-1.5 shrink min-w-0">
+              <Heart className="h-5 w-5 fill-primary text-primary animate-pulse shrink-0" />
+              <span className="font-display text-xs sm:text-base font-bold tracking-tight bg-gradient-to-r from-pink-500 to-rose-400 bg-clip-text text-transparent truncate">
+                HumanCrush<span className="hidden sm:inline text-white">.com</span>
               </span>
             </Link>
 
             {/* Top Tabs (Girls, Guys) */}
-            <div className="flex items-center gap-0.5 bg-white/5 p-1 rounded-full border border-white/10 shrink-0">
+            <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-full border border-white/10 shrink-0">
               {[
                 { id: "girls", label: "♀ Girls" },
                 { id: "guys", label: "♂ Guys" },
               ].map((tab) => (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setTopTab(tab.id as any)}
-                  className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide uppercase transition ${
+                  className={`tap-exempt px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide uppercase transition ${
                     topTab === tab.id
                       ? "bg-grad-primary text-primary-foreground shadow-glow font-bold"
                       : "text-white/60 hover:text-white"
@@ -481,21 +482,21 @@ function Landing() {
             </div>
 
             {/* Right side buttons */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {authed ? (
                 <>
                   <Button
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="h-8 rounded-full px-2.5 text-[11px] sm:text-sm sm:h-9 sm:px-3"
+                    className="tap-exempt h-8 rounded-full px-2 text-[11px] sm:text-sm sm:h-9 sm:px-3 min-w-0"
                   >
                     <Link to="/me">Chats</Link>
                   </Button>
                   <Button
                     asChild
                     size="sm"
-                    className="h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow"
+                    className="tap-exempt h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow min-w-0"
                   >
                     <Link to="/browse">
                       <Sparkles className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" /> Enter
@@ -508,7 +509,7 @@ function Landing() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="h-8 rounded-full px-2.5 text-[11px] sm:text-sm text-white/80 sm:h-9 sm:px-3"
+                    className="tap-exempt h-8 rounded-full px-2 text-[11px] sm:text-sm text-white/80 sm:h-9 sm:px-3 min-w-0"
                   >
                     <Link to="/auth" search={{ mode: "signin" } as any}>
                       Login
@@ -517,7 +518,7 @@ function Landing() {
                   <Button
                     asChild
                     size="sm"
-                    className="h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow"
+                    className="tap-exempt hidden xs:inline-flex h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow min-w-0"
                   >
                     <Link to="/auth">Sign Up</Link>
                   </Button>

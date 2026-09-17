@@ -72,6 +72,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // distinguishable; the string alone is not.
     const { data: authUser } = await supabase.auth.getUser();
     const email = authUser?.user?.email ?? null;
+
+    // A tester account is refilled before the balance is read, so the gate
+    // below and the in-chat photo/video triggers all see a full wallet.
+    const { topUpTester } = await import("./tester-accounts.server");
+    await topUpTester(userId, email);
     let userName = hasUsableName(profile?.display_name, email)
       ? (profile!.display_name as string)
       : "";

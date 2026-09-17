@@ -165,6 +165,11 @@ const VOICES = ["shimmer", "coral", "sage", "nova", "verse", "alloy"];
 // Check the user can afford it BEFORE generating (so we don't call the AI for
 // someone who's broke). Returns the current balance to deduct from later.
 async function ensureBalance(supabase: any, userId: string, cost: number) {
+  // Testers are refilled first — see tester-accounts.server.ts.
+  const { topUpTester } = await import("./tester-accounts.server");
+  const { data: authUser } = await supabase.auth.getUser();
+  await topUpTester(userId, authUser?.user?.email);
+
   const { data: bal } = await supabase
     .from("credit_balances")
     .select("free_messages_remaining, paid_credits")

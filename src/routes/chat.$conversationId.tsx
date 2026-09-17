@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { sendChatMessage } from "@/lib/chat.functions";
+import { readPreferredLanguage } from "@/lib/languages";
 import {
   generateSelfie,
   generateVoiceNote,
@@ -321,7 +322,9 @@ function ChatPage() {
     setPendingUser(content); // show my message instantly
     const start = Date.now();
     try {
-      const res = await send({ data: { conversationId, content } });
+      const res = await send({
+        data: { conversationId, content, language: readPreferredLanguage() },
+      });
 
       const target = (res as any)?.typingDelayMs ?? 3000;
       const elapsed = Date.now() - start;

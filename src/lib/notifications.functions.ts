@@ -33,11 +33,10 @@ export const sendTestPush = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { sendPushToUser } = await import("./notify");
-    const delivered = await sendPushToUser(context.userId, {
+    return sendPushToUser(context.userId, {
       title: "Notifications are on 💌",
       body: "This is how she'll let you know she's messaged you.",
       url: "/me",
       tag: "push-test",
     });
-    return { delivered };
   });

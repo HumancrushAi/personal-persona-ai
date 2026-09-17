@@ -220,7 +220,16 @@ export const adminListSupportTickets = createServerFn({ method: "GET" })
       .order("last_message_at", { ascending: false })
       .limit(100);
 
-    if (!tickets?.length) return { tickets: [] };
+    // What the tab needs to say about itself. "Support isn't active" was the
+    // report, and the honest answer is that support is only as active as the
+    // two env vars that deliver it: without SUPPORT_EMAIL nobody is told a
+    // ticket arrived, and without RESEND_API_KEY no reply can be sent.
+    const config = {
+      supportEmail: Boolean(process.env.SUPPORT_EMAIL),
+      email: Boolean(process.env.RESEND_API_KEY),
+    };
+
+    if (!tickets?.length) return { tickets: [], config };
 
     const { data: messages } = await db
       .from("support_messages")
@@ -232,6 +241,7 @@ export const adminListSupportTickets = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true });
 
     return {
+      config,
       tickets: tickets.map((t: any) => ({
         ...t,
         ref: String(t.id).slice(0, 8),

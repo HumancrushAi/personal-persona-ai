@@ -30,6 +30,9 @@ import {
   UserPlus,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
+import { LanguageSelect } from "@/components/LanguageSelect";
+import { openSupport } from "@/components/SupportWidget";
+import { useSystemStatus } from "@/hooks/use-app-setting";
 import {
   companionForReel,
   companionReelUrl,
@@ -261,8 +264,13 @@ function Landing() {
   const [query, setQuery] = useState("");
   const [authed, setAuthed] = useState<boolean | null>(null);
 
+  // getSession reads the token already on this device; getUser is a network
+  // round trip to validate it, and the header, the prompt and this page were
+  // each making one before anything rendered. Real actions still validate on
+  // the server, so the only thing a stale session buys here is a "Chats"
+  // button that leads to the sign-in page.
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+    supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
   }, []);
 
   // One entry covers both overlays, so handing off story -> tease doesn't churn
@@ -299,23 +307,46 @@ function Landing() {
     return list.find(matchesGender) ?? null;
   };
 
+  // Which companions the Girls / Guys toggle means. The toggle used to change
+  // only the grid at the bottom of the page — the banner and the "Live now"
+  // row, which are what a phone actually shows, ignored it, so tapping Guys
+  // visibly did nothing.
+  const inTab = useCallback(
+    (c: Companion) =>
+      topTab === "guys"
+        ? c.gender === "male" || c.gender === "trans-male"
+        : c.gender === "female" || c.gender === "trans-female",
+    [topTab],
+  );
+
   const bannerSlides = useMemo(() => {
     if (!companions || companions.length === 0) return [];
-    return BANNERS.map((b) => {
-      const comp =
-        companions.find((c) => c.id === b.id) ||
-        companions.find((c) => c.name.toLowerCase() === b.name.toLowerCase());
-      if (!comp) return null;
-      const reel = getEffectiveCompanionReel(comp) || "";
-      return {
-        reel,
-        title: `${comp.name}, ${comp.age}`,
-        sub: comp.short_bio || b.sub,
-        gender: b.gender,
-        companion: comp,
-      };
-    }).filter((s): s is NonNullable<typeof s> => s !== null);
-  }, [companions]);
+    const wantGender = topTab === "guys" ? "m" : "f";
+    const toSlide = (comp: Companion, sub: string) => ({
+      reel: getEffectiveCompanionReel(comp) || "",
+      title: `${comp.name}, ${comp.age}`,
+      sub: comp.short_bio || sub,
+      gender: wantGender as "m" | "f",
+      companion: comp,
+    });
+    const curated = BANNERS.filter((b) => b.gender === wantGender)
+      .map((b) => {
+        const comp =
+          companions.find((c) => c.id === b.id) ||
+          companions.find((c) => c.name.toLowerCase() === b.name.toLowerCase());
+        return comp && inTab(comp) ? toSlide(comp, b.sub) : null;
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
+    if (curated.length) return curated;
+    // No curated banner for this tab: the first few of that gender still make
+    // a slider, which is better than a tab that empties the top of the page.
+    return companions
+      .filter(inTab)
+      .slice(0, 5)
+      .map((c) => toSlide(c, c.ethnicity));
+  }, [companions, topTab, inTab]);
+
+  const liveNow = useMemo(() => (companions ?? []).filter(inTab).slice(0, 14), [companions, inTab]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -421,34 +452,38 @@ function Landing() {
           </nav>
         </div>
 
-        {/* Bottom Sidebar Links */}
+        {/* Bottom Sidebar Links. Discord is gone until there is a server to
+            link to — a dead link is worse than none. */}
         <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 text-xs text-white/70">
-            <span className="text-base">🇺🇸</span> English
-          </div>
+          <LanguageSelect />
           <div className="flex flex-wrap gap-x-3 gap-y-1.5 px-3 text-[11px] text-white/40">
-            <a href="#" className="hover:underline">
-              Discord
-            </a>
-            <a href="#" className="hover:underline">
+            <Link to="/faq" className="hover:text-white hover:underline">
               Help Center
-            </a>
-            <a href="#" className="hover:underline">
+            </Link>
+            <button
+              type="button"
+              onClick={openSupport}
+              className="tap-exempt min-h-0 min-w-0 hover:text-white hover:underline"
+            >
               Contact
-            </a>
-            <a href="#" className="hover:underline">
+            </button>
+            <Link to="/affiliate" className="hover:text-white hover:underline">
               Affiliate
-            </a>
+            </Link>
           </div>
+          <SystemStatusNote />
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 lg:pl-64 min-h-screen pb-24 overflow-x-hidden relative">
         {/* Background Ambient Glows */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none z-0" />
-        <div className="absolute top-1/3 left-0 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0" />
-        <div className="absolute bottom-0 right-1/4 w-[700px] h-[700px] rounded-full bg-indigo-500/5 blur-[180px] pointer-events-none z-0" />
+        {/* Desktop only. Three screen-sized Gaussian blurs re-composited on
+            every scroll frame is most of what made the page feel slow on a
+            phone, for a glow nobody can see behind the content there. */}
+        <div className="hidden lg:block absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none z-0" />
+        <div className="hidden lg:block absolute top-1/3 left-0 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0" />
+        <div className="hidden lg:block absolute bottom-0 right-1/4 w-[700px] h-[700px] rounded-full bg-indigo-500/5 blur-[180px] pointer-events-none z-0" />
         {/* TOP HEADER */}
         <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/85 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-1.5 px-2.5 py-2.5 sm:px-6 md:px-8">
@@ -665,7 +700,7 @@ function Landing() {
             }
           />
           <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {(companions ?? []).slice(0, 14).map((c) => {
+            {liveNow.map((c) => {
               const reel = getEffectiveCompanionReel(c);
               return (
                 <button
@@ -1371,6 +1406,10 @@ function AutoPlayVideo({
   onError?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // The clip is not even requested until the card is near the screen. Fourteen
+  // "Live now" cards each preloading a 1-2MB reel was the single biggest
+  // download on the page, most of it for cards nobody had scrolled to.
+  const [near, setNear] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -1393,17 +1432,20 @@ function AutoPlayVideo({
       }
     };
 
-    playVideo();
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
+            setNear(true);
             playVideo();
+          } else if (!video.paused) {
+            // Off screen it stops decoding, which on a phone is the difference
+            // between a smooth scroll and a stutter.
+            video.pause();
           }
         });
       },
-      { threshold: 0.01 },
+      { threshold: 0.01, rootMargin: "200px" },
     );
 
     observer.observe(video);
@@ -1416,17 +1458,31 @@ function AutoPlayVideo({
   return (
     <video
       ref={videoRef}
-      src={src}
+      src={near ? src : undefined}
+      poster={poster}
       autoPlay
       muted
       loop
       playsInline
-      preload="auto"
+      preload={near ? "auto" : "none"}
       onError={onError}
       onLoadedData={(e) => e.currentTarget.play().catch(() => {})}
       onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
       className={className}
     />
+  );
+}
+
+// The admin's "System status" line (Platform Content tab), under the sidebar
+// links. It was saved and shown nowhere.
+function SystemStatusNote() {
+  const status = useSystemStatus();
+  if (!status) return null;
+  return (
+    <p className="px-3 text-[10px] leading-snug text-white/35">
+      <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 align-middle" />
+      {status}
+    </p>
   );
 }
 
@@ -1493,7 +1549,9 @@ function BannerSlider({
 
   useEffect(() => {
     if (paused || n === 0) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % n), 5000);
+    // 7s rather than 5: the clip for a slide only starts loading when that
+    // slide is on screen, and the storage it comes from is not fast.
+    const t = setInterval(() => setIdx((i) => (i + 1) % n), 7000);
     return () => clearInterval(t);
   }, [paused, n]);
   useEffect(() => {
@@ -1555,8 +1613,12 @@ function BannerSlider({
               />
             ) : null}
 
-            {/* Mobile-only background video/image (takes full screen on mobile) */}
-            {s.reel ? (
+            {/* Mobile-only background video/image (takes full screen on mobile).
+                Only the slide on screen gets a <video>: every slide used to
+                mount one with preload="auto", so the page downloaded every
+                reel at once — on a phone, tens of megabytes before anything
+                below the fold could load. */}
+            {s.reel && i === idx ? (
               <video
                 key={s.reel + "-mobile"}
                 src={s.reel}
@@ -1623,7 +1685,7 @@ function BannerSlider({
             {/* Desktop-only Video player panel */}
             <div className="relative z-10 hidden md:flex w-1/2 h-full items-center justify-center p-3 lg:p-4">
               <div className="relative h-[94%] w-auto aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition duration-500 group-hover:border-primary/30 group-hover:shadow-glow">
-                {s.reel ? (
+                {s.reel && i === idx ? (
                   <video
                     key={s.reel + "-desktop"}
                     src={s.reel}

@@ -2,13 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   Heart,
   Circle,
@@ -25,37 +19,55 @@ import {
   Shield,
   LogOut,
   LogIn,
+  HelpCircle,
+  LifeBuoy,
 } from "lucide-react";
 import { enablePush } from "@/lib/push-client";
 import { toast } from "sonner";
+import { LanguageSelect } from "@/components/LanguageSelect";
+import { openSupport } from "@/components/SupportWidget";
+import { useSystemStatus } from "@/hooks/use-app-setting";
+
+// Whether this session's user is an admin, asked once per page load rather than
+// on every header mount. The header is on every page, and the role check is a
+// database round trip that was running again on each navigation.
+let adminCheck: { userId: string; promise: Promise<boolean> } | null = null;
+function isAdminFor(userId: string): Promise<boolean> {
+  if (adminCheck?.userId !== userId) {
+    adminCheck = {
+      userId,
+      promise: (async () => {
+        try {
+          const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+          return !!data;
+        } catch {
+          return false;
+        }
+      })(),
+    };
+  }
+  return adminCheck.promise;
+}
 
 // One header used across the whole site so nav + branding are consistent.
 // `right` lets account pages append their own actions (credits, sign out, …).
 // On a phone those move into the menu, which has no room for a live value like
 // the credit balance — `mobileRight` is the one small thing that stays beside
 // the menu button.
-export function SiteHeader({
-  right,
-  mobileRight,
-}: {
-  right?: ReactNode;
-  mobileRight?: ReactNode;
-}) {
+export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRight?: ReactNode }) {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [open, setOpen] = useState(false);
+  const systemStatus = useSystemStatus();
 
+  // The session on this device, not a server validation of it — see the same
+  // note in routes/index.tsx. It was the first of three round trips the header
+  // made before it could decide which links to show.
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      const isUserAuthed = !!data.user;
-      setAuthed(isUserAuthed);
-      if (data.user) {
-        const { data: adminRes } = await supabase.rpc("has_role", {
-          _user_id: data.user.id,
-          _role: "admin",
-        });
-        setIsAdmin(!!adminRes);
-      }
+    supabase.auth.getSession().then(async ({ data }) => {
+      const user = data.session?.user;
+      setAuthed(!!user);
+      if (user) setIsAdmin(await isAdminFor(user.id));
     });
   }, []);
 
@@ -126,12 +138,19 @@ export function SiteHeader({
           {mobileRight}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="tap-exempt h-9 w-9 min-w-0 rounded-full">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="tap-exempt h-9 w-9 min-w-0 rounded-full"
+              >
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Open menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[85vw] max-w-xs border-white/10 bg-background/95 backdrop-blur-2xl p-6">
+            <SheetContent
+              side="right"
+              className="w-[85vw] max-w-xs border-white/10 bg-background/95 backdrop-blur-2xl p-6"
+            >
               <SheetHeader className="text-left border-b border-white/10 pb-4">
                 <SheetTitle className="flex items-center gap-2">
                   <Heart className="h-5 w-5 fill-primary text-primary" />
@@ -207,6 +226,29 @@ export function SiteHeader({
                 >
                   <DollarSign className="h-4 w-4 text-emerald-400" /> Earn / Affiliate
                 </Link>
+                <Link
+                  to="/faq"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-white/5"
+                >
+                  <HelpCircle className="h-4 w-4 text-primary" /> Help Center
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    // The widget is mounted on every page but a conversation;
+                    // there it is not, so the home page's copy answers instead.
+                    if (window.location.pathname.startsWith("/chat/")) {
+                      window.location.href = "/?support=1";
+                      return;
+                    }
+                    openSupport();
+                  }}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition hover:bg-white/5"
+                >
+                  <LifeBuoy className="h-4 w-4 text-primary" /> Help &amp; support
+                </button>
 
                 {authed && (
                   <button
@@ -229,6 +271,16 @@ export function SiteHeader({
                   >
                     <Shield className="h-4 w-4" /> Admin Console
                   </Link>
+                )}
+
+                <div className="mt-3 border-t border-white/10 pt-3">
+                  <LanguageSelect compact />
+                </div>
+                {systemStatus && (
+                  <p className="px-1 text-[10px] leading-snug text-white/40">
+                    <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 align-middle" />
+                    {systemStatus}
+                  </p>
                 )}
 
                 <div className="mt-4 pt-4 border-t border-white/10">
@@ -263,4 +315,3 @@ export function SiteHeader({
     </header>
   );
 }
-

@@ -1,15 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { SUBSCRIPTION_TIERS } from "./credit-packs";
 import { transactionResult, subscriptionResult } from "./authnet";
-import { getEffectivePacks } from "./app-settings.server";
+import { getEffectivePacks, getEffectiveTiers } from "./app-settings.server";
 import { assertNotSuspended } from "./account.server";
 
 // Public pricing with admin overrides applied — the client renders from this so
 // the displayed price always matches what purchaseCredits will charge.
 export const getPricing = createServerFn({ method: "GET" }).handler(async () => {
-  return { packs: await getEffectivePacks(), tiers: SUBSCRIPTION_TIERS };
+  const [packs, tiers] = await Promise.all([getEffectivePacks(), getEffectiveTiers()]);
+  return { packs, tiers };
 });
 
 const schema = z.object({
@@ -59,8 +59,9 @@ export const purchaseCredits = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertNotSuspended(supabase, userId);
 
+    // Admin overrides applied, so what is charged is what the page showed.
     const pack = (await getEffectivePacks()).find((p) => p.id === data.packId);
-    const tier = SUBSCRIPTION_TIERS.find((t) => t.id === data.packId);
+    const tier = (await getEffectiveTiers()).find((t) => t.id === data.packId);
     const item = pack ?? tier;
     if (!item) throw new Error("Invalid pack");
 
@@ -116,13 +117,14 @@ export const purchaseCredits = createServerFn({ method: "POST" })
         .eq("user_id", userId)
         .maybeSingle();
       const newPaid = (bal?.paid_credits ?? 0) + credits;
-      await supabaseAdmin
-        .from("credit_balances")
-        .upsert({
+      await supabaseAdmin.from("credit_balances").upsert(
+        {
           user_id: userId,
           paid_credits: newPaid,
           free_messages_remaining: bal?.free_messages_remaining ?? 25,
-        }, { onConflict: "user_id" });
+        },
+        { onConflict: "user_id" },
+      );
       await supabaseAdmin.from("credit_ledger").insert({
         user_id: userId,
         delta: credits,
@@ -209,13 +211,14 @@ export const purchaseCredits = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .maybeSingle();
     const newPaid = (bal?.paid_credits ?? 0) + credits;
-    await supabaseAdmin
-      .from("credit_balances")
-      .upsert({
+    await supabaseAdmin.from("credit_balances").upsert(
+      {
         user_id: userId,
         paid_credits: newPaid,
         free_messages_remaining: bal?.free_messages_remaining ?? 25,
-      }, { onConflict: "user_id" });
+      },
+      { onConflict: "user_id" },
+    );
     await supabaseAdmin.from("credit_ledger").insert({
       user_id: userId,
       delta: credits,

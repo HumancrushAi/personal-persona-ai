@@ -106,7 +106,8 @@ function CreditsPage() {
   // Server-priced packs (admin overrides applied) so display matches the charge.
   const { data: pricing } = useQuery({ queryKey: ["pricing"], queryFn: () => getPricing() });
   const packs = pricing?.packs ?? CREDIT_PACKS;
-  const item = packs.find((p) => p.id === selected) ?? SUBSCRIPTION_TIERS.find((t) => t.id === selected);
+  const tiers = pricing?.tiers ?? SUBSCRIPTION_TIERS;
+  const item = packs.find((p) => p.id === selected) ?? tiers.find((t) => t.id === selected);
 
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();
@@ -173,7 +174,7 @@ function CreditsPage() {
             <>
               {" "}
               · <Crown className="inline h-4 w-4 text-primary" />{" "}
-              {SUBSCRIPTION_TIERS.find((t) => t.id === profile.subscription_tier)?.name ??
+              {tiers.find((t) => t.id === profile.subscription_tier)?.name ??
                 profile.subscription_tier}
             </>
           )}
@@ -202,7 +203,7 @@ function CreditsPage() {
 
         {tab === "subs" && (
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {SUBSCRIPTION_TIERS.map((t) => (
+            {tiers.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setSelected(t.id)}

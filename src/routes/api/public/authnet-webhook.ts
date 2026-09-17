@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SUBSCRIPTION_TIERS } from "@/lib/credit-packs";
 import { verifyAuthnetSignature } from "@/lib/authnet-signature";
 import { isFullRefund, webhookAction } from "@/lib/authnet";
 
@@ -69,7 +68,8 @@ export const Route = createFileRoute("/api/public/authnet-webhook")({
           await db.from("subscription_events").insert({
             user_id: f.userId ?? null,
             authnet_subscription_id: f.subscriptionId ?? null,
-            authnet_transaction_id: f.transId ?? (event.payload?.id ? String(event.payload.id) : null),
+            authnet_transaction_id:
+              f.transId ?? (event.payload?.id ? String(event.payload.id) : null),
             event_type: eventType,
             amount_cents: f.amountCents ?? null,
             credits_granted: f.credits ?? null,
@@ -81,7 +81,8 @@ export const Route = createFileRoute("/api/public/authnet-webhook")({
         try {
           const action = webhookAction(eventType);
           if (action === "charge") await onCharge(db, event, log);
-          else if (action === "refund" || action === "void") await onReversal(db, event, action, log);
+          else if (action === "refund" || action === "void")
+            await onReversal(db, event, action, log);
           else if (action === "cancel") await onCancel(db, event, log);
           else await log({ note: "not an event this handler acts on" });
         } catch (e: any) {
@@ -126,10 +127,15 @@ async function onCharge(db: any, event: any, log: Log): Promise<void> {
     .eq("authnet_subscription_id", tx.subscriptionId)
     .maybeSingle();
   if (!profile) {
-    return log({ transId, subscriptionId: tx.subscriptionId, note: "no account holds this subscription" });
+    return log({
+      transId,
+      subscriptionId: tx.subscriptionId,
+      note: "no account holds this subscription",
+    });
   }
 
-  const tier = SUBSCRIPTION_TIERS.find((t) => t.id === profile.subscription_tier);
+  const { getEffectiveTiers } = await import("@/lib/app-settings.server");
+  const tier = (await getEffectiveTiers()).find((t) => t.id === profile.subscription_tier);
   // What was actually charged, not today's price list. A later price change
   // must not restate an old subscription's revenue, and this is the figure the
   // affiliate's commission is calculated on.
@@ -170,7 +176,9 @@ async function onCharge(db: any, event: any, log: Log): Promise<void> {
       transId,
       subscriptionId: tx.subscriptionId,
       amountCents,
-      note: promoted?.length ? "first payment settled" : "first payment recorded (no signup row found)",
+      note: promoted?.length
+        ? "first payment settled"
+        : "first payment recorded (no signup row found)",
     });
   }
 
@@ -251,7 +259,11 @@ async function onReversal(db: any, event: any, kind: "refund" | "void", log: Log
     .maybeSingle();
   if (!sale) return log({ transId, note: `${kind} of ${originalId}: no matching sale on record` });
   if (sale.status === "refunded" || sale.status === "voided") {
-    return log({ userId: sale.user_id, transId, note: `${kind} of ${originalId}: already reversed` });
+    return log({
+      userId: sale.user_id,
+      transId,
+      note: `${kind} of ${originalId}: already reversed`,
+    });
   }
 
   const refundCents = tx.authCents || tx.settleCents || 0;
@@ -291,9 +303,16 @@ async function onCancel(db: any, event: any, log: Log): Promise<void> {
     .eq("authnet_subscription_id", String(subscriptionId))
     .maybeSingle();
   if (!profile) {
-    return log({ subscriptionId: String(subscriptionId), note: "no account holds this subscription" });
+    return log({
+      subscriptionId: String(subscriptionId),
+      note: "no account holds this subscription",
+    });
   }
 
   await db.from("profiles").update({ subscription_status: "cancelled" }).eq("id", profile.id);
-  return log({ userId: profile.id, subscriptionId: String(subscriptionId), note: "subscription ended" });
+  return log({
+    userId: profile.id,
+    subscriptionId: String(subscriptionId),
+    note: "subscription ended",
+  });
 }

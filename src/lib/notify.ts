@@ -40,37 +40,44 @@ export async function sendPush(sub: PushSub, payload: PushPayload) {
   );
 }
 
-// Every device a user has turned notifications on for, in parallel. Returns how
-// many accepted it. Never throws: a push is always secondary to whatever
-// triggered it. Dead subscriptions (410/404) are pruned on the way.
-export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
+export type PushReport = { sent: number; total: number; errors: string[] };
+
+// Every device a user has turned notifications on for, in parallel. Reports how
+// many the push service accepted it for and what it said about the rest. Never
+// throws: a push is always secondary to whatever triggered it. Dead
+// subscriptions (410/404) are pruned on the way and not counted as errors.
+export async function sendPushToUser(userId: string, payload: PushPayload): Promise<PushReport> {
+  const report: PushReport = { sent: 0, total: 0, errors: [] };
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: subs } = await supabaseAdmin
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth")
       .eq("user_id", userId);
-    const results = await Promise.all(
+    report.total = subs?.length ?? 0;
+    await Promise.all(
       (subs ?? []).map(async (s) => {
         try {
           await sendPush(s as PushSub, payload);
-          return true;
+          report.sent++;
         } catch (e: any) {
           const code = String(e?.statusCode ?? "");
           if (code === "410" || code === "404") {
             await supabaseAdmin.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+            report.total--;
           } else {
-            console.error("sendPushToUser failed:", code, e?.body ?? e?.message);
+            const why = `${code || "error"}: ${String(e?.body ?? e?.message ?? "").slice(0, 120)}`;
+            report.errors.push(why);
+            console.error("sendPushToUser failed:", why);
           }
-          return false;
         }
       }),
     );
-    return results.filter(Boolean).length;
-  } catch (e) {
+  } catch (e: any) {
+    report.errors.push(String(e?.message ?? e));
     console.error("sendPushToUser error:", e);
-    return 0;
   }
+  return report;
 }
 
 // `replyTo` is what makes support work without an inbound mail pipeline: the

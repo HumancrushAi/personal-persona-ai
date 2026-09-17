@@ -1,18 +1,11 @@
 // HumanCrush.com push service worker.
 //
-// A push is shown unless the user is already looking at the very chat it is
-// about — a reply they are watching arrive does not also need to buzz their
-// phone. Chrome only allows skipping the notification while a page of ours is
-// visible, which is exactly the case being skipped.
-async function viewingUrl(url) {
-  const target = new URL(url, self.location.origin);
-  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-  return clients.some((c) => {
-    if (c.visibilityState !== "visible") return false;
-    const here = new URL(c.url);
-    return here.origin === target.origin && here.pathname === target.pathname;
-  });
-}
+// Every push is shown. There used to be a rule that skipped the notification
+// when the chat it was about was already on screen — sensible in theory, and
+// exactly the situation someone is in when they are testing whether
+// notifications work at all: phone in hand, chat open, waiting for the buzz
+// that the rule then suppressed. The tag makes repeats replace each other, so
+// showing every one costs nothing.
 
 self.addEventListener("push", (event) => {
   let data = {};
@@ -32,12 +25,7 @@ self.addEventListener("push", (event) => {
     vibrate: [120, 60, 120],
     data: { url },
   };
-  event.waitUntil(
-    (async () => {
-      if (url.startsWith("/chat/") && (await viewingUrl(url))) return;
-      await self.registration.showNotification(title, options);
-    })(),
-  );
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {

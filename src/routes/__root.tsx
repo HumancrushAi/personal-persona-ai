@@ -159,20 +159,28 @@ import { SupportWidget } from "../components/SupportWidget";
 import { PushNotificationPrompt } from "../components/PushNotificationPrompt";
 import { autoSubscribePushIfGranted } from "../lib/push-client";
 
-// The support widget sits on the landing page and the sign-up page only.
+// The support widget's floating button sits on the landing page and the sign-up
+// page only.
 //
-// It is a floating button in the bottom-right, which is where the chat composer,
-// the send control and the media buttons also live — on a conversation it covers
+// It is a button in the bottom-right, which is where the chat composer, the
+// send control and the media buttons also live — on a conversation it covers
 // the app rather than helping. It also reads as a support desk hovering over an
-// intimate conversation, which is the wrong note in the wrong place. Someone who
-// needs help mid-chat still has the FAQ and the account page.
-const SUPPORT_WIDGET_PATHS = ["/", "/auth"];
+// intimate conversation, which is the wrong note in the wrong place.
+//
+// The widget itself is mounted everywhere except a conversation, the admin
+// console and the studio, invisible until "Help & support" in the menu opens
+// it. Support used to be reachable from exactly two pages; the account page,
+// where billing questions actually arise, was not one of them.
+const SUPPORT_BUBBLE_PATHS = ["/", "/auth"];
+const NO_SUPPORT_PREFIXES = ["/chat/", "/admin", "/studio"];
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Trailing slashes are normalised so "/auth/" matches too.
-  const showSupport = SUPPORT_WIDGET_PATHS.includes(pathname.replace(/(.)\/+$/, "$1"));
+  const path = pathname.replace(/(.)\/+$/, "$1");
+  const supportBubble = SUPPORT_BUBBLE_PATHS.includes(path);
+  const supportMounted = !NO_SUPPORT_PREFIXES.some((p) => path.startsWith(p));
 
   useEffect(() => {
     autoSubscribePushIfGranted();
@@ -188,7 +196,7 @@ function RootComponent() {
       <AffiliateTracker />
       <BottomNav />
       <PushNotificationPrompt />
-      {showSupport && <SupportWidget />}
+      {supportMounted && <SupportWidget floating={supportBubble} />}
       <AdminFooterLink />
       <Toaster richColors position="top-center" />
     </QueryClientProvider>

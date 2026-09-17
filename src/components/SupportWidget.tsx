@@ -5,15 +5,36 @@ import { Button } from "./ui/button";
 import { submitSupportTicket } from "@/lib/support.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-// Support entry point, mounted only on the landing and sign-up pages — see the
-// note on SUPPORT_WIDGET_PATHS in routes/__root.tsx.
+// Anything on the page can open the support form — the Contact link in the
+// sidebar, "Help & support" in the phone menu — by dispatching this. The widget
+// is mounted on nearly every page (see routes/__root.tsx) so there is always
+// one listening.
+export const OPEN_SUPPORT_EVENT = "hc:open-support";
+export function openSupport() {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(OPEN_SUPPORT_EVENT));
+}
+
+// Support entry point.
 //
 // This used to be two `sms:` links to a personal mobile number. That published
 // the number in the page source, did nothing at all on desktop, and recorded
 // nothing: there was no ticket to reply to, only a text message on a phone. Now
 // the form opens a real ticket and the address on it is where the reply goes.
-export function SupportWidget() {
+//
+// `floating` shows the round button in the corner. Off, the widget is invisible
+// until something calls openSupport() — which is how pages whose corner is
+// already busy (the chat composer, the pay form) still have support one tap
+// away from the menu without a bubble sitting on top of their controls.
+export function SupportWidget({ floating = true }: { floating?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const open = () => setIsOpen(true);
+    window.addEventListener(OPEN_SUPPORT_EVENT, open);
+    // "/?support=1" is how a page with no widget (a conversation) hands off.
+    if (new URLSearchParams(window.location.search).get("support") === "1") open();
+    return () => window.removeEventListener(OPEN_SUPPORT_EVENT, open);
+  }, []);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
@@ -27,9 +48,9 @@ export function SupportWidget() {
   useEffect(() => {
     if (!isOpen || email) return;
     supabase.auth
-      .getUser()
+      .getSession()
       .then(({ data }) => {
-        if (data.user?.email) setEmail(data.user.email);
+        if (data.session?.user?.email) setEmail(data.session.user.email);
       })
       .catch(() => {});
   }, [isOpen, email]);
@@ -70,6 +91,8 @@ export function SupportWidget() {
     setSentRef(null);
     setError(null);
   }
+
+  if (!isOpen && !floating) return null;
 
   return (
     <div className="fixed bottom-24 lg:bottom-6 right-4 lg:right-6 z-50">

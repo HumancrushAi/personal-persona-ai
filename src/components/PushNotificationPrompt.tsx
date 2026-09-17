@@ -19,8 +19,8 @@ export function PushNotificationPrompt() {
     setIsIos(iosDevice);
 
     // Check if user is logged in and push notifications permission is default
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) return;
 
       if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
 
@@ -90,12 +90,14 @@ export function PushNotificationPrompt() {
               <Sparkles className="h-3.5 w-3.5 text-primary" />
             </div>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-              Get instant messages, selfies, and live alerts from your companion directly on your phone!
+              Get instant messages, selfies, and live alerts from your companion directly on your
+              phone!
             </p>
 
             {isIos && (
               <p className="mt-1.5 text-[10px] text-amber-400/90 flex items-center gap-1">
-                <Smartphone className="h-3 w-3" /> iPhone tip: Tap Share → Add to Home Screen for best push performance.
+                <Smartphone className="h-3 w-3" /> iPhone tip: Tap Share → Add to Home Screen for
+                best push performance.
               </p>
             )}
 

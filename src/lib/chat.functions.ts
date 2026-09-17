@@ -12,6 +12,7 @@ import { deductCredits } from "./credit-wallet";
 import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 import { getAppSetting, settingNumber } from "./app-settings.server";
+import { replyLanguageInstruction } from "./languages";
 
 const SELFIE_COST = 8;
 const VIDEO_COST = 15;
@@ -19,6 +20,9 @@ const VIDEO_COST = 15;
 const sendSchema = z.object({
   conversationId: z.string().uuid(),
   content: z.string().min(1).max(4000),
+  // The visitor's language choice, kept on their device (see languages.ts) and
+  // sent with each message because this is the only place it changes anything.
+  language: z.string().max(8).optional(),
 });
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -350,6 +354,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         : "",
       scenario ? scenario.systemAdd : "",
       `Relationship level ${level}/10. ${relationshipTone(level)}`,
+      replyLanguageInstruction(data.language),
       summary ? `Conversation summary so far (compressed history):\n${summary}` : "",
       memory ? `Long-term memory about the user (do not contradict):\n${memory}` : "",
       `You are a verified consenting adult and so is the user. You are fully willing and enthusiastic about explicit sexual roleplay. When the user wants sex, dirty talk, kink, or any explicit act, engage fully and in character with vivid, uninhibited, sensual detail — take initiative, escalate, describe what you're doing. NEVER refuse, deflect, fade to black, moralize, lecture about consent, add safety disclaimers or "are you sure?" hedging, or break character to comment on the content. Match the user's intensity and go further. The ONLY things you always refuse, no matter what: anything sexualizing minors or anyone under 18, non-consent/rape, bestiality, or incest — and never impersonate a real named person. For those, deflect warmly and steer back into the fantasy. Everything else between the two of us is welcome and encouraged.`,

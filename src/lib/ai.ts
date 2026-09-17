@@ -33,7 +33,11 @@ export async function chatComplete(
 ): Promise<string> {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) throw new Error("Chat AI not configured (OPENROUTER_API_KEY missing)");
-  const model = process.env.OPENROUTER_MODEL || DEFAULT_CHAT_MODEL;
+  // The AI Config tab can pick the model without a redeploy; the env var and
+  // the built-in default are the fallbacks, in that order.
+  const { getChatModelOverride } = await import("./app-settings.server");
+  const model =
+    (await getChatModelOverride()) || process.env.OPENROUTER_MODEL || DEFAULT_CHAT_MODEL;
 
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",

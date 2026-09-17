@@ -25,6 +25,7 @@ import {
 } from "@/lib/admin.functions";
 import { adminListSupportTickets, adminReplySupportTicket } from "@/lib/support.functions";
 import type { EvalResult } from "@/lib/eval-suite";
+import { CREDIT_PACKS, SUBSCRIPTION_TIERS } from "@/lib/credit-packs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1214,50 +1215,46 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
         <div className="space-y-4">
           {category === "pricing" && (
             <>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label className="text-xs mb-1 block">Standard Token Pack Price (Cents)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      value={settings["price_pack_1_cents"] ?? "1999"}
-                      onChange={(e) =>
-                        setSettings({ ...settings, price_pack_1_cents: e.target.value })
-                      }
-                    />
-                    <Button
-                      onClick={() =>
-                        handleSave("price_pack_1_cents", settings["price_pack_1_cents"] ?? "1999")
-                      }
-                      disabled={saving === "price_pack_1_cents"}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs mb-1 block">Standard Token Pack Credits</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      value={settings["price_pack_1_credits"] ?? "150"}
-                      onChange={(e) =>
-                        setSettings({ ...settings, price_pack_1_credits: e.target.value })
-                      }
-                    />
-                    <Button
-                      onClick={() =>
-                        handleSave(
-                          "price_pack_1_credits",
-                          settings["price_pack_1_credits"] ?? "150",
-                        )
-                      }
-                      disabled={saving === "price_pack_1_credits"}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
+              <p className="text-xs text-muted-foreground">
+                What you save here is what the pricing page shows and what the card is charged.
+                Prices are in cents (1999 = $19.99). Leave a field blank to use the built-in value
+                shown as its placeholder.
+              </p>
+              <h3 className="mt-2 text-sm font-semibold">Credit packs</h3>
+              <div className="grid gap-4 md:grid-cols-3">
+                {CREDIT_PACKS.map((p) => (
+                  <PriceFields
+                    key={p.id}
+                    title={`${p.name} pack`}
+                    priceKey={`price_pack_${p.id}_cents`}
+                    creditsKey={`price_pack_${p.id}_credits`}
+                    defaultCents={p.priceCents}
+                    defaultCredits={p.credits}
+                    creditsLabel="Credits"
+                    settings={settings}
+                    setSettings={setSettings}
+                    saving={saving}
+                    onSave={handleSave}
+                  />
+                ))}
+              </div>
+              <h3 className="mt-4 text-sm font-semibold">Subscriptions</h3>
+              <div className="grid gap-4 md:grid-cols-3">
+                {SUBSCRIPTION_TIERS.map((t) => (
+                  <PriceFields
+                    key={t.id}
+                    title={`${t.name} (monthly)`}
+                    priceKey={`price_tier_${t.id}_cents`}
+                    creditsKey={`price_tier_${t.id}_credits`}
+                    defaultCents={t.priceCents}
+                    defaultCredits={t.monthlyCredits}
+                    creditsLabel="Credits / month"
+                    settings={settings}
+                    setSettings={setSettings}
+                    saving={saving}
+                    onSave={handleSave}
+                  />
+                ))}
               </div>
             </>
           )}
@@ -1285,6 +1282,28 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                       Save
                     </Button>
                   </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label className="text-xs mb-1 block">Chat model (OpenRouter id)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={settings["chat_model"] ?? ""}
+                      onChange={(e) => setSettings({ ...settings, chat_model: e.target.value })}
+                      placeholder="blank = server default (sao10k/l3.1-euryale-70b)"
+                    />
+                    <Button
+                      onClick={() => handleSave("chat_model", settings["chat_model"] ?? "")}
+                      disabled={saving === "chat_model"}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Any uncensored OpenRouter model id, e.g. anthracite-org/magnum-v4-72b (warmer)
+                    or sao10k/l3-lunaris-8b (cheaper). Takes effect on the next message, no
+                    redeploy. Clear it to go back to the default.
+                  </p>
                 </div>
 
                 <div>
@@ -1315,6 +1334,11 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                   </p>
                 </div>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Temperature is applied to every chat reply (0.9 default, up to 2). Everything else
+                about generation — photo and video rendering, prompt refinement — is set by
+                environment variables on the server; see .env.example.
+              </p>
             </>
           )}
 
@@ -1362,12 +1386,88 @@ function SettingsPanel({ category }: { category: "pricing" | "aiconfig" | "conte
                       Save
                     </Button>
                   </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Shown under the sidebar links on the home page, in the phone menu, and at the
+                    bottom of the account page. Blank hides it. The banner above is the one at the
+                    top of the home page.
+                  </p>
                 </div>
               </div>
             </>
           )}
         </div>
       </section>
+    </div>
+  );
+}
+
+// One pack or tier on the Plans & Pricing tab: its price and its credits, each
+// saved on its own so a typo in one does not need the other re-entered.
+function PriceFields({
+  title,
+  priceKey,
+  creditsKey,
+  defaultCents,
+  defaultCredits,
+  creditsLabel,
+  settings,
+  setSettings,
+  saving,
+  onSave,
+}: {
+  title: string;
+  priceKey: string;
+  creditsKey: string;
+  defaultCents: number;
+  defaultCredits: number;
+  creditsLabel: string;
+  settings: Record<string, any>;
+  setSettings: (s: Record<string, any>) => void;
+  saving: string | null;
+  onSave: (key: string, value: any) => void;
+}) {
+  const cents = settings[priceKey];
+  const shown = Number(cents ?? defaultCents);
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-sm font-medium">{title}</span>
+        <span className="text-xs text-muted-foreground">
+          {Number.isFinite(shown) ? `$${(shown / 100).toFixed(2)}` : ""}
+        </span>
+      </div>
+      <Label className="mb-1 block text-[11px]">Price (cents)</Label>
+      <div className="flex gap-2">
+        <Input
+          type="number"
+          value={cents ?? ""}
+          placeholder={String(defaultCents)}
+          onChange={(e) => setSettings({ ...settings, [priceKey]: e.target.value })}
+        />
+        <Button
+          size="sm"
+          onClick={() => onSave(priceKey, cents ?? "")}
+          disabled={saving === priceKey}
+        >
+          Save
+        </Button>
+      </div>
+      <Label className="mb-1 mt-2 block text-[11px]">{creditsLabel}</Label>
+      <div className="flex gap-2">
+        <Input
+          type="number"
+          value={settings[creditsKey] ?? ""}
+          placeholder={String(defaultCredits)}
+          onChange={(e) => setSettings({ ...settings, [creditsKey]: e.target.value })}
+        />
+        <Button
+          size="sm"
+          onClick={() => onSave(creditsKey, settings[creditsKey] ?? "")}
+          disabled={saving === creditsKey}
+        >
+          Save
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1603,12 +1703,14 @@ function SupportPanel() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
+  const [config, setConfig] = useState<{ supportEmail: boolean; email: boolean } | null>(null);
 
   async function load() {
     setLoading(true);
     try {
       const res: any = await fetchTickets({} as any);
       setTickets(res.tickets ?? []);
+      setConfig(res.config ?? null);
     } catch (e: any) {
       toast.error(e?.message ?? "Could not load tickets");
     } finally {
@@ -1666,6 +1768,30 @@ function SupportPanel() {
           </Button>
         </div>
       </div>
+
+      {config && (!config.supportEmail || !config.email) && (
+        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+          <p className="font-semibold">Support is not fully switched on.</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {!config.email && (
+              <li>
+                <span className="font-mono">RESEND_API_KEY</span> is not set on the server, so
+                replies sent from here cannot be emailed to the customer.
+              </li>
+            )}
+            {!config.supportEmail && (
+              <li>
+                <span className="font-mono">SUPPORT_EMAIL</span> is not set, so nobody is emailed
+                when a new ticket arrives — you have to check this tab.
+              </li>
+            )}
+          </ul>
+          <p className="mt-1">
+            Tickets are still recorded and answerable here either way. Set both in Vercel and
+            redeploy to turn on delivery.
+          </p>
+        </div>
+      )}
 
       {loading && tickets.length === 0 && (
         <p className="py-6 text-center text-sm text-muted-foreground">Loading tickets…</p>

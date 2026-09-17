@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Plus, Coins, Shield, Bell, LifeBuoy } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { mySupportTickets } from "@/lib/support.functions";
+import { NotificationsCard } from "@/components/NotificationsCard";
+import { useSystemStatus } from "@/hooks/use-app-setting";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/me")({
@@ -213,9 +215,24 @@ function MePage() {
           })}
         </div>
 
+        <NotificationsCard />
         <SupportThreads />
+        <SystemStatusLine />
       </section>
     </div>
+  );
+}
+
+// The admin's "System status" message (Platform Content tab). It was saved and
+// never shown anywhere; this is where it shows.
+function SystemStatusLine() {
+  const status = useSystemStatus();
+  if (!status) return null;
+  return (
+    <p className="mt-10 text-center text-[11px] text-muted-foreground">
+      <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 align-middle" />
+      {status}
+    </p>
   );
 }
 

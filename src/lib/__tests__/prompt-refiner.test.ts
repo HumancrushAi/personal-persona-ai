@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { refineMediaPrompt } from "../prompt-refiner.server";
+import { refineMediaPrompt, stripUnrequestedProps } from "../prompt-refiner.server";
 
 const subject = { gender: "female", ethnicity: "Italian", age: 26 };
 
@@ -70,6 +70,76 @@ describe("refineMediaPrompt", () => {
     process.env.XAI_API_KEY = "test";
     vi.stubGlobal("fetch", async () => new Response("nope", { status: 500 }));
     expect(await refineMediaPrompt("video", "dancing", subject)).toBeNull();
+  });
+});
+
+// "I only asked for pussy, not with a dildo." One of the three nude examples
+// the model was always shown had a dildo in it, and the model reproduced it on
+// a request that named no toy. The example is now shown only to a request
+// that asked for a toy, and a toy the request did not name is cut from the
+// answer regardless.
+describe("a toy nobody asked for", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  const answer =
+    "exact same woman as the reference image, completely nude, reclining against pillows, smooth matte silicone dildo inserted into her pussy, her fingers on its base, bare breasts, plain white sheets, soft window daylight, candid raw photograph with visible pores";
+
+  function captureSystemPrompt() {
+    const seen: string[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: any) => {
+      seen.push(JSON.parse(init.body).messages[0].content);
+      return new Response(JSON.stringify({ choices: [{ message: { content: answer } }] }), {
+        status: 200,
+      });
+    });
+    return seen;
+  }
+
+  it("is not shown to a request that named none", async () => {
+    process.env.XAI_API_KEY = "test";
+    const seen = captureSystemPrompt();
+    await refineMediaPrompt("photo", "send me a picture of your pussy", subject);
+    // The rules still name "dildo" as a word to use when the user does; it is
+    // the worked EXAMPLE of one that must not be there.
+    expect(seen[0]).not.toMatch(/silicone dildo inserted/i);
+  });
+
+  it("is shown to a request that asked for one", async () => {
+    process.env.XAI_API_KEY = "test";
+    const seen = captureSystemPrompt();
+    await refineMediaPrompt("photo", "a dildo in your pussy", subject);
+    expect(seen[0]).toMatch(/dildo inserted/i);
+  });
+
+  it("is cut from the answer when the request named none", async () => {
+    process.env.XAI_API_KEY = "test";
+    captureSystemPrompt();
+    const out = await refineMediaPrompt("photo", "send me a picture of your pussy", subject);
+    expect(out?.[0]).not.toMatch(/dildo|silicone/i);
+    expect(out?.[0]).toMatch(/bare breasts/);
+    expect(out?.[0]).toMatch(/window daylight/);
+  });
+
+  it("is kept when the request asked for it", async () => {
+    process.env.XAI_API_KEY = "test";
+    captureSystemPrompt();
+    const out = await refineMediaPrompt("photo", "a dildo in your pussy", subject);
+    expect(out?.[0]).toMatch(/dildo inserted/);
+  });
+
+  it("strips by fragment, on its own", () => {
+    const p = stripUnrequestedProps(
+      "completely nude, holding a pink vibrator against her clit, lying back on the bed, warm lamplight, candid raw photograph with real skin texture",
+      "show me your pussy",
+    );
+    expect(p).toBe(
+      "completely nude, lying back on the bed, warm lamplight, candid raw photograph with real skin texture",
+    );
   });
 });
 

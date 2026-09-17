@@ -15,6 +15,12 @@
 // reason a paid request fails.
 
 import type { GenderKind } from "./anatomy";
+import { TOY_VOCAB } from "./props";
+
+// Whether the user asked for a toy at all. Read from the REQUEST, and the only
+// thing that decides whether the model is shown a toy example, told how to
+// place one, or allowed to keep one in its answer.
+const TOY_RE = new RegExp(String.raw`\b(?:${TOY_VOCAB})\b`, "i");
 
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 
@@ -26,11 +32,18 @@ const XAI_URL = "https://api.x.ai/v1/chat/completions";
 // nothing like it, which is how a brunette came back blonde. Examples teach
 // shape, and whatever is in them gets reproduced, so the appearance is gone from
 // them entirely. Do not put hair, skin or eye colour back.
-const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm round breasts set high on her chest, nipples level with the middle of her upper arms and pointing forward, small defined areolae, smoothly shaved photorealistic pussy, soft plump outer labia meeting in a neat closed cleft, small clitoral hood at the top, reclining back against pillows propped up on her elbows, back gently arched, legs open, on a bed with plain white sheets, soft daylight from a window beside her, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
-
-exact same woman as the reference image, identical face, hair and skin, completely nude, reclining back against pillows with her shoulders raised, knees up and thighs open, smooth matte silicone dildo inserted into her pussy and angled down between her open thighs, most of the shaft hidden inside her with only the flared base showing, her fingers closed on that base and her wrist against her inner thigh, labia parting and pressing around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees with her face in the upper third, plain white sheets, soft window daylight, authentic skin texture with visible pores, candid DSLR photograph, raw photography
+const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm round breasts set high on her chest, nipples level with the middle of her upper arms and pointing forward, small defined areolae, smoothly shaved photorealistic pussy, soft plump outer labia meeting in a neat closed cleft, small clitoral hood at the top, reclining back against pillows propped up on her elbows, back gently arched, legs open, her hands resting on her inner thighs, on a bed with plain white sheets, soft daylight from a window beside her, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
 
 exact same woman as the reference image, identical face, hair and skin, completely nude, sitting upright on the edge of the bed with her shoulders back and her knees apart, framed from the top of her head down to her knees with her face clearly visible in the upper third, natural firm round breasts set high on her chest with erect nipples pointing forward, smoothly shaved pussy with a neat closed cleft and a small clitoral hood, her hands resting on her thighs, plain white sheets, soft daylight from the side, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+
+// Shown ONLY when the user asked for a toy.
+//
+// This sat in NUDE_EXAMPLES, sent on every nude request, and "send me a
+// picture of your pussy" came back with a dildo in it. Examples are the
+// strongest instruction in this file — the model reproduces what it is shown —
+// so an example with a toy in it is an invitation to add one, whatever the
+// request said. Same reasoning as POV_EXAMPLE below.
+const TOY_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, reclining back against pillows with her shoulders raised, knees up and thighs open, smooth matte silicone dildo inserted into her pussy and angled down between her open thighs, most of the shaft hidden inside her with only the flared base showing, her fingers closed on that base and her wrist against her inner thigh, labia parting and pressing around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees with her face in the upper third, plain white sheets, soft window daylight, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
 
 // Shown ONLY when the user actually asked for a close-up or a POV shot.
 //
@@ -151,7 +164,8 @@ ${
 - the explicit act, in the user's own vocabulary: tits, pussy, ass, nipples, cock, dildo. Do not euphemise
 - the POSTURE, which you must INFER from the act rather than wait to be told. Always name a posture. Fingering or masturbating means reclining back against pillows propped up on her elbows with legs spread, or sitting with knees parted; riding means straddling upright, knees on the bed; twerking or from-behind means on all fours or bent over at the waist presenting; male masturbation means holding or stroking his penis. Choose standing only when the user asked for it ("standing in the shower")
 - keep the torso UPRIGHT or PROPPED UP whenever the act allows it: sitting, kneeling upright, or reclining against pillows with her shoulders raised, her back gently arched and her shoulders back so her chest is lifted. Lying flat on her back or leaning forward are for requests that name those positions
-- any prop or sex toy: state WHERE IT IS and HOW MUCH OF IT SHOWS. For an inserted toy write it as angled down along the line between her open thighs, most of the shaft hidden inside her, only the flared base visible with her fingers closed on it and her wrist against her inner thigh. That geometry is what makes the object read as a sex toy at the right scale. Its material and exact size are appended separately, so spend your words on placement and contact
+- OBJECTS: the only objects in the picture are the ones the user named. A request that names no toy is a picture of her alone, her hands resting on her thighs, the sheets or her own body. Adding a toy, a second person or any object the user did not ask for is the worst thing you can do here — it is a different picture from the one they paid for
+- any prop or sex toy THE USER NAMED: state WHERE IT IS and HOW MUCH OF IT SHOWS. For an inserted toy write it as angled down along the line between her open thighs, most of the shaft hidden inside her, only the flared base visible with her fingers closed on it and her wrist against her inner thigh. That geometry is what makes the object read as a sex toy at the right scale. Its material and exact size are appended separately, so spend your words on placement and contact
 - where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
 ${groinFocus ? "- her pussy is the FOCAL POINT of the photograph: in the centre of the frame, in sharp focus, a neat closed cleft between soft plump outer labia with the small clitoral hood at the top, the skin smooth and even, the light falling across it so its shape reads\n" : ""}${
   nude
@@ -171,6 +185,7 @@ function systemFor(
   closeUp: boolean,
   subject: SubjectKind,
   groinFocus = false,
+  toyAsked = false,
 ): string {
   // Examples are the strongest instruction in this file, so a companion is only
   // ever shown examples of a body like theirs. A trans man used to be shown two
@@ -184,11 +199,11 @@ function systemFor(
   };
   const base = EXAMPLES_FOR[subject];
   // The POV example is of a vulva between open thighs, so it only helps someone
-  // who has one.
-  const nudeExamples =
-    closeUp && subject !== "male" && subject !== "trans-female"
-      ? `${POV_EXAMPLE}\n\n${base}`
-      : base;
+  // who has one — and the toy example is shown only to a request that named a
+  // toy, for the reason on TOY_EXAMPLE.
+  const hasVulva = subject !== "male" && subject !== "trans-female";
+  const withToy = toyAsked && hasVulva ? `${TOY_EXAMPLE}\n\n${base}` : base;
+  const nudeExamples = closeUp && hasVulva ? `${POV_EXAMPLE}\n\n${withToy}` : withToy;
   const examples = nude ? nudeExamples : CLOTHED_EXAMPLES;
   if (kind === "photo") {
     // 110-170, up from 90-150. The bullet list above is long and roughly 60 of
@@ -250,6 +265,24 @@ export function stripNegations(prompt: string): string {
   return cleaned.length >= 60 ? cleaned : prompt;
 }
 
+// Belt and braces on the OBJECTS rule, the same way stripNegations backs the
+// negation rule: a toy the request did not name is removed from the answer,
+// fragment by fragment, so it cannot reach the renderer however the model
+// drifted. The floor mirrors stripNegations — an answer that was mostly toy
+// is worse stripped than replaced, and falls through to the builder.
+export function stripUnrequestedProps(prompt: string, userRequest: string): string {
+  if (TOY_RE.test(userRequest)) return prompt;
+  const fragment = new RegExp(String.raw`(?:^|,)\s*[^,]*\b(?:${TOY_VOCAB})\b[^,]*`, "gi");
+  const cleaned = prompt
+    .replace(fragment, ",")
+    .replace(/\s*,\s*(?:,\s*)+/g, ", ")
+    .replace(/^\s*,\s*/, "")
+    .replace(/\s*,\s*$/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned.length >= 60 ? cleaned : prompt;
+}
+
 // A refusal that starts mid-sentence, or a prompt that came back scrubbed of
 // everything explicit, is worse than no refined prompt at all: it silently
 // replaces the keyword builder with a description of a clothed woman and the
@@ -273,6 +306,7 @@ async function refineMediaWithOpenRouter(
   closeUp: boolean,
   subjectKind: SubjectKind,
   groinFocus: boolean,
+  toyAsked: boolean,
 ): Promise<string[] | null> {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return null;
@@ -295,7 +329,7 @@ async function refineMediaWithOpenRouter(
         messages: [
           {
             role: "system",
-            content: systemFor(kind, scenes, nude, closeUp, subjectKind, groinFocus),
+            content: systemFor(kind, scenes, nude, closeUp, subjectKind, groinFocus, toyAsked),
           },
           { role: "user", content: `Subject: a ${subject}. Request: ${userRequest}` },
         ],
@@ -307,12 +341,20 @@ async function refineMediaWithOpenRouter(
     const raw = (json.choices?.[0]?.message?.content ?? "").trim();
     if (!raw) return null;
 
-    if (kind === "photo") return usableRefinement(raw, nude, 60) ? [stripNegations(raw)] : null;
+    if (kind === "photo")
+      return usableRefinement(raw, nude, 60)
+        ? [stripUnrequestedProps(stripNegations(raw), userRequest)]
+        : null;
 
     if (!usableRefinement(raw, nude, 40)) return null;
     const parts = raw
       .split(/\n+/)
-      .map((l: string) => stripNegations(l.replace(/^\s*\d+[.)]\s*/, "").trim()))
+      .map((l: string) =>
+        stripUnrequestedProps(
+          stripNegations(l.replace(/^\s*\d+[.)]\s*/, "").trim()),
+          userRequest,
+        ),
+      )
       .filter((l: string) => l.length > 40);
 
     if (!parts.length) return null;
@@ -359,6 +401,7 @@ export async function refineMediaPrompt(
   // it needs to render. Photos only: a clip cropped chin-to-knees is a separate
   // decision, and videos are not what was reported as bad.
   const groinFocus = kind === "photo" && nude && a.hasVulva && mentionsPart(req, "vulva");
+  const toyAsked = TOY_RE.test(req);
   const noun =
     a.kind === "trans-female"
       ? "transgender woman (feminine body with firm perky breasts and an anatomically correct penis)"
@@ -391,7 +434,7 @@ export async function refineMediaPrompt(
           messages: [
             {
               role: "system",
-              content: systemFor(kind, scenes, nude, closeUp, subjectKind, groinFocus),
+              content: systemFor(kind, scenes, nude, closeUp, subjectKind, groinFocus, toyAsked),
             },
             { role: "user", content: `Subject: a ${subject}. Request: ${req}` },
           ],
@@ -404,12 +447,17 @@ export async function refineMediaPrompt(
         if (kind === "photo") {
           if (usableRefinement(raw, nude, 60)) {
             clearTimeout(timer);
-            return [stripNegations(raw)];
+            return [stripUnrequestedProps(stripNegations(raw), req)];
           }
         } else if (usableRefinement(raw, nude, 40)) {
           const parts = raw
             .split(/\n+/)
-            .map((l: string) => stripNegations(l.replace(/^\s*\d+[.)]\s*/, "").trim()))
+            .map((l: string) =>
+              stripUnrequestedProps(
+                stripNegations(l.replace(/^\s*\d+[.)]\s*/, "").trim()),
+                req,
+              ),
+            )
             .filter((l: string) => l.length > 40);
 
           if (parts.length > 0) {
@@ -435,6 +483,7 @@ export async function refineMediaPrompt(
     closeUp,
     subjectKind,
     groinFocus,
+    toyAsked,
   );
 }
 

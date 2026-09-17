@@ -48,6 +48,8 @@ export type PushStatus = {
   permission: NotificationPermission | "unsupported";
   serviceWorker: boolean;
   subscribed: boolean;
+  /** Tail of this device's subscription endpoint, to match against the account. */
+  endpointTail: string | null;
 };
 
 // Where this device stands, for the diagnostics card. Read-only: it registers
@@ -58,6 +60,7 @@ export async function pushStatus(): Promise<PushStatus> {
     permission: "unsupported",
     serviceWorker: false,
     subscribed: false,
+    endpointTail: null,
   };
   if (typeof window === "undefined") return none;
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window))
@@ -70,32 +73,67 @@ export async function pushStatus(): Promise<PushStatus> {
       permission: Notification.permission,
       serviceWorker: Boolean(reg),
       subscribed: Boolean(sub),
+      endpointTail: sub ? sub.endpoint.slice(-24) : null,
     };
   } catch {
     return { ...none, supported: true, permission: Notification.permission };
   }
 }
 
+// Put this device's subscription on the account, whether or not one is there.
+//
+// The card's "This device is subscribed" only ever meant the browser holds a
+// subscription. If the row for it was saved under another account, pruned, or
+// never written, the server sends to nothing on this device while every check
+// still shows green. This resubscribes if needed and saves what it finds.
+export async function reRegisterPush(): Promise<PushResult> {
+  if (typeof window === "undefined") return "unsupported";
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window))
+    return "unsupported";
+  if (Notification.permission !== "granted") return enablePush();
+  const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+  if (!vapid) return "not-configured";
+  const reg = await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.ready;
+  const sub =
+    (await reg.pushManager.getSubscription()) ??
+    (await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapid) as BufferSource,
+    }));
+  const json: any = sub.toJSON();
+  await savePushSubscription({
+    data: { endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth },
+  });
+  return "enabled";
+}
+
+export type LocalTestResult = "shown" | "dropped" | "blocked";
+
 // A notification shown by this device's own worker, with no server involved.
-// If THIS does not appear, the phone is hiding notifications for the browser
-// and nothing on the server can change that. Returns false when there is no
-// permission or no worker to show it with.
-export async function showLocalTestNotification(): Promise<boolean> {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return false;
-  if (Notification.permission !== "granted") return false;
+//
+// "shown" means the browser lists it as displayed — so if nothing appeared,
+// the operating system is hiding this browser's notifications, and nothing on
+// the server can change that. "dropped" means the browser itself refused to
+// display it, which is a site or browser notification setting.
+export async function showLocalTestNotification(): Promise<LocalTestResult> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return "blocked";
+  if (Notification.permission !== "granted") return "blocked";
   try {
     const reg = await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
     await reg.showNotification("Notifications work on this device 💌", {
-      body: 'This one came from your phone. Now try "Send me a real push".',
+      body: 'This one came from this device. Now try "Send me a real push".',
       icon: "/favicon.png",
       badge: "/favicon.png",
       tag: "local-test",
       data: { url: "/me" },
     });
-    return true;
+    // What the browser thinks it is showing right now.
+    const shown = await reg.getNotifications({ tag: "local-test" });
+    return shown.length ? "shown" : "dropped";
   } catch {
-    return false;
+    return "dropped";
   }
 }
 

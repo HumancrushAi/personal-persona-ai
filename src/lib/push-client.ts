@@ -1,4 +1,4 @@
-import { savePushSubscription } from "./notifications.functions";
+import { savePushSubscription, sendTestPush } from "./notifications.functions";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -37,6 +37,9 @@ export async function enablePush(): Promise<PushResult> {
   await savePushSubscription({
     data: { endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth },
   });
+  // Confirmation that lands on the device. Only on this explicit path — the
+  // silent auto-subscribe below runs on every page load.
+  sendTestPush().catch(() => {});
   return "enabled";
 }
 

@@ -87,6 +87,15 @@ function MePage() {
   return (
     <div className="min-h-screen">
       <SiteHeader
+        mobileRight={
+          <Link
+            to="/credits"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1.5 text-xs font-medium ring-1 ring-white/10"
+          >
+            <Coins className="h-3.5 w-3.5 text-primary" />{" "}
+            {(balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0)}
+          </Link>
+        }
         right={
           <>
             <Link

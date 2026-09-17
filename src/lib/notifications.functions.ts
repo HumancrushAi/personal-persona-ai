@@ -24,3 +24,20 @@ export const savePushSubscription = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// A real notification, sent to every device this user has turned push on for,
+// straight after they turn it on. The browser saying "allowed" proves nothing
+// about delivery — the phone's own settings and battery manager decide that —
+// so the only honest confirmation is one that actually arrives.
+export const sendTestPush = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { sendPushToUser } = await import("./notify");
+    const delivered = await sendPushToUser(context.userId, {
+      title: "Notifications are on 💌",
+      body: "This is how she'll let you know she's messaged you.",
+      url: "/me",
+      tag: "push-test",
+    });
+    return { delivered };
+  });

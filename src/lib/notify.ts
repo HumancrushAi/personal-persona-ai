@@ -13,37 +13,63 @@ function ensureVapid() {
 }
 
 export type PushSub = { endpoint: string; p256dh: string; auth: string };
-export type PushPayload = { title: string; body: string; url?: string };
+export type PushPayload = {
+  title: string;
+  body: string;
+  url?: string;
+  /** Same tag replaces the previous notification instead of stacking. */
+  tag?: string;
+};
+
+// A day: a "she sent you a photo" that turns up next week is noise.
+const PUSH_TTL_SECONDS = 24 * 60 * 60;
 
 // Throws a WebPushError with statusCode on failure (410/404 = dead subscription).
+//
+// urgency "high" is what makes this pop up on a phone. web-push sends "normal"
+// by default, which FCM delivers as a normal-priority message — and Android
+// holds those while the phone is idle, hardest of all on Xiaomi/Redmi battery
+// management. The push service answers 201 either way, so "sent" in the admin
+// broadcast only ever meant accepted, never shown.
 export async function sendPush(sub: PushSub, payload: PushPayload) {
   ensureVapid();
   await webpush.sendNotification(
     { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
     JSON.stringify(payload),
+    { TTL: PUSH_TTL_SECONDS, urgency: "high" },
   );
 }
 
-// Helper to send a push notification to all subscriptions belonging to a user.
-export async function sendPushToUser(userId: string, payload: PushPayload) {
+// Every device a user has turned notifications on for, in parallel. Returns how
+// many accepted it. Never throws: a push is always secondary to whatever
+// triggered it. Dead subscriptions (410/404) are pruned on the way.
+export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: subs } = await supabaseAdmin
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth")
       .eq("user_id", userId);
-    for (const s of subs ?? []) {
-      try {
-        await sendPush(s as any, payload);
-      } catch (e: any) {
-        const code = String(e?.statusCode ?? "");
-        if (code === "410" || code === "404") {
-          await supabaseAdmin.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+    const results = await Promise.all(
+      (subs ?? []).map(async (s) => {
+        try {
+          await sendPush(s as PushSub, payload);
+          return true;
+        } catch (e: any) {
+          const code = String(e?.statusCode ?? "");
+          if (code === "410" || code === "404") {
+            await supabaseAdmin.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+          } else {
+            console.error("sendPushToUser failed:", code, e?.body ?? e?.message);
+          }
+          return false;
         }
-      }
-    }
+      }),
+    );
+    return results.filter(Boolean).length;
   } catch (e) {
-    console.debug("sendPushToUser best-effort error:", e);
+    console.error("sendPushToUser error:", e);
+    return 0;
   }
 }
 

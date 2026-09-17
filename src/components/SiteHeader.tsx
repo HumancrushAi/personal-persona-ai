@@ -31,7 +31,16 @@ import { toast } from "sonner";
 
 // One header used across the whole site so nav + branding are consistent.
 // `right` lets account pages append their own actions (credits, sign out, …).
-export function SiteHeader({ right }: { right?: ReactNode }) {
+// On a phone those move into the menu, which has no room for a live value like
+// the credit balance — `mobileRight` is the one small thing that stays beside
+// the menu button.
+export function SiteHeader({
+  right,
+  mobileRight,
+}: {
+  right?: ReactNode;
+  mobileRight?: ReactNode;
+}) {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [open, setOpen] = useState(false);
@@ -114,7 +123,7 @@ export function SiteHeader({ right }: { right?: ReactNode }) {
 
         {/* Mobile Navigation Controls */}
         <div className="flex items-center gap-1.5 md:hidden shrink-0">
-
+          {mobileRight}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="tap-exempt h-9 w-9 min-w-0 rounded-full">

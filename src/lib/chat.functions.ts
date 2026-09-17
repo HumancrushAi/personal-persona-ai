@@ -509,17 +509,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       })
       .eq("id", data.conversationId);
 
-    // Send automated push notification for companion reply
+    // Her reply as a push, for when the user has put the phone down while she
+    // "types". Awaited: a serverless function can be frozen the moment it
+    // returns, and an unawaited send was the one most likely never to leave.
+    // The service worker drops it when this chat is already on screen, and the
+    // tag makes a burst of replies replace each other rather than stack.
     try {
       const { sendPushToUser } = await import("@/lib/notify");
       const nick = p.nickname ?? "She";
-      const title = `${nick} 💬`;
-      const body = reply.slice(0, 120);
-      sendPushToUser(userId, {
-        title,
-        body,
+      await sendPushToUser(userId, {
+        title: `${nick} 💬`,
+        body: reply.slice(0, 120),
         url: `/chat/${data.conversationId}`,
-      }).catch(() => {});
+        tag: `chat-${data.conversationId}`,
+      });
     } catch {
       /* push best-effort */
     }

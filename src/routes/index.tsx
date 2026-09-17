@@ -518,7 +518,7 @@ function Landing() {
                   <Button
                     asChild
                     size="sm"
-                    className="tap-exempt hidden xs:inline-flex h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow min-w-0"
+                    className="tap-exempt hidden min-[360px]:inline-flex h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow min-w-0"
                   >
                     <Link to="/auth">Sign Up</Link>
                   </Button>

@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { sendChatMessage } from "@/lib/chat.functions";
 import { readPreferredLanguage } from "@/lib/languages";
+import { refreshTesterCredits } from "@/lib/tester.functions";
 import {
   generateSelfie,
   generateVoiceNote,
@@ -112,6 +113,7 @@ function ChatPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const send = useServerFn(sendChatMessage);
+  const refreshTester = useServerFn(refreshTesterCredits);
   const selfie = useServerFn(generateSelfie);
   const voiceFn = useServerFn(generateVoiceNote);
   const requestVideoFn = useServerFn(requestVideo);
@@ -290,6 +292,8 @@ function ChatPage() {
     queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return null;
+      // Tester accounts are refilled before the balance is shown.
+      await refreshTester().catch(() => {});
       const { data } = await supabase
         .from("credit_balances")
         .select("free_messages_remaining, paid_credits")

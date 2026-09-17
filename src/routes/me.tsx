@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Plus, Coins, Shield, Bell, LifeBuoy } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { mySupportTickets } from "@/lib/support.functions";
+import { refreshTesterCredits } from "@/lib/tester.functions";
 import { NotificationsCard } from "@/components/NotificationsCard";
 import { SupportContact } from "@/components/SupportContact";
 import { useSystemStatus } from "@/hooks/use-app-setting";
@@ -49,6 +50,8 @@ function MePage() {
     },
   });
 
+  const refreshTester = useServerFn(refreshTesterCredits);
+
   const { data: isAdmin } = useQuery({
     enabled: !!userId,
     queryKey: ["is-admin", userId],
@@ -62,6 +65,9 @@ function MePage() {
     enabled: !!userId,
     queryKey: ["balance"],
     queryFn: async () => {
+      // A tester account is refilled before its balance is shown, so the
+      // number here is never the one from before the refill.
+      await refreshTester().catch(() => {});
       const { data } = await supabase
         .from("credit_balances")
         .select("free_messages_remaining, paid_credits")

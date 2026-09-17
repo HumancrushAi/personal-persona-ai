@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "./ui/button";
 import { submitSupportTicket } from "@/lib/support.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { SUPPORT_EMAIL, supportMailto } from "@/lib/support-contact";
 
 // Anything on the page can open the support form — the Contact link in the
 // sidebar, "Help & support" in the phone menu — by dispatching this. The widget
@@ -131,7 +132,11 @@ export function SupportWidget({ floating = true }: { floating?: boolean }) {
               </div>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 We reply to <span className="text-white">{email}</span>, usually within a day. Check
-                your spam folder if nothing arrives.
+                your spam folder if nothing arrives, or write to{" "}
+                <a href={supportMailto()} className="text-primary hover:underline">
+                  {SUPPORT_EMAIL}
+                </a>
+                .
               </p>
               <Button
                 onClick={() => setSentRef(null)}
@@ -194,10 +199,10 @@ export function SupportWidget({ floating = true }: { floating?: boolean }) {
               </Button>
 
               <a
-                href="mailto:support@humancrush.com"
+                href={supportMailto()}
                 className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground transition-colors hover:text-primary"
               >
-                <Mail className="h-3.5 w-3.5" /> Or email us directly
+                <Mail className="h-3.5 w-3.5" /> Or email {SUPPORT_EMAIL}
               </a>
             </>
           )}

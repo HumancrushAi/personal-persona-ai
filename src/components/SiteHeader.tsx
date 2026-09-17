@@ -21,11 +21,13 @@ import {
   LogIn,
   HelpCircle,
   LifeBuoy,
+  Mail,
 } from "lucide-react";
 import { enablePush } from "@/lib/push-client";
 import { toast } from "sonner";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { openSupport } from "@/components/SupportWidget";
+import { SUPPORT_EMAIL, supportMailto } from "@/lib/support-contact";
 import { useSystemStatus } from "@/hooks/use-app-setting";
 
 // Whether this session's user is an admin, asked once per page load rather than
@@ -249,6 +251,19 @@ export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRi
                 >
                   <LifeBuoy className="h-4 w-4 text-primary" /> Help &amp; support
                 </button>
+                <a
+                  href={supportMailto()}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-white/5"
+                >
+                  <Mail className="h-4 w-4 text-primary" />
+                  <span className="min-w-0">
+                    <span className="block">Email support</span>
+                    <span className="block truncate text-[11px] font-normal text-white/50">
+                      {SUPPORT_EMAIL}
+                    </span>
+                  </span>
+                </a>
 
                 {authed && (
                   <button

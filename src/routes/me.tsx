@@ -10,6 +10,7 @@ import { Heart, MessageCircle, Plus, Coins, Shield, Bell, LifeBuoy } from "lucid
 import { useServerFn } from "@tanstack/react-start";
 import { mySupportTickets } from "@/lib/support.functions";
 import { NotificationsCard } from "@/components/NotificationsCard";
+import { SupportContact } from "@/components/SupportContact";
 import { useSystemStatus } from "@/hooks/use-app-setting";
 import { toast } from "sonner";
 
@@ -216,6 +217,9 @@ function MePage() {
         </div>
 
         <NotificationsCard />
+        <div className="mt-10">
+          <SupportContact card />
+        </div>
         <SupportThreads />
         <SystemStatusLine />
       </section>

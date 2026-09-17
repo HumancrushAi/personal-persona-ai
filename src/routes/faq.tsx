@@ -3,6 +3,7 @@ import { FAQS } from "@/components/FAQSection";
 import { useState } from "react";
 import { ChevronDown, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SupportContact } from "@/components/SupportContact";
 
 export const Route = createFileRoute("/faq")({
   ssr: false,
@@ -80,7 +81,11 @@ function FAQPage() {
           })}
         </div>
 
-        <div className="mt-12 rounded-2xl border border-white/10 bg-gradient-to-br from-primary/15 to-transparent p-8 text-center">
+        <div className="mt-12">
+          <SupportContact card />
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-white/10 bg-gradient-to-br from-primary/15 to-transparent p-8 text-center">
           <h2 className="font-display text-2xl font-semibold md:text-3xl">
             Ready to meet your crush?
           </h2>

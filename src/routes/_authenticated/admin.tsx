@@ -1703,7 +1703,7 @@ function SupportPanel() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
-  const [config, setConfig] = useState<{ supportEmail: boolean; email: boolean } | null>(null);
+  const [config, setConfig] = useState<{ inbox: string; email: boolean } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -1769,27 +1769,25 @@ function SupportPanel() {
         </div>
       </div>
 
-      {config && (!config.supportEmail || !config.email) && (
-        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-          <p className="font-semibold">Support is not fully switched on.</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4">
-            {!config.email && (
-              <li>
-                <span className="font-mono">RESEND_API_KEY</span> is not set on the server, so
-                replies sent from here cannot be emailed to the customer.
-              </li>
-            )}
-            {!config.supportEmail && (
-              <li>
-                <span className="font-mono">SUPPORT_EMAIL</span> is not set, so nobody is emailed
-                when a new ticket arrives — you have to check this tab.
-              </li>
-            )}
-          </ul>
-          <p className="mt-1">
-            Tickets are still recorded and answerable here either way. Set both in Vercel and
-            redeploy to turn on delivery.
+      {config && (
+        <div
+          className={`mb-4 rounded-xl border p-3 text-xs ${
+            config.email
+              ? "border-white/10 bg-white/5 text-muted-foreground"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+          }`}
+        >
+          <p>
+            New tickets are emailed to <span className="font-mono text-white">{config.inbox}</span>{" "}
+            and pushed to every admin with notifications on. The same address is shown on the site,
+            so people can also write to it directly.
           </p>
+          {!config.email && (
+            <p className="mt-1 font-semibold">
+              RESEND_API_KEY is not set on the server: the alert email and replies sent from here
+              cannot go out until it is. Tickets are still recorded, and the push still fires.
+            </p>
+          )}
         </div>
       )}
 

@@ -13,6 +13,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { SUPPORT_EMAIL } from "./support-contact";
 
 // support_tickets and support_messages are newer than the generated
 // src/integrations/supabase/types.ts, so the typed client rejects both table
@@ -23,11 +24,31 @@ function supportDb(mod: { supabaseAdmin: unknown }): any {
   return mod.supabaseAdmin;
 }
 
-// Delivery is best-effort and never blocks the ticket: an unset SUPPORT_EMAIL or
-// a Resend outage must not lose the message the user typed. It is stored first
-// and notified second, so a failed send costs a notification, not a ticket.
-function supportInbox(): string | null {
-  return process.env.SUPPORT_EMAIL || null;
+// Delivery is best-effort and never blocks the ticket: a Resend outage must
+// not lose the message the user typed. It is stored first and notified second,
+// so a failed send costs a notification, not a ticket.
+//
+// The inbox is the address on the site (support-contact.ts) unless the env
+// overrides it — the same address a visitor sees, so an email sent directly
+// and a ticket sent from the form land in one place.
+function supportInbox(): string {
+  return process.env.SUPPORT_EMAIL || SUPPORT_EMAIL;
+}
+
+// Every admin's devices, so a new ticket buzzes a phone as well as landing in
+// the inbox. Best-effort like the email: nothing here can fail the ticket.
+async function pushAdmins(
+  db: any,
+  payload: { title: string; body: string; url: string; tag: string },
+) {
+  try {
+    const { data: admins } = await db.from("user_roles").select("user_id").eq("role", "admin");
+    if (!admins?.length) return;
+    const { sendPushToUser } = await import("./notify");
+    await Promise.all(admins.map((a: { user_id: string }) => sendPushToUser(a.user_id, payload)));
+  } catch (e: any) {
+    console.error("[support] admin push failed:", e?.message ?? e);
+  }
 }
 
 function siteUrl(): string {
@@ -138,7 +159,7 @@ export const submitSupportTicket = createServerFn({ method: "POST" })
     // ticket itself was stored — see the guard below.
     const inbox = supportInbox();
     let emailed = false;
-    if (inbox) {
+    {
       try {
         const { sendEmail } = await import("./notify");
         await sendEmail(
@@ -163,6 +184,14 @@ export const submitSupportTicket = createServerFn({ method: "POST" })
         console.error("[support] alert email failed:", e?.message ?? e);
       }
     }
+
+    // And the phone. The email is the record; this is what gets it seen.
+    await pushAdmins(db, {
+      title: `New support ticket #${ref}`,
+      body: `${data.name ? `${data.name} · ` : ""}${data.email}: ${data.message.slice(0, 100)}`,
+      url: "/admin?tab=support",
+      tag: `ticket-${ref}`,
+    });
 
     // Neither stored nor sent means the message is simply gone. Telling the
     // visitor it went through would be a lie, and they would wait for a reply
@@ -225,7 +254,7 @@ export const adminListSupportTickets = createServerFn({ method: "GET" })
     // two env vars that deliver it: without SUPPORT_EMAIL nobody is told a
     // ticket arrived, and without RESEND_API_KEY no reply can be sent.
     const config = {
-      supportEmail: Boolean(process.env.SUPPORT_EMAIL),
+      inbox: supportInbox(),
       email: Boolean(process.env.RESEND_API_KEY),
     };
 
@@ -305,7 +334,7 @@ export const adminReplySupportTicket = createServerFn({ method: "POST" })
         </div>`,
         // Reply-To is the support inbox, so the customer's reply reaches a human
         // rather than the no-reply sending domain.
-        supportInbox() ?? undefined,
+        supportInbox(),
       );
     } catch (e: any) {
       errors.push(`email: ${e.message ?? "failed"}`);

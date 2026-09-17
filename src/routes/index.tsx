@@ -32,6 +32,7 @@ import {
 import { companionImage } from "@/lib/companion-images";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { openSupport } from "@/components/SupportWidget";
+import { SupportContact } from "@/components/SupportContact";
 import { useSystemStatus } from "@/hooks/use-app-setting";
 import {
   companionForReel,
@@ -470,6 +471,9 @@ function Landing() {
             <Link to="/affiliate" className="hover:text-white hover:underline">
               Affiliate
             </Link>
+          </div>
+          <div className="px-3">
+            <SupportContact />
           </div>
           <SystemStatusNote />
         </div>

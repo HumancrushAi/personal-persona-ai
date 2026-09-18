@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -10,37 +10,22 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
-import { Shield } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { AffiliateTracker } from "../components/AffiliateTracker";
-import { supabase } from "../integrations/supabase/client";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
-// Subtle, admin-only shortcut to the console. Renders nothing for everyone else.
-function AdminFooterLink() {
-  const { data: isAdmin } = useQuery({
-    queryKey: ["root-is-admin"],
-    queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return false;
-      const { data } = await supabase.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
-      return !!data;
-    },
-    staleTime: 60_000,
-  });
-  if (!isAdmin) return null;
-  return (
-    <footer className="flex justify-center pb-20 pt-6">
-      <Link
-        to="/admin"
-        className="inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-white/10 backdrop-blur transition hover:text-primary"
-      >
-        <Shield className="h-3.5 w-3.5" /> Admin
-      </Link>
-    </footer>
-  );
-}
+// The admin shortcut that used to live here is gone. It was mounted at the root,
+// so it rendered on EVERY route — including the three in NO_FOOTER_PREFIXES,
+// which exist precisely because /chat, /admin and /studio are full-height
+// layouts that a trailing block breaks. SiteFooter honoured that list; this one
+// was mounted outside the guard and did not, so an admin on a phone got an
+// extra footer with pb-20 shoved under a chat screen that had deliberately
+// suppressed its footer.
+//
+// The console is reached from the hamburger menu on mobile (SiteHeader's sheet,
+// already gated on isAdmin) and from /me on desktop, where the sheet is
+// md:hidden. Both are admin-only, and neither is in the page flow.
 
 function NotFoundComponent() {
   return (
@@ -210,7 +195,6 @@ function RootComponent() {
       <BottomNav />
       <PushNotificationPrompt />
       {supportMounted && <SupportWidget floating={supportBubble} />}
-      <AdminFooterLink />
       <Toaster richColors position="top-center" />
       {/* Page views and referrers, so "where does the traffic come from" has
           an answer. Vercel's own analytics: no cross-site profile, no cookie,

@@ -158,6 +158,7 @@ import { BottomNav } from "../components/BottomNav";
 import { SupportWidget } from "../components/SupportWidget";
 import { PushNotificationPrompt } from "../components/PushNotificationPrompt";
 import { autoSubscribePushIfGranted } from "../lib/push-client";
+import { Analytics } from "@vercel/analytics/react";
 
 // The support widget's floating button sits on the landing page and the sign-up
 // page only.
@@ -199,6 +200,11 @@ function RootComponent() {
       {supportMounted && <SupportWidget floating={supportBubble} />}
       <AdminFooterLink />
       <Toaster richColors position="top-center" />
+      {/* Page views and referrers, so "where does the traffic come from" has
+          an answer. Vercel's own analytics: no cross-site profile, no cookie,
+          and it only records once Web Analytics is switched on for the project
+          in the Vercel dashboard. */}
+      <Analytics />
     </QueryClientProvider>
   );
 }

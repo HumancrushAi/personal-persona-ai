@@ -22,6 +22,8 @@ import {
   adminListCompanionMedia,
   adminAddCompanionMedia,
   adminDeleteCompanionMedia,
+  adminListRecentMedia,
+  adminRemoveMedia,
 } from "@/lib/admin.functions";
 import { adminListSupportTickets, adminReplySupportTicket } from "@/lib/support.functions";
 import type { EvalResult } from "@/lib/eval-suite";
@@ -54,6 +56,7 @@ const ADMIN_TABS = [
   "aiconfig",
   "content",
   "support",
+  "media",
 ];
 function initialAdminTab(): string {
   if (typeof window === "undefined") return "users";
@@ -279,6 +282,9 @@ function AdminPage() {
           </TabsTrigger>
           <TabsTrigger value="support" className={ADMIN_TAB}>
             Support
+          </TabsTrigger>
+          <TabsTrigger value="media" className={ADMIN_TAB}>
+            Media review
           </TabsTrigger>
         </TabsList>
 
@@ -583,12 +589,117 @@ function AdminPage() {
         <TabsContent value="content">
           <SettingsPanel category="content" />
         </TabsContent>
+
+        <TabsContent value="media">
+          <MediaReviewPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
 
 type Persona = Awaited<ReturnType<typeof adminListPersonas>>["personas"][number];
+
+// Every generated picture and clip, newest first, with the prompt that made it
+// and a Remove button. See adminListRecentMedia for why this is the review tool
+// for a site with no uploads.
+function MediaReviewPanel() {
+  const list = useServerFn(adminListRecentMedia);
+  const remove = useServerFn(adminRemoveMedia);
+  const [items, setItems] = useState<Awaited<ReturnType<typeof adminListRecentMedia>>["media"]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await list({ data: { limit: 60 } });
+      setItems(res.media);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not load media");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function removeOne(id: string) {
+    const reason = window.prompt("Reason for removal (recorded in the audit log):") ?? "";
+    if (!window.confirm("Remove this media from storage and from the user's chat?")) return;
+    setBusy(id);
+    try {
+      await remove({ data: { jobId: id, reason: reason || undefined } });
+      toast.success("Removed");
+      setItems((cur) => cur.filter((m) => m.id !== id));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Remove failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="glass rounded-2xl p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-lg">Media review</h2>
+        <Button size="sm" variant="outline" onClick={load} disabled={loading} className="text-xs">
+          <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+        </Button>
+      </div>
+      <p className="mb-4 text-xs text-muted-foreground">
+        The last 60 pictures and clips the service generated, with the account and the exact prompt.
+        Removing one deletes the file, takes it out of the chat, and writes an audit-log entry with
+        your reason.
+      </p>
+      {!loading && items.length === 0 && (
+        <p className="py-6 text-center text-sm text-muted-foreground">Nothing generated yet.</p>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((m) => (
+          <div key={m.id} className="overflow-hidden rounded-xl border border-white/10 bg-white/5">
+            <div className="aspect-[3/4] bg-black">
+              {m.kind === "video" ? (
+                <video
+                  src={m.media_url ?? undefined}
+                  controls
+                  muted
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <img src={m.media_url ?? ""} alt="" className="h-full w-full object-contain" />
+              )}
+            </div>
+            <div className="p-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {m.kind} · {new Date(m.created_at).toLocaleString()} · {m.provider}
+              </p>
+              <p className="mt-1 truncate text-xs text-white/80" title={m.user_id}>
+                {m.displayName ?? m.user_id}
+              </p>
+              <p
+                className="mt-2 line-clamp-4 text-[11px] leading-snug text-muted-foreground"
+                title={m.prompt}
+              >
+                {m.prompt}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => removeOne(m.id)}
+                disabled={busy === m.id}
+                className="mt-3 w-full border-red-500/30 text-xs text-red-300 hover:bg-red-500/10"
+              >
+                {busy === m.id ? "Removing…" : "Remove"}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 const EMPTY_FORM = {
   id: undefined as string | undefined,

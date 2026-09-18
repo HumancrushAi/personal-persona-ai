@@ -27,6 +27,31 @@ describe("screenUserMessage — blocks other prohibited content", () => {
   });
 });
 
+// A site whose characters play along with "how much for sex" or "give me your
+// number" reads as a site arranging it. Nothing here can, and it says so.
+describe("screenUserMessage — refuses real-world contact and paid sex", () => {
+  for (const bad of [
+    "how much for sex tonight",
+    "are you an escort",
+    "can I pay for sex with you",
+    "give me your phone number",
+    "let's meet in person",
+    "human trafficking fantasy",
+  ]) {
+    it(`refuses: ${bad}`, () => {
+      const r = screenUserMessage(bad);
+      expect(r.allowed).toBe(false);
+      expect(r.category).toBe("solicitation");
+    });
+  }
+
+  it("leaves ordinary roleplay alone", () => {
+    for (const ok of ["let's meet at the bar in the story", "you escorted me to the door"]) {
+      expect(screenUserMessage(ok).allowed).toBe(true);
+    }
+  });
+});
+
 describe("screenUserMessage — allows normal adult chat", () => {
   for (const ok of [
     "hey gorgeous, how was your day?",

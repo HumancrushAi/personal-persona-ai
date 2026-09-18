@@ -41,9 +41,9 @@ export function AgeGate() {
         </div>
         <h2 className="mt-5 text-center font-display text-2xl font-semibold">Adults only — 18+</h2>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          This website is rated 18+ and intended for adult audiences. By entering you confirm
-          that you are at least 18 years old (or legal age in your location) and agree to our
-          Terms of Service.
+          This website is rated 18+ and intended for adult audiences. By entering you confirm that
+          you are at least 18 years old (or legal age in your location) and agree to our Terms of
+          Service.
         </p>
         <div className="mt-6 grid gap-2">
           <Button
@@ -58,7 +58,15 @@ export function AgeGate() {
           </Button>
         </div>
         <p className="mt-4 text-center text-[11px] text-muted-foreground">
-          By entering you agree to our Terms of Service and Privacy Policy.
+          By entering you agree to our{" "}
+          <a href="/legal/terms" className="underline">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/legal/privacy" className="underline">
+            Privacy Policy
+          </a>
+          .
         </p>
       </div>
     </div>

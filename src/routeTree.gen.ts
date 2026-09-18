@@ -21,7 +21,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AffiliateRouteImport } from './routes/affiliate'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LegalIndexRouteImport } from './routes/legal.index'
 import { Route as CamsIndexRouteImport } from './routes/cams.index'
+import { Route as LegalSlugRouteImport } from './routes/legal.$slug'
 import { Route as CompanionIdRouteImport } from './routes/companion.$id'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 import { Route as CamsIdRouteImport } from './routes/cams.$id'
@@ -90,9 +92,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegalIndexRoute = LegalIndexRouteImport.update({
+  id: '/legal/',
+  path: '/legal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CamsIndexRoute = CamsIndexRouteImport.update({
   id: '/cams/',
   path: '/cams/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalSlugRoute = LegalSlugRouteImport.update({
+  id: '/legal/$slug',
+  path: '/legal/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompanionIdRoute = CompanionIdRouteImport.update({
@@ -153,7 +165,9 @@ export interface FileRoutesByFullPath {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/legal/$slug': typeof LegalSlugRoute
   '/cams/': typeof CamsIndexRoute
+  '/legal/': typeof LegalIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
@@ -175,7 +189,9 @@ export interface FileRoutesByTo {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/legal/$slug': typeof LegalSlugRoute
   '/cams': typeof CamsIndexRoute
+  '/legal': typeof LegalIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
@@ -199,7 +215,9 @@ export interface FileRoutesById {
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
+  '/legal/$slug': typeof LegalSlugRoute
   '/cams/': typeof CamsIndexRoute
+  '/legal/': typeof LegalIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
@@ -223,7 +241,9 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/legal/$slug'
     | '/cams/'
+    | '/legal/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/runpod-webhook'
@@ -245,7 +265,9 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/legal/$slug'
     | '/cams'
+    | '/legal'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/runpod-webhook'
@@ -268,7 +290,9 @@ export interface FileRouteTypes {
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
+    | '/legal/$slug'
     | '/cams/'
+    | '/legal/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/runpod-webhook'
@@ -290,7 +314,9 @@ export interface RootRouteChildren {
   CamsIdRoute: typeof CamsIdRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
+  LegalSlugRoute: typeof LegalSlugRoute
   CamsIndexRoute: typeof CamsIndexRoute
+  LegalIndexRoute: typeof LegalIndexRoute
   ApiCronReengageRoute: typeof ApiCronReengageRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
   ApiPublicRunpodWebhookRoute: typeof ApiPublicRunpodWebhookRoute
@@ -382,11 +408,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/': {
+      id: '/legal/'
+      path: '/legal'
+      fullPath: '/legal/'
+      preLoaderRoute: typeof LegalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cams/': {
       id: '/cams/'
       path: '/cams'
       fullPath: '/cams/'
       preLoaderRoute: typeof CamsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/$slug': {
+      id: '/legal/$slug'
+      path: '/legal/$slug'
+      fullPath: '/legal/$slug'
+      preLoaderRoute: typeof LegalSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/companion/$id': {
@@ -477,7 +517,9 @@ const rootRouteChildren: RootRouteChildren = {
   CamsIdRoute: CamsIdRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,
+  LegalSlugRoute: LegalSlugRoute,
   CamsIndexRoute: CamsIndexRoute,
+  LegalIndexRoute: LegalIndexRoute,
   ApiCronReengageRoute: ApiCronReengageRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
   ApiPublicRunpodWebhookRoute: ApiPublicRunpodWebhookRoute,

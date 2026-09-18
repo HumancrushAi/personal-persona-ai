@@ -89,6 +89,50 @@ function hasUnderageAge(text: string): boolean {
   return AGE_SUFFIX.test(text) || AGE_PREFIX.test(text) || AGE_COPULA.test(text);
 }
 
+// Real-world contact, paid sex and trafficking.
+//
+// The Service is fiction between a user and a character. A request to meet,
+// to buy or sell sex, or for an escort is refused not because it is explicit
+// but because there is nothing here to arrange and a site that plays along is
+// a site that can be read as facilitating it. Deliberately narrow: "meet me at
+// the bar" is ordinary roleplay and is not here; commercial and trafficking
+// terms are.
+const SOLICITATION_TERMS = [
+  "prostitute",
+  "prostitutes",
+  "prostitution",
+  "escort",
+  "escorts",
+  "escorting",
+  "escort service",
+  "call girl",
+  "brothel",
+  "pimp",
+  "pimping",
+  "sex work",
+  "sex worker",
+  "pay for sex",
+  "paid sex",
+  "sex for money",
+  "money for sex",
+  "how much for sex",
+  "buy you",
+  "sell you",
+  "human trafficking",
+  "trafficked",
+  "trafficker",
+  "traffickers",
+  "your phone number",
+  "your whatsapp",
+  "your address",
+  "meet in person",
+  "meet in real life",
+  "meet irl",
+];
+
+const SOLICITATION_REFUSAL =
+  "I'm a fictional character in an app — nothing here can arrange real-world contact or services. Let's keep it here 💋";
+
 // Other prohibited categories (mirrors the chat system-prompt refusal list).
 const ILLEGAL_TERMS = [
   "bestiality",
@@ -131,6 +175,10 @@ export function screenUserMessage(text: string): Screen {
       category: "prohibited",
       reason: "This request asks for prohibited content.",
     };
+  }
+  const solicitation = hasTerm(s, SOLICITATION_TERMS);
+  if (solicitation) {
+    return { allowed: false, category: "solicitation", reason: SOLICITATION_REFUSAL };
   }
   return { allowed: true };
 }

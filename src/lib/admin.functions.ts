@@ -491,23 +491,100 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     return { ok: true, userId: created.user?.id };
   });
 
+// ── Media review ────────────────────────────────────────────────────────────
+//
+// Every picture and clip the service has generated, newest first, with the
+// account and the exact prompt that produced it. This is the "image and video
+// verification tool" for a site whose media is all generated: there is no
+// third-party upload to scan, so the review is of what the pipeline made and
+// of the request that made it. One action removes a piece of content from
+// storage and from the chat it was posted to, and records who did it.
+
+export const adminListRecentMedia = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ limit: z.number().int().min(1).max(200).default(60) }).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: jobs, error } = await supabaseAdmin
+      .from("media_jobs")
+      .select("id, user_id, conversation_id, kind, prompt, media_url, provider, created_at")
+      .eq("status", "completed")
+      .in("kind", ["image", "video"])
+      .not("media_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+    if (error) throw new Error(error.message);
+
+    const userIds = [...new Set((jobs ?? []).map((j) => j.user_id))];
+    const { data: profiles } = userIds.length
+      ? await supabaseAdmin.from("profiles").select("id, display_name").in("id", userIds)
+      : { data: [] as { id: string; display_name: string | null }[] };
+    const names = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
+
+    return {
+      media: (jobs ?? []).map((j) => ({
+        ...j,
+        displayName: names.get(j.user_id) ?? null,
+      })),
+    };
+  });
+
+export const adminRemoveMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ jobId: z.string().uuid(), reason: z.string().max(200).optional() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: job } = await supabaseAdmin
+      .from("media_jobs")
+      .select("id, user_id, media_url")
+      .eq("id", data.jobId)
+      .maybeSingle();
+    if (!job) throw new Error("Job not found");
+
+    // The file itself. Public URLs are .../object/public/avatars/<path>.
+    if (job.media_url) {
+      const m = job.media_url.match(/\/object\/public\/avatars\/(.+)$/);
+      if (m) await supabaseAdmin.storage.from("avatars").remove([decodeURIComponent(m[1])]);
+      // The chat message it was posted as, so the user no longer sees it.
+      await supabaseAdmin.from("messages").delete().eq("media_url", job.media_url);
+    }
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({
+        media_url: null,
+        status: "failed",
+        error: `Removed by moderator${data.reason ? `: ${data.reason}` : ""}`,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.id);
+
+    await supabaseAdmin.from("audit_logs").insert({
+      user_id: context.userId,
+      action: "remove_media",
+      details: { job_id: job.id, target_user: job.user_id, reason: data.reason ?? null },
+    });
+    return { ok: true };
+  });
+
 export const adminGetSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
-      .from("app_settings")
-      .select("key, value");
+    const { data, error } = await supabaseAdmin.from("app_settings").select("key, value");
     if (error) throw new Error(error.message);
     return { settings: data ?? [] };
   });
 
 export const adminUpdateSetting = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ key: z.string(), value: z.any() }).parse(d)
-  )
+  .inputValidator((d: unknown) => z.object({ key: z.string(), value: z.any() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

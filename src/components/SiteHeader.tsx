@@ -22,6 +22,7 @@ import {
   HelpCircle,
   LifeBuoy,
   Mail,
+  ScrollText,
 } from "lucide-react";
 import { enablePush } from "@/lib/push-client";
 import { toast } from "sonner";
@@ -234,6 +235,13 @@ export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRi
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-white/5"
                 >
                   <HelpCircle className="h-4 w-4 text-primary" /> Help Center
+                </Link>
+                <Link
+                  to="/legal"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-white/5"
+                >
+                  <ScrollText className="h-4 w-4 text-primary" /> Terms &amp; policies
                 </Link>
                 <button
                   type="button"

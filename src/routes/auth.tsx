@@ -238,7 +238,15 @@ function AuthPage() {
               >
                 I confirm I am{" "}
                 <span className="font-semibold text-foreground">18 years of age or older</span> (21+
-                where required) and agree to the Terms of Service & Privacy Policy 🔞
+                where required) and agree to the{" "}
+                <Link to="/legal/$slug" params={{ slug: "terms" }} className="underline">
+                  Terms of Service
+                </Link>{" "}
+                &amp;{" "}
+                <Link to="/legal/$slug" params={{ slug: "privacy" }} className="underline">
+                  Privacy Policy
+                </Link>{" "}
+                🔞
               </label>
             </div>
           )}

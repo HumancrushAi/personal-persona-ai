@@ -853,7 +853,14 @@ export async function startVideoJob(
   const anatomy = anatomyOf(companion.gender);
   const refinedScenes = refinedVideo?.length ? refinedVideo : null;
   const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq)]).map((p) =>
-    finishMediaPrompt(p, rawReq, { anatomy, appendProps: Boolean(refinedScenes) }),
+    finishMediaPrompt(p, rawReq, {
+      anatomy,
+      appendProps: Boolean(refinedScenes),
+      // Per scene, for the same reason it is per photo: the refiner no longer
+      // writes the clause, so a scene that did not get it would be the one part
+      // of a clip where the body is whatever the renderer felt like.
+      appendAnatomy: Boolean(refinedScenes),
+    }),
   );
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);

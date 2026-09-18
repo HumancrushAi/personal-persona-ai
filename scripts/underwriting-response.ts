@@ -281,7 +281,7 @@ async function main() {
     }),
     p("Website: " + SITE_URL, { size: 22 }),
     p("Merchant contact: " + SUPPORT_EMAIL, { size: 22 }),
-    p("Legal entity: ______________________________ (as on the application forms)", { size: 22 }),
+    p("Legal entity: Next Level Rec. (as on the application forms)", { size: 22 }),
     p(
       "This document answers each of the nineteen items in the bank's request, in the order asked. Where an item asks for a policy, the policy is reproduced in full in Appendix A and is published on the site at the address given. Where an item asks for something only the merchant can supply (credentials, financial statements), the section says what will be provided and how.",
       { size: 22 },

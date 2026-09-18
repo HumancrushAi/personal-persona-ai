@@ -130,7 +130,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     blocks: [
       {
         p: [
-          `These Terms of Service ("Terms") govern your use of ${SITE} (the "Service"), operated by HumanCrush ("we", "us"). By creating an account or using the Service you agree to these Terms, our Privacy Policy and our Prohibited Content Policy. If you do not agree, do not use the Service.`,
+          `These Terms of Service ("Terms") govern your use of ${SITE} (the "Service"), operated by Next Level Rec. ("HumanCrush", "we", "us"). By creating an account or using the Service you agree to these Terms, our Privacy Policy and our Prohibited Content Policy. If you do not agree, do not use the Service.`,
         ],
       },
       {

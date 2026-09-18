@@ -594,6 +594,9 @@ export async function photoPrompt(
   return finishMediaPrompt(refined?.[0] ?? builder, userRequest ?? "", {
     anatomy: anatomyOf(companion.gender),
     appendProps: Boolean(refined?.[0]),
+    // Same condition as appendProps and for the same reason: the builders write
+    // their own anatomy clause, the refined prompt no longer does.
+    appendAnatomy: Boolean(refined?.[0]),
     // Only when the photo is being cut out of a clip. A real image endpoint
     // renders a still by definition and does not need telling.
     still: provider === "wan",

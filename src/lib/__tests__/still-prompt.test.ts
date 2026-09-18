@@ -148,3 +148,78 @@ describe("realism tail", () => {
     expect(p).not.toMatch(/masterpiece/i);
   });
 });
+
+// The anatomy clause is appended, not described.
+//
+// It used to be a ~143-word bullet ending "Write it in exactly those words",
+// inside an instruction to write a 120-160 word prompt containing a dozen other
+// things. Both could not hold, so the model compressed and dropped a different
+// half each run — a lottery sitting directly on the body description, before any
+// seed is involved. Appended here it competes with nothing.
+describe("finishMediaPrompt appendAnatomy", () => {
+  const female = { gender: "female" };
+
+  it("appends the clause verbatim to a refined prompt", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf, nudeAnatomy } = await import("../anatomy");
+    const out = finishMediaPrompt(
+      "exact same woman as the reference image, completely nude, kneeling on the bed, warm lamplight",
+      "get naked for me",
+      { anatomy: anatomyOf(female.gender), appendAnatomy: true },
+    );
+    expect(out).toContain(nudeAnatomy("female"));
+  });
+
+  it("leaves a builder prompt alone, which writes its own clause", async () => {
+    const { finishMediaPrompt, stillImagePrompt } = await import("../selfie");
+    const { anatomyOf, nudeAnatomy } = await import("../anatomy");
+    const built = stillImagePrompt(
+      { name: "Ana", age: 26, ethnicity: "Italian", gender: "female" } as any,
+      "get naked for me",
+    );
+    const out = finishMediaPrompt(built, "get naked for me", {
+      anatomy: anatomyOf(female.gender),
+      appendAnatomy: false,
+    });
+    // Present once, from the builder — not twice.
+    const clause = nudeAnatomy("female");
+    expect(out.split(clause).length - 1).toBe(1);
+  });
+
+  it("withholds it when the user set their own viewpoint", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf, nudeAnatomy } = await import("../anatomy");
+    const out = finishMediaPrompt(
+      "exact same woman as the reference image, completely nude, on all fours facing away, warm lamplight",
+      "show me your ass",
+      { anatomy: anatomyOf(female.gender), appendAnatomy: true },
+    );
+    expect(out).not.toContain(nudeAnatomy("female"));
+  });
+
+  it("withholds it from a clothed request", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf, nudeAnatomy } = await import("../anatomy");
+    const out = finishMediaPrompt(
+      "exact same woman as the reference image, wearing a red silk dress at dinner, warm light",
+      "wearing your red dress at dinner",
+      { anatomy: anatomyOf(female.gender), appendAnatomy: true },
+    );
+    expect(out).not.toContain(nudeAnatomy("female"));
+  });
+
+  // The whole prompt still has to clear the renderer's truncation window.
+  it("keeps the finished prompt inside the word budget", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf } = await import("../anatomy");
+    const refined =
+      "exact same woman as the reference image, completely nude, ".repeat(3) +
+      "kneeling on the bed with her shoulders back, warm bedside lamplight, candid raw photograph";
+    const out = finishMediaPrompt(refined, "get naked for me", {
+      anatomy: anatomyOf(female.gender),
+      appendAnatomy: true,
+      appendProps: true,
+    });
+    expect(out.split(/\s+/).length).toBeLessThanOrEqual(300);
+  });
+});

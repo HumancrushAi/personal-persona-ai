@@ -765,11 +765,42 @@ export function capPromptWords(prompt: string, max = PROMPT_WORD_BUDGET): string
 export function finishMediaPrompt(
   base: string,
   req: string,
-  opts: { anatomy?: Anatomy; appendProps?: boolean; still?: boolean } = {},
+  opts: {
+    anatomy?: Anatomy;
+    appendProps?: boolean;
+    /**
+     * Append the anatomy clause verbatim instead of asking the refiner to write
+     * it. Set only for a REFINED prompt — the builders below compose their own
+     * clause in, and setting it for one of those would say it all twice.
+     */
+    appendAnatomy?: boolean;
+    still?: boolean;
+  } = {},
 ): string {
   let out = (base ?? "").trim();
   const request = (req ?? "").trim();
   const a = opts.anatomy ?? anatomyOf("female");
+
+  // The anatomy clause, guaranteed.
+  //
+  // It used to be a bullet in the refiner's system prompt ending "Write it in
+  // exactly those words" — a 143-word block, inside an instruction to produce a
+  // 120-160 word prompt in total, alongside a dozen other bullets. The model
+  // could not satisfy both, so it compressed, and WHICH half it dropped varied
+  // per run. That is a lottery sitting directly on the body description: two
+  // identical requests, two different bodies, no seed involved.
+  //
+  // Appended here it competes with nothing. The same argument the prop spec was
+  // moved out for, and the same mechanics — the refiner is told the clause is
+  // appended separately so it spends its words on the act and the setting.
+  //
+  // Withheld when the user set their own viewpoint, for the reason
+  // requestSetsViewpoint exists: this clause describes the front of the body.
+  if (opts.appendAnatomy && requestIsNude(request) && !requestSetsViewpoint(request)) {
+    const clause = nudeAnatomy(a.kind);
+    if (clause)
+      out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${clause}`;
+  }
 
   if (opts.appendProps) {
     const props = propClause(request, { anatomy: a });

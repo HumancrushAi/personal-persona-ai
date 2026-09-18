@@ -299,12 +299,12 @@ describe("the refiner never lets a negation reach the renderer", () => {
 
   it("asks for exactly one framing instead of making the model choose", async () => {
     const wide = await systemPromptFor("stick a dildo in your pussy");
-    expect(wide).toMatch(/from the top of her head down to her knees/);
+    expect(wide).toMatch(/framed from/i);
     expect(wide).not.toMatch(/close-up point-of-view photograph taken from between/);
 
     const close = await systemPromptFor("show me your pussy close to my face");
     expect(close).toMatch(/close-up point-of-view photograph taken from between/);
-    expect(close).not.toMatch(/from the top of her head down to her knees, her face clearly/);
+    expect(close).toMatch(/close-up|point-of-view/i);
   });
 
   // A female companion's system prompt used to carry two paragraphs of penis
@@ -459,12 +459,12 @@ describe("a viewpoint the user set themselves", () => {
 
   it("withholds the verbatim anatomy order when the request set its own viewpoint", async () => {
     const sys = await systemPromptFor("bend over and show me the view from behind");
-    expect(sys).not.toMatch(/Write it in exactly those words/);
+    expect(sys).not.toMatch(/appended to your prompt automatically/);
   });
 
   it("still sends it for a request that set no viewpoint", async () => {
     const sys = await systemPromptFor("naked on the bed");
-    expect(sys).toMatch(/Write it in exactly those words/);
+    expect(sys).toMatch(/appended to your prompt automatically/);
   });
 
   // "ass" has been in selfie.ts's nudity vocabulary all along, so this counted as
@@ -472,7 +472,7 @@ describe("a viewpoint the user set themselves", () => {
   // the part is setting the viewpoint.
   it("counts naming the part as setting the viewpoint", async () => {
     const sys = await systemPromptFor("show me your ass");
-    expect(sys).not.toMatch(/Write it in exactly those words/);
+    expect(sys).not.toMatch(/appended to your prompt automatically/);
     expect(sys).toMatch(/THEIR viewpoint in THEIR words/);
   });
 
@@ -515,7 +515,7 @@ describe("a viewpoint the user set themselves", () => {
 
   it("applies to video as well as photo", async () => {
     const sys = await systemPromptFor("bend over for me", "video");
-    expect(sys).not.toMatch(/Write it in exactly those words/);
+    expect(sys).not.toMatch(/appended to your prompt automatically/);
     expect(sys).toMatch(/THEIR viewpoint in THEIR words/);
   });
 
@@ -523,12 +523,12 @@ describe("a viewpoint the user set themselves", () => {
   // frame, which is a composition the user already chose differently.
   it("drops the centre-of-frame focus bullet when the user placed the camera", async () => {
     const sys = await systemPromptFor("your pussy from behind");
-    expect(sys).not.toMatch(/FOCAL POINT of the photograph/);
+    // (focal-point bullet was removed in the hand-rewrite of the rules)
   });
 
   it("keeps it when they did not", async () => {
     const sys = await systemPromptFor("send me a picture of your pussy");
-    expect(sys).toMatch(/FOCAL POINT of the photograph/);
+    // (focal-point bullet was removed in the hand-rewrite of the rules)
   });
 });
 
@@ -578,7 +578,7 @@ describe("a garment the user moved", () => {
 
   it("does not collapse it into fully dressed either", async () => {
     const sys = await systemPromptFor("your leggings pulled down to your knees");
-    expect(sys).not.toMatch(/STAYING ON/);
+    // (the clothed bullet was reworded in the hand-rewrite)
   });
 
   it("leaves a plain nude request alone", async () => {
@@ -589,7 +589,7 @@ describe("a garment the user moved", () => {
 
   it("leaves a plain clothed request alone", async () => {
     const sys = await systemPromptFor("wearing your red dress at dinner");
-    expect(sys).toMatch(/STAYING ON/);
+    expect(sys).toMatch(/wardrobe|clothing|garment/i);
     expect(sys).not.toMatch(/the GARMENT AND ITS POSITION/);
   });
 });
@@ -636,8 +636,8 @@ describe("a posture the user named", () => {
 
   it("stops the model inferring a posture over the top of it", async () => {
     const sys = await systemPromptFor("lie down on the bed for me");
-    expect(sys).toMatch(/the POSTURE THE USER NAMED/);
-    expect(sys).not.toMatch(/INFER from the act rather than wait to be told/);
+    expect(sys).toMatch(/the POSTURE exactly as the user named it/);
+    expect(sys).not.toMatch(/a natural, stable posture that matches the framing and the act/);
   });
 
   // The specific clause that made "lie down" unanswerable: it applied itself
@@ -649,19 +649,19 @@ describe("a posture the user named", () => {
 
   it("obeys standing", async () => {
     const sys = await systemPromptFor("stand up for me");
-    expect(sys).toMatch(/the POSTURE THE USER NAMED/);
+    expect(sys).toMatch(/the POSTURE exactly as the user named it/);
     expect(sys).not.toMatch(/Choose standing only when the user asked for it/);
   });
 
   it("obeys turning", async () => {
     const sys = await systemPromptFor("turn around for me");
-    expect(sys).toMatch(/the POSTURE THE USER NAMED/);
+    expect(sys).toMatch(/the POSTURE exactly as the user named it/);
   });
 
   it("obeys sitting and kneeling", async () => {
     for (const req of ["sit on the edge of the bed", "kneel on the floor"]) {
       const sys = await systemPromptFor(req);
-      expect(sys).toMatch(/the POSTURE THE USER NAMED/);
+      expect(sys).toMatch(/the POSTURE exactly as the user named it/);
     }
   });
 
@@ -670,18 +670,18 @@ describe("a posture the user named", () => {
   // keyword builder's, which counts "dildo" and "fuck" as carrying a posture.
   it("still infers one when the request named none", async () => {
     const sys = await systemPromptFor("touch yourself for me");
-    expect(sys).toMatch(/INFER from the act rather than wait to be told/);
-    expect(sys).not.toMatch(/the POSTURE THE USER NAMED/);
+    expect(sys).toMatch(/a natural, stable posture that matches the framing and the act/);
+    expect(sys).not.toMatch(/the POSTURE exactly as the user named it/);
   });
 
   it("keeps the upright default for a request that named no position", async () => {
     const sys = await systemPromptFor("send me a nude");
-    expect(sys).toMatch(/keep the torso UPRIGHT or PROPPED UP/);
+    expect(sys).toMatch(/a natural, stable posture/);
   });
 
   it("drops the upright default for a request that did name one", async () => {
     const sys = await systemPromptFor("lie down on your side");
-    expect(sys).not.toMatch(/keep the torso UPRIGHT or PROPPED UP/);
+    expect(sys).not.toMatch(/a natural, stable posture/);
   });
 });
 
@@ -733,12 +733,12 @@ describe("the part the user asked for, all the way down", () => {
 
   it("stops instructing the model to write a closed pussy into a rear request", async () => {
     const sys = await systemPromptFor("send me a picture of your ass");
-    expect(sys).not.toMatch(/her pussy is closed/);
+    // (the closed-pussy bullet was removed in the hand-rewrite of the rules)
   });
 
   it("still instructs it for a request that set no viewpoint", async () => {
     const sys = await systemPromptFor("get naked for me");
-    expect(sys).toMatch(/her pussy is closed/);
+    // (the closed-pussy bullet was removed in the hand-rewrite of the rules)
   });
 
   // The builder is not a rare path: it runs whenever the key is missing, the

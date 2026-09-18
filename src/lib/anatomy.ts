@@ -185,18 +185,26 @@ export function anatomyOf(gender?: string | null): Anatomy {
 // The detail is specific rather than superlative, for the same reason props.ts
 // describes a toy by its material and size instead of calling it "correctly
 // proportioned". "Anatomically correct" and "highly detailed" are adjectives a
-// renderer cannot act on; "soft plump outer labia meeting along a neat closed
-// cleft, the small clitoral hood at the top" names shapes it can actually
-// place, and naming shapes that must be distinguishable from each other is what
-// stops the fused, melted, featureless look people read as AI.
+// renderer cannot act on; "a soft rounded mound with a single neat vertical
+// crease" names a shape it can actually place.
 //
-// What it must NOT name is the inner labia. "Outer labia parting around visible
-// inner labia" was the clause for a while, and the render took it literally: a
-// large tongue of tissue extruded from the cleft, which is the single "weird
-// thing sticking out" a user sent back. A photoreal checkpoint's idea of
-// "visible inner labia" is a protrusion, every time. A closed cleft with
-// everything tucked inside is both what most real vulvas look like at rest and
-// the one description these models render cleanly.
+// What the female clause must NOT contain is the words labia, lips, clit or
+// clitoris, in any combination. "Outer labia parting around visible inner
+// labia" produced a large tongue of tissue extruded from the cleft — the "weird
+// thing sticking out" a user sent back. Rewritten to "outer labia meeting along
+// a closed cleft, the small clitoral hood at the top", it produced the same
+// flap. The lesson is that for a model tuned on explicit imagery those TOKENS
+// are the protrusion: every training image tagged with them shows the detail
+// pulled open and out, and no adjective beside them ("closed", "tucked")
+// outweighs that. So the clause names only the outer shape — a plump closed
+// mound with one crease — which is what most real vulvas look like at rest and
+// the one description these models render cleanly. The words the user typed
+// ("pussy") still reach the prompt through the action sentence.
+//
+// Breasts got the same treatment for the same reason: "firm" and "perky" are
+// outweighed by a pose. Told she is lying flat, the model spreads them
+// sideways, so the clause says they hold their round shape in any pose, and
+// the builder writes a lying request as propped up on pillows.
 //
 // No hair, skin or eye colour anywhere: a reference photo of the companion is
 // supplied to the renderer and inventing those fights it, which is how a
@@ -211,7 +219,7 @@ export function anatomyOf(gender?: string | null): Anatomy {
 // over exactly the edges that have to read, and a clean surface renders them.
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "Natural firm round bare breasts set high on her chest, full rounded lower curves, taut smooth skin over them, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples. Between her open thighs a smoothly shaved vulva in sharp focus: soft plump outer labia meeting along a single neat closed cleft, the small clitoral hood at the top of it, everything tucked smoothly inside, the skin one even tone with her inner thighs, a faint natural sheen.",
+    "Natural firm round bare breasts set high on her chest, firm enough to hold their round shape in any pose and stand up off her chest, full rounded lower curves, taut smooth skin over them, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples. Between her parted thighs a smoothly shaved, plump, closed pussy in sharp focus: a soft rounded mound with a single neat vertical crease down its centre, everything tucked inside so only that crease shows, the skin one even tone with her inner thighs, a faint natural sheen.",
   // Pinned the way props.ts pins a toy, and for the same reason: where it is,
   // which way it points, and how big it is against his own body. Sub-structures
   // alone were not enough — a render that knows it needs "a penis" but not
@@ -223,7 +231,7 @@ const NUDE_ANATOMY: Record<GenderKind, string> = {
   "trans-female":
     "One body: natural firm round breasts set high on her chest, defined areolae and erect nipples pointing forward, feminine hips and a soft waist, and at her groin, below her navel, a thick erect penis standing out from her body and angled slightly upward, about as long as her hand from wrist to fingertip, with a defined shaft, a distinct ridge below the smooth rounded glans and a separate scrotum below. Breasts above and cock below, both in the same frame and both in sharp focus.",
   "trans-male":
-    "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a smoothly shaved vulva: soft plump outer labia meeting along a neat closed cleft, a small clitoral hood at the top of it, everything tucked smoothly inside.",
+    "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a smoothly shaved, plump, closed pussy: a soft rounded mound with a single neat vertical crease, everything tucked inside so only the crease shows.",
   nb: "A lean androgynous body, a flat soft chest, narrow hips and a smooth groin, skin evenly lit with visible pores and fine texture throughout.",
 };
 

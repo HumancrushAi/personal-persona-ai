@@ -46,7 +46,9 @@ describe("negativeFor", () => {
       const n = negativeFor("get naked", "trans-male", { moving: false });
       expect(n).toMatch(/\bpenis\b/);
       expect(n).toMatch(/\bbreasts\b/);
-      expect(n).not.toMatch(/\bvulva\b|\blabia\b/);
+      // "inner labia" is the deliberate exception (see PART_RE below); the
+      // bare part is still never suppressed for someone who has it.
+      expect(n).not.toMatch(/\bvulva\b|(?<!inner )\blabia\b(?! minora)/);
     });
 
     it("leaves a trans-female companion both sets of anatomy", () => {
@@ -78,9 +80,9 @@ describe("negativeFor", () => {
     });
 
     it("leaves them alone on a clothed one, where they are the point", () => {
-      expect(negativeFor("wearing your red dress at dinner", "female", { moving: false })).not.toMatch(
-        /\bbra\b/,
-      );
+      expect(
+        negativeFor("wearing your red dress at dinner", "female", { moving: false }),
+      ).not.toMatch(/\bbra\b/);
     });
   });
 
@@ -95,7 +97,9 @@ describe("negativeFor", () => {
     });
 
     it("leaves it off a body without breasts", () => {
-      expect(negativeFor("get naked", "male", { moving: false })).not.toMatch(/\bsaggy\b|\bdroopy\b/);
+      expect(negativeFor("get naked", "male", { moving: false })).not.toMatch(
+        /\bsaggy\b|\bdroopy\b/,
+      );
       expect(negativeFor("get naked", "trans-male", { moving: false })).not.toMatch(/\bdroopy\b/);
     });
   });
@@ -108,6 +112,8 @@ describe("negativeFor", () => {
       expect(negativeFor("show me your pussy", "female", { moving: false })).toMatch(
         /\bprotruding\b/,
       );
+      // The sub-part itself, since naming its outer neighbour was not enough.
+      expect(negativeFor("show me your pussy", "female", { moving: false })).toMatch(/inner labia/);
       expect(negativeFor("get naked", "trans-male", { moving: false })).toMatch(/\bprotruding\b/);
     });
 
@@ -151,7 +157,11 @@ describe("negativeFor", () => {
 describe("the negative prompt never suppresses a part the companion has", () => {
   const PART_RE = {
     penis: /\bpenis\b|\bcock\b|\btesticles?\b|\bscrotum\b|\bshaft\b|\bglans\b/i,
-    vulva: /\bvulva\b|\bvagina\b|\blabia\b|\bpussy\b|\bclitoral\b|\bclitoris\b/i,
+    // "inner labia" / "labia minora" are the one allowed exception: the
+    // sub-part the render keeps extruding, pushed away on purpose while the
+    // positive clause names no labia at all. The bare part stays forbidden.
+    vulva:
+      /\bvulva\b|\bvagina\b|(?<!inner )\blabia\b(?! minora)|\bpussy\b|\bclitoral\b|\bclitoris\b/i,
     breasts: /\bbreasts?\b|\bnipples?\b|\bareolae?\b|\bcleavage\b|\bbust\b/i,
   } as const;
 

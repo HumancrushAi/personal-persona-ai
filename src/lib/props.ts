@@ -177,7 +177,7 @@ const vulvaAnatomy = (a: Anatomy) =>
 //      her hand, wrist against her inner thigh. An object with both ends pinned
 //      low has nowhere to travel.
 const INSERTED_CLAUSE =
-  "The toy is inserted into her, angled downward along the line between her open thighs: most of the shaft is hidden inside her body, with only the flared base showing, her fingers on it and her wrist against her inner thigh. Where it enters, her outer labia part and press around the silicone, the small clitoral hood above it, natural moisture glistening at the exact point of entry, in sharp focus.";
+  "The toy is inserted into her, angled downward along the line between her open thighs: most of the shaft is hidden inside her body, with only the flared base showing, her fingers on it and her wrist against her inner thigh. Where it enters, her pussy presses snugly around the silicone, natural moisture glistening at the exact point of entry, in sharp focus.";
 
 // Insertion is a preposition followed by the body part, within a few words —
 // not either half on its own. "a dildo in her hand" and "in pussy" differ only

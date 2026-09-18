@@ -36,6 +36,24 @@ describe("videoStillPrompt", () => {
     expect(p).not.toMatch(/standing/i);
   });
 
+  // Flat on her back is the pose that spreads her breasts sideways. A request
+  // that says "lying" is still lying — propped up, chest lifted.
+  it("writes a lying request as propped up on pillows", () => {
+    const p = videoStillPrompt({ gender: "female" }, "lying on the bed, show me your pussy");
+    expect(p).toMatch(/lying back against a stack of pillows/i);
+    expect(p).toMatch(/shoulders and upper back raised/i);
+    expect(p).toMatch(/hands resting on her thighs/i);
+  });
+
+  // The words that make the render pull her open are gone from every clause.
+  it("never names labia or clitoris in a female nude", () => {
+    for (const req of ["show me your pussy", "get naked", "lying on the bed naked"]) {
+      expect(videoStillPrompt({ gender: "female" }, req)).not.toMatch(
+        /\blabia\b|\bclitor|\blips\b/i,
+      );
+    }
+  });
+
   it("leaves a posture the user asked for alone", () => {
     const p = videoStillPrompt({ gender: "female" }, "get naked and kneel on the bed");
     expect(p).not.toMatch(/reclining back against pillows/i);
@@ -73,7 +91,7 @@ describe("videoStillPrompt", () => {
     const req = "show me your pussy";
     const still = stillImagePrompt({ gender: "female" }, req);
     expect(still).toMatch(/chin down to her knees/i);
-    expect(still).toMatch(/smoothly shaved vulva/i);
+    expect(still).toMatch(/plump, closed pussy/i);
     expect(still).not.toMatch(/still held pose|camera holds its position/i);
     // Same picture, different tail.
     expect(videoStillPrompt({ gender: "female" }, req)).toMatch(/still held pose/i);

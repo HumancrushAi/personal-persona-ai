@@ -168,7 +168,9 @@ describe("no anatomy clause names the wrong organ", () => {
 
   it("gives a trans man a vulva and a flat chest", () => {
     const p = videoStillPrompt({ gender: "trans-male" }, "get naked");
-    expect(p).toMatch(/vulva|labia/i);
+    // "pussy" is the word the clause uses now — the anatomical terms were
+    // what the render kept extruding.
+    expect(p).toMatch(/vulva|labia|pussy/i);
     expect(p).toMatch(/flat masculine chest/i);
     expect(p).not.toMatch(/\bpenis\b|\berect cock\b/i);
   });
@@ -230,7 +232,8 @@ describe("requestedParts", () => {
 
 // The behaviour the owner asked for, stated as a grid.
 describe("refuseWrongAnatomy", () => {
-  const cell = (gender: string, msg: string) => (refuseWrongAnatomy(gender, msg) ? "REFUSE" : "ALLOW");
+  const cell = (gender: string, msg: string) =>
+    refuseWrongAnatomy(gender, msg) ? "REFUSE" : "ALLOW";
 
   it("refuses a woman a cock and a man a pussy", () => {
     expect(cell("female", "send me a pic of your dick")).toBe("REFUSE");

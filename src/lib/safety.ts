@@ -116,8 +116,10 @@ const SOLICITATION_TERMS = [
   "sex for money",
   "money for sex",
   "how much for sex",
-  "buy you",
-  "sell you",
+  // "buy you" and "sell you" were here and blocked "can I buy you a drink",
+  // which is how people flirt. Only phrasings that can only mean trade stay.
+  "buy you for",
+  "sell you to",
   "human trafficking",
   "trafficked",
   "trafficker",

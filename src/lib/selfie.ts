@@ -102,7 +102,7 @@ function actionTags(req: string, a: Anatomy): string {
       // "spread pussy" and "inner labia" are gone: both render as tissue pulled
       // out of the cleft, which is the flap a user sent back. A closed cleft is
       // what a checkpoint draws cleanly.
-      "photorealistic pussy, smooth shaved pussy, neat closed cleft, plump outer labia, small clitoral hood, spread legs, presenting",
+      "photorealistic pussy, smooth shaved closed pussy, plump mound, single neat crease, innie, spread legs, presenting",
     );
   if (has(KW.breasts))
     ex.push(
@@ -180,13 +180,13 @@ function booruPonyPrompt(
   const NUDE_TAGS: Record<GenderKind, string> = {
     male: "nude, completely naked, bare skin, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, male anatomy",
     female:
-      "nude, completely naked, firm perky bare breasts, rounded uplifted bust, perky erect nipples, detailed photorealistic pussy, vulva, labia, clitoris, pubic hair, groin visible",
+      "nude, completely naked, firm perky bare breasts, rounded uplifted bust, perky erect nipples, smooth shaved closed pussy, plump mound, single neat crease, innie, groin visible",
     "trans-female":
       "nude, completely naked, 1girl, trans female, futanari, firm perky bare breasts, rounded uplifted bust, perky erect nipples, anatomically correct penis, erect cock, penis shaft, testicles, pubic hair, groin visible, female body with male genitalia",
     // The case that had no branch at all before: he fell through to the female
     // tags and was rendered with breasts.
     "trans-male":
-      "nude, completely naked, trans male, flat masculine chest, top surgery scars, detailed pussy, vulva, labia, clitoris, pubic hair, groin visible",
+      "nude, completely naked, trans male, flat masculine chest, top surgery scars, smooth shaved closed pussy, plump mound, single neat crease, groin visible",
     nb: "nude, completely naked, androgynous body, flat soft chest, bare skin",
   };
 
@@ -445,7 +445,7 @@ function framingFor(
   // the top edge — a deliberate photograph rather than an accident — and only
   // for a request that names the part, never for a plain nude.
   if (groinFocus) {
-    return `Photograph of ${article(noun)} ${noun} indoors, framed from ${poss} chin down to ${poss} knees with ${poss} mouth and chin at the top edge of the frame, ${poss} hips and groin in the centre of the frame in sharp focus, camera about one metre away at hip height.`;
+    return `Photograph of ${article(noun)} ${noun} indoors, framed from ${poss} chin down to ${poss} knees with ${poss} mouth and chin at the top edge of the frame, ${poss} hips and groin in the centre of the frame in sharp focus, ${poss} hands resting on ${poss} thighs, camera about one metre away at hip height.`;
   }
 
   // An act request gets a medium shot: the act is at the centre of the frame at
@@ -548,10 +548,19 @@ function buildStillPrompt(
   // pillows keeps the chest lifted and the thighs naturally apart, and one plain
   // setting leaves the words for her. An empty request is left alone: its
   // framing sentence already picks a stance.
+  //
+  // A request that says "lying" gets a posture too, because flat on her back is
+  // the one pose in which the model spreads her breasts sideways and the
+  // picture comes back looking sagging. She is still lying down — propped up
+  // on pillows, chest lifted — which is also how the reference photos in the
+  // refiner's examples have her.
+  const lyingDown = /\b(?:lying|lie|laid|lay|on (?:her|his|their|your|my) back)\b/i.test(req);
   const posture =
     nude && req && !POSTURE_RE.test(req)
-      ? `${Subject} ${a.is} reclining back against pillows on a bed with plain white sheets, propped up on ${poss} elbows, ${poss} back gently arched and ${poss} knees apart, soft daylight from a window beside ${a.object}.`
-      : "";
+      ? `${Subject} ${a.is} reclining back against pillows on a bed with plain white sheets, propped up on ${poss} elbows, ${poss} back gently arched and ${poss} knees apart, ${poss} hands resting on ${poss} thighs, soft daylight from a window beside ${a.object}.`
+      : nude && lyingDown
+        ? `${Subject} ${a.is} lying back against a stack of pillows, ${poss} shoulders and upper back raised, ${poss} back gently arched, ${poss} hands resting on ${poss} thighs.`
+        : "";
 
   return [
     framingFor(

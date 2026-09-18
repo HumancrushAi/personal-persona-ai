@@ -97,14 +97,19 @@ const MOTION_NEGATIVE =
 // below his penis. Adjectives and never the noun, for the reason set out above:
 // a negative that names the part flattens it.
 const SAG_NEGATIVE =
-  "saggy, sagging, droopy, drooping, pendulous, deflated, elongated, stretch marks";
+  "saggy, sagging, droopy, drooping, pendulous, deflated, elongated, stretch marks, flattened, splayed, spread flat, sliding sideways, hanging to the sides";
 
 // The one failure the closed-cleft clause in anatomy.ts cannot suppress on its
 // own: a render that pulls something OUT of it. That is the "weird thing
 // sticking out" a user sent back — a tongue of tissue extruded from the cleft.
 // Things and adjectives only, never the part, for the reason set out above.
+// "inner labia" and "labia minora" ARE named here, and that is the one
+// deliberate exception to the rule above: they are the sub-part the render
+// keeps extruding, the positive clause no longer contains the word "labia" at
+// all, and pushing the inner structure away is exactly what a closed mound
+// needs. The bare part — pussy, vulva — is still never here.
 const VULVA_NEGATIVE =
-  "protruding, dangling, hanging flap, flaps, extra folds, elongated, stretched, gaping, tentacle, growth, appendage";
+  "protruding, dangling, hanging flap, flaps, extra folds, elongated, stretched, gaping, tentacle, growth, appendage, inner labia, labia minora, spread open, pulled apart, splayed open, exposed pink interior, meat curtains, fingers spreading";
 
 // Applied only when the request implies nudity. Without it nothing pushes back
 // on the clothes already in the start frame, so explicit acts were performed

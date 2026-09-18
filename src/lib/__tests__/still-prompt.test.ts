@@ -91,7 +91,10 @@ describe("videoStillPrompt", () => {
     const req = "show me your pussy";
     const still = stillImagePrompt({ gender: "female" }, req);
     expect(still).toMatch(/chin down to her knees/i);
-    expect(still).toMatch(/plump, closed pussy/i);
+    // Comma optional: the clause is hand-edited copy and its punctuation has
+    // changed before. What this asserts is that the closed form reaches the
+    // prompt at all, not how it is punctuated.
+    expect(still).toMatch(/plump,? closed pussy/i);
     expect(still).not.toMatch(/still held pose|camera holds its position/i);
     // Same picture, different tail.
     expect(videoStillPrompt({ gender: "female" }, req)).toMatch(/still held pose/i);

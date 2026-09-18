@@ -210,29 +210,24 @@ export function anatomyOf(gender?: string | null): Anatomy {
 // supplied to the renderer and inventing those fights it, which is how a
 // brunette came back blonde.
 //
-// "Firm perky" on its own still came back sagging. Those are adjectives, and
-// the model's idea of a bare breast follows whatever gravity is doing in the
-// pose. Where the nipple sits is something it can place: level with the middle
-// of her upper arm and pointing forward is what a lifted breast looks like, and
-// the full rounded lower curve is the part that droops when nobody states it.
-// Shaved for the same reason the sub-structures are named: hair is texture laid
-// over exactly the edges that have to read, and a clean surface renders them.
+// Locked consistency rules (shape + texture never change across models):
+// - Breasts: high-set, firm, tight, perfectly round, hold shape against gravity,
+//   full lower poles without sag, realistic smooth nipples/areolae (no pox,
+//   bumps or irregular surface).
+// - Ass: identical firm round shape and smooth skin texture every time;
+//   only skin tone may vary with the reference.
+// - Pussy: the closed plump mound + single neat vertical crease (already the
+//   clean version).
+
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "Natural firm round bare breasts set high on her chest, firm enough to hold their round shape in any pose and stand up off her chest, full rounded lower curves, taut smooth skin over them, her nipples level with the middle of her upper arms and pointing forward, small defined areolae and erect nipples. Between her parted thighs a smoothly shaved, plump, closed pussy in sharp focus: a soft rounded mound with a single neat vertical crease down its centre, everything tucked inside so only that crease shows, the skin one even tone with her inner thighs, a faint natural sheen.",
-  // Pinned the way props.ts pins a toy, and for the same reason: where it is,
-  // which way it points, and how big it is against his own body. Sub-structures
-  // alone were not enough — a render that knows it needs "a penis" but not
-  // where it sits or how long it is produces the small vague nub the user
-  // reported. Scale is anchored to his hand because these models have no
-  // absolute sense of size but render relative body proportion well; that is
-  // the finding props.ts was built on and it transfers directly.
+    "Natural firm high-set round bare breasts that hold their full tight round shape against gravity in any pose, proud and lifted high off the chest with taut smooth skin, full rounded lower poles, nipples level with the middle of her upper arms and pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture. Between her thighs a smoothly shaved plump closed pussy in sharp focus: a soft rounded mound with a single neat vertical crease down its centre, everything fully tucked so only that clean crease shows, skin one even tone with her inner thighs, faint natural sheen. Her ass is firm, high and perfectly round with smooth even skin texture, full lower curves that hold shape.",
   male: "A lean muscular chest and flat stomach. At his groin, below his navel and above his thighs, a thick erect penis standing out and angled slightly upward from his body, about as long as his hand from wrist to fingertip: a clearly defined shaft, a distinct ridge where the shaft meets the smooth rounded glans, soft veining along the length, and a separate lightly textured scrotum hanging below it. The shaft, the glans and the scrotum each read as their own form with clean edges between them.",
   "trans-female":
-    "One body: natural firm round breasts set high on her chest, defined areolae and erect nipples pointing forward, feminine hips and a soft waist, and at her groin, below her navel, a thick erect penis standing out from her body and angled slightly upward, about as long as her hand from wrist to fingertip, with a defined shaft, a distinct ridge below the smooth rounded glans and a separate scrotum below. Breasts above and cock below, both in the same frame and both in sharp focus.",
+    "One body: natural firm high-set round breasts that hold their full tight round shape against gravity, proud and lifted high off the chest with taut smooth skin, full rounded lower poles, defined areolae and naturally erect nipples pointing forward with clean realistic texture, feminine hips and a soft waist, and at her groin, below her navel, a thick erect penis standing out from her body and angled slightly upward, about as long as her hand from wrist to fingertip, with a defined shaft, a distinct ridge below the smooth rounded glans and a separate scrotum below. Breasts above and cock below, both in the same frame and both in sharp focus. Her ass is firm, high and perfectly round with smooth even skin texture.",
   "trans-male":
-    "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a smoothly shaved, plump, closed pussy: a soft rounded mound with a single neat vertical crease, everything tucked inside so only the crease shows.",
-  nb: "A lean androgynous body, a flat soft chest, narrow hips and a smooth groin, skin evenly lit with visible pores and fine texture throughout.",
+    "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a smoothly shaved plump closed pussy: a soft rounded mound with a single neat vertical crease, everything tucked inside so only the crease shows. His ass is firm, high and perfectly round with smooth even skin texture.",
+  nb: "A lean androgynous body, a flat soft chest, narrow hips and a smooth groin, skin evenly lit with visible pores and fine texture throughout. Ass firm, high and perfectly round with smooth even skin texture.",
 };
 
 /** The anatomy clause for a nude render of this companion. */

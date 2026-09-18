@@ -22,7 +22,6 @@ import {
   HelpCircle,
   LifeBuoy,
   Mail,
-  ScrollText,
 } from "lucide-react";
 import { enablePush } from "@/lib/push-client";
 import { toast } from "sonner";
@@ -150,18 +149,26 @@ export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRi
                 <span className="sr-only">Open menu</span>
               </Button>
             </SheetTrigger>
+            {/* p-0 and a flex column, so the links below can scroll.
+                The sheet is fixed at h-full with p-6 and no overflow rule, so
+                on a phone every entry past the fold was simply unreachable —
+                the menu is taller than a 640px screen. The header stays put
+                and only the list moves. */}
             <SheetContent
               side="right"
-              className="w-[85vw] max-w-xs border-white/10 bg-background/95 backdrop-blur-2xl p-6"
+              className="flex w-[85vw] max-w-xs flex-col gap-0 overflow-hidden border-white/10 bg-background/95 p-0 backdrop-blur-2xl"
             >
-              <SheetHeader className="text-left border-b border-white/10 pb-4">
+              <SheetHeader className="shrink-0 border-b border-white/10 px-6 pb-4 pt-6 text-left">
                 <SheetTitle className="flex items-center gap-2">
                   <Heart className="h-5 w-5 fill-primary text-primary" />
                   <span className="font-display text-lg font-semibold">HumanCrush.com</span>
                 </SheetTitle>
               </SheetHeader>
 
-              <div className="mt-6 flex flex-col gap-2">
+              {/* overscroll-contain stops a flick at the end of the list from
+                  scrolling the page underneath; the safe-area padding clears
+                  the phone's home indicator. */}
+              <div className="flex flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
                 <Link
                   to="/"
                   onClick={() => setOpen(false)}
@@ -235,13 +242,6 @@ export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRi
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-white/5"
                 >
                   <HelpCircle className="h-4 w-4 text-primary" /> Help Center
-                </Link>
-                <Link
-                  to="/legal"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-white/5"
-                >
-                  <ScrollText className="h-4 w-4 text-primary" /> Terms &amp; policies
                 </Link>
                 <button
                   type="button"

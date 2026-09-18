@@ -33,7 +33,6 @@ import { companionImage } from "@/lib/companion-images";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { openSupport } from "@/components/SupportWidget";
 import { SupportContact } from "@/components/SupportContact";
-import { LegalLinks } from "@/components/LegalLinks";
 import { useSystemStatus } from "@/hooks/use-app-setting";
 import {
   companionForReel,
@@ -476,7 +475,6 @@ function Landing() {
           <div className="px-3">
             <SupportContact />
           </div>
-          <LegalLinks className="px-3" />
           <SystemStatusNote />
         </div>
       </aside>

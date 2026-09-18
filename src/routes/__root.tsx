@@ -155,6 +155,7 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 import { BottomNav } from "../components/BottomNav";
+import { SiteFooter } from "../components/SiteFooter";
 import { SupportWidget } from "../components/SupportWidget";
 import { PushNotificationPrompt } from "../components/PushNotificationPrompt";
 import { autoSubscribePushIfGranted } from "../lib/push-client";
@@ -175,6 +176,12 @@ import { Analytics } from "@vercel/analytics/react";
 const SUPPORT_BUBBLE_PATHS = ["/", "/auth"];
 const NO_SUPPORT_PREFIXES = ["/chat/", "/admin", "/studio"];
 
+// The footer carries the policies, support and the 18+ notice on every page
+// and every screen size. Not on a conversation (a full-height app screen with
+// its own composer at the bottom) or the admin console and studio, which are
+// tools rather than pages.
+const NO_FOOTER_PREFIXES = ["/chat/", "/admin", "/studio"];
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -182,6 +189,7 @@ function RootComponent() {
   const path = pathname.replace(/(.)\/+$/, "$1");
   const supportBubble = SUPPORT_BUBBLE_PATHS.includes(path);
   const supportMounted = !NO_SUPPORT_PREFIXES.some((p) => path.startsWith(p));
+  const showFooter = !NO_FOOTER_PREFIXES.some((p) => path.startsWith(p));
 
   useEffect(() => {
     autoSubscribePushIfGranted();
@@ -191,6 +199,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      {/* The home page has a fixed 256px sidebar on large screens, and the
+          footer is mounted outside that page's content column — without the
+          inset its left edge would sit underneath the sidebar. */}
+      {showFooter && <SiteFooter className={path === "/" ? "lg:pl-64" : ""} />}
       {/* Renders nothing. Here rather than on the landing page because an
           affiliate link can point at any page, and a ?ref= that only works on
           "/" quietly loses money on every deep link someone shares. */}

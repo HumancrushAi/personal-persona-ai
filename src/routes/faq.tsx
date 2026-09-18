@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ChevronDown, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SupportContact } from "@/components/SupportContact";
-import { LegalLinks } from "@/components/LegalLinks";
 
 export const Route = createFileRoute("/faq")({
   ssr: false,
@@ -84,7 +83,6 @@ function FAQPage() {
 
         <div className="mt-12">
           <SupportContact card />
-          <LegalLinks className="mt-4 px-1" />
         </div>
 
         <div className="mt-8 rounded-2xl border border-white/10 bg-gradient-to-br from-primary/15 to-transparent p-8 text-center">

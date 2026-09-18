@@ -32,37 +32,28 @@ const XAI_URL = "https://api.x.ai/v1/chat/completions";
 // nothing like it, which is how a brunette came back blonde. Examples teach
 // shape, and whatever is in them gets reproduced, so the appearance is gone from
 // them entirely. Do not put hair, skin or eye colour back.
-const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm high-set round breasts that hold their full tight round shape against gravity in any pose, standing proud off the chest with taut smooth skin, full rounded lower poles with zero sag, nipples level with the middle of her upper arms pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture free of bumps or irregularities, smoothly shaved plump closed pussy, a soft rounded mound with a single neat vertical crease and only the crease showing, her ass firm high and perfectly round with smooth even skin texture, reclining back against pillows propped up on her elbows, back gently arched, legs open, her hands resting on her inner thighs, on a bed with plain white sheets, soft daylight from a window beside her, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
+//
+// All negative / posture-conflicting fragments ("zero sag", "standing proud",
+// "free of bumps or irregularities") have been removed so the examples no longer
+// fight the locked positive anatomy clause that is appended later.
+const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm high-set round breasts that hold their full tight round shape against gravity in any pose, projected forward and lifted with taut smooth skin, full rounded lower poles, nipples level with the middle of her upper arms pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy, a soft rounded mound with a single neat vertical crease and only the crease showing, her ass firm high and perfectly round with smooth even skin texture, reclining back against pillows propped up on her elbows, back gently arched, legs open, her hands resting on her inner thighs, on a bed with plain white sheets, soft daylight from a window beside her, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
 
-exact same woman as the reference image, identical face, hair and skin, completely nude, sitting upright on the edge of the bed with her shoulders back and her knees apart, framed from the top of her head down to her knees with her face clearly visible in the upper third, natural firm high-set round breasts that hold their full tight round shape against gravity, standing proud with taut smooth skin, full rounded lower poles with zero sag, erect nipples pointing forward with clean realistic texture, smoothly shaved plump closed pussy with a single neat vertical crease, her hands resting on her thighs, plain white sheets, soft daylight from the side, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+exact same woman as the reference image, identical face, hair and skin, completely nude, sitting upright on the edge of the bed with her shoulders back and her knees apart, framed from the top of her head down to her knees with her face clearly visible in the upper third, natural firm high-set round breasts that hold their full tight round shape against gravity, projected forward and lifted with taut smooth skin, full rounded lower poles, erect nipples pointing forward with clean realistic texture, smoothly shaved plump closed pussy with a single neat vertical crease, her hands resting on her thighs, plain white sheets, soft daylight from the side, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
 
 // Shown ONLY when the user asked for a toy.
-//
-// This sat in NUDE_EXAMPLES, sent on every nude request, and "send me a
-// picture of your pussy" came back with a dildo in it. Examples are the
-// strongest instruction in this file — the model reproduces what it is shown —
-// so an example with a toy in it is an invitation to add one, whatever the
-// request said. Same reasoning as POV_EXAMPLE below.
-const TOY_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, reclining back against pillows with her shoulders raised, knees up and thighs open, natural firm high-set round breasts that hold their full tight round shape against gravity, standing proud with taut smooth skin, full rounded lower poles with zero sag, smooth matte silicone dildo inserted into her pussy and angled down between her open thighs, most of the shaft hidden inside her with only the flared base showing, her fingers closed on that base and her wrist against her inner thigh, her pussy pressing snugly around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees with her face in the upper third, plain white sheets, soft window daylight, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+const TOY_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, reclining back against pillows with her shoulders raised, knees up and thighs open, natural firm high-set round breasts that hold their full tight round shape against gravity, projected forward and lifted with taut smooth skin, full rounded lower poles, smooth matte silicone dildo inserted into her pussy and angled down between her open thighs, most of the shaft hidden inside her with only the flared base showing, her fingers closed on that base and her wrist against her inner thigh, her pussy pressing snugly around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees with her face in the upper third, plain white sheets, soft window daylight, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
 
 // Shown ONLY when the user actually asked for a close-up or a POV shot.
-//
-// Sent every time, this taught the model that a point-of-view shot from between
-// her thighs is one of the normal things to write — on a request that named no
-// framing at all. Examples are the strongest instruction in the file, so an
-// example of a composition nobody asked for is a standing invitation to compose
-// that way, and a POV crop is one of the ways a photo comes back headless.
 const POV_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus, a smooth plump closed mound with a single neat vertical crease and only the crease showing, her hands resting on her thighs, her stomach and firm high-set round breasts beyond it that hold their tight round shape, her face looking down into the lens at the top of the frame, lens thirty centimetres away, glistening skin texture, warm soft lighting, candid raw photograph, real pores and fine skin detail`;
 
 // The male and trans-female examples live apart from the female ones because
 // examples are the strongest instruction in the file and whatever is in them
-// gets reproduced. Sent all five every time, a prompt for a woman carried two
-// worked examples of erect cocks — see the note on ANATOMY below.
+// gets reproduced.
 const MALE_EXAMPLES = `exact same man as the reference image, identical face, hair and skin, completely nude, athletic muscular build, thick erect penis standing out from his body and angled slightly upward, about as long as his hand from wrist to fingertip, clearly defined shaft with soft realistic veining, distinct coronal ridge where the shaft meets the smooth rounded glans, natural firm testicles hanging in a separate lightly textured scrotum below, each part cleanly distinguishable, standing in a modern penthouse shower framed from his head to his knees, water raining down, golden hour sunlight, wet authentic skin texture, candid DSLR full-frame photograph, raw photography
 
 exact same man as the reference image, identical face, hair and skin, completely nude, lying back against the headboard with one knee raised, his hand closed around his thick erect cock, clearly defined shaft with soft veining, distinct ridge below the smooth rounded glans, natural firm testicles in a separate sac, framed from his head to his knees with his face in the upper third, warm bedside lamplight, real skin texture with visible pores, candid raw photograph`;
 
-const TRANS_FEMALE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, feminine body with natural firm high-set round breasts that hold their full tight round shape against gravity, standing proud with taut smooth skin, full rounded lower poles with zero sag, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, and at her groin a thick erect penis standing out and angled slightly upward, about as long as her hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans and natural testicles in a separate sac below, both breasts and cock in frame and in focus, standing by a sunlit penthouse window framed from her head to her knees, seductive eye contact, candid raw photo, real skin texture`;
+const TRANS_FEMALE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, feminine body with natural firm high-set round breasts that hold their full tight round shape against gravity, projected forward and lifted with taut smooth skin, full rounded lower poles, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, and at her groin a thick erect penis standing out and angled slightly upward, about as long as her hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans and natural testicles in a separate sac below, both breasts and cock in frame and in focus, standing by a sunlit penthouse window framed from her head to her knees, seductive eye contact, candid raw photo, real skin texture`;
 
 // A trans man had no example of his own, so the model was shown two nude men
 // with cocks and asked to write a prompt for him.
@@ -105,54 +96,21 @@ So: state where things ARE, what touches what, and what is visible. If something
 /** Which anatomy the subject actually has, so only that is described. */
 type SubjectKind = GenderKind;
 
-// One bullet, chosen by the companion's own sex.
-//
-// All of them used to be sent every time. A female companion's system prompt
-// therefore carried two paragraphs about erect cocks, shafts and testicles, and
-// two of the five worked examples were of men — which is both a large slice of
-// a tight word budget spent on anatomy she does not have, and a steady supply
-// of male tokens to a prompt that has to render a woman. The reported failure
-// on "pussy close to my face" was a groin that came back masculine.
-//
-// Each bullet names sub-structures instead of reaching for "anatomically
-// correct" and "well-proportioned", which are adjectives a renderer cannot act
-// on — the same lesson props.ts learned when "correct size" lost to "about as
-// long as her hand". Naming parts that have to stay distinguishable from each
-// other is what stops the fused, featureless, smooth-plastic look.
 // ANATOMY used to live here. It is gone, and NUDE_ANATOMY in anatomy.ts is
 // now the single copy: the clause is appended verbatim by finishMediaPrompt
 // rather than described to Grok, so a second copy here would be dead text that
-// someone edits expecting the render to change. Three separate copies of the
-// front-facing description is what made the last round of this so hard to fix.
+// someone edits expecting the render to change.
 
-// What stands in for ANATOMY[kind] when the USER set the viewpoint.
-//
-// ANATOMY[kind] ends "Write it in exactly those words" and opens with the front
-// of the body, and nothing conditioned it on where the camera was standing. So a
-// request for a view from behind still carried a verbatim order to describe a
-// chest — and being verbatim, it outranked the single posture clause that knew
-// what "from behind" meant. The render obeyed the order instead of the request,
-// and what came back was a front-facing picture nobody asked for. Same failure
-// class as the unrequested toy: a different picture from the one paid for.
-//
-// This keeps what ANATOMY[kind] is actually FOR — naming sub-structures so they
-// stay distinguishable from each other, which is what stops the fused
-// smooth-plastic look — and hands the choice of WHICH parts back to the request.
 // The anatomy clause is no longer written HERE. It is appended verbatim after
 // this model has finished, by finishMediaPrompt, exactly as the prop
 // specification already is.
 //
-// Why it moved: ANATOMY[kind] is a ~143-word block ending "Write it in exactly
-// those words", and it sat inside an instruction to produce a 120-160 word
-// prompt containing a dozen other things as well. Those two demands cannot both
+// Why it moved: ANATOMY[kind] is a long block ending "Write it in exactly
+// those words", and it sat inside an instruction to produce a short prompt
+// containing a dozen other things as well. Those two demands cannot both
 // be met, so the model compressed — and which half of the body description it
 // dropped varied from run to run. That is a lottery sitting directly on top of
-// the body: two identical requests, two different bodies, before a seed is even
-// involved. Appended afterwards it competes with nothing and arrives whole.
-//
-// This bullet replaces it, and its only job is to stop the model spending words
-// re-describing a body that is already guaranteed. Same shape as the note on
-// the toy bullet, which was moved out for the same reason.
+// the body. Appended afterwards it competes with nothing and arrives whole.
 const ANATOMY_IS_APPENDED =
   "- the full anatomical description of her body is appended to your prompt automatically, word for word, after you finish. Those words are already spoken for, so spend every one of yours on the act, the posture, the framing, the setting and the light";
 
@@ -166,12 +124,6 @@ const DEFER_TO_GARMENT =
 /**
  * Everything the system prompt branches on, read from the request once in
  * refineMediaPrompt and passed down whole.
- *
- * It was nine positional booleans threaded through three functions, which is
- * how `groinFocus` and `toyAsked` came to sit next to each other unlabelled at
- * two call sites. Naming them also makes the precedence between them visible,
- * which matters more than the tidiness: `rearView` has to outrank the
- * front-facing defaults, and that is hard to see in an argument list.
  */
 type Shape = {
   undress: "nude" | "partial" | "clothed";
@@ -205,39 +157,34 @@ Leave her hair colour, hair length, eye colour, skin tone and build out entirely
 
 Every prompt must contain, in this order:
 - "exact same woman as the reference image, identical face, hair and skin" (carries her likeness from the start frame)
-- FRAMING, as the second thing in the prompt. ${
-  rearView
+- FRAMING, as the second thing in the prompt. ${rearView
     ? `The user set the viewpoint themselves, so write THEIR viewpoint in THEIR words: where the lens stands relative to her, which way she is turned, what fills the foreground, what lies beyond it, and how far away the camera is. Her face stays in the frame, over her shoulder or turned back towards the lens. The viewpoint the user described governs the whole composition and every fragment after it — the posture, what is nearest the lens and what the light falls across all follow from where they put the camera.`
     : closeUp
       ? `The user asked for a close-up or point-of-view shot, so write the VIEWPOINT as a real photograph: where the lens is, what fills the foreground, and what is behind it. Use this shape — "close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus, her stomach and breasts beyond it, her face looking down into the lens at the top of the frame, lens thirty centimetres away". Her face stays in the frame.`
       : groinFocus
         ? `The request is ABOUT her pussy, so the camera comes in close enough for it to render: write "framed from her chin down to her knees with her mouth and chin at the top edge of the frame, her hips and groin in the centre of the frame in sharp focus, camera one metre away at hip height". A head-to-knees frame leaves a vulva about forty pixels wide and it comes back a smear whatever you write about it; this frame gives it nearly twice the detail. Her mouth and chin stay in shot at the top edge — it is a chosen composition, not a crop.`
         : `Write "framed from the top of her head down to her knees, her face clearly visible in the upper third of the frame, her hips in the middle of the frame, camera two metres away". This picture is delivered small, so a whole standing figure leaves the part that matters a few pixels wide; a head-to-knees frame keeps her face in shot and the act at a usable size.`
-}
-${
-  undress === "nude"
+  }
+${undress === "nude"
     ? '- nudity stated as ALREADY TRUE: "completely nude", "fully naked". Write her as already bare rather than undressing'
     : undress === "partial"
       ? `- the GARMENT AND ITS POSITION, both exactly as the user gave them, stated as ALREADY in that position: name the garment, its fabric and its colour, then say where on her body it now sits, how the fabric gathers and stretches where it has been moved to, and what that leaves bare. The user named a garment AND a place for it — both are part of the picture they asked for, and the garment stays in that position for the whole prompt`
       : `- her wardrobe exactly as the user described it, stated as already worn`
-}
-${
-  postureStated
+  }
+${postureStated
     ? `- the POSTURE exactly as the user named it, already in that position`
     : `- a natural, stable posture that matches the framing and the act`
-}
-${
-  rearView
+  }
+${rearView
     ? DEFER_TO_REQUEST
     : undress === "clothed"
       ? `- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin`
       : ANATOMY_IS_APPENDED
-}
-${
-  toyAsked
+  }
+${toyAsked
     ? `- the toy exactly as the user described it, already in the position they named, with material, size and how it interacts with her body stated clearly`
     : ``
-}
+  }
 - authentic human skin texture with visible natural pores, candid raw photography, real lighting and shadows
 
 Never invent hair colour, skin tone, eye colour or body type. The reference image supplies all of that.`;
@@ -255,10 +202,10 @@ function systemFor(kind: "photo" | "video", scenes: number, shape: Shape): strin
             : shape.toyAsked
               ? TOY_EXAMPLE
               : // The POV example looks UP the front of the body. Showing it to a
-                // request that set its own viewpoint is how "close up of your ass"
-                // came back as a front-facing shot: examples are the strongest
-                // instruction in this file and whatever is in them gets reproduced.
-                shape.closeUp && !shape.rearView
+              // request that set its own viewpoint is how "close up of your ass"
+              // came back as a front-facing shot: examples are the strongest
+              // instruction in this file and whatever is in them gets reproduced.
+              shape.closeUp && !shape.rearView
                 ? POV_EXAMPLE
                 : NUDE_EXAMPLES;
 

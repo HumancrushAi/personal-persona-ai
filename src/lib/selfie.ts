@@ -377,6 +377,46 @@ export function actionSentence(subject: "she" | "he" | "they", action: string): 
 export const CLOSE_UP_RE =
   /\b(close[- ]?ups?|close to|in my face|to my face|in front of my face|against the camera|near camera|close to camera|pov|point of view|macro|tight shot|intimate view|front of camera|up close|zoom\w*|zoomed|right up|face in your)\b/i;
 
+// Detects a request for a view from behind, so the front-facing framing and the
+// front-facing anatomy block don't overwrite it.
+//
+// The refiner used to have no notion of this at all: the only rule that knew
+// "from behind" was one clause of the posture bullet, and it was outvoted by an
+// anatomy block that says "write it in exactly those words" and by three
+// front-facing worked examples. A request for a rear view came back as a
+// front-facing nude — a different picture from the one that was paid for, which
+// is the same failure class as the unrequested-toy bug.
+export const REAR_RE =
+  /\b(from behind|behind you|behind her|rear view|from the back|back view|back to (?:me|the camera)|turn(?:ed|ing)? around|face away|facing away|bend(?:ing)? over|bent over|doggy\w*|all fours|on your knees facing|twerk\w*|arch(?:ed|ing)? back towards|present(?:ing)?)\b/i;
+
+// Detects a posture the user named, so the rules stop inferring one over the top
+// of it.
+//
+// The posture bullet opens "INFER from the act rather than wait to be told", and
+// the bullet under it ends "even then, when she is lying down at all, write
+// 'propped up on a stack of pillows, shoulders and upper back raised'". Between
+// them there was no way to ask for a posture and get it: "lie down" was
+// answered with propped up on pillows, by a rule that fires hardest exactly when
+// the user HAS said what they want. Inference is the right default for a request
+// that named nothing; it is the wrong answer to a request that named something.
+// Distinct from the POSTURE_RE further down this file, which answers a different
+// question for the keyword builder: that one counts any ACT that "standing"
+// would fight — dildo, oral, anal, fuck — as carrying a posture. Here an act is
+// exactly what should still be inferred from, so only postures the user actually
+// NAMED belong in this list.
+export const STATED_POSTURE_RE =
+  /\b(lie|lying|lay|laying|lie down|lying down|lay down|flat on|on (?:your|her|his|their) (?:back|side|stomach|front|knees)|stand|standing|stand up|upright|sit|sitting|seated|sit up|kneel\w*|squat\w*|crouch\w*|bend over|bent over|all fours|crawl\w*|straddl\w*|rid(?:e|ing)|turn\w*|face (?:me|away|the)|facing|lean\w*|arch\w*|on top|spread eagle|legs crossed|cross(?:ed)? (?:your|her) legs)\b/i;
+
+// Detects a garment the user put in a PARTIAL position — pulled down, pushed
+// aside, unzipped — as distinct from dressed and from nude.
+//
+// requestIsNude is a boolean, so a request like this resolved to one of two
+// templates: "completely nude" (which drops the garment the user named) or
+// "every garment STAYING ON" (which drops the position they put it in). Either
+// way the specified detail is discarded. This is the third state.
+export const PARTIAL_UNDRESS_RE =
+  /\b(pull\w*\s+(?:up|down|aside|back|open)|push\w*\s+(?:up|down|aside)|roll\w*\s+(?:up|down)|slid\w*\s+(?:up|down|aside)|hike\w*\s+up|lift\w*\s+up|yank\w*\s+(?:up|down)|tug\w*\s+(?:up|down|aside)|unzip\w*|unbutton\w*|unclasp\w*|unhook\w*|half\s+(?:off|on|undone)|one\s+strap|off\s+(?:one|your|her)\s+shoulder|around\s+(?:your|her)\s+(?:knees|ankles|thighs|hips|waist))\b/i;
+
 // The opening sentence of every media prompt, and the only thing that reliably
 // stops the crop.
 //

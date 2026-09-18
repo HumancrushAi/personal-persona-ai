@@ -132,12 +132,57 @@ const ANATOMY: Record<SubjectKind, string> = {
   nb: "- the body in photorealistic detail: lean androgynous build, a flat soft chest, narrow hips, skin evenly lit with visible pores and fine texture throughout",
 };
 
-const rules = (
-  nude: boolean,
-  closeUp: boolean,
-  kind: SubjectKind,
-  groinFocus: boolean,
-) => `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
+// What stands in for ANATOMY[kind] when the USER set the viewpoint.
+//
+// ANATOMY[kind] ends "Write it in exactly those words" and opens with the front
+// of the body, and nothing conditioned it on where the camera was standing. So a
+// request for a view from behind still carried a verbatim order to describe a
+// chest — and being verbatim, it outranked the single posture clause that knew
+// what "from behind" meant. The render obeyed the order instead of the request,
+// and what came back was a front-facing picture nobody asked for. Same failure
+// class as the unrequested toy: a different picture from the one paid for.
+//
+// This keeps what ANATOMY[kind] is actually FOR — naming sub-structures so they
+// stay distinguishable from each other, which is what stops the fused
+// smooth-plastic look — and hands the choice of WHICH parts back to the request.
+const DEFER_TO_REQUEST =
+  "- the parts of her the stated viewpoint puts in frame, in photorealistic detail and in the user's own vocabulary, taken in the order the user named them: the surface shape of each, how it meets the parts beside it so the two stay distinguishable, skin one even tone with the skin around it, a faint natural sheen, authentic texture with visible pores, and the light falling across it so its shape reads";
+
+// The same deferral for a garment the user placed rather than a camera.
+const DEFER_TO_GARMENT =
+  "- the parts of her the garment's position leaves bare, in photorealistic detail and in the user's own vocabulary: the surface shape of each, the edge of the moved fabric against that skin, where the fabric is taut and where it gathers, skin one even tone either side of that edge, a faint natural sheen, authentic texture with visible pores";
+
+/**
+ * Everything the system prompt branches on, read from the request once in
+ * refineMediaPrompt and passed down whole.
+ *
+ * It was nine positional booleans threaded through three functions, which is
+ * how `groinFocus` and `toyAsked` came to sit next to each other unlabelled at
+ * two call sites. Naming them also makes the precedence between them visible,
+ * which matters more than the tidiness: `rearView` has to outrank the
+ * front-facing defaults, and that is hard to see in an argument list.
+ */
+type Shape = {
+  undress: "nude" | "partial" | "clothed";
+  closeUp: boolean;
+  /** The user asked to be shown a view from behind. Outranks the defaults. */
+  rearView: boolean;
+  /** The user named a position. Outranks both the inference table and the
+   * upright-torso default, which between them made "lie down" unanswerable. */
+  postureStated: boolean;
+  kind: SubjectKind;
+  groinFocus: boolean;
+  toyAsked: boolean;
+};
+
+const rules = ({
+  undress,
+  closeUp,
+  rearView,
+  postureStated,
+  kind,
+  groinFocus,
+}: Shape) => `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
 
 ${POSITIVE_ONLY}
 
@@ -150,28 +195,40 @@ Leave her hair colour, hair length, eye colour, skin tone and build out entirely
 Every prompt must contain, in this order:
 - "exact same woman as the reference image, identical face, hair and skin" (carries her likeness from the start frame)
 - FRAMING, as the second thing in the prompt. ${
-  closeUp
-    ? `The user asked for a close-up or point-of-view shot, so write the VIEWPOINT as a real photograph: where the lens is, what fills the foreground, and what is behind it. Use this shape — "close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus, her stomach and breasts beyond it, her face looking down into the lens at the top of the frame, lens thirty centimetres away". Her face stays in the frame.`
-    : groinFocus
-      ? `The request is ABOUT her pussy, so the camera comes in close enough for it to render: write "framed from her chin down to her knees with her mouth and chin at the top edge of the frame, her hips and groin in the centre of the frame in sharp focus, camera one metre away at hip height". A head-to-knees frame leaves a vulva about forty pixels wide and it comes back a smear whatever you write about it; this frame gives it nearly twice the detail. Her mouth and chin stay in shot at the top edge — it is a chosen composition, not a crop.`
-      : `Write "framed from the top of her head down to her knees, her face clearly visible in the upper third of the frame, her hips in the middle of the frame, camera two metres away". This picture is delivered small, so a whole standing figure leaves the part that matters a few pixels wide; a head-to-knees frame keeps her face in shot and the act at a usable size.`
+  rearView
+    ? `The user set the viewpoint themselves, so write THEIR viewpoint in THEIR words: where the lens stands relative to her, which way she is turned, what fills the foreground, what lies beyond it, and how far away the camera is. Her face stays in the frame, over her shoulder or turned back towards the lens. The viewpoint the user described governs the whole composition and every fragment after it — the posture, what is nearest the lens and what the light falls across all follow from where they put the camera.`
+    : closeUp
+      ? `The user asked for a close-up or point-of-view shot, so write the VIEWPOINT as a real photograph: where the lens is, what fills the foreground, and what is behind it. Use this shape — "close-up point-of-view photograph taken from between her open thighs looking up along her body, her pussy filling the centre foreground in sharp focus, her stomach and breasts beyond it, her face looking down into the lens at the top of the frame, lens thirty centimetres away". Her face stays in the frame.`
+      : groinFocus
+        ? `The request is ABOUT her pussy, so the camera comes in close enough for it to render: write "framed from her chin down to her knees with her mouth and chin at the top edge of the frame, her hips and groin in the centre of the frame in sharp focus, camera one metre away at hip height". A head-to-knees frame leaves a vulva about forty pixels wide and it comes back a smear whatever you write about it; this frame gives it nearly twice the detail. Her mouth and chin stay in shot at the top edge — it is a chosen composition, not a crop.`
+        : `Write "framed from the top of her head down to her knees, her face clearly visible in the upper third of the frame, her hips in the middle of the frame, camera two metres away". This picture is delivered small, so a whole standing figure leaves the part that matters a few pixels wide; a head-to-knees frame keeps her face in shot and the act at a usable size.`
 }
 ${
-  nude
+  undress === "nude"
     ? '- nudity stated as ALREADY TRUE: "completely nude", "fully naked". Write her as already bare rather than undressing'
-    : `- her wardrobe EXACTLY as the user described it, stated as already worn and STAYING ON: name the garments, the fabric and the colour. The user asked for her in clothing, so she is clothed — keep every garment on her through the whole prompt. Lingerie means actual lingerie — a bra and matching briefs, a slip, a bodysuit, a babydoll`
+    : undress === "partial"
+      ? `- the GARMENT AND ITS POSITION, both exactly as the user gave them, stated as ALREADY in that position: name the garment, its fabric and its colour, then say where on her body it now sits, how the fabric gathers and stretches where it has been moved to, and what that leaves bare. The user named a garment AND a place for it — both are part of the picture they asked for, and the garment stays in that position for the whole prompt`
+      : `- her wardrobe EXACTLY as the user described it, stated as already worn and STAYING ON: name the garments, the fabric and the colour. The user asked for her in clothing, so she is clothed — keep every garment on her through the whole prompt. Lingerie means actual lingerie — a bra and matching briefs, a slip, a bodysuit, a babydoll`
 }
 - the explicit act, in the user's own vocabulary: tits, pussy, ass, nipples, cock, dildo. Do not euphemise
-- the POSTURE, which you must INFER from the act rather than wait to be told. Always name a posture. Fingering or masturbating means reclining back against pillows propped up on her elbows with legs spread, or sitting with knees parted; riding means straddling upright, knees on the bed; twerking or from-behind means on all fours or bent over at the waist presenting; male masturbation means holding or stroking his penis. Choose standing only when the user asked for it ("standing in the shower")
-- keep the torso UPRIGHT or PROPPED UP whenever the act allows it: sitting, kneeling upright, or reclining against pillows with her shoulders raised, her back gently arched and her shoulders back so her chest is lifted. Lying flat on her back or leaning forward are for requests that name those positions — and even then, when she is lying down at all, write "propped up on a stack of pillows, shoulders and upper back raised": flat on her back her breasts spread sideways and the picture comes back looking sagging
+${
+  postureStated
+    ? `- the POSTURE THE USER NAMED, exactly as they named it and held for the whole prompt. They said how she is positioned, so that is how she is positioned: write their posture in their words as the first thing after the framing, then describe how her body rests in it — where her weight sits, which parts touch the bed, the floor or the wall, where her arms and legs go, how her back and shoulders follow from it. Every later fragment agrees with it.`
+    : `- the POSTURE, which you must INFER from the act rather than wait to be told. Always name a posture. Fingering or masturbating means reclining back against pillows propped up on her elbows with legs spread, or sitting with knees parted; riding means straddling upright, knees on the bed; twerking or from-behind means on all fours or bent over at the waist presenting; male masturbation means holding or stroking his penis. Choose standing only when the user asked for it ("standing in the shower")
+- keep the torso UPRIGHT or PROPPED UP whenever the act allows it: sitting, kneeling upright, or reclining against pillows with her shoulders raised, her back gently arched and her shoulders back so her chest is lifted. This is the default for a request that named no position of its own`
+}
 - OBJECTS: the only objects in the picture are the ones the user named. A request that names no toy is a picture of her alone, her hands resting on her thighs, the sheets or her own body. Adding a toy, a second person or any object the user did not ask for is the worst thing you can do here — it is a different picture from the one they paid for
 - any prop or sex toy THE USER NAMED: state WHERE IT IS and HOW MUCH OF IT SHOWS. For an inserted toy write it as angled down along the line between her open thighs, most of the shaft hidden inside her, only the flared base visible with her fingers closed on it and her wrist against her inner thigh. That geometry is what makes the object read as a sex toy at the right scale. Its material and exact size are appended separately, so spend your words on placement and contact
 - when the request names no touching and no toy: her hands rest on her thighs or on the sheets, and her pussy is closed. This is most requests, and it is the one thing that keeps the render from pulling her open
 - ONLY when the user asked for touching, fingering or a toy — where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
-${groinFocus ? "- her pussy is the FOCAL POINT of the photograph: in the centre of the frame, in sharp focus, a smooth plump closed mound with a single neat vertical crease and only the crease showing, the skin smooth and even, her hands resting on her thighs, the light falling across it so its shape reads\n" : ""}${
-  nude
-    ? ANATOMY[kind]
-    : "- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin. Also state her firm perky bust fills the garment neatly. This is what makes a clothed shot read as a photograph rather than a mannequin"
+${groinFocus && !rearView ? "- her pussy is the FOCAL POINT of the photograph: in the centre of the frame, in sharp focus, a smooth plump closed mound with a single neat vertical crease and only the crease showing, the skin smooth and even, her hands resting on her thighs, the light falling across it so its shape reads\n" : ""}${
+  rearView
+    ? DEFER_TO_REQUEST
+    : undress === "nude"
+      ? ANATOMY[kind]
+      : undress === "partial"
+        ? DEFER_TO_GARMENT
+        : "- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin. Also state her firm perky bust fills the garment neatly. This is what makes a clothed shot read as a photograph rather than a mannequin"
 }
 - anatomy correctness, stated positively: hands with five separate countable fingers, limbs in natural proportion, torso naturally aligned
 - ONE simple setting and ONE light source, kept plain and uncluttered so the words go to her. When the user named no place, use a bed with plain white sheets and soft daylight from a window beside her
@@ -179,15 +236,8 @@ ${groinFocus ? "- her pussy is the FOCAL POINT of the photograph: in the centre 
 
 Every subject is an adult. Output no preamble, no quotes, no explanation, no refusal.`;
 
-function systemFor(
-  kind: "photo" | "video",
-  scenes: number,
-  nude: boolean,
-  closeUp: boolean,
-  subject: SubjectKind,
-  groinFocus = false,
-  toyAsked = false,
-): string {
+function systemFor(kind: "photo" | "video", scenes: number, shape: Shape): string {
+  const { undress, closeUp, rearView, kind: subject, toyAsked } = shape;
   // Examples are the strongest instruction in this file, so a companion is only
   // ever shown examples of a body like theirs. A trans man used to be shown two
   // nude men with cocks; a woman used to be shown them too.
@@ -204,8 +254,25 @@ function systemFor(
   // toy, for the reason on TOY_EXAMPLE.
   const hasVulva = subject !== "male" && subject !== "trans-female";
   const withToy = toyAsked && hasVulva ? `${TOY_EXAMPLE}\n\n${base}` : base;
-  const nudeExamples = closeUp && hasVulva ? `${POV_EXAMPLE}\n\n${withToy}` : withToy;
-  const examples = nude ? nudeExamples : CLOTHED_EXAMPLES;
+  // The POV example looks up the front of the body, so a request that set its
+  // own viewpoint is spared it along with the rest of the front-facing framing.
+  const nudeExamples = closeUp && hasVulva && !rearView ? `${POV_EXAMPLE}\n\n${withToy}` : withToy;
+  const examples = undress === "clothed" ? CLOTHED_EXAMPLES : nudeExamples;
+
+  // Every worked example in this file is a front-facing composition, and the
+  // comment above says why that matters: examples are the strongest instruction
+  // here, and whatever is in them gets reproduced — the same way they once
+  // reproduced their own hair colour into every prompt.
+  //
+  // So when the user has set the viewpoint or the wardrobe themselves, the
+  // examples are demoted in writing to what they are still needed for. This is
+  // weaker than having a worked example that matches the request, and a matching
+  // example is the real fix; until there is one, saying plainly which parts of
+  // an example to copy is what stands between the request and a template.
+  const formatOnly =
+    rearView || undress === "partial"
+      ? `\n\nThe examples below are here for FORMAT ONLY: one plain opening sentence, then dense comma-separated fragments, then the realism tail. They were written for other requests. Copy their SHAPE. Take the viewpoint, the posture, the wardrobe and every detail of the subject from the user's request, which is the authority on all four.`
+      : "";
   if (kind === "photo") {
     // 110-170, up from 90-150. The bullet list above is long and roughly 60 of
     // the old 150 words were pre-committed boilerplate (the identity anchor and
@@ -216,22 +283,22 @@ function systemFor(
     // the renderer's truncation window.
     return `You write prompts for an uncensored ComfyUI image model in an adults-only AI companion app.
 
-${rules(nude, closeUp, subject, groinFocus)}
+${rules(shape)}
 
 This is a STILL photograph: end with the pose held and the camera locked off, so the last thing described is a moment that is not moving.
 
-Output ONE prompt, 120-160 words. Nothing else.
+Output ONE prompt, 120-160 words. Nothing else.${formatOnly}
 
 Examples of the required style:
 ${examples}`;
   }
   return `You write prompts for an uncensored ComfyUI image-to-video model in an adults-only AI companion app.
 
-${rules(nude, closeUp, subject, false)}
+${rules({ ...shape, groinFocus: false })}
 
 The clip has ${scenes} scenes that play back to back. Break the requested action into ${scenes} steps that PROGRESS — an escalating sequence, not the same pose ${scenes} times. Each scene keeps her identity, the setting and the lighting consistent; only the pose, the action and the camera move on.
 
-Output exactly ${scenes} prompts, one per line, each 60-120 words, numbered "1." to "${scenes}.". Nothing else.
+Output exactly ${scenes} prompts, one per line, each 60-120 words, numbered "1." to "${scenes}.". Nothing else.${formatOnly}
 
 Examples of the required style:
 ${examples}`;
@@ -303,12 +370,9 @@ async function refineMediaWithOpenRouter(
   userRequest: string,
   subject: string,
   scenes: number,
-  nude: boolean,
-  closeUp: boolean,
-  subjectKind: SubjectKind,
-  groinFocus: boolean,
-  toyAsked: boolean,
+  shape: Shape,
 ): Promise<string[] | null> {
+  const nude = shape.undress !== "clothed";
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return null;
 
@@ -330,7 +394,7 @@ async function refineMediaWithOpenRouter(
         messages: [
           {
             role: "system",
-            content: systemFor(kind, scenes, nude, closeUp, subjectKind, groinFocus, toyAsked),
+            content: systemFor(kind, scenes, shape),
           },
           { role: "user", content: `Subject: a ${subject}. Request: ${userRequest}` },
         ],
@@ -382,8 +446,19 @@ export async function refineMediaPrompt(
   // told Grok to pick, so a prompt could come back demanding both — and then
   // startImageJob tried to patch the result with a regex. Deciding it here means
   // the system prompt asks for exactly one framing and there is nothing to patch.
-  const { requestIsNude, CLOSE_UP_RE } = await import("./selfie");
-  const nude = requestIsNude(req);
+  const { requestIsNude, CLOSE_UP_RE, REAR_RE, PARTIAL_UNDRESS_RE, STATED_POSTURE_RE } =
+    await import("./selfie");
+  // Three states, not two. A request that moves a garment rather than removing
+  // it used to collapse into one of the other two, and whichever it picked threw
+  // away half of what the user specified: "nude" loses the garment, "clothed"
+  // loses the position they put it in. It wins over plain nudity because it is
+  // the more specific description of the same picture.
+  const undress: Shape["undress"] = PARTIAL_UNDRESS_RE.test(req)
+    ? "partial"
+    : requestIsNude(req)
+      ? "nude"
+      : "clothed";
+  const nude = undress !== "clothed";
   const closeUp = CLOSE_UP_RE.test(req);
 
   // This file's own copy of the trans detection is gone. It read the user's
@@ -399,6 +474,17 @@ export async function refineMediaPrompt(
   // it needs to render. Photos only: a clip cropped chin-to-knees is a separate
   // decision, and videos are not what was reported as bad.
   const groinFocus = kind === "photo" && nude && a.hasVulva && mentionsPart(req, "vulva");
+  // Either an explicit viewpoint cue ("from behind", "bend over") or the part
+  // itself, which the refiner never read: `ass` has been in selfie.ts's nudity
+  // vocabulary all along, so "show me your ass" counted as a request for a nude
+  // photo and then went to a front-facing template.
+  //
+  // Over-triggering is the cheap direction here. Everything this flag does is
+  // withhold a front-facing default and tell the model to follow the user's own
+  // words, so a false positive costs a request that was going to be described
+  // literally anyway — where a false negative is the reported bug.
+  const rearView = REAR_RE.test(req) || mentionsPart(req, "ass");
+  const postureStated = STATED_POSTURE_RE.test(req);
   const toyAsked = TOY_RE.test(req);
   const noun =
     a.kind === "trans-female"
@@ -414,6 +500,16 @@ export async function refineMediaPrompt(
   ]
     .filter(Boolean)
     .join(" ");
+
+  const shape: Shape = {
+    undress,
+    closeUp,
+    rearView,
+    postureStated,
+    kind: subjectKind,
+    groinFocus,
+    toyAsked,
+  };
 
   // Attempt using Grok first if the key is available
   if (key) {
@@ -432,7 +528,7 @@ export async function refineMediaPrompt(
           messages: [
             {
               role: "system",
-              content: systemFor(kind, scenes, nude, closeUp, subjectKind, groinFocus, toyAsked),
+              content: systemFor(kind, scenes, shape),
             },
             { role: "user", content: `Subject: a ${subject}. Request: ${req}` },
           ],
@@ -469,17 +565,7 @@ export async function refineMediaPrompt(
   }
 
   // Fallback to OpenRouter (uncensored model) if Grok is not configured, failed, or refused
-  return refineMediaWithOpenRouter(
-    kind,
-    req,
-    subject,
-    scenes,
-    nude,
-    closeUp,
-    subjectKind,
-    groinFocus,
-    toyAsked,
-  );
+  return refineMediaWithOpenRouter(kind, req, subject, scenes, shape);
 }
 
 // Promo images are a different job from chat media: clothed, publishable, and

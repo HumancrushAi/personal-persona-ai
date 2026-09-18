@@ -308,6 +308,12 @@ const PART_TERMS = {
   penis: String.raw`dicks?|cocks?|penis|penises|balls|testicles?|ballsack|scrotum|shafts?|boners?|hard[- ]?ons?|erections?|schlongs?|dongs?|manhood|pricks?|willy|pecker|phallus|bulge|cum ?shot|jerk\w* off|jack\w* off`,
   vulva: String.raw`pussy|pussies|vagina|vaginas|vulvas?|clit|clitoris|labia|cunts?|snatch|coochie|cooch|camel ?toe|muff|beaver|front hole`,
   breasts: String.raw`tits|titties|boobs|boobies|breasts?|nipples?|areolas?|cleavage|rack|knockers|jugs|hooters|funbags|ta-tas`,
+  // Every kind has one, so this part never decides a refusal — it exists so the
+  // refiner can tell that a request is ABOUT the rear and stop the front-facing
+  // template from overwriting it. Same short-list discipline as the others:
+  // "peach", "bottom" and "cheeks" are left out because they must not move a
+  // camera on their own.
+  ass: String.raw`ass|asses|arse|asshole|arsehole|butthole|butt|buttocks|booty|bum|derriere|anus|rear end|backside`,
 } as const;
 
 export type BodyPart = keyof typeof PART_TERMS;
@@ -394,6 +400,8 @@ export function refuseWrongAnatomy(
     penis: a.hasPenis,
     vulva: a.hasVulva,
     breasts: a.hasBreasts,
+    // Nobody lacks one, so asking for it is never the wrong-anatomy refusal.
+    ass: true,
   };
   const missing = requestedParts(prompt ?? "").filter((part) => !has[part]);
   return missing.length ? REFUSALS[a.kind] || null : null;

@@ -416,3 +416,271 @@ describe("stripNegations", () => {
     expect(stripNegations(mostlyNegation)).toBe(mostlyNegation);
   });
 });
+
+// The reported failure: a request that named a viewpoint and a part came back as
+// a front-facing picture of a different part entirely.
+//
+// It was not the model ignoring the request. Four things in the system prompt
+// specified the front and none of them were conditioned on what was asked for —
+// the worked examples, the ANATOMY block (which ends "Write it in exactly those
+// words"), every branch of the framing bullet, and a focus flag that only ever
+// asked about one part. The single clause that knew what "from behind" meant was
+// outvoted. These tests pin the four.
+describe("a viewpoint the user set themselves", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  const systemPromptFor = async (req: string, kind: "photo" | "video" = "photo") => {
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_u: string, init: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content:
+                  "exact same woman as the reference image, identical face and hair, completely nude, bare skin, kneeling on the bed, warm lamplight, candid raw photograph with visible pores",
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    await refineMediaPrompt(kind, req, subject, kind === "video" ? 2 : 1);
+    return sent.messages[0].content as string;
+  };
+
+  it("withholds the verbatim anatomy order when the request set its own viewpoint", async () => {
+    const sys = await systemPromptFor("bend over and show me the view from behind");
+    expect(sys).not.toMatch(/Write it in exactly those words/);
+  });
+
+  it("still sends it for a request that set no viewpoint", async () => {
+    const sys = await systemPromptFor("naked on the bed");
+    expect(sys).toMatch(/Write it in exactly those words/);
+  });
+
+  // "ass" has been in selfie.ts's nudity vocabulary all along, so this counted as
+  // a request for a nude photo and then went to a front-facing template. Naming
+  // the part is setting the viewpoint.
+  it("counts naming the part as setting the viewpoint", async () => {
+    const sys = await systemPromptFor("show me your ass");
+    expect(sys).not.toMatch(/Write it in exactly those words/);
+    expect(sys).toMatch(/THEIR viewpoint in THEIR words/);
+  });
+
+  it("replaces the default framing rather than adding to it", async () => {
+    const sys = await systemPromptFor("from behind, on all fours");
+    expect(sys).toMatch(/THEIR viewpoint in THEIR words/);
+    // "camera two metres away" is the default framing bullet's own wording, and
+    // nothing else in the file says it. The phrases it shares with the worked
+    // examples are deliberately left out of this assertion: the examples are
+    // still front-facing after the demotion, and pinning their text here would
+    // make this test pass for the wrong reason.
+    expect(sys).not.toMatch(/camera two metres away/);
+  });
+
+  // The POV worked example looks up the front of the body. A close-up that set
+  // its own viewpoint gets the format lesson without that composition.
+  it("withholds the front-facing POV example from a close-up that set a viewpoint", async () => {
+    const sys = await systemPromptFor("close up of your ass");
+    expect(sys).not.toMatch(/looking up along her body/);
+  });
+
+  it("keeps the POV example for a close-up that set none", async () => {
+    const sys = await systemPromptFor("close up of your pussy");
+    expect(sys).toMatch(/looking up along her body/);
+  });
+
+  // Examples are the strongest instruction in the file and every one of them is
+  // front-facing, so when they disagree with the request they are demoted in
+  // writing to the one thing they are still needed for.
+  it("demotes the examples to format when the request disagrees with them", async () => {
+    const sys = await systemPromptFor("turn around and bend over");
+    expect(sys).toMatch(/FORMAT ONLY/);
+    expect(sys).toMatch(/the authority on all four/);
+  });
+
+  it("leaves the examples undemoted when they agree with the request", async () => {
+    const sys = await systemPromptFor("naked on the bed");
+    expect(sys).not.toMatch(/FORMAT ONLY/);
+  });
+
+  it("applies to video as well as photo", async () => {
+    const sys = await systemPromptFor("bend over for me", "video");
+    expect(sys).not.toMatch(/Write it in exactly those words/);
+    expect(sys).toMatch(/THEIR viewpoint in THEIR words/);
+  });
+
+  // Both named: the focal-point bullet puts its subject in the centre of the
+  // frame, which is a composition the user already chose differently.
+  it("drops the centre-of-frame focus bullet when the user placed the camera", async () => {
+    const sys = await systemPromptFor("your pussy from behind");
+    expect(sys).not.toMatch(/FOCAL POINT of the photograph/);
+  });
+
+  it("keeps it when they did not", async () => {
+    const sys = await systemPromptFor("send me a picture of your pussy");
+    expect(sys).toMatch(/FOCAL POINT of the photograph/);
+  });
+});
+
+// The third wardrobe state. `nude` was a boolean, so a request that MOVES a
+// garment collapsed into one of two templates and each threw away half of what
+// was asked for: "nude" loses the garment, "clothed" loses the position.
+describe("a garment the user moved", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  const systemPromptFor = async (req: string) => {
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_u: string, init: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content:
+                  "exact same woman as the reference image, identical face and hair, black leggings rolled down to her knees, bare skin above them, kneeling on the bed, warm lamplight, candid raw photograph with visible pores",
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    await refineMediaPrompt("photo", req, subject);
+    return sent.messages[0].content as string;
+  };
+
+  it("asks for the garment AND the position the user put it in", async () => {
+    const sys = await systemPromptFor("your leggings pulled down to your knees");
+    expect(sys).toMatch(/the GARMENT AND ITS POSITION/);
+  });
+
+  it("does not collapse it into full nudity", async () => {
+    const sys = await systemPromptFor("your leggings pulled down to your knees");
+    expect(sys).not.toMatch(/nudity stated as ALREADY TRUE/);
+  });
+
+  it("does not collapse it into fully dressed either", async () => {
+    const sys = await systemPromptFor("your leggings pulled down to your knees");
+    expect(sys).not.toMatch(/STAYING ON/);
+  });
+
+  it("leaves a plain nude request alone", async () => {
+    const sys = await systemPromptFor("get completely naked");
+    expect(sys).toMatch(/nudity stated as ALREADY TRUE/);
+    expect(sys).not.toMatch(/the GARMENT AND ITS POSITION/);
+  });
+
+  it("leaves a plain clothed request alone", async () => {
+    const sys = await systemPromptFor("wearing your red dress at dinner");
+    expect(sys).toMatch(/STAYING ON/);
+    expect(sys).not.toMatch(/the GARMENT AND ITS POSITION/);
+  });
+});
+
+// "If I say lie down it should. If I say stand it should. If I say turn it
+// should."
+//
+// None of those were answerable. The posture bullet opened "INFER from the act
+// rather than wait to be told", and the bullet under it ended "even then, when
+// she is lying down at all, write 'propped up on a stack of pillows'" — a rule
+// that fired hardest exactly when the user HAD said what they wanted. Inference
+// is the right default for a request that named nothing, and the wrong answer to
+// a request that named something.
+describe("a posture the user named", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  const systemPromptFor = async (req: string) => {
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_u: string, init: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content:
+                  "exact same woman as the reference image, identical face and hair, completely nude, bare skin, warm lamplight, candid raw photograph with visible pores",
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    await refineMediaPrompt("photo", req, subject);
+    return sent.messages[0].content as string;
+  };
+
+  it("stops the model inferring a posture over the top of it", async () => {
+    const sys = await systemPromptFor("lie down on the bed for me");
+    expect(sys).toMatch(/the POSTURE THE USER NAMED/);
+    expect(sys).not.toMatch(/INFER from the act rather than wait to be told/);
+  });
+
+  // The specific clause that made "lie down" unanswerable: it applied itself
+  // "even then", on requests that had named the position.
+  it("no longer overrides lying down with propped up on pillows", async () => {
+    const sys = await systemPromptFor("lie down flat on your back");
+    expect(sys).not.toMatch(/propped up on a stack of pillows/);
+  });
+
+  it("obeys standing", async () => {
+    const sys = await systemPromptFor("stand up for me");
+    expect(sys).toMatch(/the POSTURE THE USER NAMED/);
+    expect(sys).not.toMatch(/Choose standing only when the user asked for it/);
+  });
+
+  it("obeys turning", async () => {
+    const sys = await systemPromptFor("turn around for me");
+    expect(sys).toMatch(/the POSTURE THE USER NAMED/);
+  });
+
+  it("obeys sitting and kneeling", async () => {
+    for (const req of ["sit on the edge of the bed", "kneel on the floor"]) {
+      const sys = await systemPromptFor(req);
+      expect(sys).toMatch(/the POSTURE THE USER NAMED/);
+    }
+  });
+
+  // Inference is still the right default, and an ACT is not a stated posture —
+  // that distinction is why this has its own regex rather than reusing the
+  // keyword builder's, which counts "dildo" and "fuck" as carrying a posture.
+  it("still infers one when the request named none", async () => {
+    const sys = await systemPromptFor("touch yourself for me");
+    expect(sys).toMatch(/INFER from the act rather than wait to be told/);
+    expect(sys).not.toMatch(/the POSTURE THE USER NAMED/);
+  });
+
+  it("keeps the upright default for a request that named no position", async () => {
+    const sys = await systemPromptFor("send me a nude");
+    expect(sys).toMatch(/keep the torso UPRIGHT or PROPPED UP/);
+  });
+
+  it("drops the upright default for a request that did name one", async () => {
+    const sys = await systemPromptFor("lie down on your side");
+    expect(sys).not.toMatch(/keep the torso UPRIGHT or PROPPED UP/);
+  });
+});

@@ -173,61 +173,22 @@ export function anatomyOf(gender?: string | null): Anatomy {
 
 // ── What the renderer is told is there ──────────────────────────────────────
 //
-// One clause per kind, and the ONLY place a genital is described.
+// Short, strictly positive descriptions only.
+// The text encoder cannot represent negation. Any "without sag", "no pox",
+// "zero sag" etc. puts the bad tokens into the positive conditioning.
 //
-// Every one of these is purely positive. That is not a style preference: the
-// renderer's text encoder cannot represent negation, so the old female clause's
-// "and no penis" put the token `penis` into the conditioning of every female
-// nude and the render came back with a masculine groin. props.ts's header sets
-// this out at length. Anything that must not appear is suppressed in
-// crossSexNegative below, which is the only place suppression works.
-//
-// The detail is specific rather than superlative, for the same reason props.ts
-// describes a toy by its material and size instead of calling it "correctly
-// proportioned". "Anatomically correct" and "highly detailed" are adjectives a
-// renderer cannot act on; "a soft rounded mound with a single neat vertical
-// crease" names a shape it can actually place.
-//
-// What the female clause must NOT contain is the words labia, lips, clit or
-// clitoris, in any combination. "Outer labia parting around visible inner
-// labia" produced a large tongue of tissue extruded from the cleft — the "weird
-// thing sticking out" a user sent back. Rewritten to "outer labia meeting along
-// a closed cleft, the small clitoral hood at the top", it produced the same
-// flap. The lesson is that for a model tuned on explicit imagery those TOKENS
-// are the protrusion: every training image tagged with them shows the detail
-// pulled open and out, and no adjective beside them ("closed", "tucked")
-// outweighs that. So the clause names only the outer shape — a plump closed
-// mound with one crease — which is what most real vulvas look like at rest and
-// the one description these models render cleanly. The words the user typed
-// ("pussy") still reach the prompt through the action sentence.
-//
-// Breasts got the same treatment for the same reason: "firm" and "perky" are
-// outweighed by a pose. Told she is lying flat, the model spreads them
-// sideways, so the clause says they hold their round shape in any pose, and
-// the builder writes a lying request as propped up on pillows.
-//
-// No hair, skin or eye colour anywhere: a reference photo of the companion is
-// supplied to the renderer and inventing those fights it, which is how a
-// brunette came back blonde.
-//
-// Locked consistency rules (shape + texture never change across models):
-// - Breasts: high-set, firm, tight, perfectly round, hold shape against gravity,
-//   full lower poles without sag, realistic smooth nipples/areolae (no pox,
-//   bumps or irregular surface).
-// - Ass: identical firm round shape and smooth skin texture every time;
-//   only skin tone may vary with the reference.
-// - Pussy: the closed plump mound + single neat vertical crease (already the
-//   clean version).
+// These strings are now appended after the refiner finishes (in finishMediaPrompt),
+// so they land verbatim every time and no longer compete for Grok's word budget.
 
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "Natural firm high-set round bare breasts that hold their full tight round shape against gravity in any pose, proud and lifted high off the chest with taut smooth skin, full rounded lower poles, nipples level with the middle of her upper arms and pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture. Between her thighs a smoothly shaved plump closed pussy in sharp focus: a soft rounded mound with a single neat vertical crease down its centre, everything fully tucked so only that clean crease shows, skin one even tone with her inner thighs, faint natural sheen. Her ass is firm, high and perfectly round with smooth even skin texture, full lower curves that hold shape.",
-  male: "A lean muscular chest and flat stomach. At his groin, below his navel and above his thighs, a thick erect penis standing out and angled slightly upward from his body, about as long as his hand from wrist to fingertip: a clearly defined shaft, a distinct ridge where the shaft meets the smooth rounded glans, soft veining along the length, and a separate lightly textured scrotum hanging below it. The shaft, the glans and the scrotum each read as their own form with clean edges between them.",
+    "natural firm high-set round breasts set high on the chest, projected forward and lifted, holding their full tight round shape against gravity in every pose, taut smooth skin, full rounded lower poles, nipples level with the middle of the upper arms pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the crease shows, skin one even tone with the inner thighs, faint natural sheen, firm high perfectly round ass with smooth even skin texture",
+  male: "lean athletic muscular chest and defined abs, thick erect penis standing out from the body and angled slightly upward about as long as the hand from wrist to fingertip, clearly defined shaft with soft realistic veining, distinct coronal ridge meeting the smooth rounded glans, natural firm testicles in a separate lightly textured scrotum, each part cleanly distinguishable",
   "trans-female":
-    "One body: natural firm high-set round breasts that hold their full tight round shape against gravity, proud and lifted high off the chest with taut smooth skin, full rounded lower poles, defined areolae and naturally erect nipples pointing forward with clean realistic texture, feminine hips and a soft waist, and at her groin, below her navel, a thick erect penis standing out from her body and angled slightly upward, about as long as her hand from wrist to fingertip, with a defined shaft, a distinct ridge below the smooth rounded glans and a separate scrotum below. Breasts above and cock below, both in the same frame and both in sharp focus. Her ass is firm, high and perfectly round with smooth even skin texture.",
+    "natural firm high-set round breasts set high on the chest, projected forward and lifted, holding their full tight round shape against gravity, taut smooth skin, full rounded lower poles, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, thick erect penis standing out and angled slightly upward about as long as the hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans, natural testicles in a separate sac, both breasts and cock in frame and in focus, firm high perfectly round ass with smooth even skin texture",
   "trans-male":
-    "A flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, a broad ribcage and lean stomach. Between his thighs a smoothly shaved plump closed pussy: a soft rounded mound with a single neat vertical crease, everything tucked inside so only the crease shows. His ass is firm, high and perfectly round with smooth even skin texture.",
-  nb: "A lean androgynous body, a flat soft chest, narrow hips and a smooth groin, skin evenly lit with visible pores and fine texture throughout. Ass firm, high and perfectly round with smooth even skin texture.",
+    "flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the crease shows, firm high perfectly round ass with smooth even skin texture",
+  nb: "lean androgynous body, flat soft chest, narrow hips, smooth groin, firm high perfectly round ass with smooth even skin texture, skin evenly lit with visible pores",
 };
 
 /** The anatomy clause for a nude render of this companion. */
@@ -241,33 +202,16 @@ export function nudeAnatomy(gender?: string | null): string {
 // negative prompt is what a renderer subtracts. It is also why the positive
 // clause above never needs to.
 //
-// Two rules learned the hard way. Only list a part the companion genuinely
-// lacks — "missing penis" and "penis looking like female genitalia" used to go
-// out on every job including female nudes, actively penalising correct anatomy.
-// And never list a part they DO have: a negative prompt pushes on its own
-// tokens, so "female breasts" in a trans woman's negatives would flatten her.
-// Written out per kind rather than derived from the flags. Deriving it was the
-// first attempt and it took four branches to express what a table says in five
-// lines — and this is precisely the place where clever derivation produced the
-// six disagreeing copies in the first place. Each entry should contain every
-// part the kind lacks and nothing it has; the test checks exactly that against
-// the flags above.
+// Only list a part the companion genuinely lacks.
+// Never list a part they DO have.
 const CROSS_SEX_NEGATIVE: Record<GenderKind, string> = {
-  // Has breasts and a vulva. The failure being suppressed was never just an
-  // organ appearing — it was legs, hips and a groin that read male on a woman.
   female:
     "penis, cock, erect cock, testicles, scrotum, male genitalia, bulge, male chest, muscular male torso, male arms, hairy legs, beard, mustache, male body, male pelvis, masculine groin, masculine thighs",
-  // Has a penis and a male chest.
   male: "vulva, vagina, labia, female genitalia, breasts, cleavage, feminine bust, feminine hips",
-  // Has breasts AND a penis, so neither may be listed here. What is suppressed
-  // is a vulva and a masculine face and build — she reads as a woman.
   "trans-female":
     "vulva, vagina, labia, female genitalia, beard, mustache, stubble, male chest, muscular male torso, masculine jaw, male body",
-  // Has a vulva and a masculine chest, so neither may be listed here.
   "trans-male":
     "penis, cock, erect cock, testicles, scrotum, bulge, breasts, cleavage, feminine bust",
-  // Androgynous and permissive: nothing is committed to, so nothing is refused
-  // and nothing is suppressed.
   nb: "",
 };
 
@@ -277,53 +221,16 @@ export function crossSexNegative(gender?: string | null): string {
 }
 
 // ── The parts a request can ask for ─────────────────────────────────────────
-//
-// Deliberately NOT the KW table in selfie.ts. That one is tuned to decide
-// whether a picture should be nude at all, so it casts wide and includes
-// "cat", "box", "pie", "peach", "cherry", "pink" and "hole" as words for a
-// vulva. Wide is right for "should this be explicit"; it is catastrophic for
-// "should I refuse this", where a false positive tells a paying user their
-// companion will not send a photo because they mentioned a peach.
-//
-// So this list is short and unambiguous: only words that can only mean the part.
-// Both halves matter: a word missing here is a wrong-anatomy render that gets
-// billed, and the old two-line version missed almost all the slang — cocks,
-// dicks, boner, schlong, dong, manhood, prick, pussies, cunt, snatch, coochie,
-// slit, muff, titties, boobies, knockers and jugs all sailed through it.
-//
-// Deliberately still narrower than the KW table in selfie.ts. That one decides
-// whether a picture should be nude at all, so it casts wide and counts "cat",
-// "box", "pie", "peach", "cherry", "pink" and "hole" as words for a vulva.
-// Wide is right for "should this be explicit"; it is catastrophic for "should I
-// refuse", where a false positive tells a paying customer their companion will
-// not send a photo because they mentioned a peach. Everything here can only
-// mean the part — the genuinely ambiguous ones ("member", "package", "junk",
-// "nuts", "knob", "meat", "wood") are left out on purpose.
+
 const PART_TERMS = {
   penis: String.raw`dicks?|cocks?|penis|penises|balls|testicles?|ballsack|scrotum|shafts?|boners?|hard[- ]?ons?|erections?|schlongs?|dongs?|manhood|pricks?|willy|pecker|phallus|bulge|cum ?shot|jerk\w* off|jack\w* off`,
   vulva: String.raw`pussy|pussies|vagina|vaginas|vulvas?|clit|clitoris|labia|cunts?|snatch|coochie|cooch|camel ?toe|muff|beaver|front hole`,
   breasts: String.raw`tits|titties|boobs|boobies|breasts?|nipples?|areolas?|cleavage|rack|knockers|jugs|hooters|funbags|ta-tas`,
-  // Every kind has one, so this part never decides a refusal — it exists so the
-  // refiner can tell that a request is ABOUT the rear and stop the front-facing
-  // template from overwriting it. Same short-list discipline as the others:
-  // "peach", "bottom" and "cheeks" are left out because they must not move a
-  // camera on their own.
   ass: String.raw`ass|asses|arse|asshole|arsehole|butthole|butt|buttocks|booty|bum|derriere|anus|rear end|backside`,
 } as const;
 
 export type BodyPart = keyof typeof PART_TERMS;
 
-// A request, not a mention.
-//
-// The old gate matched the bare word anywhere in the message, so "my ex had a
-// huge dick lol" — ordinary conversation, sent to a female companion — came
-// back "No silly, I'm a girl!". Refusing someone for talking about their own
-// life is worse than the failure the gate was written to prevent.
-//
-// Two shapes count as asking. Either the part is HERS/HIS ("your cock", "your
-// big hard cock"), or it is the object of an asking verb ("send me a dick
-// pic"). "my ex had a huge dick" is neither: no second-person possessive, and
-// "had" is not a request.
 const OWNED = String.raw`\b(?:your|ur|yours)\b[^.?!]{0,28}?`;
 const ASKED = String.raw`\b(?:send|show|snap|take|post|share|gimme|give|see|seeing|want|wanna)\b[^.?!]{0,28}?`;
 
@@ -334,33 +241,15 @@ function asksFor(prompt: string, part: BodyPart): boolean {
   return owned.test(prompt) || asked.test(prompt);
 }
 
-/**
- * Whether the message names a part at all, without the "is it hers" and "is it
- * a request" context requestedParts insists on.
- *
- * requestedParts decides whether to REFUSE a request, where a false positive
- * tells a paying user their companion will not send a photo, so it demands
- * "your pussy" or "send me a pussy pic". Where to put the camera is a different
- * question with a much cheaper mistake, and "pussy pic" or "that pussy of
- * yours" should both point it at the same place. Still off the short
- * unambiguous list rather than selfie.ts's wide one: "peach" must not move a
- * camera.
- */
 export function mentionsPart(prompt: string, part: BodyPart): boolean {
   return new RegExp(`\\b(?:${PART_TERMS[part]})\\b`, "i").test(prompt ?? "");
 }
 
-/** Which parts this message is actually asking to see. */
 export function requestedParts(prompt: string): BodyPart[] {
   const p = prompt ?? "";
   return (Object.keys(PART_TERMS) as BodyPart[]).filter((part) => asksFor(p, part));
 }
 
-// What she says when asked for something she does not have.
-//
-// In character and warm, because this fires mid-flirt and a clinical refusal
-// kills the conversation the user is paying for. The trans lines are written as
-// a matter-of-fact, confident correction rather than an apology.
 const REFUSALS: Record<GenderKind, string> = {
   female: "No silly, I'm a girl! 😅 I can only send pics of my own body.",
   male: "Ha, wrong body babe 😅 I'm a guy — I can only send pics of what I've actually got.",
@@ -371,31 +260,18 @@ const REFUSALS: Record<GenderKind, string> = {
   nb: "",
 };
 
-/**
- * The in-character refusal when a request names anatomy this companion does not
- * have, or null when there is nothing to refuse.
- *
- * Only the companion's stored gender decides this. The old version also read
- * the user's message for "trans", "futa" and friends and unlocked everything
- * when it found them, so typing "you futa" at any woman got you a penis render.
- */
 export function refuseWrongAnatomy(
   gender: string | null | undefined,
   prompt: string,
 ): string | null {
   const a = anatomyOf(gender);
 
-  // A non-binary companion is the one kind with no anatomy to be wrong about,
-  // so there is nothing to refuse and the render follows the request. Stated
-  // here rather than smuggled in as an empty refusal string, because "nothing
-  // is refused" is a decision and should read like one.
   if (a.kind === "nb") return null;
 
   const has: Record<BodyPart, boolean> = {
     penis: a.hasPenis,
     vulva: a.hasVulva,
     breasts: a.hasBreasts,
-    // Nobody lacks one, so asking for it is never the wrong-anatomy refusal.
     ass: true,
   };
   const missing = requestedParts(prompt ?? "").filter((part) => !has[part]);

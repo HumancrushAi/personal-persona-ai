@@ -7,7 +7,10 @@ describe("videoStillPrompt", () => {
   it("undresses on an explicit request and ends held still", () => {
     const p = videoStillPrompt({ gender: "female" }, "take your top off and show me your tits");
     expect(p).toMatch(/completely naked/i);
-    expect(p).toMatch(/bare breasts/i);
+    // Not "bare breasts": the clause is hand-edited copy and the adjective has
+    // changed. Nudity is asserted on its own line above; what this one is for is
+    // that the chest gets described at all.
+    expect(p).toMatch(/breasts/i);
     expect(p).toMatch(/still held pose/i);
   });
 

@@ -356,11 +356,35 @@ function ChatPage() {
       if (msg.includes("OUT_OF_CREDITS")) {
         toast.error("Out of credits");
         navigate({ to: "/credits" });
+        setInput(content);
+        setPendingUser(null);
       } else if (msg.includes("BLOCKED_CONTENT")) {
         toast.error(msg.split("BLOCKED_CONTENT:")[1]?.trim() || "That request isn't allowed.");
-      } else toast.error(humanError(msg));
-      setInput(content);
-      setPendingUser(null);
+        setInput(content);
+        setPendingUser(null);
+      } else if (isNetworkError(msg) && (await alreadyLanded(content))) {
+        // The send got through and the server stored it; only the reply never
+        // made it back. Putting the text back in the box here is what produced
+        // the duplicate: the user sends it again and a SECOND copy of their own
+        // message is written, which is what "my text shows twice" is.
+        //
+        // This is the same dropped-request case runSelfie and the video button
+        // already handle — a media request does the slow work (prompt
+        // refinement, start frame) BEFORE the call returns, so it is the one
+        // most likely to have its fetch die with the work already running. Only
+        // the typed path never got the treatment, and the typed path is the one
+        // with a message row to duplicate.
+        setPendingUser(null);
+        const attached = (await attachToUnfinished("photo")) || (await attachToUnfinished("video"));
+        // attachToUnfinished says its own piece when there is a job to attach to.
+        if (!attached) {
+          toast.info("Connection dropped, but your message was sent — her reply is on its way.");
+        }
+      } else {
+        toast.error(humanError(msg));
+        setInput(content);
+        setPendingUser(null);
+      }
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -470,6 +494,30 @@ function ChatPage() {
       /* recorded on the job row */
     });
     return true;
+  }
+
+  // Whether the message we just failed to send is already in the conversation.
+  //
+  // The counterpart to attachToUnfinished, for the typed path. The server writes
+  // the user's row early and then does the slow part — and on a media request
+  // the slow part is prompt refinement and a start frame — so a fetch that dies
+  // in that window leaves the message saved and the caller looking at an error.
+  // Restoring the text into the composer then invites a resend, and the resend
+  // writes a second copy of the same message.
+  //
+  // Asked of the server, not the query cache: the cache has not refetched at
+  // this point, which is the whole reason the caller cannot tell.
+  async function alreadyLanded(content: string): Promise<boolean> {
+    const { data } = await supabase
+      .from("messages")
+      .select("id, content")
+      .eq("conversation_id", conversationId)
+      .eq("role", "user")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    const landed = (data ?? []).some((m: any) => (m.content ?? "").trim() === content.trim());
+    if (landed) await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+    return landed;
   }
 
   const isNetworkError = (msg: string) =>

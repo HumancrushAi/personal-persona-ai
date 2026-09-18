@@ -243,9 +243,41 @@ export function comfyTemplate(): string {
  * the one place where asking for more pixels costs nothing in coherence. It is
  * also about three times the pixels a WAN frame gave the same body.
  */
-export function comfySettings(): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
+/**
+ * A seed derived from the prompt, so the same prompt renders the same picture.
+ *
+ * It used to be Math.random() on every job, which makes each render an
+ * independent draw: ask for the same thing twice and the second is unrelated to
+ * the first, so one comes back good and one does not for no reason the user can
+ * see or influence. "The first picture is good, the second wasn't" is that.
+ *
+ * FNV-1a, folded to 31 bits. Any stable hash would do — what matters is that it
+ * is a pure function of the prompt and never of the clock.
+ *
+ * Set COMFY_SEED to pin one value across every render, or COMFY_SEED=random to
+ * put the old per-job lottery back.
+ */
+export function seedFor(prompt: string): number {
+  const pinned = (process.env.COMFY_SEED ?? "").trim();
+  if (pinned && pinned.toLowerCase() !== "random") {
+    const n = Number(pinned);
+    if (Number.isFinite(n)) return Math.abs(Math.floor(n)) % 2 ** 31;
+  }
+  if (pinned.toLowerCase() === "random") return Math.floor(Math.random() * 2 ** 31);
+
+  let h = 0x811c9dc5;
+  for (let i = 0; i < prompt.length; i++) {
+    h ^= prompt.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return Math.abs(h) % 2 ** 31;
+}
+
+export function comfySettings(
+  prompt = "",
+): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
   return {
-    seed: Math.floor(Math.random() * 2 ** 31),
+    seed: seedFor(prompt),
     steps: Number(process.env.COMFY_STEPS || "30"),
     cfg: Number(process.env.COMFY_CFG || "5"),
     width: Number(process.env.COMFY_WIDTH || "832"),

@@ -449,7 +449,10 @@ export async function startImageJob(
               ]
                 .filter(Boolean)
                 .join(", "),
-              seed: -1,
+              // Was -1, which tells the endpoint to pick its own random seed —
+              // the same per-job lottery comfySettings had. Derived from the
+              // prompt so the same request reproduces; see seedFor.
+              seed: (await import("./comfy")).seedFor(imagePrompt),
               num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
               guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
               image: sourceImage,
@@ -541,7 +544,7 @@ export async function comfyJobInput(
     referenceBase64 = bytes.toString("base64");
   }
 
-  return comfyInput({ ...comfySettings(), prompt, negative }, { template, referenceBase64 });
+  return comfyInput({ ...comfySettings(prompt), prompt, negative }, { template, referenceBase64 });
 }
 
 /**

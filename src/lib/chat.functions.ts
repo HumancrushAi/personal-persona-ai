@@ -23,6 +23,10 @@ const sendSchema = z.object({
   // The visitor's language choice, kept on their device (see languages.ts) and
   // sent with each message because this is the only place it changes anything.
   language: z.string().max(8).optional(),
+  // One id per send ATTEMPT, minted by the client. See the migration
+  // 20260918000000_message_idempotency.sql for why this exists and why
+  // deduping on content does not work. Optional so an older tab still sends.
+  clientMsgId: z.string().uuid().optional(),
 });
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -46,6 +50,37 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertNotSuspended(supabase, userId);
     await assertRateLimit(supabase, "messages", userId, 60, 20);
+
+    // Has this exact send attempt already been handled?
+    //
+    // Checked FIRST, before the rate limit's sibling work and long before the
+    // credit debit and the media trigger, because the whole point is that a
+    // retransmission must do none of those a second time. The rest of this
+    // handler writes the user's row and then spends tens of seconds refining a
+    // prompt and building a start frame; a POST that arrives twice in that
+    // window used to run it all twice, charging twice and queueing two renders
+    // against one message.
+    if (data.clientMsgId) {
+      const { data: already } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("conversation_id", data.conversationId)
+        .eq("client_msg_id", data.clientMsgId)
+        .maybeSingle();
+      if (already) {
+        // Hand back whatever she has said since, so a client that lost the
+        // original response still has something to show rather than an error.
+        const { data: lastAssistant } = await supabase
+          .from("messages")
+          .select("content")
+          .eq("conversation_id", data.conversationId)
+          .eq("role", "assistant")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return { reply: lastAssistant?.content ?? "", duplicate: true as const };
+      }
+    }
 
     const { data: conv, error: convErr } = await supabase
       .from("conversations")
@@ -132,6 +167,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       role: "user",
       content: data.content,
       kind: "text",
+      // The unique index on (conversation_id, client_msg_id) is the backstop for
+      // two copies racing past the check above: the second insert loses.
+      client_msg_id: data.clientMsgId ?? null,
     });
     if (insErr) throw insErr;
 

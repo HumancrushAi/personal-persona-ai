@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   DEFAULT_WORKFLOW,
   REFERENCE_NAME,
@@ -144,5 +144,57 @@ describe("comfyError", () => {
   it("is quiet when nothing went wrong", () => {
     expect(comfyError({ images: [] })).toBe(null);
     expect(comfyError({ errors: [] })).toBe(null);
+  });
+});
+
+// "The first ass picture is good, the second wasn't."
+//
+// The seed was Math.random() on every job, so two renders of the same request
+// were independent draws — the second had nothing to do with the first, and
+// which one came back good was luck the user could neither see nor influence.
+describe("seedFor", () => {
+  const real = process.env.COMFY_SEED;
+  afterEach(() => {
+    if (real === undefined) delete process.env.COMFY_SEED;
+    else process.env.COMFY_SEED = real;
+  });
+
+  it("gives the same prompt the same seed every time", async () => {
+    const { seedFor } = await import("../comfy");
+    delete process.env.COMFY_SEED;
+    const p = "exact same woman as the reference image, completely nude, on all fours";
+    expect(seedFor(p)).toBe(seedFor(p));
+  });
+
+  it("gives different prompts different seeds", async () => {
+    const { seedFor } = await import("../comfy");
+    delete process.env.COMFY_SEED;
+    expect(seedFor("standing by the window")).not.toBe(seedFor("lying on the bed"));
+  });
+
+  it("stays inside the 31-bit range the workflow expects", async () => {
+    const { seedFor } = await import("../comfy");
+    delete process.env.COMFY_SEED;
+    for (const p of ["", "a", "a much longer prompt ".repeat(40), "🙂 emoji and ünïcode"]) {
+      const s = seedFor(p);
+      expect(Number.isInteger(s)).toBe(true);
+      expect(s).toBeGreaterThanOrEqual(0);
+      expect(s).toBeLessThan(2 ** 31);
+    }
+  });
+
+  it("can be pinned to one value across every prompt", async () => {
+    const { seedFor } = await import("../comfy");
+    process.env.COMFY_SEED = "12345";
+    expect(seedFor("one prompt")).toBe(12345);
+    expect(seedFor("a different prompt")).toBe(12345);
+  });
+
+  it("can be put back to the old per-job lottery", async () => {
+    const { seedFor } = await import("../comfy");
+    process.env.COMFY_SEED = "random";
+    const p = "the same prompt both times";
+    const draws = new Set([seedFor(p), seedFor(p), seedFor(p), seedFor(p), seedFor(p)]);
+    expect(draws.size).toBeGreaterThan(1);
   });
 });

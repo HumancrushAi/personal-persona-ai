@@ -325,9 +325,15 @@ function ChatPage() {
     setSending(true);
     setPendingUser(content); // show my message instantly
     const start = Date.now();
+    // One id for this send ATTEMPT. If the POST reaches the server twice — a
+    // phone re-establishing its connection while the server is still refining a
+    // prompt and building a start frame — both copies carry this id and the
+    // server handles only the first. A genuine second send mints a new one, so
+    // saying the same thing twice on purpose still works.
+    const clientMsgId = crypto.randomUUID();
     try {
       const res = await send({
-        data: { conversationId, content, language: readPreferredLanguage() },
+        data: { conversationId, content, language: readPreferredLanguage(), clientMsgId },
       });
 
       const target = (res as any)?.typingDelayMs ?? 3000;

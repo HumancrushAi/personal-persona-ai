@@ -795,3 +795,54 @@ describe("the part the user asked for, all the way down", () => {
     expect(requestSetsViewpoint("send me a picture of your pussy")).toBe(false);
   });
 });
+
+// The worked examples are copied VERBATIM into the prompt Grok writes — that is
+// what they are for, and this file's own comment says whatever is in them gets
+// reproduced. So a fragment in an example is a fragment in the render.
+//
+// Twice now the same words have been reintroduced there after being removed
+// from the anatomy clauses: "zero sag", "free of bumps or irregularities",
+// "standing proud". The first two ask the renderer for sag and for bumps,
+// because its text encoder has no "not" — it reads the nouns. The third is a
+// posture, and it reached every nude prompt from a clause about a chest.
+//
+// Read from source rather than through systemFor, because the assembled system
+// prompt also contains POSITIVE_ONLY, which has to name the negations in order
+// to forbid them, and the NEGATION_FRAGMENT regex that strips them.
+describe("the worked examples never fight the appended clause", () => {
+  const EXAMPLE_CONSTS = [
+    "NUDE_EXAMPLES",
+    "TOY_EXAMPLE",
+    "POV_EXAMPLE",
+    "MALE_EXAMPLES",
+    "TRANS_FEMALE_EXAMPLES",
+    "TRANS_MALE_EXAMPLES",
+    "CLOTHED_EXAMPLES",
+  ];
+
+  // "standing" is deliberately absent: "penis standing out from his body" is a
+  // direction, it predates all of this, and banning the word here would fail on
+  // a clause nobody is asking to change.
+  const FIGHTS_THE_CLAUSE =
+    /\b(?:not|no|never|without|avoid|free of|zero|sag\w*|droop\w*|pendulous|pox|bumps?|irregular\w*|flatten\w*)\b/i;
+
+  const source = () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    return fs.readFileSync(path.join(__dirname, "..", "prompt-refiner.server.ts"), "utf8");
+  };
+
+  for (const name of EXAMPLE_CONSTS) {
+    it(`keeps ${name} free of anything the renderer would draw`, () => {
+      const s = source();
+      const m = s.match(new RegExp(String.raw`const ${name} = \`([\s\S]*?)\`;`));
+      expect(m, `${name} not found — was it renamed?`).toBeTruthy();
+      const body = m![1];
+      const hit = body.match(FIGHTS_THE_CLAUSE);
+      expect(
+        hit,
+        hit ? `${name} contains "${hit[0]}", which is copied into the prompt` : "",
+      ).toBeNull();
+    });
+  }
+});

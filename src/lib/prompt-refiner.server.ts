@@ -219,7 +219,11 @@ ${
 }
 - OBJECTS: the only objects in the picture are the ones the user named. A request that names no toy is a picture of her alone, her hands resting on her thighs, the sheets or her own body. Adding a toy, a second person or any object the user did not ask for is the worst thing you can do here — it is a different picture from the one they paid for
 - any prop or sex toy THE USER NAMED: state WHERE IT IS and HOW MUCH OF IT SHOWS. For an inserted toy write it as angled down along the line between her open thighs, most of the shaft hidden inside her, only the flared base visible with her fingers closed on it and her wrist against her inner thigh. That geometry is what makes the object read as a sex toy at the right scale. Its material and exact size are appended separately, so spend your words on placement and contact
-- when the request names no touching and no toy: her hands rest on her thighs or on the sheets, and her pussy is closed. This is most requests, and it is the one thing that keeps the render from pulling her open
+${
+  rearView
+    ? `- her hands rest where the stated viewpoint puts them: on her thighs, on the sheets, or braced against whatever she leans on. Everything the user left unsaid stays as it falls naturally in the position they described`
+    : `- when the request names no touching and no toy: her hands rest on her thighs or on the sheets, and her pussy is closed. This is most requests, and it is the one thing that keeps the render from pulling her open`
+}
 - ONLY when the user asked for touching, fingering or a toy — where a hand, finger or object meets or enters the body, describe that contact literally and in detail: which fingers, how deep, how the skin and lips part and press around it, wetness, the exact point of contact. This is the part that renders as a smooth plastic blur when it is left vague
 ${groinFocus && !rearView ? "- her pussy is the FOCAL POINT of the photograph: in the centre of the frame, in sharp focus, a smooth plump closed mound with a single neat vertical crease and only the crease showing, the skin smooth and even, her hands resting on her thighs, the light falling across it so its shape reads\n" : ""}${
   rearView
@@ -446,8 +450,13 @@ export async function refineMediaPrompt(
   // told Grok to pick, so a prompt could come back demanding both — and then
   // startImageJob tried to patch the result with a regex. Deciding it here means
   // the system prompt asks for exactly one framing and there is nothing to patch.
-  const { requestIsNude, CLOSE_UP_RE, REAR_RE, PARTIAL_UNDRESS_RE, STATED_POSTURE_RE } =
-    await import("./selfie");
+  const {
+    requestIsNude,
+    CLOSE_UP_RE,
+    requestSetsViewpoint,
+    PARTIAL_UNDRESS_RE,
+    STATED_POSTURE_RE,
+  } = await import("./selfie");
   // Three states, not two. A request that moves a garment rather than removing
   // it used to collapse into one of the other two, and whichever it picked threw
   // away half of what the user specified: "nude" loses the garment, "clothed"
@@ -483,7 +492,7 @@ export async function refineMediaPrompt(
   // withhold a front-facing default and tell the model to follow the user's own
   // words, so a false positive costs a request that was going to be described
   // literally anyway — where a false negative is the reported bug.
-  const rearView = REAR_RE.test(req) || mentionsPart(req, "ass");
+  const rearView = requestSetsViewpoint(req);
   const postureStated = STATED_POSTURE_RE.test(req);
   const toyAsked = TOY_RE.test(req);
   const noun =

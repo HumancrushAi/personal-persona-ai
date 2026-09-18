@@ -684,3 +684,114 @@ describe("a posture the user named", () => {
     expect(sys).not.toMatch(/keep the torso UPRIGHT or PROPPED UP/);
   });
 });
+
+// "I asked for a picture of ass but it is showing pussy."
+//
+// Reported AFTER the front-facing framing and the ANATOMY block were already
+// conditioned on the request — because those were one injection of three, and
+// the other two fire on this exact request:
+//
+//   1. the rules bullet "when the request names no touching and no toy: ...
+//      and her pussy is closed", which fires on ANY request naming neither, and
+//      "show me your ass" names neither;
+//   2. nudeAnatomy() in all three builders in selfie.ts, which fires on ANY
+//      nude request — and `ass` counts as one, so the fallback path wrote a
+//      full front-anatomy paragraph into the prompt.
+//
+// Fixing one of three changed nothing visible, which is why it looked like the
+// first fix had not worked.
+describe("the part the user asked for, all the way down", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  const systemPromptFor = async (req: string) => {
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_u: string, init: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content:
+                  "exact same woman as the reference image, identical face and hair, completely nude, bare skin, warm lamplight, candid raw photograph with visible pores",
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    await refineMediaPrompt("photo", req, subject);
+    return sent.messages[0].content as string;
+  };
+
+  it("stops instructing the model to write a closed pussy into a rear request", async () => {
+    const sys = await systemPromptFor("send me a picture of your ass");
+    expect(sys).not.toMatch(/her pussy is closed/);
+  });
+
+  it("still instructs it for a request that set no viewpoint", async () => {
+    const sys = await systemPromptFor("get naked for me");
+    expect(sys).toMatch(/her pussy is closed/);
+  });
+
+  // The builder is not a rare path: it runs whenever the key is missing, the
+  // call times out, Grok refuses, or the answer comes back unusable.
+  it("keeps the front-anatomy paragraph out of the builder on a rear request", async () => {
+    const { stillImagePrompt } = await import("../selfie");
+    const out = stillImagePrompt(
+      { name: "Ana", age: 26, ethnicity: "Italian", gender: "female" } as any,
+      "show me your ass",
+    );
+    expect(out).not.toMatch(/closed pussy/i);
+    expect(out).not.toMatch(/round bare breasts/i);
+    // the nudity itself is still stated
+    expect(out).toMatch(/completely naked/i);
+  });
+
+  it("keeps it for a builder request that set no viewpoint", async () => {
+    const { stillImagePrompt } = await import("../selfie");
+    const out = stillImagePrompt(
+      { name: "Ana", age: 26, ethnicity: "Italian", gender: "female" } as any,
+      "get naked for me",
+    );
+    expect(out).toMatch(/closed pussy/i);
+  });
+
+  it("applies to the kontext builder too", async () => {
+    const { kontextSelfiePrompt } = await import("../selfie");
+    const out = kontextSelfiePrompt(
+      { age: 26, ethnicity: "Italian", gender: "female" } as any,
+      "show me your ass",
+    );
+    expect(out).not.toMatch(/closed pussy/i);
+    expect(out).toMatch(/completely naked/i);
+  });
+
+  it("applies to the video builder too", async () => {
+    const { videoStillPrompt } = await import("../selfie");
+    const out = videoStillPrompt(
+      { name: "Ana", age: 26, ethnicity: "Italian", gender: "female" } as any,
+      "bend over, show me from behind",
+    );
+    expect(out).not.toMatch(/closed pussy/i);
+    expect(out).toMatch(/completely naked/i);
+  });
+
+  // One authority, so the next place that needs the question cannot grow its own
+  // copy and drift — which is how this bug survived the first fix.
+  it("answers the viewpoint question in one place", async () => {
+    const { requestSetsViewpoint } = await import("../selfie");
+    expect(requestSetsViewpoint("show me your ass")).toBe(true);
+    expect(requestSetsViewpoint("bend over")).toBe(true);
+    expect(requestSetsViewpoint("from behind")).toBe(true);
+    expect(requestSetsViewpoint("get naked for me")).toBe(false);
+    expect(requestSetsViewpoint("send me a picture of your pussy")).toBe(false);
+  });
+});

@@ -389,6 +389,24 @@ export const CLOSE_UP_RE =
 export const REAR_RE =
   /\b(from behind|behind you|behind her|rear view|from the back|back view|back to (?:me|the camera)|turn(?:ed|ing)? around|face away|facing away|bend(?:ing)? over|bent over|doggy\w*|all fours|on your knees facing|twerk\w*|arch(?:ed|ing)? back towards|present(?:ing)?)\b/i;
 
+/**
+ * Whether the request sets its own viewpoint, rather than leaving the default
+ * front-facing one to stand.
+ *
+ * The single authority on the question, the way anatomyOf is the single
+ * authority on whose body it is — and for the same reason. The refiner grew its
+ * own copy of this test, fixed the front-facing block in ITS system prompt, and
+ * the request still came back showing the wrong part, because two more places
+ * inject front anatomy and neither of them was asking: the "her pussy is closed"
+ * bullet, which fires on any request naming no touching and no toy, and
+ * nudeAnatomy() in the three builders below, which fires on any nude request at
+ * all. Three injections, one of them fixed, so nothing visibly changed.
+ */
+export function requestSetsViewpoint(req: string): boolean {
+  const p = req ?? "";
+  return REAR_RE.test(p) || mentionsPart(p, "ass");
+}
+
 // Detects a posture the user named, so the rules stop inferring one over the top
 // of it.
 //
@@ -567,8 +585,14 @@ function buildStillPrompt(
   const { noun, subject, poss } = a;
 
   const nude = requestIsNude(req);
+  // The nudity is stated either way; what is withheld when the user set their
+  // own viewpoint is the front-facing anatomy paragraph, which described a chest
+  // and a vulva on a request that asked for neither. The action sentence carries
+  // the user's own words, which is what should be describing the subject here.
   const undress = nude
-    ? `${subject} ${a.is} already completely naked, bare skin everywhere. ${nudeAnatomy(c.gender)}`
+    ? `${subject} ${a.is} already completely naked, bare skin everywhere.${
+        requestSetsViewpoint(req) ? "" : ` ${nudeAnatomy(c.gender)}`
+      }`
     : `${subject} hold${a.s} the pose.`;
 
   // NOTE: deliberately no actionTags here. Those are booru tags ("bent over,
@@ -642,7 +666,9 @@ export function videoActionPrompt(
   const { noun, subject, poss } = a;
 
   const undress = requestIsNude(req)
-    ? `${subject} ${a.is} already completely naked, bare skin everywhere throughout. ${nudeAnatomy(c.gender)}`
+    ? `${subject} ${a.is} already completely naked, bare skin everywhere throughout.${
+        requestSetsViewpoint(req) ? "" : ` ${nudeAnatomy(c.gender)}`
+      }`
     : `${subject} move${a.s} seductively for the camera.`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
@@ -675,7 +701,7 @@ export function kontextSelfiePrompt(
   const explicit = actionTags(req, a);
 
   const state = requestIsNude(req)
-    ? `completely naked, bare skin. ${nudeAnatomy(c.gender)}`
+    ? `completely naked, bare skin.${requestSetsViewpoint(req) ? "" : ` ${nudeAnatomy(c.gender)}`}`
     : `wearing what ${subject} has on`;
 
   return [

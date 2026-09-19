@@ -390,6 +390,26 @@ export const REAR_RE =
   /\b(from behind|behind you|behind her|rear view|from the back|back view|back to (?:me|the camera)|turn(?:ed|ing)? around|face away|facing away|bend(?:ing)? over|bent over|doggy\w*|all fours|on your knees facing|twerk\w*|arch(?:ed|ing)? back towards|present(?:ing)?)\b/i;
 
 /**
+ * Whether the request wants a garment kept ON and a part visible at the same
+ * time — "in lingerie with your pussy showing".
+ *
+ * That is one request, and the binary could not hold it. Naming a part makes
+ * requestIsNude true, so it resolved to fully nude: CLOTHING_NEGATIVE went out
+ * suppressing `bra, lingerie, panties` while the refiner wrote the lingerie the
+ * user had asked for into the same prompt. The two halves pushed against each
+ * other and the render split the difference — the garment arrived, the part did
+ * not, and neither instruction was really followed.
+ *
+ * It is the `partial` state: a garment worn, and skin bare around it. The one
+ * difference from a garment pulled down is that here it was never moved.
+ */
+export function requestKeepsGarment(req: string): boolean {
+  const p = req ?? "";
+  if (!kw(KW.lingerie).test(p)) return false;
+  return (["vulva", "breasts", "ass"] as const).some((part) => mentionsPart(p, part));
+}
+
+/**
  * Whether the request sets its own viewpoint, rather than leaving the default
  * front-facing one to stand.
  *

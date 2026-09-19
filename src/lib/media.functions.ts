@@ -20,6 +20,7 @@ import {
   videoActionPrompt,
   stillImagePrompt,
   requestIsNude,
+  requestKeepsGarment,
   checkCrossGenderRequest,
   finishMediaPrompt,
 } from "./selfie";
@@ -154,7 +155,13 @@ export function negativeFor(
   const req = userReq ?? "";
   const isNude = requestIsNude(req);
   const quality = opts.moving ? `${QUALITY_NEGATIVE}, ${MOTION_NEGATIVE}` : QUALITY_NEGATIVE;
-  let base = isNude ? `${CLOTHING_NEGATIVE}, ${quality}` : quality;
+  // CLOTHING_NEGATIVE is withheld when the request KEEPS a garment on — "in
+  // lingerie with your pussy showing". Naming a part makes requestIsNude true,
+  // so that request used to be sent `bra, lingerie, panties` in its negative
+  // while the prompt asked for exactly those things. The render split the
+  // difference and followed neither half.
+  const keepsGarment = requestKeepsGarment(req);
+  let base = isNude && !keepsGarment ? `${CLOTHING_NEGATIVE}, ${quality}` : quality;
 
   // The two hand-rolled lists that used to live here — one for women, one for
   // men — had no branch for a trans man at all, and the trans-female branch

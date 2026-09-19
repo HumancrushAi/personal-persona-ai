@@ -242,3 +242,43 @@ describe("body mass suppression", () => {
     expect(n).not.toMatch(/(^|[^a-z])belly(?!\s+(fat|rolls))/);
   });
 });
+
+// "In lingerie with your pussy showing" — one request the binary could not hold.
+//
+// Naming a part makes requestIsNude true, so it resolved to fully nude: the
+// negative went out suppressing `bra, lingerie, panties` while the prompt asked
+// for exactly those. The two halves pushed against each other and the render
+// followed neither — the garment arrived, the part did not.
+describe("a garment kept on with a part showing", () => {
+  it("stops suppressing the garment the request asked for", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("send me a picture in lingerie with your pussy showing", "female", {
+      moving: false,
+    });
+    expect(n).not.toMatch(/\blingerie\b/);
+    expect(n).not.toMatch(/\bbra\b/);
+  });
+
+  it("still suppresses clothing on a plain nude request", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("get completely naked for me", "female", { moving: false });
+    expect(n).toMatch(/\blingerie\b/);
+  });
+
+  it("recognises the shape of the request", async () => {
+    const { requestKeepsGarment } = await import("../selfie");
+    expect(requestKeepsGarment("in lingerie with your pussy showing")).toBe(true);
+    expect(requestKeepsGarment("a bra with your tits out")).toBe(true);
+    // A garment with no part named is an ordinary clothed request.
+    expect(requestKeepsGarment("wearing your red lingerie")).toBe(false);
+    // A part with no garment named is an ordinary nude request.
+    expect(requestKeepsGarment("show me your pussy")).toBe(false);
+  });
+
+  // Body mass is suppressed either way — that fix was not gated on nudity.
+  it("keeps the body-mass suppression", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("in lingerie with your pussy showing", "female", { moving: false });
+    expect(n).toMatch(/\boverweight\b/);
+  });
+});

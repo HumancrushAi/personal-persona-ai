@@ -283,13 +283,19 @@ export async function refineMediaPrompt(
     requestSetsViewpoint,
     PARTIAL_UNDRESS_RE,
     STATED_POSTURE_RE,
+    requestKeepsGarment,
   } = await import("./selfie");
 
-  const undress: Shape["undress"] = PARTIAL_UNDRESS_RE.test(req)
-    ? "partial"
-    : requestIsNude(req)
-      ? "nude"
-      : "clothed";
+  // `partial` covers two shapes of the same request: a garment MOVED (pulled
+  // down, pushed aside) and a garment KEPT ON with a part visible around it
+  // ("in lingerie with your pussy showing"). Both are "wearing something, and
+  // bare somewhere"; neither survives being flattened to nude or clothed.
+  const undress: Shape["undress"] =
+    PARTIAL_UNDRESS_RE.test(req) || requestKeepsGarment(req)
+      ? "partial"
+      : requestIsNude(req)
+        ? "nude"
+        : "clothed";
   const nude = undress !== "clothed";
   const closeUp = CLOSE_UP_RE.test(req);
 

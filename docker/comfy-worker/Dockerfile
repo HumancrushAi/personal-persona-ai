@@ -10,7 +10,7 @@
 # Pin the base tag rather than tracking latest. A worker image that changes
 # under you is a render that changes under you, and this app has spent a long
 # time making renders reproducible.
-FROM runpod/worker-comfyui:5.1.0-base
+FROM runpod/worker-comfyui:5.10.0-base
 
 USER root
 

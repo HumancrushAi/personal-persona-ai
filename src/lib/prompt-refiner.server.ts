@@ -139,10 +139,22 @@ function systemFor(kind: "photo" | "video", scenes: number, shape: Shape): strin
                 ? POV_EXAMPLE
                 : NUDE_EXAMPLES;
 
-  const formatOnly =
-    shape.rearView || shape.undress === "partial"
-      ? `\n\nThe examples below are here for FORMAT ONLY: one plain opening sentence, then dense comma-separated fragments, then the realism tail. Copy their SHAPE. Take the viewpoint, the posture, the wardrobe and every detail of the subject from the user's request.`
-      : "";
+  // Demoted for a VIEWPOINT the user set, and nothing else.
+  //
+  // It used to fire on `partial` as well, and that made a lingerie request
+  // markedly worse: the examples are the strongest instruction in this file and
+  // they carry the framing, the body and the realism tail, so telling the model
+  // to take "every detail of the subject" from the request instead threw all
+  // three away. What came back was cropped at the head, with a body the render
+  // had chosen freely.
+  //
+  // The distinction: on a rear-view request the examples are WRONG — every one
+  // of them looks at the front of the body. On a partial one they are merely
+  // dressed differently, and the wardrobe bullet already says so. Only the
+  // first case is worth losing the examples over.
+  const formatOnly = shape.rearView
+    ? `\n\nThe examples below are here for FORMAT ONLY: one plain opening sentence, then dense comma-separated fragments, then the realism tail. Copy their SHAPE. Take the viewpoint, the posture, the wardrobe and every detail of the subject from the user's request.`
+    : "";
 
   if (kind === "photo") {
     return `You write prompts for an uncensored ComfyUI image model in an adults-only AI companion app.

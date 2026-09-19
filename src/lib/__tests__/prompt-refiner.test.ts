@@ -850,3 +850,60 @@ describe("the worked examples never fight the appended clause", () => {
     });
   }
 });
+
+// A regression that shipped: demoting the examples on a `partial` request.
+//
+// The examples are the strongest instruction in this file and they carry the
+// framing, the body and the realism tail. Telling the model to take "every
+// detail of the subject" from the request instead threw all three away, and a
+// lingerie request came back cropped at the head with a body the render had
+// chosen freely. It was visibly worse than before the change.
+//
+// A rear-view request is different in kind: the examples are WRONG there, every
+// one of them looking at the front of the body. Only that is worth losing them.
+describe("when the examples are worth keeping", () => {
+  const realKey = process.env.XAI_API_KEY;
+  afterEach(() => {
+    if (realKey === undefined) delete process.env.XAI_API_KEY;
+    else process.env.XAI_API_KEY = realKey;
+    vi.restoreAllMocks();
+  });
+
+  const systemPromptFor = async (req: string) => {
+    process.env.XAI_API_KEY = "test";
+    let sent: any = null;
+    vi.stubGlobal("fetch", async (_u: string, init: any) => {
+      sent = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content:
+                  "exact same woman as the reference image, identical face and hair, black lace bra, bare skin, kneeling on the bed, warm lamplight, candid raw photograph with visible pores",
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    await refineMediaPrompt("photo", req, subject);
+    return sent.messages[0].content as string;
+  };
+
+  it("keeps them for a garment kept on with a part showing", async () => {
+    const sys = await systemPromptFor("in lingerie with your pussy showing");
+    expect(sys).not.toMatch(/FORMAT ONLY/);
+  });
+
+  it("keeps them for a garment that was moved", async () => {
+    const sys = await systemPromptFor("your leggings pulled down to your knees");
+    expect(sys).not.toMatch(/FORMAT ONLY/);
+  });
+
+  it("still drops them when the user set their own viewpoint", async () => {
+    const sys = await systemPromptFor("turn around and bend over");
+    expect(sys).toMatch(/FORMAT ONLY/);
+  });
+});

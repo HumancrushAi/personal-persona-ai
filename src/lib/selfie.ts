@@ -484,6 +484,25 @@ export const PARTIAL_UNDRESS_RE =
 // and the framing sentence is the first thing the renderer reads.
 const article = (noun: string) => (/^[aeiou]/i.test(noun) ? "an" : "a");
 
+/**
+ * Whether a real image endpoint is rendering this, rather than a frame cut out
+ * of a clip.
+ *
+ * The chin-to-knees crop below is a WAN compensation and its own comment says
+ * why: at 480-640 rendered lines a head-to-knees frame leaves a vulva about
+ * forty pixels wide, so the camera was pushed in to buy detail, at the cost of
+ * the top of her face. ComfyUI renders 832x1216 in one pass — about 2.5x the
+ * lines — so the same frame carries the detail the crop was bought for, and
+ * paying the face for it is no longer a trade worth making.
+ *
+ * The env var is read directly rather than through imageProvider: that lives in
+ * media.functions, which imports this file, and a cycle here would be a worse
+ * problem than a duplicated line.
+ */
+function rendersAtStillResolution(): boolean {
+  return Boolean((process.env.RUNPOD_COMFY_ENDPOINT ?? "").trim());
+}
+
 function framingFor(
   noun: string,
   poss: string,
@@ -669,9 +688,9 @@ function buildStillPrompt(
       !!req,
       c.name,
       isCloseUp,
-      // Only where there is a vulva to point the camera at, and only on a
-      // still: a clip of a chin-to-knees crop is a different decision.
-      a.hasVulva && mentionsPart(req, "vulva"),
+      // Only where there is a vulva to point the camera at, only on a still,
+      // and only where the renderer actually needs the help.
+      a.hasVulva && mentionsPart(req, "vulva") && !rendersAtStillResolution(),
     ),
     actionSentence(subject, action),
     posture,

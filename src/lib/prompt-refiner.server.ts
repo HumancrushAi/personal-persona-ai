@@ -314,7 +314,16 @@ export async function refineMediaPrompt(
   const { anatomyOf, mentionsPart } = await import("./anatomy");
   const a = anatomyOf(companion.gender);
   const subjectKind: SubjectKind = a.kind;
-  const groinFocus = kind === "photo" && nude && a.hasVulva && mentionsPart(req, "vulva");
+  // The chin-to-knees crop is a WAN compensation — at 480-640 rendered lines a
+  // head-to-knees frame left the part a smear, so the camera was pushed in and
+  // the top of her face was the price. ComfyUI renders 832x1216 in one pass and
+  // carries that detail without the crop, so on that path the face stays in.
+  const groinFocus =
+    kind === "photo" &&
+    nude &&
+    a.hasVulva &&
+    mentionsPart(req, "vulva") &&
+    !process.env.RUNPOD_COMFY_ENDPOINT;
   const rearView = requestSetsViewpoint(req);
   const postureStated = STATED_POSTURE_RE.test(req);
   const toyAsked = TOY_RE.test(req);

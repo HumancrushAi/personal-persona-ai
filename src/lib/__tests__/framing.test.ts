@@ -1,11 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { anatomyOf } from "../anatomy";
-import {
-  videoStillPrompt,
-  videoActionPrompt,
-  capPromptWords,
-  finishMediaPrompt,
-} from "../selfie";
+import { videoStillPrompt, videoActionPrompt, capPromptWords, finishMediaPrompt } from "../selfie";
 
 const FEMALE = anatomyOf("female");
 
@@ -245,5 +240,45 @@ describe("a photo prompt ends somewhere still", () => {
       anatomy: FEMALE,
     });
     expect(p).not.toMatch(/locked off/);
+  });
+});
+
+// The chin-to-knees crop is a WAN compensation, not a preference.
+//
+// Its own comment says why: at 480-640 rendered lines a head-to-knees frame
+// leaves a vulva about forty pixels wide, so the camera was pushed in to buy
+// detail and the top of her face was the price. ComfyUI renders 832x1216 in one
+// pass — about 2.5x the lines — so the frame carries that detail without the
+// crop, and a render came back with no face in it at all.
+describe("the tight crop belongs to the renderer that needed it", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it("keeps her whole head in frame when a real image endpoint renders it", async () => {
+    const { stillImagePrompt } = await import("../selfie");
+    process.env.RUNPOD_COMFY_ENDPOINT = "dryrun";
+    const p = stillImagePrompt({ gender: "female" } as any, "send a picture of your pussy");
+    expect(p).toMatch(/top of her head down to her knees/i);
+    expect(p).toMatch(/face clearly visible/i);
+    expect(p).not.toMatch(/chin down to her knees/i);
+  });
+
+  it("still crops in when a frame is being cut out of a clip", async () => {
+    const { stillImagePrompt } = await import("../selfie");
+    delete process.env.RUNPOD_COMFY_ENDPOINT;
+    const p = stillImagePrompt({ gender: "female" } as any, "send a picture of your pussy");
+    expect(p).toMatch(/chin down to her knees/i);
+  });
+
+  it("leaves a plain nude on the wide frame either way", async () => {
+    const { stillImagePrompt } = await import("../selfie");
+    for (const v of ["dryrun", undefined]) {
+      if (v) process.env.RUNPOD_COMFY_ENDPOINT = v;
+      else delete process.env.RUNPOD_COMFY_ENDPOINT;
+      const p = stillImagePrompt({ gender: "female" } as any, "get naked for me");
+      expect(p).not.toMatch(/chin down to her knees/i);
+    }
   });
 });

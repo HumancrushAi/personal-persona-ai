@@ -112,7 +112,7 @@ worker has all of this.
 DOCKER_REPO=yourname/hc-comfy-faceid bash scripts/comfy-worker-build.sh
 ```
 
-Then point the endpoint at the tag it prints, set `HF_TOKEN` on the endpoint,
+Then point the endpoint at the tag it prints,
 set `COMFY_GRAPH=faceid` in Vercel, redeploy. That is the whole install: the
 image carries the nodes and insightface, and it downloads the model weights onto
 the volume on its first boot.
@@ -168,12 +168,10 @@ attached: `VOL=/workspace bash provision-models.sh`.
 
 Two things that catch people out:
 
-- **The FaceID repo is gated.** `h94/IP-Adapter-FaceID` needs its licence
-  accepted in a browser once, then a read token set as `HF_TOKEN` **on the
-  RunPod endpoint** (the worker does the downloading, so the token has to be
-  where the worker can see it — not in Vercel). Without it those two downloads
-  fail and the graph stops at `IPAdapterUnifiedLoaderFaceID` with "model not
-  found". The provisioner logs this explicitly rather than leaving you to guess.
+- **No Hugging Face token is needed.** All five files download anonymously —
+  checked against the live URLs, ~4.7GB in total. `HF_TOKEN` is still honoured
+  if you set it on the endpoint, so a repo that later goes gated keeps working,
+  but nothing waits on a licence acceptance.
 - **`insightface` is a python package as well as model files.** It is in the
   Dockerfile, it has no prebuilt wheel for most Python/CUDA combinations, and it
   needs a C toolchain to build — which the stock worker image does not have.

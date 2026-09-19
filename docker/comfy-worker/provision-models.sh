@@ -57,17 +57,16 @@ mkdir -p "$MODELS"/{ipadapter,loras,clip_vision,ultralytics/bbox,insightface/mod
 MIN_BYTES=1000000
 
 fetch() {
-  local url="$1" dest="$2" gated="${3:-no}"
+  local url="$1" dest="$2"
   if [ -s "$dest" ]; then
     echo "[provision] = $(basename "$dest")"
     return 0
   fi
+  # HF_TOKEN is optional. All five of these download anonymously — verified
+  # against the live URLs — but a token is still passed when one is set, so a
+  # repo that later goes gated keeps working without a code change.
   local auth=()
-  if [ "$gated" = "gated" ]; then
-    if [ -z "${HF_TOKEN:-}" ]; then
-      echo "[provision] ! $(basename "$dest") needs HF_TOKEN (h94/IP-Adapter-FaceID is a gated repo) — skipping"
-      return 1
-    fi
+  if [ -n "${HF_TOKEN:-}" ]; then
     auth=(-H "Authorization: Bearer $HF_TOKEN")
   fi
   echo "[provision] + $(basename "$dest")"
@@ -89,10 +88,10 @@ fetch() {
 FAILED=0
 
 fetch "https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl.bin" \
-      "$MODELS/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin" gated || FAILED=1
+      "$MODELS/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin" || FAILED=1
 
 fetch "https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl_lora.safetensors" \
-      "$MODELS/loras/ip-adapter-faceid-plusv2_sdxl_lora.safetensors" gated || FAILED=1
+      "$MODELS/loras/ip-adapter-faceid-plusv2_sdxl_lora.safetensors" || FAILED=1
 
 # IPAdapter's unified loader looks for this exact filename.
 fetch "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors" \
@@ -123,8 +122,7 @@ find "$MODELS/ipadapter" "$MODELS/loras" "$MODELS/clip_vision" \
 
 if [ "$FAILED" -ne 0 ]; then
   echo "[provision] ! some files are missing. COMFY_GRAPH=faceid will fail until they are there."
-  echo "[provision] ! the usual cause is HF_TOKEN: h94/IP-Adapter-FaceID is gated and needs its"
-  echo "[provision] ! licence accepted once in a browser, then a read token set on the endpoint."
+  echo "[provision] ! check the worker can reach huggingface.co and github.com."
 fi
 
 # Never fail the boot. A worker that starts and logs the problem is debuggable;

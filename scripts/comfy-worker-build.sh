@@ -43,12 +43,10 @@ Done. Two manual steps left.
 
    While you are there, set these on the ENDPOINT (not in Vercel):
 
-     HF_TOKEN=hf_...        required once, see below
      VOL=/runpod-volume     only if your volume mounts somewhere else
 
-   HF_TOKEN is needed because h94/IP-Adapter-FaceID is a gated repo: accept its
-   licence once in a browser, then make a read token. Without it the two FaceID
-   files cannot be downloaded and the graph fails at the loader.
+   No Hugging Face token is needed: every model file downloads anonymously.
+   HF_TOKEN is honoured if set, in case a repo later goes gated.
 
 2. In Vercel:
 

@@ -309,3 +309,54 @@ describe("comfyTemplate selection", () => {
     expect(comfyTemplate()).toContain('"X"');
   });
 });
+
+// A settings typo must not reach the graph.
+//
+// Number() turns anything unparseable into NaN, JSON.stringify turns NaN into
+// null, and ComfyUI rejects null where it wants a float — so one bad env var
+// fails validation on a node that is wired perfectly. This happened for real:
+// the FaceID preset string was pasted into COMFY_IPA_LORA, which is a number.
+describe("numeric settings", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it("falls back when the value is not a number", async () => {
+    const { comfySettings } = await import("../comfy");
+    process.env.COMFY_IPA_LORA = "FACEID PLUS V2";
+    expect(comfySettings("p").ipaLora).toBe(0.6);
+  });
+
+  it("never lets NaN into the graph", async () => {
+    const { comfySettings, comfyWorkflow, FACEID_WORKFLOW } = await import("../comfy");
+    process.env.COMFY_IPA_WEIGHT = "oops";
+    process.env.COMFY_CFG = "";
+    const g = comfyWorkflow(
+      {
+        ...comfySettings("p"),
+        prompt: "p",
+        negative: "n",
+        checkpoint: "c.safetensors",
+        referenceImage: "reference.png",
+      },
+      FACEID_WORKFLOW,
+    );
+    expect(JSON.stringify(g)).not.toContain("null");
+    expect(JSON.stringify(g)).not.toContain("NaN");
+  });
+
+  // A dashboard stores what you type, so a value copied out of a shell snippet
+  // arrives with its quote marks attached.
+  it("tolerates quotes pasted in from a shell snippet", async () => {
+    const { comfySettings } = await import("../comfy");
+    process.env.COMFY_IPA_WEIGHT = '"0.85"';
+    expect(comfySettings("p").ipaWeight).toBe(0.85);
+  });
+
+  it("still reads a good value", async () => {
+    const { comfySettings } = await import("../comfy");
+    process.env.COMFY_CFG = "7.5";
+    expect(comfySettings("p").cfg).toBe(7.5);
+  });
+});

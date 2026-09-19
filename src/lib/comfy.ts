@@ -447,29 +447,53 @@ export function seedFor(prompt: string): number {
   return Math.abs(h) % 2 ** 31;
 }
 
+/**
+ * A numeric setting, falling back to its default when the env var is missing
+ * OR unusable.
+ *
+ * Number() turns anything it cannot parse into NaN, JSON.stringify turns NaN
+ * into null, and ComfyUI rejects null where it wants a float — so a typo in one
+ * env var surfaces as a validation error on a node that is wired correctly.
+ * That is a long way from the cause. It has already happened once: the FaceID
+ * preset string was pasted into COMFY_IPA_LORA, which is parsed as a number.
+ *
+ * Falling back and saying so in the log keeps renders working while the
+ * mistake is visible to whoever reads the log.
+ */
+function numberSetting(name: string, fallback: number): number {
+  const raw = (process.env[name] ?? "").trim();
+  if (!raw) return fallback;
+  // Strips quotes people paste in from a shell snippet: a dashboard stores the
+  // value verbatim, so "0.6" arrives with its quote marks attached.
+  const n = Number(raw.replace(/^["']|["']$/g, ""));
+  if (Number.isFinite(n)) return n;
+  console.warn(`[comfy] ${name}="${raw}" is not a number — falling back to ${fallback}`);
+  return fallback;
+}
+
 export function comfySettings(
   prompt = "",
 ): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
   return {
     seed: seedFor(prompt),
-    steps: Number(process.env.COMFY_STEPS || "30"),
+    steps: numberSetting("COMFY_STEPS", 30),
     // 7, up from 5. Five is loose for SDXL and the reported failure was the
     // render ignoring what the prompt asked for; 6.5-7.5 is the band where an
     // SDXL photoreal checkpoint follows the text without going contrasty and
     // over-baked, which is what happens past about 8.
-    cfg: Number(process.env.COMFY_CFG || "7"),
-    width: Number(process.env.COMFY_WIDTH || "832"),
-    height: Number(process.env.COMFY_HEIGHT || "1216"),
+    cfg: numberSetting("COMFY_CFG", 7),
+    width: numberSetting("COMFY_WIDTH", 832),
+    height: numberSetting("COMFY_HEIGHT", 1216),
     sampler: process.env.COMFY_SAMPLER || "dpmpp_2m_sde",
     scheduler: process.env.COMFY_SCHEDULER || "karras",
     checkpoint: process.env.COMFY_CHECKPOINT || "",
-    denoise: Number(process.env.COMFY_DENOISE || "1"),
+    denoise: numberSetting("COMFY_DENOISE", 1),
     // Read for every graph and used only by the one that has the nodes. Cheaper
     // than a second settings function, and it means switching COMFY_GRAPH needs
     // no other change.
-    ipaWeight: Number(process.env.COMFY_IPA_WEIGHT || "0.75"),
-    ipaLora: Number(process.env.COMFY_IPA_LORA || "0.6"),
+    ipaWeight: numberSetting("COMFY_IPA_WEIGHT", 0.75),
+    ipaLora: numberSetting("COMFY_IPA_LORA", 0.6),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
-    faceDenoise: Number(process.env.COMFY_FACE_DENOISE || "0.5"),
+    faceDenoise: numberSetting("COMFY_FACE_DENOISE", 0.5),
   };
 }

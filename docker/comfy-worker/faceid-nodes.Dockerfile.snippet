@@ -1,0 +1,66 @@
+# ── Paste this into geoffmccabe/runpod-api1's Dockerfile ──────────────────────
+#
+# That repo is a fork of runpod-workers/worker-comfyui, and it already installs
+# custom nodes with an explicit git clone + requirements install. This follows
+# the same shape, so it reads like the blocks above it.
+#
+# WHERE: after the last existing custom-node block (the ComfyUI-Logic one) and
+# before the "# --- VAE ---" model downloads. Anywhere among the node installs
+# works; keeping them together keeps the layer cache sensible.
+#
+# DO NOT replace that Dockerfile with ours. It builds ComfyUI itself, installs
+# the WAN video stack and bakes the Wan2.2 models in. Overwriting it would
+# destroy the video endpoint.
+
+# --- FaceID identity graph: IP-Adapter ---
+RUN git clone --depth 1 https://github.com/cubiq/ComfyUI_IPAdapter_plus.git /comfyui/ComfyUI/custom_nodes/ComfyUI_IPAdapter_plus && \
+    if [ -f /comfyui/ComfyUI/custom_nodes/ComfyUI_IPAdapter_plus/requirements.txt ]; then \
+        /comfyui/.venv/bin/python -m pip install --no-cache-dir -r /comfyui/ComfyUI/custom_nodes/ComfyUI_IPAdapter_plus/requirements.txt; \
+    fi
+
+# --- FaceID identity graph: FaceDetailer ---
+RUN git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Impact-Pack.git /comfyui/ComfyUI/custom_nodes/ComfyUI-Impact-Pack && \
+    if [ -f /comfyui/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/requirements.txt ]; then \
+        /comfyui/.venv/bin/python -m pip install --no-cache-dir -r /comfyui/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/requirements.txt; \
+    fi
+
+# --- FaceID identity graph: the face DETECTOR FaceDetailer needs ---
+# UltralyticsDetectorProvider was split out of Impact-Pack into this subpack.
+# Without it node 14 has a FaceDetailer and nothing to feed it a face bbox, and
+# the graph fails validation.
+RUN git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git /comfyui/ComfyUI/custom_nodes/ComfyUI-Impact-Subpack && \
+    if [ -f /comfyui/ComfyUI/custom_nodes/ComfyUI-Impact-Subpack/requirements.txt ]; then \
+        /comfyui/.venv/bin/python -m pip install --no-cache-dir -r /comfyui/ComfyUI/custom_nodes/ComfyUI-Impact-Subpack/requirements.txt; \
+    fi
+
+# --- FaceID identity graph: insightface ---
+# numpy pinned under 2 because insightface 0.7.3 uses the removed 1.x C API; an
+# unpinned install fails at import with "numpy.core.multiarray failed to
+# import", which reads like a broken install rather than a version conflict.
+# The build-essential and cmake this needs are already installed above.
+RUN /comfyui/.venv/bin/python -m pip install --no-cache-dir \
+      "numpy<2" \
+      insightface==0.7.3 \
+      onnxruntime-gpu \
+  && /comfyui/.venv/bin/python -c "import insightface; print('insightface', insightface.__version__)"
+
+# --- FaceID identity graph: the weights ---
+# Two options; pick one.
+#
+# A. NETWORK VOLUME (preferred if the endpoint has one). Copy
+#    provision-models.sh from this folder into the repo root, add the two lines
+#    below, and change the last line of the Dockerfile from
+#      ENTRYPOINT ["/bin/bash", "/start.sh"]
+#    to
+#      ENTRYPOINT ["/bin/bash", "/hc-entrypoint.sh"]
+#    copying entrypoint.sh in as /hc-entrypoint.sh. The worker then downloads
+#    ~4GB to /runpod-volume/models on its first boot and skips it thereafter.
+#    Needs HF_TOKEN set on the endpoint.
+#
+#      COPY provision-models.sh /provision-models.sh
+#      COPY entrypoint.sh /hc-entrypoint.sh
+#      RUN chmod +x /provision-models.sh /hc-entrypoint.sh
+#
+# B. BAKE INTO THE IMAGE, matching how the Wan models are handled further down
+#    this same Dockerfile. Bigger image, no volume needed, but the two gated
+#    FaceID files need a build secret for the HF token, so A is simpler.

@@ -505,7 +505,11 @@ describe("a viewpoint the user set themselves", () => {
   it("demotes the examples to format when the request disagrees with them", async () => {
     const sys = await systemPromptFor("turn around and bend over");
     expect(sys).toMatch(/FORMAT ONLY/);
-    expect(sys).toMatch(/the authority on all four/);
+    // The closing clause of this note has been reworded by hand more than once.
+    // What matters is that the examples are demoted to their shape and the
+    // request is named as the source of the content, not the exact sentence.
+    expect(sys).toMatch(/Copy their SHAPE/);
+    expect(sys).toMatch(/from the user's request/);
   });
 
   it("leaves the examples undemoted when they agree with the request", async () => {

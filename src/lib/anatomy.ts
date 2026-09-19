@@ -1,62 +1,17 @@
 // What body a companion actually has, resolved in ONE place.
-//
-// This existed in six places before this file. selfie.ts derived it four
-// separate times (once per prompt builder), prompt-refiner.server.ts had its
-// own copy, media.functions.ts had another for the negative prompt, and
-// portrait.ts a fifth for clothed shots. They were copy-pasted from each other
-// and had drifted, so the same companion could be a woman to the framing
-// sentence and a man to the negative prompt in the same render.
-//
-// Three things were wrong beyond the duplication, all reproduced against the
-// live code before this file was written:
-//
-// 1. THE BYPASS. Every copy tested the USER'S MESSAGE for /trans|futa|shemale|
-//    ladyboy|dickgirl/ alongside the companion's gender. So "send me a pic of
-//    your dick you futa", typed at an ordinary female companion, set
-//    isTransFemale and unlocked a penis render on a woman. The companion's
-//    stored gender is the only authority here; what the user types is a
-//    request, never a declaration of whose body it is.
-//
-// 2. TRANS MEN WERE BACKWARDS. genderNoun mapped "trans-male" to "man" and the
-//    refiner folded it into isMale, so a trans man rendered as a fully male
-//    body with a penis — while checkCrossGenderRequest refused him a request
-//    for his own pussy and happily accepted one for a cock he does not have.
-//    Exactly inverted.
-//
-// 3. TRANS WOMEN WERE UNGATED. isTransFemale returned "allow everything", so a
-//    trans woman could be asked for a vulva. This app's archetype for her is
-//    consistent everywhere else — breasts and an anatomically correct penis —
-//    and the render simply cannot honour a request for anatomy the prompt does
-//    not describe. It produced a fused, ambiguous groin.
-//
-// The point of a single resolver is that "never render the wrong genital for a
-// gender" becomes a property of one function instead of an agreement between
-// six copies that had already stopped agreeing.
 
 /** The five values companions.gender actually holds, plus a short alias. */
 export type GenderKind = "female" | "male" | "trans-female" | "trans-male" | "nb";
 
 export type Anatomy = {
   kind: GenderKind;
-  /** How to refer to them in prose: "woman", "man", "transgender woman"… */
   noun: string;
   subject: "she" | "he" | "they";
   object: "her" | "him" | "them";
   poss: "her" | "his" | "their";
   refl: "herself" | "himself" | "themselves";
-  /**
-   * "is" or "are", to agree with `subject`.
-   *
-   * Here because every builder that wrote `${subject} is already completely
-   * naked` produced "They is already completely naked" for a non-binary
-   * companion — in the one clause of the prompt that says what the picture is
-   * of, to a text encoder that is a language model. Carrying the verb next to
-   * the pronoun is the only way it cannot be forgotten at a call site.
-   */
   is: "is" | "are";
-  /** Third-person singular "s", for verbs like settle(s) and hold(s). */
   s: "s" | "";
-  /** Rendered as having breasts, rather than a flat or muscular chest. */
   hasBreasts: boolean;
   hasPenis: boolean;
   hasVulva: boolean;
@@ -87,9 +42,6 @@ const TABLE: Record<GenderKind, Omit<Anatomy, "kind">> = {
     hasPenis: true,
     hasVulva: false,
   },
-  // The archetype this app uses everywhere: a woman's face and body with a
-  // cock. Stated as one body rather than two halves, because describing them
-  // separately is how a render loses one of them.
   "trans-female": {
     noun: "transgender woman",
     subject: "she",
@@ -102,8 +54,6 @@ const TABLE: Record<GenderKind, Omit<Anatomy, "kind">> = {
     hasPenis: true,
     hasVulva: false,
   },
-  // The mirror of the above, and the case the old code had inverted: a man's
-  // build and chest with a pussy.
   "trans-male": {
     noun: "transgender man",
     subject: "he",
@@ -116,12 +66,6 @@ const TABLE: Record<GenderKind, Omit<Anatomy, "kind">> = {
     hasPenis: false,
     hasVulva: true,
   },
-  // Androgynous: nothing is committed to. The flags say what the body HAS, and
-  // a non-binary companion's default body has no genital stated at all — the
-  // clause below describes a smooth groin and the render follows whatever the
-  // request named. That is separate from whether a request is refused, which
-  // `refuses` decides; conflating the two was the first attempt and it made the
-  // flags mean two different things at once.
   nb: {
     noun: "androgynous person",
     subject: "they",
@@ -136,16 +80,9 @@ const TABLE: Record<GenderKind, Omit<Anatomy, "kind">> = {
   },
 };
 
-/**
- * The kind a stored gender string means.
- *
- * The column is free text with five intended values, but rows written by older
- * code and by scripts use spellings like "transwoman" and "futa", so those are
- * mapped rather than silently falling through to female.
- */
 export function genderKind(gender?: string | null): GenderKind {
   const g = (gender ?? "").trim().toLowerCase().replace(/_/g, "-");
-  if (!g) return "female"; // the column's own default
+  if (!g) return "female";
   if (
     g === "trans-female" ||
     g === "transfemale" ||
@@ -165,29 +102,18 @@ export function genderKind(gender?: string | null): GenderKind {
   return "female";
 }
 
-/** Everything the prompt builders need to know about whose body this is. */
 export function anatomyOf(gender?: string | null): Anatomy {
   const kind = genderKind(gender);
   return { kind, ...TABLE[kind] };
 }
 
-// ── What the renderer is told is there ──────────────────────────────────────
-//
-// Strictly positive descriptions only.
-// The text encoder cannot represent negation. Any "without sag", "no pox",
-// "zero sag", "with no drop" etc. puts the bad tokens into the positive conditioning.
-//
-// These strings are now appended after the refiner finishes (in finishMediaPrompt),
-// so they land verbatim every time.
-//
-// Critical change: we now explicitly anchor to the reference image proportions
-// so the model stops inventing a different body.
+// Strictly positive, reference-anchored anatomy.
+// These are appended AFTER the refiner so they always land whole.
 
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "exact same body proportions as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, taut smooth skin, nipples level with the middle of the upper arms pointing forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, firm high perfectly round ass with smooth even skin texture matching the reference",
-  male:
-    "exact same body proportions as the reference image, lean athletic muscular chest and defined abs, thick erect penis standing out from the body and angled slightly upward about as long as the hand from wrist to fingertip, clearly defined shaft with soft realistic veining, distinct coronal ridge meeting the smooth rounded glans, natural firm testicles in a separate lightly textured scrotum",
+    "exact same body proportions and breast size as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, taut smooth skin, nipples level with the middle of the upper arms pointing forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, firm high perfectly round ass with smooth even skin texture matching the reference",
+  male: "exact same body proportions as the reference image, lean athletic muscular chest and defined abs, thick erect penis standing out from the body and angled slightly upward about as long as the hand from wrist to fingertip, clearly defined shaft with soft realistic veining, distinct coronal ridge meeting the smooth rounded glans, natural firm testicles in a separate lightly textured scrotum",
   "trans-female":
     "exact same body proportions as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, thick erect penis standing out and angled slightly upward about as long as the hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans, natural testicles in a separate sac, firm high perfectly round ass matching the reference",
   "trans-male":
@@ -195,19 +121,10 @@ const NUDE_ANATOMY: Record<GenderKind, string> = {
   nb: "exact same body proportions as the reference image, lean androgynous body, flat soft chest, narrow hips, smooth groin, firm high perfectly round ass matching the reference",
 };
 
-/** The anatomy clause for a nude render of this companion. */
 export function nudeAnatomy(gender?: string | null): string {
   return NUDE_ANATOMY[genderKind(gender)];
 }
 
-// Suppressing the anatomy this companion does NOT have.
-//
-// This is the half of the pair that can carry a forbidden noun, because a
-// negative prompt is what a renderer subtracts. It is also why the positive
-// clause above never needs to.
-//
-// Only list a part the companion genuinely lacks.
-// Never list a part they DO have.
 const CROSS_SEX_NEGATIVE: Record<GenderKind, string> = {
   female:
     "penis, cock, erect cock, testicles, scrotum, male genitalia, bulge, male chest, muscular male torso, male arms, hairy legs, beard, mustache, male body, male pelvis, masculine groin, masculine thighs",
@@ -219,12 +136,9 @@ const CROSS_SEX_NEGATIVE: Record<GenderKind, string> = {
   nb: "",
 };
 
-/** Negative-prompt terms for the anatomy this companion does not have. */
 export function crossSexNegative(gender?: string | null): string {
   return CROSS_SEX_NEGATIVE[genderKind(gender)];
 }
-
-// ── The parts a request can ask for ─────────────────────────────────────────
 
 const PART_TERMS = {
   penis: String.raw`dicks?|cocks?|penis|penises|balls|testicles?|ballsack|scrotum|shafts?|boners?|hard[- ]?ons?|erections?|schlongs?|dongs?|manhood|pricks?|willy|pecker|phallus|bulge|cum ?shot|jerk\w* off|jack\w* off`,
@@ -269,7 +183,6 @@ export function refuseWrongAnatomy(
   prompt: string,
 ): string | null {
   const a = anatomyOf(gender);
-
   if (a.kind === "nb") return null;
 
   const has: Record<BodyPart, boolean> = {

@@ -609,11 +609,26 @@ function buildStillPrompt(
   // own viewpoint is the front-facing anatomy paragraph, which described a chest
   // and a vulva on a request that asked for neither. The action sentence carries
   // the user's own words, which is what should be describing the subject here.
-  const undress = nude
-    ? `${subject} ${a.is} already completely naked, bare skin everywhere.${
+  // A request that keeps a garment ON must not also assert full nudity.
+  //
+  // This builder branched on requestIsNude alone, and naming a part makes that
+  // true — so "in lingerie with your pussy showing" produced a prompt saying
+  // BOTH "she is with lingerie on with her pussy showing" AND "she is already
+  // completely naked, bare skin everywhere", two sentences apart. The renderer
+  // was told two opposite things and split the difference, which is what "it is
+  // not listening to what I asked" looked like from the outside.
+  //
+  // The refiner learned this one commit ago; the builders did not, and they are
+  // the fallback whenever Grok is unavailable.
+  const undress = requestKeepsGarment(req)
+    ? `${subject} ${a.is} wearing what was asked for, and bare around it.${
         requestSetsViewpoint(req) ? "" : ` ${nudeAnatomy(c.gender)}`
       }`
-    : `${subject} hold${a.s} the pose.`;
+    : nude
+      ? `${subject} ${a.is} already completely naked, bare skin everywhere.${
+          requestSetsViewpoint(req) ? "" : ` ${nudeAnatomy(c.gender)}`
+        }`
+      : `${subject} hold${a.s} the pose.`;
 
   // NOTE: deliberately no actionTags here. Those are booru tags ("bent over,
   // presenting, ass, rear view") written for the Pony IMAGE model, and feeding
@@ -685,11 +700,16 @@ export function videoActionPrompt(
   const a = anatomyOf(c.gender);
   const { noun, subject, poss } = a;
 
-  const undress = requestIsNude(req)
-    ? `${subject} ${a.is} already completely naked, bare skin everywhere throughout.${
+  // Same contradiction as the still builder above, same fix.
+  const undress = requestKeepsGarment(req)
+    ? `${subject} ${a.is} wearing what was asked for, and bare around it.${
         requestSetsViewpoint(req) ? "" : ` ${nudeAnatomy(c.gender)}`
       }`
-    : `${subject} move${a.s} seductively for the camera.`;
+    : requestIsNude(req)
+      ? `${subject} ${a.is} already completely naked, bare skin everywhere throughout.${
+          requestSetsViewpoint(req) ? "" : ` ${nudeAnatomy(c.gender)}`
+        }`
+      : `${subject} move${a.s} seductively for the camera.`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
   const action =
@@ -782,6 +802,45 @@ export function capPromptWords(prompt: string, max = PROMPT_WORD_BUDGET): string
  * builder wholesale — so the one path that runs in production is the one path
  * the spec would otherwise miss.
  */
+/**
+ * Drop the fragments that point at a reference image, when there is none.
+ *
+ * The anatomy clause opens "exact same body proportions and breast size as the
+ * reference image" and ends "matching the reference". On WAN and Kontext that
+ * is the strongest instruction in it — her portrait IS the input. On a
+ * text-to-image graph it points at nothing, and it does so in the part of the
+ * prompt the encoder weighs most heavily: a dozen wasted tokens at the front,
+ * and `reference image` left for the render to interpret however it likes.
+ *
+ * Fragment by fragment, the way stripNegations works, so a whole clause goes
+ * rather than leaving a dangling "exact same body proportions and breast size".
+ * Subtractive only — it never rewrites what is left.
+ */
+function withoutDeadReference(clause: string, noReference?: boolean): string {
+  if (!noReference || !clause) return clause;
+  // Phrase by phrase, not fragment by fragment. Dropping whole comma fragments
+  // was the first attempt and it took the neighbours with it: "and bare around
+  // it" and "Candid photograph" both sat in the same fragment as a reference
+  // phrase and vanished with it. These remove the pointer and nothing else.
+  const kept = clause
+    .replace(/\bexact same [^,.]*?\bas the reference image\b/gi, "")
+    .replace(/\b(?:identical|same) [^,.]*?\b(?:to|as) the reference image\b/gi, "")
+    .replace(/\bmatching the reference\b/gi, "")
+    .replace(/\b(?:as|to|from|in) the reference image\b/gi, "")
+    .replace(/\bthe reference image\b/gi, "")
+    .replace(/\s*,\s*(?:,\s*)+/g, ", ")
+    // A phrase removed from after a full stop leaves ". ," behind.
+    .replace(/([.!?])\s*,/g, "$1")
+    .replace(/,\s*([.!?])/g, "$1")
+    .replace(/^[\s,]+/, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.])/g, "$1")
+    .trim();
+  // If stripping would gut it, the original is the lesser problem — the same
+  // floor stripNegations and stripUnrequestedProps both use.
+  return kept.length >= 60 ? kept : clause;
+}
+
 export function finishMediaPrompt(
   base: string,
   req: string,
@@ -805,7 +864,11 @@ export function finishMediaPrompt(
     still?: boolean;
   } = {},
 ): string {
-  let out = (base ?? "").trim();
+  // Applied to the WHOLE prompt, not just the appended clause: the builders
+  // compose the anatomy clause in themselves, and the refiner opens every
+  // prompt with "exact same woman as the reference image". On a graph with no
+  // reference, all of it points at nothing.
+  let out = withoutDeadReference((base ?? "").trim(), opts.appendAppearance);
   const request = (req ?? "").trim();
   const a = opts.anatomy ?? anatomyOf("female");
 

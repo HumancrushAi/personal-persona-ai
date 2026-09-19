@@ -316,3 +316,60 @@ describe("finishMediaPrompt appendAppearance", () => {
     expect(out).toMatch(/stomach/i);
   });
 });
+
+// Two things the dry run exposed, once I stopped guessing from screenshots and
+// printed the prompt the renderer actually receives.
+describe("what the ComfyUI path actually sends", () => {
+  const female = { name: "Test", age: 26, ethnicity: "Italian", gender: "female" } as any;
+
+  // "She is with lingerie on with her pussy showing" and "She is already
+  // completely naked, bare skin everywhere", two sentences apart in the same
+  // prompt. Naming a part makes requestIsNude true, so the builder asserted
+  // full nudity over the top of the garment the user had asked for, and the
+  // render split the difference.
+  it("stops asserting full nudity over a garment the request keeps on", async () => {
+    const { stillImagePrompt } = await import("../selfie");
+    const p = stillImagePrompt(female, "with lingerie on with your pussy showing");
+    expect(p).not.toMatch(/completely naked/i);
+    expect(p).toMatch(/lingerie/i);
+  });
+
+  it("still asserts it for a plain nude request", async () => {
+    const { stillImagePrompt } = await import("../selfie");
+    expect(stillImagePrompt(female, "get naked for me")).toMatch(/completely naked/i);
+  });
+
+  // The clause points at a reference image that a text-to-image graph never
+  // receives — a dozen inert tokens in the part of the prompt the encoder
+  // weighs most heavily.
+  it("drops the pointer to a reference image that never arrives", async () => {
+    const { finishMediaPrompt, stillImagePrompt } = await import("../selfie");
+    const built = stillImagePrompt(female, "get naked for me");
+    const out = finishMediaPrompt(built, "get naked for me", { appendAppearance: true });
+    expect(out).not.toMatch(/reference/i);
+  });
+
+  it("keeps it when her portrait IS the input", async () => {
+    const { finishMediaPrompt, stillImagePrompt } = await import("../selfie");
+    const built = stillImagePrompt(female, "get naked for me");
+    const out = finishMediaPrompt(built, "get naked for me", { appendAppearance: false });
+    expect(out).toMatch(/reference/i);
+  });
+
+  // The first attempt dropped whole comma fragments and took the neighbours
+  // with it: "and bare around it" and "Candid photograph" both vanished.
+  it("removes the pointer without taking its neighbours", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const out = finishMediaPrompt(
+      "She is wearing what was asked for, and bare around it. exact same body proportions as the reference image, natural firm breasts, kneeling on the bed. Candid photograph, 50mm lens.",
+      "get naked",
+      { appendAppearance: true },
+    );
+    expect(out).not.toMatch(/reference/i);
+    expect(out).toMatch(/and bare around it/);
+    expect(out).toMatch(/Candid photograph/);
+    expect(out).toMatch(/natural firm breasts/);
+    // No ". ," seam left where the phrase used to be.
+    expect(out).not.toMatch(/[.!?]\s*,/);
+  });
+});

@@ -45,8 +45,9 @@ GPU-minutes rendering 81 frames to throw 80 of them away.
 RUNPOD_COMFY_ENDPOINT="abc123xyz"       # required — turns this path on
 COMFY_CHECKPOINT="lustifySDXL.safetensors"   # required — the filename on the volume
 COMFY_WORKFLOW_JSON=""                  # optional — your own graph, see below
+COMFY_GRAPH=""                          # optional — "faceid" for the identity graph
 COMFY_STEPS="30"
-COMFY_CFG="5"
+COMFY_CFG="7"                           # 6.5-7.5 follows the prompt; past 8 goes over-baked
 COMFY_WIDTH="832"                       # SDXL's own portrait bucket
 COMFY_HEIGHT="1216"
 COMFY_SAMPLER="dpmpp_2m_sde"
@@ -73,12 +74,14 @@ the values with placeholders, and paste the whole JSON into
 | ------------------------------------------- | --------------------------------------------------- |
 | `{{PROMPT}}`                                | The generated prompt for this request               |
 | `{{NEGATIVE}}`                              | The negative prompt (quality + anatomy suppression) |
-| `{{SEED}}`                                  | A fresh random seed per render                      |
+| `{{SEED}}`                                  | Derived from the prompt (see `COMFY_SEED`)          |
 | `{{STEPS}}` `{{CFG}}`                       | `COMFY_STEPS`, `COMFY_CFG`                          |
 | `{{WIDTH}}` `{{HEIGHT}}`                    | `COMFY_WIDTH`, `COMFY_HEIGHT`                       |
 | `{{SAMPLER}}` `{{SCHEDULER}}` `{{DENOISE}}` | the matching env vars                               |
 | `{{CHECKPOINT}}`                            | `COMFY_CHECKPOINT`                                  |
 | `{{REFERENCE_IMAGE}}`                       | The filename of her portrait, uploaded with the job |
+| `{{IPA_WEIGHT}}` `{{IPA_LORA}}`             | `COMFY_IPA_WEIGHT`, `COMFY_IPA_LORA`                |
+| `{{FACEID_PRESET}}` `{{FACE_DENOISE}}`      | `COMFY_FACEID_PRESET`, `COMFY_FACE_DENOISE`         |
 
 A placeholder alone in a field (`"seed": "{{SEED}}"`) becomes a real number,
 because ComfyUI type-checks its inputs. A placeholder the app cannot fill fails
@@ -86,25 +89,76 @@ the launch and refunds, rather than rendering the literal text.
 
 ## Making it look like HER
 
-This is the part that decides whether the feature is usable, and the built-in
-graph does **not** solve it: a checkpoint has never seen your companion, so on
-its own it renders a beautiful stranger. Identity is this app's worst failure
-mode — a photo of someone else is worse than no photo.
+This is the part that decides whether the feature is usable, and the STOCK graph
+does **not** solve it: a checkpoint has never seen your companion, so on its own
+it renders a beautiful stranger. Identity is this app's worst failure mode — a
+photo of someone else is worse than no photo, and "the body never matches the
+character" is this, not a wording problem.
 
-Use `{{REFERENCE_IMAGE}}`. When the graph contains it, her portrait is uploaded
-with the job as base64 and written into ComfyUI's input folder, where a
-`LoadImage` node reads it. Wire that into whichever identity node your image has:
+`COMFY_GRAPH="faceid"` switches to the built-in identity graph: IP-Adapter
+FaceID for the likeness, then a FaceDetailer pass so the face survives being a
+small part of a full-length frame. Her portrait is uploaded with the job
+automatically — that happens the moment the graph contains
+`{{REFERENCE_IMAGE}}` — so there is nothing else to wire.
 
-- **IPAdapter FaceID** (`ComfyUI_IPAdapter_plus` + insightface) — the usual
-  choice for SDXL. Strong likeness, keeps the checkpoint's skin quality.
+It is opt-in, and it is not the default on purpose: every node past the stock
+seven has to be installed in the worker image, and a graph naming a class the
+worker lacks fails **every** job rather than degrading. Turn it on after the
+worker has all of this.
+
+**Custom nodes** (clone into `custom_nodes/`, then `pip install -r` each one's
+requirements):
+
+| Node pack                      | Provides                                          |
+| ------------------------------ | ------------------------------------------------- |
+| `cubiq/ComfyUI_IPAdapter_plus` | `IPAdapterUnifiedLoaderFaceID`, `IPAdapterFaceID` |
+| `ltdrdata/ComfyUI-Impact-Pack` | `FaceDetailer`, `UltralyticsDetectorProvider`     |
+
+**Model files**, on the network volume:
+
+| File                                             | Path under `models/`  |
+| ------------------------------------------------ | --------------------- |
+| `ip-adapter-faceid-plusv2_sdxl.bin`              | `ipadapter/`          |
+| `ip-adapter-faceid-plusv2_sdxl_lora.safetensors` | `loras/`              |
+| CLIP-ViT-H image encoder                         | `clip_vision/`        |
+| `face_yolov8m.pt`                                | `ultralytics/bbox/`   |
+| InsightFace `buffalo_l`                          | `insightface/models/` |
+
+InsightFace is the one that catches people out: `IPAdapterUnifiedLoaderFaceID`
+needs the `insightface` python package in the image as well as the model files,
+and it is not in the stock worker.
+
+**Tuning knobs**, all optional:
+
+```
+COMFY_GRAPH="faceid"                    # off unless set
+COMFY_IPA_WEIGHT="0.75"                 # how hard the render pulls toward her face
+COMFY_IPA_LORA="0.6"                    # strength of the FaceID LoRA
+COMFY_FACEID_PRESET="FACEID PLUS V2"    # adapter preset
+COMFY_FACE_DENOISE="0.5"                # how much of the face the detailer repaints
+```
+
+`COMFY_IPA_WEIGHT` is the one to move first. Past about 0.9 the likeness starts
+overriding the prompt — the pose and the expression drift back toward the
+reference photo. Below about 0.5 it is a suggestion rather than an identity.
+
+`COMFY_FACE_DENOISE` past ~0.7 stops repairing the face and starts inventing a
+different one.
+
+### If you would rather build your own
+
+`{{REFERENCE_IMAGE}}` is available to any graph. Wire it into whichever
+identity node your image has:
+
+- **IPAdapter FaceID** (`ComfyUI_IPAdapter_plus` + insightface) — what the
+  built-in graph uses. Strong likeness, keeps the checkpoint's skin quality.
 - **InstantID** — stronger identity lock, a little more "posed" looking.
 - **PuLID** — good middle ground on SDXL.
 - **ReActor / face swap as a last node** — swaps the face after rendering.
-  Cruder, but it is the most reliable likeness and it does not fight the pose.
+  Cruder, but the most reliable likeness, and it does not fight the pose.
 
-Whichever you use, install its custom nodes in the worker image (a `Dockerfile`
-`FROM runpod/worker-comfyui:...` plus a `comfy-node-install` line), build your
-own graph in ComfyUI, confirm it renders there, then export it.
+Build it in ComfyUI, confirm it renders there, export it, and put it in
+`COMFY_WORKFLOW_JSON`, which wins over `COMFY_GRAPH`.
 
 ## Check it before a paying user does
 

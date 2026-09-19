@@ -22,6 +22,10 @@ const VARS: ComfyVars = {
   scheduler: "karras",
   checkpoint: "lustify.safetensors",
   denoise: 1,
+  ipaWeight: 0.75,
+  ipaLora: 0.6,
+  faceidPreset: "FACEID PLUS V2",
+  faceDenoise: 0.5,
 };
 
 // ComfyUI validates the TYPE of every input before it runs anything, so a seed
@@ -196,5 +200,112 @@ describe("seedFor", () => {
     const p = "the same prompt both times";
     const draws = new Set([seedFor(p), seedFor(p), seedFor(p), seedFor(p), seedFor(p)]);
     expect(draws.size).toBeGreaterThan(1);
+  });
+});
+
+// The identity graph. The stock one renders "a beautiful stranger" by its own
+// comment — nothing in it knows what this companion looks like — so this is the
+// graph that carries her likeness.
+//
+// These assert WIRING, because a mis-wired graph does not throw: ComfyUI happily
+// runs a KSampler still pointed at the bare checkpoint and returns a perfectly
+// good picture of someone else, which is the failure this whole file exists to
+// prevent and the one nobody notices in a diff.
+describe("FACEID_WORKFLOW", () => {
+  const vars = { ...VARS };
+
+  it("is valid JSON", async () => {
+    const { FACEID_WORKFLOW } = await import("../comfy");
+    expect(() => JSON.parse(FACEID_WORKFLOW)).not.toThrow();
+  });
+
+  it("asks for the reference portrait, so the upload path turns on", async () => {
+    const { FACEID_WORKFLOW, wantsReference } = await import("../comfy");
+    expect(wantsReference(FACEID_WORKFLOW)).toBe(true);
+  });
+
+  it("feeds the sampler from the IPAdapter, not straight from the checkpoint", async () => {
+    const { FACEID_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow({ ...vars, referenceImage: "reference.png" }, FACEID_WORKFLOW) as any;
+    // 12 is IPAdapterFaceID. Pointing this at 4 would render a stranger.
+    expect(g["3"].inputs.model).toEqual(["12", 0]);
+    expect(g["12"].class_type).toBe("IPAdapterFaceID");
+  });
+
+  it("feeds the IPAdapter from the loaded reference image", async () => {
+    const { FACEID_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow({ ...vars, referenceImage: "reference.png" }, FACEID_WORKFLOW) as any;
+    expect(g["12"].inputs.image).toEqual(["10", 0]);
+    expect(g["10"].class_type).toBe("LoadImage");
+    expect(g["10"].inputs.image).toBe("reference.png");
+  });
+
+  it("saves the detailed face, not the raw decode", async () => {
+    const { FACEID_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow({ ...vars, referenceImage: "reference.png" }, FACEID_WORKFLOW) as any;
+    // 14 is FaceDetailer, 8 is the VAEDecode it takes its input from.
+    expect(g["9"].inputs.images).toEqual(["14", 0]);
+    expect(g["14"].inputs.image).toEqual(["8", 0]);
+  });
+
+  it("keeps numbers as numbers through substitution", async () => {
+    const { FACEID_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow({ ...vars, referenceImage: "reference.png" }, FACEID_WORKFLOW) as any;
+    // ComfyUI validates input types and rejects "0.75" where it wants a float.
+    expect(typeof g["12"].inputs.weight).toBe("number");
+    expect(typeof g["11"].inputs.lora_strength).toBe("number");
+    expect(typeof g["14"].inputs.denoise).toBe("number");
+    expect(typeof g["3"].inputs.cfg).toBe("number");
+  });
+
+  it("leaves no placeholder behind", async () => {
+    const { FACEID_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow({ ...vars, referenceImage: "reference.png" }, FACEID_WORKFLOW);
+    expect(JSON.stringify(g)).not.toMatch(/\{\{[A-Z_]+\}\}/);
+  });
+
+  it("refuses to launch without the portrait it needs", async () => {
+    const { FACEID_WORKFLOW, comfyInput } = await import("../comfy");
+    expect(() => comfyInput(vars, { template: FACEID_WORKFLOW })).toThrow(/reference image/i);
+  });
+
+  it("ships the portrait under the name LoadImage reads", async () => {
+    const { FACEID_WORKFLOW, comfyInput, REFERENCE_NAME } = await import("../comfy");
+    const body = comfyInput(vars, {
+      template: FACEID_WORKFLOW,
+      referenceBase64: "AAAA",
+    }) as any;
+    expect(body.images).toEqual([{ name: REFERENCE_NAME, image: "AAAA" }]);
+    expect(body.workflow["10"].inputs.image).toBe(REFERENCE_NAME);
+  });
+});
+
+// The stock graph stays the default: the nodes above are custom ones, and a
+// graph naming a class the worker lacks fails every job rather than degrading.
+describe("comfyTemplate selection", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it("defaults to the stock graph, which needs no custom nodes", async () => {
+    const { comfyTemplate, DEFAULT_WORKFLOW } = await import("../comfy");
+    delete process.env.COMFY_GRAPH;
+    delete process.env.COMFY_WORKFLOW_JSON;
+    expect(comfyTemplate()).toBe(DEFAULT_WORKFLOW);
+  });
+
+  it("selects the identity graph by name", async () => {
+    const { comfyTemplate, FACEID_WORKFLOW } = await import("../comfy");
+    delete process.env.COMFY_WORKFLOW_JSON;
+    process.env.COMFY_GRAPH = "faceid";
+    expect(comfyTemplate()).toBe(FACEID_WORKFLOW);
+  });
+
+  it("lets an explicit graph win over the name", async () => {
+    const { comfyTemplate } = await import("../comfy");
+    process.env.COMFY_GRAPH = "faceid";
+    process.env.COMFY_WORKFLOW_JSON = '{"1":{"class_type":"X","inputs":{}}}';
+    expect(comfyTemplate()).toContain('"X"');
   });
 });

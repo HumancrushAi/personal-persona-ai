@@ -113,9 +113,14 @@ export const DEFAULT_WORKFLOW = `{
 //
 // OPT-IN, and deliberately not the default. Every node past the stock seven has
 // to be installed in the worker image, so making this the default would take
-// every endpoint without ComfyUI_IPAdapter_plus and ComfyUI-Impact-Pack from
-// working to failing on the first job. Set COMFY_GRAPH=faceid once the image
-// has them. See docs/uncensored-image-endpoint.md for the install list.
+// every endpoint without ComfyUI_IPAdapter_plus, ComfyUI-Impact-Pack and
+// ComfyUI-Impact-Subpack from working to failing on the first job. Set
+// COMFY_GRAPH=faceid once the image has them — docker/comfy-worker/Dockerfile
+// builds it and scripts/setup-comfy-volume.sh puts the weights on the volume.
+//
+// The subpack is a separate install and the easiest thing to miss:
+// UltralyticsDetectorProvider was split out of the main Impact Pack, so without
+// it node 14 has no detector to take a face bbox from.
 //
 // What it adds over DEFAULT_WORKFLOW:
 //

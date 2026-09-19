@@ -106,27 +106,49 @@ seven has to be installed in the worker image, and a graph naming a class the
 worker lacks fails **every** job rather than degrading. Turn it on after the
 worker has all of this.
 
-**Custom nodes** (clone into `custom_nodes/`, then `pip install -r` each one's
-requirements):
+These go in the **worker image**, not on the volume. A serverless worker is an
+ephemeral container: anything installed into a running one is gone at the next
+cold start. [`docker/comfy-worker/Dockerfile`](../docker/comfy-worker/Dockerfile)
+is the image — build it, push it, point the endpoint at it.
 
-| Node pack                      | Provides                                          |
-| ------------------------------ | ------------------------------------------------- |
-| `cubiq/ComfyUI_IPAdapter_plus` | `IPAdapterUnifiedLoaderFaceID`, `IPAdapterFaceID` |
-| `ltdrdata/ComfyUI-Impact-Pack` | `FaceDetailer`, `UltralyticsDetectorProvider`     |
+**Custom nodes** — three packs, not two:
 
-**Model files**, on the network volume:
+| Node pack                         | Provides                                          |
+| --------------------------------- | ------------------------------------------------- |
+| `cubiq/ComfyUI_IPAdapter_plus`    | `IPAdapterUnifiedLoaderFaceID`, `IPAdapterFaceID` |
+| `ltdrdata/ComfyUI-Impact-Pack`    | `FaceDetailer`                                    |
+| `ltdrdata/ComfyUI-Impact-Subpack` | `UltralyticsDetectorProvider`                     |
+
+The subpack is easy to miss. `UltralyticsDetectorProvider` was split out of the
+main Impact Pack, so installing only the pack gives you a `FaceDetailer` with no
+detector to feed it and the graph fails validation on node 13.
+
+**Model files**, on the network volume. These are the part that belongs on the
+volume: large, unchanging, and what would otherwise make every cold start
+unbearable.
+
+[`scripts/setup-comfy-volume.sh`](../scripts/setup-comfy-volume.sh) downloads
+all of them into the right folders. Run it once from a temporary RunPod **Pod**
+with the same volume attached — a serverless worker cannot do it, because it
+only exists while a job is running. The script is safe to re-run.
 
 | File                                             | Path under `models/`  |
 | ------------------------------------------------ | --------------------- |
 | `ip-adapter-faceid-plusv2_sdxl.bin`              | `ipadapter/`          |
 | `ip-adapter-faceid-plusv2_sdxl_lora.safetensors` | `loras/`              |
-| CLIP-ViT-H image encoder                         | `clip_vision/`        |
+| `CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors`    | `clip_vision/`        |
 | `face_yolov8m.pt`                                | `ultralytics/bbox/`   |
-| InsightFace `buffalo_l`                          | `insightface/models/` |
+| InsightFace `buffalo_l/`                         | `insightface/models/` |
 
-InsightFace is the one that catches people out: `IPAdapterUnifiedLoaderFaceID`
-needs the `insightface` python package in the image as well as the model files,
-and it is not in the stock worker.
+Two things that catch people out:
+
+- **The FaceID repo is gated.** `h94/IP-Adapter-FaceID` needs its licence
+  accepted in a browser once, then a read token exported as `HF_TOKEN` before
+  running the script. Without it those two downloads 404 and the graph fails at
+  `IPAdapterUnifiedLoaderFaceID` with "model not found".
+- **`insightface` is a python package as well as model files.** It is in the
+  Dockerfile, it has no prebuilt wheel for most Python/CUDA combinations, and it
+  needs a C toolchain to build — which the stock worker image does not have.
 
 **Tuning knobs**, all optional:
 

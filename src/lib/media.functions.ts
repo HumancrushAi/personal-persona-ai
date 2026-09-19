@@ -591,9 +591,27 @@ export async function photoPrompt(
         ? stillImagePrompt(companion, userRequest)
         : videoStillPrompt(companion, userRequest);
 
+  // Does a picture of her actually reach the renderer?
+  //
+  // Every prompt in this app is written on the assumption that one does: the
+  // rules say "leave her hair colour, skin tone and build out entirely, a
+  // reference photo supplies all of that", and for WAN and Kontext that is
+  // true — both work FROM her portrait.
+  //
+  // The ComfyUI stock graph is text-to-image. No portrait reaches it at all, so
+  // that sentence is false there: the prompt withholds her appearance and
+  // nothing else supplies it, leaving the checkpoint's own idea of a body to
+  // fill the gap. That is why bodies came back nothing like her.
+  const { comfyTemplate, wantsReference } = await import("./comfy");
+  const referenceReachesRenderer = provider !== "comfy" || wantsReference(comfyTemplate());
+
   return finishMediaPrompt(refined?.[0] ?? builder, userRequest ?? "", {
     anatomy: anatomyOf(companion.gender),
     appendProps: Boolean(refined?.[0]),
+    // Appended for BOTH the refined prompt and the builder: neither of them
+    // describes her build, because both were written for a path that had her
+    // photo. Only when nothing carries her likeness to the renderer.
+    appendAppearance: !referenceReachesRenderer,
     // Same condition as appendProps and for the same reason: the builders write
     // their own anatomy clause, the refined prompt no longer does.
     appendAnatomy: Boolean(refined?.[0]),

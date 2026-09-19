@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { stillImagePrompt, videoStillPrompt } from "../selfie";
 
 // Photos run on the image-to-video endpoint, so the prompt has to drive the
@@ -224,5 +224,67 @@ describe("finishMediaPrompt appendAnatomy", () => {
       appendProps: true,
     });
     expect(out.split(/\s+/).length).toBeLessThanOrEqual(300);
+  });
+});
+
+// "The bodies are fat — they should be slim."
+//
+// Not a wording preference: a routing bug. Every prompt in this app is written
+// on the assumption that a photo of her reaches the renderer — the rules say
+// "leave her hair colour, skin tone and build out entirely, a reference photo
+// supplies all of that" — and for WAN and Kontext that is true, because both
+// work FROM her portrait.
+//
+// The ComfyUI stock graph is text-to-image. No portrait reaches it. So the
+// prompt withheld her build and nothing else supplied it, leaving the
+// checkpoint's own default body to fill the gap.
+describe("finishMediaPrompt appendAppearance", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  const base =
+    "exact same woman as the reference image, completely nude, kneeling on the bed, warm lamplight";
+
+  it("states her build when no picture of her reaches the renderer", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    delete process.env.COMFY_BUILD;
+    const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
+    expect(out).toMatch(/slim/i);
+  });
+
+  it("says nothing about build when her portrait IS the input", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    delete process.env.COMFY_BUILD;
+    const out = finishMediaPrompt(base, "get naked", { appendAppearance: false });
+    expect(out).not.toMatch(/slim/i);
+    // Stating a build in words would fight the photo, which is why every
+    // builder leaves it out on those paths.
+    expect(out).toBe(base);
+  });
+
+  it("takes its wording from COMFY_BUILD", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    process.env.COMFY_BUILD = "lean athletic build, toned";
+    const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
+    expect(out).toMatch(/Lean athletic build, toned/);
+    expect(out).not.toMatch(/slim/i);
+  });
+
+  it("can be switched off entirely", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    process.env.COMFY_BUILD = "";
+    const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
+    expect(out).toBe(base);
+  });
+
+  it("joins on cleanly rather than running into the previous fragment", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    delete process.env.COMFY_BUILD;
+    const out = finishMediaPrompt("a prompt ending in a fragment,", "get naked", {
+      appendAppearance: true,
+    });
+    expect(out).toMatch(/fragment\. Slim\./);
   });
 });

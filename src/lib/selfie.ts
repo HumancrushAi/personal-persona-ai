@@ -774,6 +774,14 @@ export function finishMediaPrompt(
      * clause in, and setting it for one of those would say it all twice.
      */
     appendAnatomy?: boolean;
+    /**
+     * Append her physical build, because no picture of her reaches the renderer.
+     *
+     * Set only for a text-to-image graph. Everywhere else a portrait of her IS
+     * the input, and stating a build in words would fight the photo — which is
+     * the reason every builder here leaves it out in the first place.
+     */
+    appendAppearance?: boolean;
     still?: boolean;
   } = {},
 ): string {
@@ -800,6 +808,23 @@ export function finishMediaPrompt(
     const clause = nudeAnatomy(a.kind);
     if (clause)
       out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${clause}`;
+  }
+
+  // Her build, when nothing else carries it.
+  //
+  // Deliberately one short clause and nothing more. The reference-image path is
+  // still the right way to carry a likeness, and this is the stopgap for a graph
+  // that has none: enough to stop the checkpoint choosing a body on its own,
+  // little enough that it does not fight a portrait once one is wired in.
+  //
+  // COMFY_BUILD sets the wording. It is a plain physical attribute, in the same
+  // class as hair colour and skin tone — the codebase groups them in one
+  // sentence — so it belongs to whoever runs the app rather than being baked in.
+  if (opts.appendAppearance) {
+    const build = (process.env.COMFY_BUILD ?? "slim").trim();
+    if (build) {
+      out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${build[0].toUpperCase()}${build.slice(1)}.`;
+    }
   }
 
   if (opts.appendProps) {

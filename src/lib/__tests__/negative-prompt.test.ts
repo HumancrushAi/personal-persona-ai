@@ -198,3 +198,47 @@ describe("the negative prompt never suppresses a part the companion has", () => 
     expect(negativeFor("get naked", "female", { moving: false })).not.toMatch(/asymmetric/i);
   });
 });
+
+// "A big belly like she's pregnant", on a companion whose own portrait is slim.
+//
+// The positive prompt was carrying this alone and losing: one stated build
+// against a checkpoint's whole idea of a body. Suppression belongs in the
+// negative, which is the half of the prompt that can actually leave an optional
+// feature unrendered.
+describe("body mass suppression", () => {
+  it("pushes back on the shape that was reported", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("send me a nude", "female", { moving: false });
+    expect(n).toMatch(/\bpregnant\b/);
+    expect(n).toMatch(/\boverweight\b/);
+    expect(n).toMatch(/belly fat/);
+  });
+
+  // It arrived on a lingerie request, where the anatomy clause is not even
+  // appended, so gating this on nudity would have missed the actual report.
+  it("applies to a clothed request too", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("wearing your red dress at dinner", "female", { moving: false });
+    expect(n).toMatch(/\boverweight\b/);
+  });
+
+  it("applies to every gender", async () => {
+    const { negativeFor } = await import("../media.functions");
+    for (const g of ["female", "male", "trans-female", "trans-male", "non-binary"]) {
+      expect(negativeFor("get naked", g, { moving: false })).toMatch(/\boverweight\b/);
+    }
+  });
+
+  // The rule this whole file turns on: a negative cannot remove a part the body
+  // must have, it just leaves it unrendered. Fat is optional; a stomach, a chin
+  // and a face are not.
+  it("names conditions, never a part everyone has", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("get naked", "female", { moving: false });
+    for (const part of ["chin", "face", "cheeks", "arms", "thighs", "hips"]) {
+      expect(n).not.toMatch(new RegExp(`\b${part}\b`));
+    }
+    // "belly" only ever qualified, never bare.
+    expect(n).not.toMatch(/(^|[^a-z])belly(?!\s+(fat|rolls))/);
+  });
+});

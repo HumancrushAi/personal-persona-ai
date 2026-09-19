@@ -111,6 +111,29 @@ const SAG_NEGATIVE =
 const VULVA_NEGATIVE =
   "protruding, dangling, hanging flap, flaps, extra folds, elongated, stretched, gaping, tentacle, growth, appendage, inner labia, labia minora, spread open, pulled apart, splayed open, exposed pink interior, meat curtains, fingers spreading";
 
+// Body mass, suppressed where suppression actually works.
+//
+// The positive prompt was doing all of this on its own and losing. A stated
+// build is one clause competing with a checkpoint's whole idea of a body, and
+// LUSTIFY's idea is heavier than this app wants — so renders came back with a
+// midsection nobody asked for, on companions whose own portraits are slim.
+//
+// Adjectives and conditions only, never a part. That is the rule the whole file
+// turns on: a negative cannot remove a part the body must have, but it CAN
+// leave an optional feature unrendered, and fat is optional in exactly the way
+// a breast is not. "belly" alone would push against her abdomen; "belly fat"
+// and "belly rolls" push against the fat on it.
+//
+// `pregnant` and `swollen abdomen` are here because that is the shape that was
+// actually reported — "a big belly like she's pregnant" — and the renderer has
+// a strong prior for it that nothing else was pushing back on.
+//
+// Applies to every render, clothed or nude, for every gender: the reported
+// failure arrived on a lingerie request, where the anatomy clause is not even
+// appended.
+const BUILD_NEGATIVE =
+  "overweight, obese, fat, chubby, heavyset, plus size, thick waist, wide waist, belly fat, belly rolls, love handles, bloated, distended stomach, swollen abdomen, pregnant";
+
 // Applied only when the request implies nudity. Without it nothing pushes back
 // on the clothes already in the start frame, so explicit acts were performed
 // fully dressed.
@@ -146,6 +169,9 @@ export function negativeFor(
     if (a.hasVulva) base = `${base}, ${VULVA_NEGATIVE}`;
   }
   if (a.hasBreasts) base = `${base}, ${SAG_NEGATIVE}`;
+  // Every render. See BUILD_NEGATIVE: the reported failure came back on a
+  // clothed request, so gating this on nudity would miss it.
+  base = `${base}, ${BUILD_NEGATIVE}`;
 
   const props = propNegative(req);
   return props ? `${base}, ${props}` : base;

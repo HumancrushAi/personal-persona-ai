@@ -106,10 +106,24 @@ seven has to be installed in the worker image, and a graph naming a class the
 worker lacks fails **every** job rather than degrading. Turn it on after the
 worker has all of this.
 
-These go in the **worker image**, not on the volume. A serverless worker is an
-ephemeral container: anything installed into a running one is gone at the next
-cold start. [`docker/comfy-worker/Dockerfile`](../docker/comfy-worker/Dockerfile)
-is the image — build it, push it, point the endpoint at it.
+### The short version
+
+```bash
+DOCKER_REPO=yourname/hc-comfy-faceid bash scripts/comfy-worker-build.sh
+```
+
+Then point the endpoint at the tag it prints, set `HF_TOKEN` on the endpoint,
+set `COMFY_GRAPH=faceid` in Vercel, redeploy. That is the whole install: the
+image carries the nodes and insightface, and it downloads the model weights onto
+the volume on its first boot.
+
+The rest of this section is what that script is doing, for when it goes wrong.
+
+### What goes in the image
+
+Custom nodes and pip packages go in the **image**, not on the volume. A
+serverless worker is an ephemeral container: anything installed into a running
+one is gone at the next cold start.
 
 **Custom nodes** — three packs, not two:
 
@@ -123,14 +137,26 @@ The subpack is easy to miss. `UltralyticsDetectorProvider` was split out of the
 main Impact Pack, so installing only the pack gives you a `FaceDetailer` with no
 detector to feed it and the graph fails validation on node 13.
 
-**Model files**, on the network volume. These are the part that belongs on the
-volume: large, unchanging, and what would otherwise make every cold start
+### What goes on the volume
+
+Model weights: large, unchanging, and what would otherwise make every cold start
 unbearable.
 
-[`scripts/setup-comfy-volume.sh`](../scripts/setup-comfy-volume.sh) downloads
-all of them into the right folders. Run it once from a temporary RunPod **Pod**
-with the same volume attached — a serverless worker cannot do it, because it
-only exists while a job is running. The script is safe to re-run.
+There is **no separate provisioning step**.
+[`provision-models.sh`](../docker/comfy-worker/provision-models.sh) is baked
+into the image and runs at boot, before ComfyUI starts: it downloads anything
+missing and does nothing at all once the volume is populated. So the first
+render after switching the image is slow — about 4GB — and every one after it is
+not.
+
+It is safe against two workers cold-starting at once (an atomic `mkdir` lock,
+with a 30-minute staleness timeout so a worker killed mid-download cannot wedge
+the endpoint), and it never fails the boot: a worker that starts and logs the
+problem is debuggable, one that crash-loops tells you nothing and bills you for
+the restarts. Watch for `[provision]` lines in the RunPod log.
+
+To pre-warm the volume instead, run the same script from a Pod with the volume
+attached: `VOL=/workspace bash provision-models.sh`.
 
 | File                                             | Path under `models/`  |
 | ------------------------------------------------ | --------------------- |
@@ -143,12 +169,17 @@ only exists while a job is running. The script is safe to re-run.
 Two things that catch people out:
 
 - **The FaceID repo is gated.** `h94/IP-Adapter-FaceID` needs its licence
-  accepted in a browser once, then a read token exported as `HF_TOKEN` before
-  running the script. Without it those two downloads 404 and the graph fails at
-  `IPAdapterUnifiedLoaderFaceID` with "model not found".
+  accepted in a browser once, then a read token set as `HF_TOKEN` **on the
+  RunPod endpoint** (the worker does the downloading, so the token has to be
+  where the worker can see it — not in Vercel). Without it those two downloads
+  fail and the graph stops at `IPAdapterUnifiedLoaderFaceID` with "model not
+  found". The provisioner logs this explicitly rather than leaving you to guess.
 - **`insightface` is a python package as well as model files.** It is in the
   Dockerfile, it has no prebuilt wheel for most Python/CUDA combinations, and it
   needs a C toolchain to build — which the stock worker image does not have.
+  `numpy` is pinned under 2 for the same family of reason: insightface 0.7.3
+  uses the removed 1.x C API and an unpinned install fails at import with
+  "numpy.core.multiarray failed to import".
 
 **Tuning knobs**, all optional:
 

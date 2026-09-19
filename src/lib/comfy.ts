@@ -115,8 +115,9 @@ export const DEFAULT_WORKFLOW = `{
 // to be installed in the worker image, so making this the default would take
 // every endpoint without ComfyUI_IPAdapter_plus, ComfyUI-Impact-Pack and
 // ComfyUI-Impact-Subpack from working to failing on the first job. Set
-// COMFY_GRAPH=faceid once the image has them — docker/comfy-worker/Dockerfile
-// builds it and scripts/setup-comfy-volume.sh puts the weights on the volume.
+// COMFY_GRAPH=faceid once the image has them. scripts/comfy-worker-build.sh
+// builds and pushes that image; it carries the nodes, and it downloads the
+// model weights onto the network volume on its first boot.
 //
 // The subpack is a separate install and the easiest thing to miss:
 // UltralyticsDetectorProvider was split out of the main Impact Pack, so without

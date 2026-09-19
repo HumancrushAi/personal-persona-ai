@@ -810,6 +810,21 @@ export function finishMediaPrompt(
       out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${clause}`;
   }
 
+  // The default build, and why it names a midsection.
+  //
+  // "slim" alone was not enough, twice over. It sat at the end of the prompt
+  // where the encoder barely weighs it (see below), and it was competing with
+  // the only other shape word in the whole prompt: `plump`, which arrives from
+  // the vulva clause. CLIP does not scope an adjective tightly to its noun, and
+  // the anatomy clause describes a chest and a groin and nothing at all in
+  // between — no waist, no stomach, no torso — so `plump` was the strongest
+  // signal the midsection had to go on.
+  //
+  // Naming the waist and stomach gives that gap something to render instead of
+  // leaving it to the checkpoint. Physique only, the same class of attribute as
+  // hair colour and skin tone; COMFY_BUILD overrides the wording.
+  const DEFAULT_BUILD = "slim slender build, narrow waist, flat toned stomach";
+
   // Her build, when nothing else carries it.
   //
   // Deliberately one short clause and nothing more. The reference-image path is
@@ -821,9 +836,19 @@ export function finishMediaPrompt(
   // class as hair colour and skin tone — the codebase groups them in one
   // sentence — so it belongs to whoever runs the app rather than being baked in.
   if (opts.appendAppearance) {
-    const build = (process.env.COMFY_BUILD ?? "slim").trim();
+    const build = (process.env.COMFY_BUILD ?? DEFAULT_BUILD).trim();
     if (build) {
-      out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${build[0].toUpperCase()}${build.slice(1)}.`;
+      // FRONT, not the end.
+      //
+      // Appended it did nothing, and the reason is the text encoder rather than
+      // the wording: CLIP weights early tokens far more heavily and chunks a
+      // long prompt, so one clause sitting at word 280 of 300 barely reaches the
+      // render. The framing sentence stays first because it decides the
+      // composition; the build goes immediately after it, before the act.
+      const [first, ...rest] = out.split(/(?<=\.)\s+/);
+      out = rest.length
+        ? `${first} ${build[0].toUpperCase()}${build.slice(1)}. ${rest.join(" ")}`
+        : `${build[0].toUpperCase()}${build.slice(1)}. ${out}`;
     }
   }
 

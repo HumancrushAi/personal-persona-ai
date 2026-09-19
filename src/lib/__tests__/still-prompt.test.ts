@@ -279,12 +279,40 @@ describe("finishMediaPrompt appendAppearance", () => {
     expect(out).toBe(base);
   });
 
-  it("joins on cleanly rather than running into the previous fragment", async () => {
+  // Position, not wording. CLIP weights early tokens far more heavily and
+  // chunks a long prompt, so the same clause at word 280 of 300 barely reaches
+  // the render — which is why "slim" appeared to do nothing at all.
+  it("puts the build near the front, after the framing sentence", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    delete process.env.COMFY_BUILD;
+    const out = finishMediaPrompt(
+      "Photograph of a woman indoors, framed head to knees. She is already completely naked. Warm lamplight.",
+      "get naked",
+      { appendAppearance: true },
+    );
+    // Second sentence, so the framing still decides the composition.
+    expect(out.split(/(?<=\.)\s+/)[1]).toMatch(/^Slim slender build/);
+    expect(out.indexOf("Slim")).toBeLessThan(out.indexOf("completely naked"));
+  });
+
+  it("keeps the original text intact when there is no sentence to follow", async () => {
     const { finishMediaPrompt } = await import("../selfie");
     delete process.env.COMFY_BUILD;
     const out = finishMediaPrompt("a prompt ending in a fragment,", "get naked", {
       appendAppearance: true,
     });
-    expect(out).toMatch(/fragment\. Slim\./);
+    expect(out).toMatch(/^Slim slender build/);
+    expect(out).toMatch(/a prompt ending in a fragment,$/);
+  });
+
+  // The gap this fills: the anatomy clause describes a chest and a groin and
+  // nothing in between, while `plump` arrives from the vulva phrase and is the
+  // only other shape word in the prompt.
+  it("names a midsection, so the checkpoint has something to render there", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    delete process.env.COMFY_BUILD;
+    const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
+    expect(out).toMatch(/waist/i);
+    expect(out).toMatch(/stomach/i);
   });
 });

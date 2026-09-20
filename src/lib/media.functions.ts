@@ -224,7 +224,7 @@ export function negativeFor(
   return props ? `${base}, ${props}` : base;
 }
 import { propClause, propNegative } from "./props";
-import { anatomyOf, crossSexNegative } from "./anatomy";
+import { anatomyOf, crossSexNegative, genderKind } from "./anatomy";
 import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
@@ -238,7 +238,37 @@ const VIDEO_COST = 15;
 const STALE_JOB_MS = 15 * 60_000;
 
 // Warmer, more natural voices first (alloy is the flattest, so it's last).
-const VOICES = ["shimmer", "coral", "sage", "nova", "verse", "alloy"];
+//
+// Split by gender, because the single roster this replaces had none of the
+// masculine voices in it: every male companion on the site was rotated onto
+// shimmer, coral or sage. Ten of them.
+//
+// A companion's own voice_id still wins over any of this — see voiceFor.
+const FEMALE_VOICES = ["shimmer", "coral", "nova", "sage", "ballad", "alloy"];
+const MALE_VOICES = ["onyx", "ash", "echo", "verse", "fable"];
+
+/**
+ * Which voice this companion speaks with.
+ *
+ * Her own voice_id first; the roster for her gender otherwise, indexed by
+ * sort_order so the same companion always sounds the same.
+ *
+ * The fallback matters more than it looks: every row in the database currently
+ * carries the same value, so "admin-assigned wins" meant one voice for the
+ * whole site. A varied roster behind it is what stops a data mistake from
+ * flattening all 75 companions into one person again.
+ */
+export function voiceFor(companion: {
+  voice_id?: string | null;
+  gender?: string | null;
+  sort_order?: number | null;
+}): string {
+  const assigned = (companion.voice_id ?? "").trim();
+  if (assigned) return assigned;
+  const kind = genderKind(companion.gender);
+  const roster = kind === "male" || kind === "trans-male" ? MALE_VOICES : FEMALE_VOICES;
+  return roster[Math.abs(companion.sort_order ?? 0) % roster.length];
+}
 
 // Check the user can afford it BEFORE generating (so we don't call the AI for
 // someone who's broke). Returns the current balance to deduct from later.
@@ -1127,7 +1157,7 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
 
     const { data: conv } = await supabase
       .from("conversations")
-      .select("user_personalities(companions(sort_order, voice_id))")
+      .select("user_personalities(companions(sort_order, voice_id, gender))")
       .eq("id", data.conversationId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -1136,9 +1166,7 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
     const { free, paid } = await ensureBalance(supabase, userId, VOICE_COST);
 
     const comp = (conv as any).user_personalities?.companions;
-    const sort: number = comp?.sort_order ?? 0;
-    // Admin-assigned voice wins; otherwise rotate through the roster.
-    const voice = comp?.voice_id || VOICES[sort % VOICES.length];
+    const voice = voiceFor(comp ?? {});
 
     // Generate first; only charge if it actually succeeds.
     const buf = await textToSpeech(data.text, voice);
@@ -1225,8 +1253,7 @@ export const videoScript = createServerFn({ method: "POST" })
       .replace(/^["'\s]+|["'\s]+$/g, "")
       .slice(0, 200);
 
-    const sort: number = c.sort_order ?? 0;
-    const voice = c.voice_id || VOICES[sort % VOICES.length];
+    const voice = voiceFor(c);
     const buf = await textToSpeech(line || `Hey you… I made this just for you.`, voice);
     const audioUrl = `data:audio/mpeg;base64,${buf.toString("base64")}`;
 

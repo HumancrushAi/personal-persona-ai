@@ -360,3 +360,96 @@ describe("numeric settings", () => {
     expect(comfySettings("p").cfg).toBe(7.5);
   });
 });
+
+// "No model generates the same character in the chat."
+//
+// The stock graph starts from an empty latent and nothing in it has ever seen
+// this companion, so every render is a different stranger. FACEID_WORKFLOW
+// fixes that properly and needs three custom node packs and a rebuilt worker
+// image first. This one gets most of the way there with core ComfyUI nodes
+// only, so it runs on the endpoint exactly as it stands.
+describe("IMG2IMG_WORKFLOW", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  const vars = { ...VARS, referenceImage: REFERENCE_NAME };
+
+  it("is valid JSON and asks for her portrait", async () => {
+    const { IMG2IMG_WORKFLOW, wantsReference } = await import("../comfy");
+    expect(() => JSON.parse(IMG2IMG_WORKFLOW)).not.toThrow();
+    expect(wantsReference(IMG2IMG_WORKFLOW)).toBe(true);
+  });
+
+  // The whole point: the sampler starts from HER, not from noise.
+  it("starts the sampler from her encoded portrait, not an empty latent", async () => {
+    const { IMG2IMG_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow(vars, IMG2IMG_WORKFLOW) as any;
+    expect(g["3"].inputs.latent_image).toEqual(["12", 0]);
+    expect(g["12"].class_type).toBe("VAEEncode");
+    expect(g["12"].inputs.pixels).toEqual(["11", 0]);
+    expect(g["11"].class_type).toBe("ImageScale");
+    expect(g["11"].inputs.image).toEqual(["10", 0]);
+    expect(g["10"].class_type).toBe("LoadImage");
+    expect(JSON.stringify(g)).not.toContain("EmptyLatentImage");
+  });
+
+  // This is what makes it deployable today. Anything outside this list means a
+  // rebuilt worker image, which is the thing this graph exists to avoid.
+  it("uses only node classes that ship with stock ComfyUI", async () => {
+    const { IMG2IMG_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow(vars, IMG2IMG_WORKFLOW) as any;
+    const CORE = [
+      "KSampler",
+      "CheckpointLoaderSimple",
+      "CLIPTextEncode",
+      "VAEDecode",
+      "VAEEncode",
+      "SaveImage",
+      "LoadImage",
+      "ImageScale",
+    ];
+    for (const node of Object.values(g) as any[]) {
+      expect(CORE, `${node.class_type} is not a core node`).toContain(node.class_type);
+    }
+  });
+
+  it("scales her portrait to the render size the checkpoint wants", async () => {
+    const { IMG2IMG_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow(vars, IMG2IMG_WORKFLOW) as any;
+    expect(g["11"].inputs.width).toBe(832);
+    expect(g["11"].inputs.height).toBe(1216);
+    expect(typeof g["11"].inputs.width).toBe("number");
+  });
+
+  // At 1.0 the starting latent is erased and this renders the same stranger the
+  // stock graph does — the whole graph becomes pointless with the wrong dial.
+  it("defaults denoise below 1, so her portrait survives", async () => {
+    const { comfySettings } = await import("../comfy");
+    process.env.COMFY_GRAPH = "img2img";
+    delete process.env.COMFY_DENOISE;
+    const d = comfySettings("p").denoise;
+    expect(d).toBeLessThan(1);
+    expect(d).toBeGreaterThan(0.5);
+  });
+
+  it("leaves the text-to-image graph on full denoise", async () => {
+    const { comfySettings } = await import("../comfy");
+    delete process.env.COMFY_GRAPH;
+    delete process.env.COMFY_DENOISE;
+    expect(comfySettings("p").denoise).toBe(1);
+  });
+
+  it("is selected by name", async () => {
+    const { comfyTemplate, IMG2IMG_WORKFLOW } = await import("../comfy");
+    delete process.env.COMFY_WORKFLOW_JSON;
+    process.env.COMFY_GRAPH = "img2img";
+    expect(comfyTemplate()).toBe(IMG2IMG_WORKFLOW);
+  });
+
+  it("refuses to launch without the portrait it needs", async () => {
+    const { IMG2IMG_WORKFLOW, comfyInput } = await import("../comfy");
+    expect(() => comfyInput(VARS, { template: IMG2IMG_WORKFLOW })).toThrow(/reference image/i);
+  });
+});

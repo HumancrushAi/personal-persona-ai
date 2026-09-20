@@ -249,6 +249,89 @@ export const FACEID_WORKFLOW = `{
   }
 }`;
 
+// The identity graph that needs NOTHING installed.
+//
+// Reported as "no model generates the same character in the chat" — every
+// render a different stranger, because the stock graph starts from an empty
+// latent and nothing in it has ever seen this companion.
+//
+// FACEID_WORKFLOW above solves that properly, and needs three custom node packs
+// and a rebuilt worker image before it will run at all. This one solves most of
+// it with core ComfyUI nodes only — LoadImage, ImageScale, VAEEncode are in
+// every install, including the stock runpod/worker-comfyui — so it works on the
+// endpoint as it stands today.
+//
+// How: her portrait is encoded into the starting latent instead of noise, and
+// the sampler denoises from THERE. Her face, colouring and build survive
+// because they are what the sampler starts from; the prompt moves the pose, the
+// wardrobe and the setting. It is the same trick the Kontext path uses, run on
+// the uncensored checkpoint instead.
+//
+// DENOISE is the dial and the whole thing turns on it. At 1.0 the portrait is
+// erased and this becomes the stock graph with extra steps. Around 0.7 keeps
+// her and still follows the prompt. Below about 0.5 the prompt stops being able
+// to undress her or change the pose, because too much of the original survives.
+//
+// The trade this makes honestly: the portrait's composition leans on the
+// result. A head-and-shoulders portrait resists a full-body pose. That is the
+// cost of identity without the custom nodes, and it is a better cost than a
+// stranger every time.
+export const IMG2IMG_WORKFLOW = `{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": "{{SEED}}",
+      "steps": "{{STEPS}}",
+      "cfg": "{{CFG}}",
+      "sampler_name": "{{SAMPLER}}",
+      "scheduler": "{{SCHEDULER}}",
+      "denoise": "{{DENOISE}}",
+      "model": ["4", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["12", 0]
+    }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": { "ckpt_name": "{{CHECKPOINT}}" }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "{{PROMPT}}", "clip": ["4", 1] }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "{{NEGATIVE}}", "clip": ["4", 1] }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["3", 0], "vae": ["4", 2] }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": { "image": "{{REFERENCE_IMAGE}}", "upload": "image" }
+  },
+  "11": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": ["10", 0],
+      "upscale_method": "lanczos",
+      "width": "{{WIDTH}}",
+      "height": "{{HEIGHT}}",
+      "crop": "center"
+    }
+  },
+  "12": {
+    "class_type": "VAEEncode",
+    "inputs": { "pixels": ["11", 0], "vae": ["4", 2] }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": { "filename_prefix": "humancrush", "images": ["8", 0] }
+  }
+}`;
+
 const TOKEN_RE = /\{\{([A-Z_]+)\}\}/g;
 
 function tokenValues(vars: ComfyVars): Record<string, string | number> {
@@ -409,6 +492,9 @@ export function comfyTemplate(): string {
   if (override) return override;
   const named = (process.env.COMFY_GRAPH ?? "").trim().toLowerCase();
   if (named === "faceid") return FACEID_WORKFLOW;
+  // Needs no custom nodes, so unlike faceid it can be switched on against the
+  // endpoint exactly as it stands.
+  if (named === "img2img") return IMG2IMG_WORKFLOW;
   return DEFAULT_WORKFLOW;
 }
 
@@ -487,7 +573,15 @@ export function comfySettings(
     sampler: process.env.COMFY_SAMPLER || "dpmpp_2m_sde",
     scheduler: process.env.COMFY_SCHEDULER || "karras",
     checkpoint: process.env.COMFY_CHECKPOINT || "",
-    denoise: numberSetting("COMFY_DENOISE", 1),
+    // 1 means "ignore the starting latent entirely", which is correct for a
+    // text-to-image graph and destroys the point of an image-to-image one: at
+    // 1.0 img2img erases her portrait and renders the same stranger the stock
+    // graph does. 0.72 keeps her face and colouring while leaving the prompt
+    // enough room to change the pose and the wardrobe.
+    denoise: numberSetting(
+      "COMFY_DENOISE",
+      (process.env.COMFY_GRAPH ?? "").trim().toLowerCase() === "img2img" ? 0.72 : 1,
+    ),
     // Read for every graph and used only by the one that has the nodes. Cheaper
     // than a second settings function, and it means switching COMFY_GRAPH needs
     // no other change.

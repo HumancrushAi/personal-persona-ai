@@ -989,6 +989,10 @@ export async function startVideoJob(
       // stays off — WAN animates her portrait, so the rest of her appearance
       // comes from the picture — but the age assertion is unconditional.
       appearance: { age: companion.age, ethnicity: companion.ethnicity },
+      // This is a clip. The fallback builder ended every scene with the motion
+      // tail and a refined scene ended with nothing — while the negative prompt
+      // forbade the clip from holding still. Both halves now agree.
+      moving: true,
     }),
   );
   const videoPrompt = scenePrompts.join("\n\n");

@@ -818,6 +818,12 @@ const REALISM_TAIL =
 const STILL_CUE = "The pose is held completely still and the camera is locked off.";
 const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;
 
+// What every clip prompt ends with, refined or built. The mirror of STILL_CUE,
+// and it existed only in the fallback builder until now.
+const MOTION_CUE =
+  "Smooth natural lifelike motion throughout, her face and body consistent from the first frame to the last, the camera holding its position.";
+const MOTION_CUE_WORDS = MOTION_CUE.split(/\s+/).length;
+
 export function capPromptWords(prompt: string, max = PROMPT_WORD_BUDGET): string {
   const text = prompt.trim();
   const words = text.split(/\s+/);
@@ -912,6 +918,8 @@ export function finishMediaPrompt(
      */
     appearance?: { age?: number | null; ethnicity?: string | null };
     still?: boolean;
+    /** This prompt is for a CLIP. Appends the motion tail, as still appends the still cue. */
+    moving?: boolean;
   } = {},
 ): string {
   // Applied to the WHOLE prompt, not just the appended clause: the builders
@@ -1043,12 +1051,31 @@ export function finishMediaPrompt(
   // appending after meant the cap could quietly delete the cue the builder had
   // already written — measured on the dildo request, which is exactly the one
   // where a mid-motion frame does the most damage.
-  const capped = capPromptWords(out, opts.still ? PROMPT_WORD_BUDGET - STILL_CUE_WORDS : undefined);
+  const capped = capPromptWords(
+    out,
+    opts.still
+      ? PROMPT_WORD_BUDGET - STILL_CUE_WORDS
+      : opts.moving
+        ? PROMPT_WORD_BUDGET - MOTION_CUE_WORDS
+        : undefined,
+  );
   // Specific phrases, not the bare word "still" — the prop clause contains
   // "only the flared base still visible", which matched and silently suppressed
   // the cue on the one request that most needs it.
   if (opts.still && !/held pose|locked off|held completely still/i.test(capped)) {
     return `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${STILL_CUE}`;
+  }
+  // The mirror of the still cue, and it was missing.
+  //
+  // The fallback builder ends every clip prompt with this. A successful refine
+  // replaces the builder wholesale, and finishMediaPrompt re-appended the prop
+  // spec and the anatomy clause but never the motion tail — so in production,
+  // with the refiner working, a clip prompt carried no motion instruction at
+  // all, while the negative prompt simultaneously forbade it from holding
+  // still. The render resolves that contradiction as churn, which is the
+  // morphing users describe.
+  if (opts.moving && !/lifelike motion|camera holds|smooth natural motion/i.test(capped)) {
+    return `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${MOTION_CUE}`;
   }
   return capped;
 }

@@ -967,11 +967,26 @@ function ChatPage() {
                   )}
                   {m.kind === "video" && m.media_url && (
                     <div className="relative">
+                      {/* Reported as "it shows a small picture instead of the
+                          video". It was: no autoPlay, no muted, no loop, no
+                          preload and no poster, so every browser paints the
+                          first decoded frame with a play button over it — a
+                          still image until you tap it. And the first frame of
+                          these clips is the padded start frame, which is
+                          literally a small portrait in a blurred square.
+
+                          The live-loop stage in this same file has autoplayed
+                          for a long time; chat clips just never used it. */}
                       <video
                         controls
+                        autoPlay
+                        muted
+                        loop
                         playsInline
+                        preload="auto"
                         src={m.media_url}
                         className="block w-72 rounded-2xl"
+                        onError={() => toast.error("That clip didn't load — tap to retry")}
                       />
                       <DownloadButton
                         url={m.media_url}

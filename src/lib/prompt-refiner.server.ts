@@ -174,6 +174,8 @@ ${rules({ ...shape, groinFocus: false })}
 
 The clip has ${scenes} scenes that play back to back. Break the requested action into ${scenes} steps that PROGRESS. Each scene keeps her identity, the setting and the lighting consistent.
 
+THIS IS A MOVING CLIP, NOT A PHOTOGRAPH. The rules above were written for a still and the worked examples below are stills, so take the DENSITY and the ORDER from them and nothing else: every one of them ends in photograph language, and a clip prompt must not. Instead, say what MOVES — which part of her body, in which direction, how fast, and what stays where it is — and end each scene with smooth natural lifelike motion, her face and body consistent throughout, and where the camera is holding or travelling. A clip prompt that describes a locked-off photograph is the single reason these come back churning: the negative prompt simultaneously forbids the clip from holding still, so the two halves fight and the render resolves it as morphing.
+
 Output exactly ${scenes} prompts, one per line, each 60-120 words, numbered "1." to "${scenes}.". Nothing else.${formatOnly}
 
 Examples of the required style:

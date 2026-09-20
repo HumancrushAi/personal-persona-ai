@@ -456,3 +456,37 @@ describe("who she is, on a graph that has no picture of her", () => {
     expect(out).toMatch(/Adult 24-year-old woman/);
   });
 });
+
+// A clip prompt that describes a locked-off photograph, sent alongside a
+// negative prompt forbidding stillness, is why videos came back churning.
+describe("a clip prompt ends with motion", () => {
+  it("appends the motion tail to a refined scene", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const out = finishMediaPrompt(
+      "exact same woman as the reference image, kneeling on the bed, warm lamplight",
+      "dance for me",
+      { moving: true },
+    );
+    expect(out).toMatch(/lifelike motion throughout/i);
+    expect(out).toMatch(/consistent from the first frame to the last/i);
+  });
+
+  it("does not add it twice when the prompt already moves", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const out = finishMediaPrompt(
+      "she dances slowly. Smooth natural lifelike motion throughout, consistent face and body.",
+      "dance for me",
+      { moving: true },
+    );
+    expect(out.match(/lifelike motion/gi)?.length).toBe(1);
+  });
+
+  it("never puts the motion tail on a still", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const out = finishMediaPrompt("a photograph of her, warm lamplight", "get naked", {
+      still: true,
+    });
+    expect(out).not.toMatch(/lifelike motion/i);
+    expect(out).toMatch(/locked off/i);
+  });
+});

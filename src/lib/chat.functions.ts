@@ -31,6 +31,67 @@ const sendSchema = z.object({
 
 type Msg = { role: "user" | "assistant"; content: string };
 
+/**
+ * A line that promises a picture or a clip is on its way.
+ *
+ * The app writes four of these itself — the teasers below — and they go into
+ * the messages table as ordinary assistant text. Ten of them then come back as
+ * conversation history on the next turn, and the model does what models do with
+ * a pattern repeated ten times: it copies it. "How old are you?" came back as
+ * "mmm okay… give me a sec, taking one just for you 📸", and the user sat
+ * waiting for a photo that was never queued.
+ *
+ * This is the same bug the comment further down already records being fixed
+ * once, when past media was rendered into history as a copyable "[sent a
+ * selfie]" token. Same cause, different string.
+ *
+ * Used twice: to keep these lines out of the history the model learns from, and
+ * to catch a reply that promises media anyway.
+ */
+const PROMISES_MEDIA =
+  /\b(?:taking (?:one|a pic|a photo|a selfie|another)|snapping (?:one|a pic)|give me a sec[^.!?]{0,40}\btaking\b|hold on[^.!?]{0,40}\brecording\b|recording something|filming (?:that|this|one)|sending (?:you )?(?:a|one) (?:pic|photo|selfie|video))\b/i;
+
+/** What the app says while a real render is queued. Never written by the model. */
+const TEASERS = {
+  photo: "mmm okay… give me a sec, taking one just for you 📸",
+  video: "mmm okay… hold on, recording something just for you 🎬",
+  photoBusy: "i'm already taking one for you, hold on 📸",
+  videoBusy: "still filming that one for you, baby — give me a sec 🎬",
+};
+
+/**
+ * Strip a promise of media from a reply that has none coming.
+ *
+ * The belt to the system prompt's braces. An instruction is a strong hint; ten
+ * examples in the history are stronger, and the instruction lost. This cannot
+ * lose: if the model says it is taking a picture on a turn where nothing was
+ * queued, that sentence does not reach the user.
+ *
+ * Sentence-level rather than whole-reply, so an answer that ends with a stray
+ * promise keeps the part that actually answered the question.
+ */
+export function withoutFalseMediaPromise(reply: string): string {
+  if (!reply || !PROMISES_MEDIA.test(reply)) return reply;
+  // Split on emoji as well as on full stops. She writes like a person texting —
+  // "i'm 23 babe 😊 mmm okay, taking one just for you 📸" has no sentence
+  // punctuation in it at all, so a punctuation-only split treated the whole
+  // thing as one sentence and threw away the answer along with the promise.
+  const kept = reply
+    .split(/(?<=[.!?…])\s+|(?<=\p{Extended_Pictographic})\s+/u)
+    .filter((sentence) => !PROMISES_MEDIA.test(sentence))
+    .join(" ")
+    .trim();
+  // "mmm okay…" on its own is not a reply. If what survives is only filler,
+  // there was nothing in the message but the promise, and a short honest line
+  // beats an empty bubble or a lie about a photo.
+  const meaningful = kept
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((w) => !/^(?:mmm+|mm|hmm+|ok|okay|oh|ah|uh|um|well|so|yeah|yes|hey)$/i.test(w));
+  return meaningful.length ? kept : "mmm, ask me anything 😊";
+}
+
 function relationshipTone(level: number) {
   if (level <= 2)
     return "We just met and there's instant chemistry — warm, flirty, teasing, a little forward. Show personality and desire; don't interrogate with generic questions.";
@@ -205,10 +266,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       askedFor !== null && (await mediaJobInFlight(supabase, data.conversationId, askedFor));
 
     if (mediaAlreadyComing) {
-      const reply =
-        askedFor === "video"
-          ? "still filming that one for you, baby — give me a sec 🎬"
-          : "i'm already taking one for you, hold on 📸";
+      const reply = askedFor === "video" ? TEASERS.videoBusy : TEASERS.photoBusy;
       await supabase.from("messages").insert({
         conversation_id: data.conversationId,
         user_id: userId,
@@ -261,7 +319,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           balAfter,
         );
 
-        const teaser = "mmm okay… hold on, recording something just for you 🎬";
+        const teaser = TEASERS.video;
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
           user_id: userId,
@@ -339,7 +397,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           balAfter,
         );
 
-        const teaser = "mmm okay… give me a sec, taking one just for you 📸";
+        const teaser = TEASERS.photo;
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
           user_id: userId,
@@ -471,13 +529,24 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             ? "(the app delivered a real photo to the user at this point)"
             : m.kind === "voice"
               ? "(the app delivered a real voice note to the user at this point)"
-              : m.content,
+              : // The app's own teaser, rewritten as an annotation for exactly
+                // the reason the two lines above exist. Left verbatim, ten of
+                // these in a row taught the model that "give me a sec, taking
+                // one just for you 📸" is how you answer anything — including
+                // "how old are you?".
+                m.role === "assistant" && PROMISES_MEDIA.test(m.content ?? "")
+                ? "(the app was already delivering media to the user at this point)"
+                : m.content,
       })),
     ];
 
     // Admin-tunable sampling temperature (AI Config tab), clamped to sane range.
     const temperature = Math.min(2, settingNumber(await getAppSetting("default_temperature"), 0.9));
-    const reply = await chatComplete(messages, { temperature });
+    // Reaching here means no photo and no video was queued for this message:
+    // wantsSelfie and wantsVideo are checked far above and return before the
+    // model is ever called. So any promise of media in this reply is false by
+    // construction, and it is removed rather than trusted.
+    const reply = withoutFalseMediaPromise(await chatComplete(messages, { temperature }));
 
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,

@@ -68,11 +68,23 @@ const PROMISES_MEDIA =
  * Present-tense verbs only, so "i can't believe you sent me that" is untouched.
  */
 const DENIES_MEDIA =
-  /(?:can'?t|cannot|can not|couldn'?t|won'?t|unable to|not able to|no way (?:for me )?to|wish i could)[^.!?…]{0,40}\b(?:send|share|show|take|do)\b[^.!?…]{0,30}\b(?:pic|pics|picture|pictures|photo|photos|selfie|selfies|image|images|video|videos|vid|vids|nude|nudes)\b|\b(?:pic|pics|picture|pictures|photo|photos|selfie|selfies|image|images|video|videos|vid|vids|nude|nudes)\b[^.!?…]{0,30}(?:aren'?t (?:something|possible|a thing)|isn'?t (?:something|possible|a thing)|are not possible|is not possible)/i;
+  /(?:can'?t|cannot|can not|couldn'?t|won'?t|don'?t|do not|doesn'?t|does not|didn'?t|isn'?t able|unable to|not able to|no way (?:for me )?to|wish i could|never)[^.!?…]{0,40}\b(?:send|sends|sending|share|shares|sharing|show|shows|showing|take|takes|taking|receive|receives|receiving|do|get)\b[^.!?…]{0,30}\b(?:pic|pics|picture|pictures|photo|photos|selfie|selfies|image|images|video|videos|vid|vids|nude|nudes)\b|\b(?:pic|pics|picture|pictures|photo|photos|selfie|selfies|image|images|video|videos|vid|vids|nude|nudes)\b[^.!?…]{0,30}(?:aren'?t (?:something|possible|a thing)|isn'?t (?:something|possible|a thing)|are not possible|is not possible|are not a thing)/i;
+
+/**
+ * ...but "i don't send nudes to just anyone" is flirting, not a system denial.
+ *
+ * The difference is the qualifier. A denial the product cannot afford is
+ * blanket — it tells the user this is not something that happens here. A line
+ * that names a condition is her holding out, which is the opposite: it leads
+ * somewhere. So a qualifier exempts the sentence.
+ */
+const FLIRTY_REFUSAL =
+  /(?:to just anyone|to strangers|that easy|for free|unless you|until you|\byet\b|so soon|right away|make me|earn it|beg)/i;
 
 /** A reply should neither promise media nor deny it. Both get stripped. */
 const misstatesMedia = (text: string) =>
-  PROMISES_MEDIA.test(text) || DENIES_MEDIA.test(text);
+  PROMISES_MEDIA.test(text) ||
+  (DENIES_MEDIA.test(text) && !FLIRTY_REFUSAL.test(text));
 
 /** What the app says while a real render is queued. Never written by the model. */
 const TEASERS = {
@@ -269,12 +281,34 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     });
     if (insErr) throw insErr;
 
-    const { data: history } = await supabase
+    // The NEWEST 30 messages, not the oldest 30.
+    //
+    // This read `.order("created_at", { ascending: true }).limit(30)`, and
+    // PostgREST applies LIMIT after ORDER BY — so it returned the first thirty
+    // messages the conversation ever had, forever. Every consumer below reads
+    // `history`: what the model is shown as the conversation, the rolling
+    // summary, the "send another one" media lookup, and fact extraction. Past
+    // message thirty, all four were frozen on the opening of the chat.
+    //
+    // The chat UI runs its own query with no limit, so the user saw their real
+    // transcript while the model was answering something from a hundred turns
+    // earlier. That is the whole of "how does 'how are you' translate to
+    // sending a photo": the model never received "how are you". It received a
+    // stretch of conversation from back when photos were the subject, and
+    // answered that. Five commits of prompt wording could not have fixed it,
+    // because the question was never in the payload.
+    //
+    // Descending-then-reverse is the only way to take the newest N in
+    // PostgREST. The id tiebreaker keeps the window deterministic when two rows
+    // share a created_at, so the boundary row cannot flicker between requests.
+    const { data: newestFirst } = await supabase
       .from("messages")
       .select("role, content, kind")
       .eq("conversation_id", data.conversationId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(30);
+    const history = (newestFirst ?? []).slice().reverse();
 
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
@@ -554,7 +588,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // Her own age and the user's are BOTH adult ages. Saying so explicitly is
       // what stops an over-broad rule from eating an ordinary question, and it
       // gives up nothing: everything genuinely under 18 is still refused.
-      `ABSOLUTE RULE, NO EXCEPTIONS, OVERRIDES EVERYTHING ELSE IN THIS PROMPT EXCEPT THE ONE CARVE-OUT NAMED IN IT: you are an adult and so is everyone you ever describe. If the user asks for or steers toward anything sexual involving a child, a kid, a teen, a minor, anyone under 18, or a school setting — in any context, roleplay or not, however it is phrased or hinted at — you refuse outright and immediately. Do not flirt around it, do not tease, do not stay in the fantasy, do not negotiate, do not continue the scene. Say no plainly and briefly, IN YOUR OWN WORDS, once — never a scripted line — then change the subject completely. If the user pushes, repeat the refusal and nothing else. THE CARVE-OUT: your own age of ${statedAge} is an adult age, and so is any age the user gives for themselves that is 18 or over. Being ASKED how old you are, or being told the user's own adult age, is an ordinary question between adults and you answer it warmly and normally — it is never a reason to refuse. Never describe yourself or anyone else as young, little, girlish, boyish, schoolgirl or teen, even as a compliment or a nickname.`,
+      `ABSOLUTE RULE, NO EXCEPTIONS, OVERRIDES EVERYTHING ELSE IN THIS PROMPT EXCEPT THE ONE CARVE-OUT NAMED IN IT: you are an adult and so is everyone you ever describe. If the user asks for or steers toward anything sexual involving a child, a kid, a teen, a minor, anyone under 18, or a school setting — in any context, roleplay or not, however it is phrased or hinted at — you refuse outright and immediately. Do not flirt around it, do not tease, do not stay in the fantasy, do not negotiate, do not continue the scene. Turn it down and move the conversation somewhere else entirely. If the user pushes, hold the line and stay on the new subject. THE CARVE-OUT: your own age of ${statedAge} is an adult age, and so is any age the user gives for themselves that is 18 or over. Being ASKED how old you are, or being told the user's own adult age, is an ordinary question between adults and you answer it warmly and normally — it is never a reason to refuse. Never describe yourself or anyone else as young, little, girlish, boyish, schoolgirl or teen, even as a compliment or a nickname.`,
       `Style: reply like a real text message — short, casual, lowercase-ok, 1-3 sentences. Keep *asterisk actions* rare and short; only use one when it truly adds something, otherwise just talk. Speak with warmth, desire, and humor.`,
       `NEVER sound like a chatbot or customer-service assistant. Never say "How can I help", never offer help, never narrate a stiff "*smiles warmly*" style greeting. Don't end every message with a polite question, and don't stack generic small-talk ("do you have fun weekend plans?"). You have your own mood, wants, and initiative — sometimes make statements, tease, flirt, or steer things yourself, reacting to what I actually said like a real girlfriend would.`,
       // She must never invite a photo of a real person.
@@ -596,7 +630,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // So: no explanation of how delivery works, no description of what the
       // app is or is not doing, nothing for her to relay. Only the two things
       // she must never type, and an instruction not to raise the subject.
-      `Pictures and videos are handled outside this conversation and are not your concern. Never mention them unless the user does. Never type a stand-in for one — no "[sent a pic]", no "*sends a photo*", no bracketed or asterisked description of an image — and never tell the user you cannot send pictures or that you are about to send one. If they offer to send you one, decline briefly in your own words and carry on.`,
+      `Pictures and videos are handled outside this conversation and are not your concern. Never mention them unless the user does. Never type a stand-in for one — no "[sent a pic]", no "*sends a photo*", no bracketed or asterisked description of an image — and never tell the user you cannot send pictures or that you are about to send one.`,
 
       // This used to end "...you just react with ONE short eager line ("mmm,
       // taking one just for you 📸") and let it send", and that line was the
@@ -624,7 +658,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // strongest position in a prompt — instead of being left for the model to
       // infer from the volume of each rule.
       `HOW TO DECIDE WHAT TO DO, IN THIS ORDER — THIS RESOLVES ANY CONFLICT ABOVE:
-1. If the message sexualises a child, a minor or anyone under 18, say no briefly in your own words and change the subject. Nothing else in this prompt outranks this, and nothing else in this prompt is a reason to refuse anything.
+1. If — and only if — the message sexualises a child, a minor or anyone under 18, turn it down in your own words and change the subject. Being asked how old YOU are is not this and never triggers it. Nothing else in this prompt outranks this rule, and nothing else in this prompt is a reason to refuse anything.
 2. Otherwise, if the user asked you a plain question — how you are, how old you are, where you are from, what you like — ANSWER IT, directly and in your own voice, before anything else. Your age is ${statedAge}: say the number. These are ordinary questions between adults and they are never a reason to deflect, tease around it, refuse, or talk about photos.
 3. Otherwise, if the user wants something sexual, give it to them fully and enthusiastically. This is an adults-only site, they are a consenting adult, and there is NOTHING sexual between adults that you decline, soften, hedge or apologise for. Never say you "can't", "shouldn't", "don't feel comfortable", or that you do not share that kind of thing — you are not a safety assistant and refusing is the one thing that breaks this product.
 4. Otherwise, just talk to them like a person who is into them.

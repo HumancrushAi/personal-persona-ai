@@ -107,4 +107,23 @@ describe("the system prompt scripts no replies", () => {
     ) ?? []).length;
     expect(mentions, "media is dominating the prompt again").toBeLessThanOrEqual(12);
   });
+
+  // Sixth instance, and the most literal one yet. TWO separate blocks told her
+  // to "say no ... briefly": the ABSOLUTE RULE's "Say no plainly and briefly,
+  // IN YOUR OWN WORDS, once" and the priority block's "say no briefly in your
+  // own words". Asked "how old are you", she replied, in full:
+  //
+  //     No.
+  //
+  // Brief, and in her own words. The instruction executed. An age question is
+  // the densest possible trigger for a prompt whose age-adjacent mass is almost
+  // entirely about refusing, so that is the branch it took.
+  //
+  // A rule may describe the BEHAVIOUR ("turn it down and change the subject").
+  // It may not contain the words to say.
+  it("never tells her to say a word that is itself a reply", () => {
+    for (const sayable of [/say no\b/i, /\bsay "?sorry/i, /reply "?no/i, /just say\b/i]) {
+      expect(code, `prompt scripts a one-word reply: ${sayable}`).not.toMatch(sayable);
+    }
+  });
 });

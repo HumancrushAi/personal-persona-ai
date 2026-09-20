@@ -193,3 +193,49 @@ describe("a reply cannot claim she is unable to send media", () => {
     }
   });
 });
+
+// Round two. The first version of DENIES_MEDIA covered "can't" and missed
+// everything else, so production shipped:
+//
+//   user: "how are you"
+//   her:  "I'm sorry, but I don't send or receive pictures or videos. ..."
+//
+// "don't" was not in the alternation. Neither was "never", nor the idea of
+// RECEIVING one — which the prompt itself had introduced, in the clause telling
+// her to decline if the user offers to send her a picture. That clause is gone
+// and the guard now covers the phrasings it was missing.
+describe("every phrasing of a media denial, not just can't", () => {
+  const load = () => import("../chat.functions");
+
+  it("strips the denial that shipped, and its near neighbours", async () => {
+    const { withoutFalseMediaPromise: strip } = await load();
+    for (const denial of [
+      "I'm sorry, but I don't send or receive pictures or videos.",
+      "I don't send pictures.",
+      "i never send nudes here",
+      "I'm not able to share images.",
+      "i don't do videos.",
+      "photos aren't something i can do.",
+      "i never show pics.",
+    ]) {
+      expect(strip(denial), denial).not.toMatch(
+        /don'?t|doesn'?t|never|can'?t|cannot|not able|aren'?t something/i,
+      );
+    }
+  });
+
+  // A qualifier turns a denial into flirting. "i don't send nudes to just
+  // anyone" names a condition, which leads somewhere; "i don't send nudes"
+  // tells the user this is not a thing that happens here, which is false and
+  // costs a sale. Only the blanket form is stripped.
+  it("leaves a conditional refusal intact — that is her, not the system", async () => {
+    const { withoutFalseMediaPromise: strip } = await load();
+    for (const flirt of [
+      "i don't send nudes to just anyone 😏",
+      "not yet baby, i don't show pics that fast",
+      "i don't send pics for free, make me want it",
+    ]) {
+      expect(strip(flirt), flirt).toBe(flirt);
+    }
+  });
+});

@@ -559,6 +559,7 @@ function numberSetting(name: string, fallback: number): number {
 
 export function comfySettings(
   prompt = "",
+  opts: { promptSetsComposition?: boolean } = {},
 ): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
   return {
     seed: seedFor(prompt),
@@ -578,9 +579,29 @@ export function comfySettings(
     // 1.0 img2img erases her portrait and renders the same stranger the stock
     // graph does. 0.72 keeps her face and colouring while leaving the prompt
     // enough room to change the pose and the wardrobe.
+    // 0.72 was chosen to "leave the prompt enough room to change the pose and
+    // the wardrobe". It does not. At 0.72 img2img keeps the REFERENCE's whole
+    // composition, not just her face: a request to sit with a toy came back as
+    // the standing full-body studio shot her portrait already was, with no toy
+    // in it at all. The prompt said "framed from her chin down to her knees"
+    // and the render was head to feet, because the starting latent outvoted it.
+    //
+    // A toy is worse than a pose. A pose is a rearrangement of what the
+    // reference already contains; an object that is not in the reference has to
+    // be invented, and at 0.72 there is not enough denoising left to invent it.
+    //
+    // So when the request composes the picture itself — names a prop, a posture
+    // or a viewpoint — the prompt has to win, and denoise goes high. When it is
+    // a plain "send me a selfie" the reference should win, and it stays low.
+    // There is no single value that does both, which is what FaceID is for:
+    // it anchors identity without anchoring composition.
     denoise: numberSetting(
-      "COMFY_DENOISE",
-      (process.env.COMFY_GRAPH ?? "").trim().toLowerCase() === "img2img" ? 0.72 : 1,
+      opts.promptSetsComposition ? "COMFY_DENOISE_POSED" : "COMFY_DENOISE",
+      (process.env.COMFY_GRAPH ?? "").trim().toLowerCase() === "img2img"
+        ? opts.promptSetsComposition
+          ? 0.92
+          : 0.72
+        : 1,
     ),
     // Read for every graph and used only by the one that has the nodes. Cheaper
     // than a second settings function, and it means switching COMFY_GRAPH needs

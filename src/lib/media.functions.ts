@@ -542,7 +542,7 @@ export async function startImageJob(
     const negative = negativeFor(userRequest, companion.gender, { moving: false });
     const input =
       provider === "comfy"
-        ? await comfyJobInput(imagePrompt, negative, sourceImage)
+        ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest)
         : provider === "kontext"
           ? {
               prompt: imagePrompt,
@@ -624,6 +624,7 @@ export async function comfyJobInput(
   prompt: string,
   negative: string,
   portraitUrl: string | null,
+  request?: string,
 ): Promise<Record<string, unknown>> {
   const { comfyInput, comfySettings, comfyTemplate, wantsReference, DEFAULT_WORKFLOW } =
     await import("./comfy");
@@ -655,7 +656,25 @@ export async function comfyJobInput(
     }
   }
 
-  return comfyInput({ ...comfySettings(prompt), prompt, negative }, { template, referenceBase64 });
+  // Does the REQUEST compose the picture, or does her portrait?
+  //
+  // A prop, a named posture or a viewpoint all mean the user has said what the
+  // picture looks like, and the starting latent must not overrule them. Anything
+  // else — "send me a selfie", "send me a nude" — says nothing about
+  // composition, so her portrait should supply it and identity holds.
+  const req = (request ?? "").trim();
+  let promptSetsComposition = false;
+  if (req) {
+    const { hasProp } = await import("./props");
+    const { STATED_POSTURE_RE, requestSetsViewpoint } = await import("./selfie");
+    promptSetsComposition =
+      hasProp(req) || STATED_POSTURE_RE.test(req) || requestSetsViewpoint(req);
+  }
+
+  return comfyInput(
+    { ...comfySettings(prompt, { promptSetsComposition }), prompt, negative },
+    { template, referenceBase64 },
+  );
 }
 
 /**

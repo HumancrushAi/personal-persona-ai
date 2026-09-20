@@ -453,3 +453,62 @@ describe("IMG2IMG_WORKFLOW", () => {
     expect(() => comfyInput(VARS, { template: IMG2IMG_WORKFLOW })).toThrow(/reference image/i);
   });
 });
+
+// "send me a picture of you sticking a dildo in your pussy" came back as a
+// standing full-body studio shot, rear view, with no toy in it.
+//
+// The prompt was correct — it named the toy, described it, and asked for
+// chin-to-knees framing. The render ignored all of it, because at denoise 0.72
+// img2img keeps the REFERENCE's composition, and her portrait is a standing
+// full-body shot. The starting latent outvoted every word.
+//
+// A missing object is the sharper version of the same problem: a pose is a
+// rearrangement of what the reference already holds, but a toy that is not in
+// the reference has to be invented, and 0.72 leaves no room to invent it.
+describe("denoise follows whoever is composing the picture", () => {
+  const withGraph = async (fn: () => void) => {
+    const prev = process.env.COMFY_GRAPH;
+    const prevD = process.env.COMFY_DENOISE;
+    const prevP = process.env.COMFY_DENOISE_POSED;
+    process.env.COMFY_GRAPH = "img2img";
+    delete process.env.COMFY_DENOISE;
+    delete process.env.COMFY_DENOISE_POSED;
+    try {
+      fn();
+    } finally {
+      process.env.COMFY_GRAPH = prev;
+      if (prevD === undefined) delete process.env.COMFY_DENOISE;
+      else process.env.COMFY_DENOISE = prevD;
+      if (prevP === undefined) delete process.env.COMFY_DENOISE_POSED;
+      else process.env.COMFY_DENOISE_POSED = prevP;
+    }
+  };
+
+  it("lets her portrait compose a request that says nothing about composition", async () => {
+    const { comfySettings } = await import("../comfy");
+    await withGraph(() => {
+      expect(comfySettings("x", { promptSetsComposition: false }).denoise).toBe(0.72);
+      expect(comfySettings("x").denoise).toBe(0.72);
+    });
+  });
+
+  it("lets the prompt compose a request that names a prop, posture or viewpoint", async () => {
+    const { comfySettings } = await import("../comfy");
+    await withGraph(() => {
+      expect(comfySettings("x", { promptSetsComposition: true }).denoise).toBe(0.92);
+    });
+  });
+
+  // Text-to-image has no starting latent to preserve, so neither case applies.
+  it("stays at 1 on a text-to-image graph", async () => {
+    const { comfySettings } = await import("../comfy");
+    const prev = process.env.COMFY_GRAPH;
+    delete process.env.COMFY_GRAPH;
+    try {
+      expect(comfySettings("x", { promptSetsComposition: true }).denoise).toBe(1);
+    } finally {
+      if (prev === undefined) delete process.env.COMFY_GRAPH;
+      else process.env.COMFY_GRAPH = prev;
+    }
+  });
+});

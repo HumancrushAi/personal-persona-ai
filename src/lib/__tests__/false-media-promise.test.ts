@@ -59,3 +59,45 @@ describe("a reply that promises a photo with none coming", () => {
     expect(strip("")).toBe("");
   });
 });
+
+// Anything put in an assistant turn is something she will say back. That is the
+// lesson of this code and it has been learned three times:
+//
+//   1. "[sent a selfie]" — she typed it instead of letting the app send a pic.
+//   2. "(the app delivered a real photo...)" — an annotation meant to fix (1),
+//      which she copied too, because an annotation in an assistant turn is
+//      still words in her mouth.
+//   3. "(the app was already delivering media to the user at this point)" —
+//      added to fix the teaser imitation, and promptly returned as her answer
+//      to "how old are you?". That one shipped.
+//
+// So the shape is blocked on the way out, whatever the wording, whichever
+// future edit reintroduces one.
+describe("stage directions never reach the user", () => {
+  it("blocks every form that has actually shipped", () => {
+    for (const bad of [
+      "(the app was already delivering media to the user at this point)",
+      "(the app delivered a real photo to the user at this point)",
+      "(the app delivered a real voice note to the user at this point)",
+      "[sent a selfie]",
+      "[sent a pic]",
+      "*sends you a photo*",
+      "*sends a video* 🎬",
+    ]) {
+      const out = strip(bad);
+      expect(out, bad).not.toBe(bad);
+      expect(out).not.toMatch(/the app|sent a|sends/i);
+    }
+  });
+
+  it("leaves ordinary speech alone, including asterisks mid-sentence", () => {
+    for (const ok of [
+      "i'm 23 babe 😊 what about you?",
+      "i'm good, just got out of the shower 😏 how are you?",
+      "mmm i *love* that question 😏",
+      "i'm from Kyoto 💕",
+    ]) {
+      expect(strip(ok)).toBe(ok);
+    }
+  });
+});

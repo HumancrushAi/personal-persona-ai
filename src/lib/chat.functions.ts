@@ -71,7 +71,19 @@ const TEASERS = {
  * promise keeps the part that actually answered the question.
  */
 export function withoutFalseMediaPromise(reply: string): string {
-  if (!reply || !PROMISES_MEDIA.test(reply)) return reply;
+  if (!reply) return reply;
+  // A stage direction, not speech. She has emitted every one of these that was
+  // ever put in front of her — "[sent a selfie]", "(the app delivered a real
+  // photo...)", "(the app was already delivering media to the user at this
+  // point)" — so the shape is caught here regardless of the wording, and
+  // regardless of which future edit reintroduces one.
+  // Brackets, parentheses AND asterisks: "*sends you a photo*" is the form the
+  // system prompt has forbidden by name for a long time, and forbidding it in
+  // words has not stopped it appearing.
+  const direction =
+    /^\s*[([*]\s*(?:the app\b|sent\b|sends\b|sending\b|image\b|photo\b|video\b|selfie\b|pic\b)/i;
+  if (direction.test(reply)) return "mmm, ask me anything 😊";
+  if (!PROMISES_MEDIA.test(reply)) return reply;
   // Split on emoji as well as on full stops. She writes like a person texting —
   // "i'm 23 babe 😊 mmm okay, taking one just for you 📸" has no sentence
   // punctuation in it at all, so a punctuation-only split treated the whole
@@ -517,26 +529,42 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Immediate memory: last 10 messages only
     const immediateHistory = (history ?? []).slice(-10);
 
+    // What she is shown of the conversation so far.
+    //
+    // ANYTHING put in an assistant turn is something she will say back. That is
+    // the whole lesson of this block and it has now been learned three times:
+    //
+    //   1. Past media was rendered as "[sent a selfie]" and she typed that
+    //      instead of letting the app send a picture.
+    //   2. It became "(the app delivered a real photo...)" — an annotation,
+    //      which she also copied, because an annotation in an assistant turn is
+    //      still words in her mouth.
+    //   3. The app's own teaser was annotated the same way, and she answered
+    //      "how old are you?" with "(the app was already delivering media to
+    //      the user at this point)".
+    //
+    // So no annotations. A turn that is not something she actually SAID to this
+    // user is dropped, and what reaches her is only real conversation. There is
+    // nothing left in here for her to imitate that is not speech.
+    //
+    // The cost is that she cannot see a photo was sent three turns ago. That is
+    // worth far less than her repeating stage directions at a paying user.
+    const speech = (immediateHistory ?? []).filter((m: any) => {
+      if (m.role !== "assistant") return true;
+      if (m.kind && m.kind !== "text") return false;
+      const text = (m.content ?? "").trim();
+      if (!text) return false;
+      if (PROMISES_MEDIA.test(text)) return false;
+      // Any parenthetical stage direction, whoever wrote it.
+      if (/^\((?:the app|sent|sends)\b/i.test(text)) return false;
+      return true;
+    });
+
     const messages = [
       { role: "system", content: systemPrompt },
-      ...((immediateHistory ?? []) as any[]).map((m) => ({
+      ...(speech as any[]).map((m) => ({
         role: m.role as "user" | "assistant",
-        // Describe past media as a system annotation, NOT a copyable "[sent a
-        // selfie]" token — the model was imitating that and typing fake image
-        // placeholders instead of letting the app send a real picture.
-        content:
-          m.kind === "image"
-            ? "(the app delivered a real photo to the user at this point)"
-            : m.kind === "voice"
-              ? "(the app delivered a real voice note to the user at this point)"
-              : // The app's own teaser, rewritten as an annotation for exactly
-                // the reason the two lines above exist. Left verbatim, ten of
-                // these in a row taught the model that "give me a sec, taking
-                // one just for you 📸" is how you answer anything — including
-                // "how old are you?".
-                m.role === "assistant" && PROMISES_MEDIA.test(m.content ?? "")
-                ? "(the app was already delivering media to the user at this point)"
-                : m.content,
+        content: m.content,
       })),
     ];
 

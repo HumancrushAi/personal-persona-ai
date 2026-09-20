@@ -184,7 +184,7 @@ function ChatPage() {
       const { data, error } = await supabase
         .from("conversations")
         .select(
-          "id, personality_id, scenario, relationship_level, relationship_xp, user_personalities(nickname, companion_id, companions(name, image_url, created_by))",
+          "id, personality_id, scenario, relationship_level, relationship_xp, user_personalities(nickname, companion_id, companions(name, age, image_url, created_by))",
         )
         .eq("id", conversationId)
         .maybeSingle();
@@ -800,6 +800,10 @@ function ChatPage() {
             <div className="truncate font-display text-lg font-semibold">{p?.nickname ?? "…"}</div>
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" /> online
+              {/* Her age, next to her name, where the question actually gets
+                  asked. The listings have shown it for a while; the one screen
+                  where someone types "how old are you?" did not. */}
+              {p?.companions?.age ? <span>{p.companions.age}</span> : null}
               <span className="inline-flex items-center gap-1">
                 <Heart className="h-3 w-3 fill-primary text-primary" /> Lv {level}
               </span>

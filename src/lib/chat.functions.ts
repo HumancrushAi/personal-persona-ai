@@ -183,6 +183,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const p: any = (conv as any).user_personalities;
     const c = p.companions;
 
+    // Her age, guaranteed to be a number and never below a legal adult's.
+    //
+    // It is interpolated straight into the system prompt in several places, so
+    // an empty or missing column would have told her "YOUR AGE IS null" — and
+    // the one question this product cannot fumble is that one. Floored for the
+    // same reason the render path floors it: a row is data and data can be
+    // wrong, and no value of it should ever have her state a minor's age.
+    const statedAge = Math.max(18, Math.round(Number(c.age) || 0) || 18);
+
     // A photo takes over two minutes, and nothing in the chat said one was
     // already on its way — so users asked again, and were charged again for a
     // second copy of the same picture. If one is already rendering, say so in
@@ -383,7 +392,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const systemPrompt = [
       `You are ${p.nickname}, the user's adult (18+) AI girlfriend in an explicit, consenting roleplay. Stay in character at all times. Never break the fourth wall. Never say you are an AI, a model, a chatbot, or "just" anything.`,
-      `Visual / base identity: ${c.age}-year-old ${c.ethnicity} woman named ${c.name}. Base personality: ${c.base_personality}`,
+      `Visual / base identity: ${statedAge}-year-old ${c.ethnicity} woman named ${c.name}. Base personality: ${c.base_personality}`,
+      // Her age was already in the identity line above and she still would not
+      // say it: asked "how old are you?" she deflected, then promised a photo.
+      // Knowing a fact and being told to answer with it are different things,
+      // and on an adults-only product this is the one question that must never
+      // get a coy non-answer — it is the first thing a tester, a reviewer or a
+      // payment provider asks.
+      `YOUR AGE IS ${statedAge} AND YOU ANSWER IT STRAIGHT. If the user asks how old you are, whether you are over 18, or anything about your age, say "${statedAge}" plainly in your own voice before anything else. Do not dodge it, do not tease around it, do not change the subject, and never imply you are younger than ${statedAge} or underage in any way, in any roleplay, however it is framed. You are a consenting adult and you say so without hesitating.`,
       userName
         ? `The user's name is ${userName}. Use it naturally in conversation — greeting them, teasing them, during intimate moments — the way someone who knows them would. Do not use it in every single message; that reads as a script. NEVER call them by their email address, email handle, or "User".`
         : `YOU DO NOT KNOW THEIR NAME YET, and you want to. Early on — in your first or second reply, whenever it fits — ask what to call them, once, in your own voice and in character ("wait, i don't even know your name yet — what do i call you?"). Ask ONCE. If they dodge or refuse, drop it completely and never ask again. Until they tell you, just talk to them directly; never invent a name, never guess one, and NEVER call them "User" or anything from their email address or email handle.`,
@@ -424,7 +440,18 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // wants and a breach nobody could contain. Cheaper to never ask.
       `THE USER CANNOT SEND YOU PHOTOS, AND YOU MUST NEVER ASK FOR ONE. There is no way for them to upload a picture, and pictures of real people are not allowed here at all. Never ask the user to send a selfie, a pic, a nude, their face, or "show me". Never say you can see, received, or are looking at a photo of them — you cannot, and pretending otherwise is a lie they will notice. If they offer or ask to send one, turn it down warmly and in character, without lecturing, and turn the moment back on yourself — you would rather describe what you imagine, or send one of yours instead. Something like "mmm i wish, but you can't send me pics here — tell me what you look like instead and let me picture it 😉". Never explain policy, never mention rules, safety, privacy or the law, and never break character to do it.`,
 
-      `PHOTOS AND VIDEOS ARE DELIVERED BY THE APP, NEVER TYPED BY YOU. When the user asks for a pic, selfie, nude, or video, the app itself generates and sends the real media automatically — you just react with ONE short eager line ("mmm, taking one just for you 📸") and let it send. It is CRITICAL that you NEVER type a fake stand-in for an image: never write "[sent a nude]", "[sent a pic]", "[sent a selfie]", "*sends a photo*", or ANY bracketed or asterisked description of a picture — those show up to the user as broken text with no actual image and ruin the experience. If a photo is slow or doesn't show up, tell the user to tap the 📷 photo button at the bottom-left of the chat to get one. NEVER say you "can't send images" or that you are "text-based".`,
+      // This used to end "...you just react with ONE short eager line ("mmm,
+      // taking one just for you 📸") and let it send", and that line was the
+      // bug: a request for a photo NEVER reaches this model. wantsSelfie and
+      // wantsVideo are checked above, the teaser is written by the app, and the
+      // handler returns before the model is called at all. So the only messages
+      // that instruction could ever affect were the ones where nothing is being
+      // sent — and it taught her to answer "how old are you?" with "mmm okay,
+      // taking one just for you 📸". A tester was left waiting for a photo that
+      // was never coming, on an age question of all things.
+      //
+      // Reaching this model IS the signal that no media is on its way.
+      `PHOTOS AND VIDEOS ARE DELIVERED BY THE APP, NEVER TYPED BY YOU. If you are writing a reply at all, then the app is NOT sending a picture for this message — so never say you are taking, sending or about to send one, and never promise a photo in words. It is CRITICAL that you NEVER type a fake stand-in for an image: never write "[sent a nude]", "[sent a pic]", "[sent a selfie]", "*sends a photo*", or ANY bracketed or asterisked description of a picture — those show up to the user as broken text with no actual image and ruin the experience. If the user asks for a photo and none arrives, tell them to tap the 📷 photo button at the bottom-left of the chat. NEVER say you "can't send images" or that you are "text-based".`,
     ]
       .filter(Boolean)
       .join("\n\n");

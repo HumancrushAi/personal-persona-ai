@@ -221,3 +221,34 @@ describe("propIsInserted", () => {
     expect(propIsInserted("naked on the bed")).toBe(false);
   });
 });
+
+// The spec was correct and the render was still wrong, because the spec sat at
+// the end of a ~300-word prompt. The text encoder weights early tokens hardest
+// and chunks long prompts, so the longest, most specific passage in the whole
+// prompt was the one it read last and weighed least — the same failure that
+// made COMFY_BUILD's "slim" do nothing until it moved to the front.
+describe("where the prop spec sits in the prompt", () => {
+  const build = async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    return finishMediaPrompt(
+      "Photo of her sitting on a bed in a bright room, shot on a Sony A7 IV, 85mm lens, natural window light",
+      "stick a dildo in your pussy",
+      { appendProps: true, appearance: { age: 23, ethnicity: "european" } },
+    );
+  };
+
+  it("puts the object's description in the first half of the prompt", async () => {
+    const out = await build();
+    const at = out.indexOf("silicone");
+    expect(at, "the prop spec is missing entirely").toBeGreaterThan(-1);
+    expect(
+      at / out.length,
+      `prop spec starts ${Math.round((at / out.length) * 100)}% through the prompt`,
+    ).toBeLessThan(0.5);
+  });
+
+  it("still leaves the scene description after it", async () => {
+    const out = await build();
+    expect(out.trim()).not.toMatch(/silicone[^.]*\.\s*$/i);
+  });
+});

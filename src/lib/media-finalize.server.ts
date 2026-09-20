@@ -552,7 +552,12 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
       conversation_id: job.conversation_id,
       user_id: job.user_id,
       role: "assistant",
-      content: job.kind === "video" ? "*sends you a video* 🎬" : "*sends you a photo* 😈",
+      // The image IS the message. This wrote a stage direction as the caption,
+      // so a delivered photo arrived with "*sends you a photo* 😈" printed under
+      // it — the exact broken-looking text the system prompt spends its effort
+      // forbidding her to type, written by the app itself. The chat UI skips an
+      // empty caption on a media message and renders just the picture.
+      content: "",
       kind: job.kind,
       media_url: mediaUrl,
     });

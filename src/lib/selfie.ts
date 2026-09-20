@@ -1021,11 +1021,32 @@ export function finishMediaPrompt(
 
   if (opts.appendProps) {
     const props = propClause(request, { anatomy: a });
-    // The refiner writes comma-separated fragments with no terminating full
-    // stop, so a bare space ran its last fragment into the first sentence of
-    // the spec ("…shot on Sony A7 IV 85mm lens The toy is inserted into her").
-    if (props)
-      out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${props}`;
+    if (props) {
+      // Third sentence, not last.
+      //
+      // This was appended to the end of a ~300-word prompt, which is exactly
+      // where the text encoder weighs a token least — the same position that
+      // made COMFY_BUILD's "slim" do nothing until it was moved to the front.
+      // The prop spec is the longest and most specific passage in the whole
+      // prompt, and it was sitting where it counted for least. That is how a
+      // toy described down to its material, colour, length, thickness and base
+      // still arrived malformed.
+      //
+      // Sentences one and two are framing and identity, both of which have
+      // their own reason to be first. The prop goes straight after them, ahead
+      // of the scene description.
+      //
+      // The refiner writes comma-separated fragments with no terminating full
+      // stop, so the boundary is normalised before splitting — a bare space
+      // once ran its last fragment into the spec ("…shot on Sony A7 IV 85mm
+      // lens The toy is inserted into her").
+      const tidy = out.replace(/[\s,;:]+$/, "");
+      const stopped = /[.!?]$/.test(tidy) ? tidy : `${tidy}.`;
+      const sentences = stopped.split(/(?<=\.)\s+/);
+      const head = sentences.slice(0, 2).join(" ");
+      const tail = sentences.slice(2).join(" ");
+      out = tail ? `${head} ${props} ${tail}` : `${head} ${props}`;
+    }
   }
 
   // A toy the user asked to have inserted, described as being held, is the

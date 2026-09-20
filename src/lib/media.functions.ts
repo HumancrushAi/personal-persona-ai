@@ -625,29 +625,64 @@ export async function comfyJobInput(
   negative: string,
   portraitUrl: string | null,
 ): Promise<Record<string, unknown>> {
-  const { comfyInput, comfySettings, comfyTemplate, wantsReference } = await import("./comfy");
-  const template = comfyTemplate();
+  const { comfyInput, comfySettings, comfyTemplate, wantsReference, DEFAULT_WORKFLOW } =
+    await import("./comfy");
+  let template = comfyTemplate();
 
   let referenceBase64: string | undefined;
   if (wantsReference(template)) {
-    if (!portraitUrl) {
-      throw new Error(
-        "This workflow needs her portrait and this companion has none — upload one in the admin panel.",
+    // A companion with no portrait renders text-to-image instead of failing.
+    //
+    // The admin panel creates companions with image_url defaulting to "", and
+    // the avatar is uploaded afterwards — so between those two steps, and for
+    // any companion whose upload never happened, this threw and every photo
+    // request for her failed outright. That is the worst of both: no identity
+    // AND no picture.
+    //
+    // Falling back keeps her working. She will not be consistent between
+    // renders, because nothing is anchoring her — the caller compensates by
+    // describing her appearance in the prompt instead, which is exactly what
+    // referenceReachesRenderer already decides. The fix for consistency is a
+    // portrait on the row, not a thrown error here.
+    const portrait = portraitUrl ? await readPortrait(portraitUrl) : null;
+    if (portrait) {
+      referenceBase64 = portrait;
+    } else {
+      console.warn(
+        "[media] no portrait for this companion — falling back to text-to-image; she will not look the same twice. Upload an avatar in the admin panel.",
       );
+      template = DEFAULT_WORKFLOW;
     }
-    const res = await fetch(portraitUrl);
-    if (!res.ok) throw new Error(`Could not read her portrait (${res.status})`);
-    const bytes = Buffer.from(await res.arrayBuffer());
-    // RunPod caps a queued job's payload, and base64 is a third larger than the
-    // bytes. A portrait is a few hundred KB; anything near the cap is a sign
-    // something else is being passed and is worth failing loudly for.
-    if (bytes.byteLength > 6_000_000) {
-      throw new Error("Her portrait is too large to send with the job (over 6MB).");
-    }
-    referenceBase64 = bytes.toString("base64");
   }
 
   return comfyInput({ ...comfySettings(prompt), prompt, negative }, { template, referenceBase64 });
+}
+
+/**
+ * Her portrait as base64, or null if it cannot be used.
+ *
+ * Null rather than throwing, for the same reason as above: a missing or
+ * unreachable avatar should cost identity, not the whole picture.
+ */
+async function readPortrait(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[media] could not read her portrait (${res.status})`);
+      return null;
+    }
+    const bytes = Buffer.from(await res.arrayBuffer());
+    // RunPod caps a queued job's payload, and base64 is a third larger than the
+    // bytes. A portrait is a few hundred KB; anything near the cap is a sign
+    // something else is being passed.
+    if (bytes.byteLength > 6_000_000) {
+      console.warn("[media] her portrait is over 6MB — too large to send with the job");
+      return null;
+    }
+    return bytes.toString("base64");
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -1300,7 +1335,7 @@ export const saveVideoNote = createServerFn({ method: "POST" })
       conversation_id: data.conversationId,
       user_id: userId,
       role: "assistant",
-      content: data.caption || "*sends you a video* 🎬",
+      content: data.caption || "",
       kind: "video",
       media_url: data.dataUrl,
     });

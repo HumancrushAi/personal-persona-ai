@@ -128,7 +128,13 @@ const PROPS: Prop[] = [
     // and HAND_CLAUSE says it again a sentence later. Duplication is not free:
     // the whole prompt has a token budget, and on this exact request it was
     // spending the last of it, so the held-pose cue at the very end fell off.
-    spec: "The dildo is a separate solid object: smooth matte silicone in a solid colour, with a soft rounded tip and a flared base. It is about as long as her hand from wrist to fingertip and roughly two fingers thick — a real body-safe sex toy.",
+    // Every other prop in this file ends with an edge clause — "Clean edges",
+    // "Clean defined edges against her skin". This one did not, and it is the
+    // most-requested prop in the product. It came back as a soft pink blob with
+    // no boundary against her. "soft rounded tip" did not help either: `soft` is
+    // a focus and texture token to the encoder, and it spends itself on the
+    // whole object, not on the tip.
+    spec: "The dildo is a separate solid object: smooth matte silicone in a solid colour, with a firm rounded tip and a flared base. It is about as long as her hand from wrist to fingertip and roughly two fingers thick — a real body-safe sex toy. Clean defined edges, sharply in focus, clearly distinct from her skin.",
   },
 ];
 

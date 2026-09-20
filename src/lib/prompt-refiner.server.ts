@@ -12,11 +12,11 @@ const TOY_RE = new RegExp(String.raw`\b(?:${TOY_VOCAB})\b`, "i");
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 
 // Clean examples — strictly positive, consistent with the anatomy clause
-const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, taut smooth skin, nipples level with the middle of the upper arms pointing forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, firm high perfectly round ass matching the reference, soft natural lighting, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
+const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, taut smooth skin, nipples level with the middle of the upper arms pointing forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, firm high perfectly round ass matching the reference, reclining back against pillows, legs open, soft natural lighting, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
 
 exact same woman as the reference image, identical face, hair and skin, completely nude, sitting upright on the edge of the bed with her knees apart, framed from the top of her head down to her knees, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, erect nipples pointing forward, smoothly shaved plump closed pussy with a single neat vertical crease, soft natural lighting, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
 
-const TOY_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, smooth matte silicone dildo inserted into her pussy, most of the shaft hidden inside her with only the flared base showing, her fingers closed on the base, her pussy pressing snugly around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees, soft natural lighting, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+const TOY_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, reclining back against pillows with her knees up and thighs open, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, smooth matte silicone dildo inserted into her pussy, most of the shaft hidden inside her with only the flared base showing, her fingers closed on the base, her pussy pressing snugly around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees, soft natural lighting, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
 
 const POV_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, close-up point-of-view photograph taken from between her open thighs, her pussy filling the centre foreground in sharp focus, a smooth plump closed mound with a single neat vertical crease, only the crease showing, soft natural lighting, candid raw photograph, real pores and fine skin detail`;
 
@@ -91,7 +91,7 @@ Every prompt must contain, in this order:
     : closeUp
       ? `The user asked for a close-up. Frame tightly on the requested body part only.`
       : groinFocus
-        ? `The request is specifically about her pussy. Frame so the pussy fills the centre of the frame in sharp focus.`
+        ? `The request is specifically about her pussy. Frame so the pussy fills the centre of the frame in sharp focus. Do not show her face or breasts unless she asked for them.`
         : `Frame the shot to clearly show only what the user requested. Do not add extra body parts that were not requested.`
   }
 ${undress === "nude"

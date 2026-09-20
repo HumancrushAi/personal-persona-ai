@@ -27,6 +27,55 @@ function sanitizeReply(s: string): string {
     .trim();
 }
 
+/**
+ * Which model this deployment is actually talking to.
+ *
+ * The AI Config tab can change it without a redeploy, so nothing may assume
+ * the default. Anything that needs to size a request has to ask.
+ */
+export async function resolveChatModel(): Promise<string> {
+  const { getChatModelOverride } = await import("./app-settings.server");
+  return (await getChatModelOverride()) || process.env.OPENROUTER_MODEL || DEFAULT_CHAT_MODEL;
+}
+
+// OpenRouter publishes every model's context window. Looked up once per process
+// and cached, because it only changes when the model does.
+let contextCache: { model: string; tokens: number } | null = null;
+
+/**
+ * The model's context window in tokens.
+ *
+ * The default here was worth finding out rather than guessing: euryale-70b
+ * holds 131,072 tokens, and the chat was sending it ten messages. But an admin
+ * can switch to a model with an 8k window from the AI Config tab, and a request
+ * sized for 131k against an 8k model is rejected outright — the user gets
+ * nothing. So the real number is fetched rather than assumed.
+ *
+ * CHAT_CONTEXT_TOKENS overrides it. The fallback when the lookup fails is
+ * deliberately modest: truncating history degrades the reply, while overshooting
+ * the window loses it entirely.
+ */
+export async function modelContextTokens(model: string): Promise<number> {
+  const forced = Number(process.env.CHAT_CONTEXT_TOKENS);
+  if (Number.isFinite(forced) && forced > 0) return forced;
+  if (contextCache?.model === model) return contextCache.tokens;
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/models");
+    if (res.ok) {
+      const json: any = await res.json();
+      const found = (json?.data ?? []).find((m: any) => m?.id === model);
+      const tokens = Number(found?.context_length);
+      if (Number.isFinite(tokens) && tokens > 0) {
+        contextCache = { model, tokens };
+        return tokens;
+      }
+    }
+  } catch {
+    // Network trouble is not a reason to fail a chat message.
+  }
+  return 16384;
+}
+
 export async function chatComplete(
   messages: { role: string; content: string }[],
   opts?: { maxTokens?: number; temperature?: number },
@@ -35,9 +84,7 @@ export async function chatComplete(
   if (!key) throw new Error("Chat AI not configured (OPENROUTER_API_KEY missing)");
   // The AI Config tab can pick the model without a redeploy; the env var and
   // the built-in default are the fallbacks, in that order.
-  const { getChatModelOverride } = await import("./app-settings.server");
-  const model =
-    (await getChatModelOverride()) || process.env.OPENROUTER_MODEL || DEFAULT_CHAT_MODEL;
+  const model = await resolveChatModel();
 
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",

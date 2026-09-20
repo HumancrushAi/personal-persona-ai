@@ -35,8 +35,8 @@ describe("the model is shown the newest messages, not the oldest", () => {
   it("fetches the message history newest-first and reverses it", () => {
     // The conversation-history read is the one with the row limit on it; the
     // other messages queries are inserts and single-row lookups.
-    const at = chat.indexOf(".limit(30)");
-    expect(at, "the 30-message history window moved").toBeGreaterThan(-1);
+    const at = chat.indexOf(".limit(HISTORY_ROW_CAP)");
+    expect(at, "the history window query moved").toBeGreaterThan(-1);
     const query = chat.slice(Math.max(0, at - 400), at + 200);
     expect(query, "history is limited but ordered oldest-first").not.toMatch(
       /ascending:\s*true/,
@@ -70,5 +70,27 @@ describe("the model is shown the newest messages, not the oldest", () => {
     };
     walk(lib);
     expect(offenders, `oldest-N where newest-N was meant: ${offenders.join(", ")}`).toEqual([]);
+  });
+});
+
+// Fixing the direction was only half of it. The window was also ten messages
+// wide, against a model that holds 131,072 tokens — so even with the ordering
+// right, the model saw a keyhole. The size is now a token budget computed from
+// the model's real context window, and a fixed slice must not creep back.
+describe("the window is sized by the model, not by a magic number", () => {
+  const chat = readFileSync(join(__dirname, "..", "chat.functions.ts"), "utf8")
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("//"))
+    .join("\n");
+
+  it("no longer truncates history to a fixed number of messages", () => {
+    expect(chat, "a fixed slice of history is back").not.toMatch(
+      /history\s*\?\?\s*\[\]\s*\)\s*\.slice\(-\d+\)/,
+    );
+  });
+
+  it("sizes the payload from the model's own context window", () => {
+    expect(chat).toMatch(/modelContextTokens\(/);
+    expect(chat).toMatch(/fitToBudget\(/);
   });
 });

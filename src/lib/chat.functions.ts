@@ -5,7 +5,8 @@ import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
 import { screenUserMessage, screenAssistantReply, BLOCKED_CONTENT } from "./safety";
 import { hasUsableName, extractName, askedForName, isRealName, isEmailHandle } from "./user-name";
-import { chatComplete } from "./ai";
+import { chatComplete, modelContextTokens, resolveChatModel } from "./ai";
+import { estimateTokens, fitToBudget } from "./history-budget";
 import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
 import { wantsSelfie, wantsVideo, checkCrossGenderRequest, isFollowUpMediaRequest } from "./selfie";
 import { deductCredits } from "./credit-wallet";
@@ -48,6 +49,21 @@ type Msg = { role: "user" | "assistant"; content: string };
  * Used twice: to keep these lines out of the history the model learns from, and
  * to catch a reply that promises media anyway.
  */
+/**
+ * How many message rows to read before the token budget takes over.
+ *
+ * Far beyond any real conversation and far beyond any context window, so the
+ * budget is what actually decides — this only stops a pathological row from
+ * turning one chat message into an unbounded database read.
+ */
+const HISTORY_ROW_CAP = 2000;
+
+/** Tokens held back for her reply. Replies are 1-3 sentences; this is generous. */
+const REPLY_HEADROOM = 1500;
+
+/** Never send the model a naked system prompt, however large it grows. */
+const MIN_HISTORY_TOKENS = 2000;
+
 const PROMISES_MEDIA =
   /\b(?:taking (?:one|a pic|a photo|a selfie|another)|snapping (?:one|a pic)|give me a sec[^.!?]{0,40}\btaking\b|hold on[^.!?]{0,40}\brecording\b|recording something|filming (?:that|this|one)|sending (?:you )?(?:a|one) (?:pic|photo|selfie|video))\b/i;
 
@@ -307,7 +323,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("conversation_id", data.conversationId)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
-      .limit(30);
+      .limit(HISTORY_ROW_CAP);
     const history = (newestFirst ?? []).slice().reverse();
 
     const p: any = (conv as any).user_personalities;
@@ -667,8 +683,18 @@ Answer the message actually in front of you. Never reuse a line from these instr
       .filter(Boolean)
       .join("\n\n");
 
-    // Immediate memory: last 10 messages only
-    const immediateHistory = (history ?? []).slice(-10);
+    // Immediate memory: as much of the conversation as the model can hold.
+    //
+    // This was `.slice(-10)`. The model in use has a 131,072-token context
+    // window and was being handed ten messages — about half a percent of what
+    // it can read. It then got blamed for replies that ignored the
+    // conversation, and the prompt got rewritten five times over it.
+    //
+    // The window is read from OpenRouter rather than assumed, because the AI
+    // Config tab can switch to a model with an 8k window and a request sized
+    // for 131k against an 8k model is rejected outright.
+    const chatModel = await resolveChatModel();
+    const contextTokens = await modelContextTokens(chatModel);
 
     // What she is shown of the conversation so far.
     //
@@ -690,7 +716,7 @@ Answer the message actually in front of you. Never reuse a line from these instr
     //
     // The cost is that she cannot see a photo was sent three turns ago. That is
     // worth far less than her repeating stage directions at a paying user.
-    const speech = (immediateHistory ?? []).filter((m: any) => {
+    const speech = (history ?? []).filter((m: any) => {
       if (m.role !== "assistant") return true;
       if (m.kind && m.kind !== "text") return false;
       const text = (m.content ?? "").trim();
@@ -701,12 +727,37 @@ Answer the message actually in front of you. Never reuse a line from these instr
       return true;
     });
 
+    // Budget AFTER filtering, so turns that were dropped as stage directions
+    // do not spend context that real conversation could have used.
+    //
+    // Ninety percent of the window, because OpenRouter counts tokens with the
+    // model's own tokenizer and this file only estimates. A request one token
+    // over the limit is refused, and the user gets nothing.
+    const reserve = estimateTokens(systemPrompt) + REPLY_HEADROOM;
+    const ceiling = Number(process.env.CHAT_HISTORY_TOKENS);
+    const budget = Math.max(
+      MIN_HISTORY_TOKENS,
+      Number.isFinite(ceiling) && ceiling > 0
+        ? ceiling
+        : Math.floor(contextTokens * 0.9) - reserve,
+    );
+    const fitted = fitToBudget(
+      (speech as any[]).map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content as string,
+      })),
+      budget,
+    );
+
+    // Counts only — never content. When a reply does not match the question,
+    // the first thing worth knowing is whether the question was in the payload.
+    console.log(
+      `[chat] model=${chatModel} ctx=${contextTokens} budget=${budget} sent=${fitted.kept.length}/${speech.length} msgs ~${fitted.tokens}tok dropped=${fitted.dropped}`,
+    );
+
     const messages = [
       { role: "system", content: systemPrompt },
-      ...(speech as any[]).map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
+      ...fitted.kept,
     ];
 
     // Admin-tunable sampling temperature (AI Config tab), clamped to sane range.

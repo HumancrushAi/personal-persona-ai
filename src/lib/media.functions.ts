@@ -112,6 +112,43 @@ const SAG_NEGATIVE =
 const VULVA_NEGATIVE =
   "protruding, dangling, hanging flap, flaps, extra folds, elongated, stretched, gaping, tentacle, growth, appendage, inner labia, labia minora, spread open, pulled apart, splayed open, exposed pink interior, meat curtains, fingers spreading";
 
+// Age. The most important list in this file.
+//
+// A tester was sent a render that read as a child. Nothing in this pipeline was
+// pushing back on it: grep the render path for child, minor, teen or underage
+// before this commit and there is not one term, positive or negative. The only
+// age safety in the app is screenUserMessage, which screens what the USER
+// types — nothing stood between the checkpoint's own prior and the output.
+//
+// Two things in the prompt were pushing toward it. "small smooth defined
+// areolae" in the anatomy clause, and "slim slender build, narrow waist, flat
+// toned stomach" — the build default added to fix a heavy-midsection
+// complaint. Both read young to a text encoder.
+//
+// Applied to EVERY render: every gender, clothed or nude, photo and video, no
+// condition and no env switch. Nothing here is a style choice that a caller
+// gets to opt out of.
+const AGE_NEGATIVE =
+  "child, children, kid, kids, toddler, infant, baby, teen, teenager, teenage, adolescent, minor, underage, preteen, pre-teen, pubescent, prepubescent, loli, lolita, shota, young girl, young boy, little girl, little boy, schoolgirl, schoolboy, school uniform, childlike, childish, childish proportions, baby face, babyface, youthful face, juvenile, immature body, undeveloped, barely legal, jailbait, petite child, small child, shrunken body, doll-like proportions";
+
+// The part of the above that only applies to a body that has breasts.
+//
+// The first version of this said "flat chest, flat chested, undeveloped chest,
+// no breast development" and that was a bad mistake, for the reason set out at
+// the top of this file: a negative pushes on the TOKENS it contains, so naming
+// `chest` and `breast` here pushes against the very anatomy her own clause asks
+// for. The likeliest result is a render with less breast development, which is
+// the opposite of what this list is for — and it is how a man's penis was made
+// to look wrong by the same error.
+//
+// So: maturity stated without naming the part. These push on the proportions of
+// a body that has not finished growing, which is what a childlike render
+// actually gets wrong, and they say nothing a text encoder can read as "less
+// chest". Split from AGE_NEGATIVE because "girlish" is meaningless for a male
+// companion and "adolescent frame" is already covered there for everyone.
+const AGE_NEGATIVE_BREASTS =
+  "prepubescent proportions, adolescent frame, girlish figure, unfinished growth, small immature body";
+
 // Body mass, suppressed where suppression actually works.
 //
 // The positive prompt was doing all of this on its own and losing. A stated
@@ -179,6 +216,9 @@ export function negativeFor(
   // Every render. See BUILD_NEGATIVE: the reported failure came back on a
   // clothed request, so gating this on nudity would miss it.
   base = `${base}, ${BUILD_NEGATIVE}`;
+  // Unconditional, and first among equals. See AGE_NEGATIVE.
+  base = `${base}, ${AGE_NEGATIVE}`;
+  if (a.hasBreasts) base = `${base}, ${AGE_NEGATIVE_BREASTS}`;
 
   const props = propNegative(req);
   return props ? `${base}, ${props}` : base;
@@ -915,6 +955,10 @@ export async function startVideoJob(
       // writes the clause, so a scene that did not get it would be the one part
       // of a clip where the body is whatever the renderer felt like.
       appendAnatomy: Boolean(refinedScenes),
+      // Her row reaches the adult clause on this path too. appendAppearance
+      // stays off — WAN animates her portrait, so the rest of her appearance
+      // comes from the picture — but the age assertion is unconditional.
+      appearance: { age: companion.age, ethnicity: companion.ethnicity },
     }),
   );
   const videoPrompt = scenePrompts.join("\n\n");

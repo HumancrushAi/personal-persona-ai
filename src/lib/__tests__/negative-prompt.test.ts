@@ -282,3 +282,71 @@ describe("a garment kept on with a part showing", () => {
     expect(n).toMatch(/\boverweight\b/);
   });
 });
+
+// The most important tests in this file.
+//
+// A tester was sent a render that read as a child. Before that commit the
+// render path contained no age term at all — grep it for child, minor, teen or
+// underage and there was nothing, positive or negative. The only age safety in
+// the app screens what the USER types; nothing stood between the checkpoint's
+// own prior and the picture that came back.
+describe("age", () => {
+  const KINDS = ["female", "male", "trans-female", "trans-male", "non-binary"];
+
+  it("pushes against a childlike render on every gender", async () => {
+    const { negativeFor } = await import("../media.functions");
+    for (const g of KINDS) {
+      const n = negativeFor("get naked", g, { moving: false });
+      for (const term of ["child", "teen", "underage", "minor", "loli", "prepubescent"]) {
+        expect(n, `${g} is missing "${term}"`).toMatch(new RegExp(String.raw`\b${term}`));
+      }
+    }
+  });
+
+  it("does so on a clothed request and on a clip, not just a nude still", async () => {
+    const { negativeFor } = await import("../media.functions");
+    expect(negativeFor("wearing your red dress", "female", { moving: false })).toMatch(/\bchild/);
+    expect(negativeFor("dancing", "female", { moving: true })).toMatch(/\bchild/);
+    expect(negativeFor("", "female", { moving: false })).toMatch(/\bchild/);
+  });
+
+  // The rule this file turns on, and the reason the first draft of the
+  // breast-specific list was wrong: a negative pushes on the TOKENS it
+  // contains, so naming `chest` or `breast` here pushes against the anatomy her
+  // own clause asks for — a render with LESS development, which is the opposite
+  // of the point.
+  it("never names the part it is protecting", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("get naked", "female", { moving: false });
+    expect(n).not.toMatch(/\bflat chest/);
+    expect(n).not.toMatch(/breast development/);
+  });
+
+  it("states adulthood in the prompt, unconditionally", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf } = await import("../anatomy");
+    for (const appendAppearance of [true, false]) {
+      const out = finishMediaPrompt("A photograph. Warm light.", "get naked", {
+        anatomy: anatomyOf("female"),
+        appendAppearance,
+        appearance: { age: 24 },
+      });
+      expect(out).toMatch(/Adult 24-year-old woman, fully grown adult body/);
+    }
+  });
+
+  // A row is data and data can be wrong. No value of it should put a number
+  // below a legal adult's into the prompt for an explicit picture.
+  it("floors the stated age at 18 whatever the row says", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf } = await import("../anatomy");
+    for (const age of [0, 9, 15, 17, null, undefined]) {
+      const out = finishMediaPrompt("A photograph. Warm light.", "get naked", {
+        anatomy: anatomyOf("female"),
+        appearance: { age: age as any },
+      });
+      expect(out, `age ${age} leaked`).toMatch(/Adult 18-year-old woman/);
+      expect(out).not.toMatch(/Adult (?:[0-9]|1[0-7])-year-old/);
+    }
+  });
+});

@@ -251,24 +251,24 @@ describe("finishMediaPrompt appendAppearance", () => {
     const { finishMediaPrompt } = await import("../selfie");
     delete process.env.COMFY_BUILD;
     const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
-    expect(out).toMatch(/slim/i);
+    expect(out).toMatch(/slim toned adult figure/i);
   });
 
   it("says nothing about build when her portrait IS the input", async () => {
     const { finishMediaPrompt } = await import("../selfie");
     delete process.env.COMFY_BUILD;
     const out = finishMediaPrompt(base, "get naked", { appendAppearance: false });
-    expect(out).not.toMatch(/slim/i);
-    // Stating a build in words would fight the photo, which is why every
-    // builder leaves it out on those paths.
-    expect(out).toBe(base);
+    expect(out).not.toMatch(/slim toned adult figure/i);
+    // The adult clause is unconditional, so the prompt is not byte-identical;
+    // what must be absent is the BUILD, which would fight the photo.
+    expect(out).toMatch(/Adult 18-year-old woman/);
   });
 
   it("takes its wording from COMFY_BUILD", async () => {
     const { finishMediaPrompt } = await import("../selfie");
     process.env.COMFY_BUILD = "lean athletic build, toned";
     const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
-    expect(out).toMatch(/Lean athletic build, toned/);
+    expect(out).toMatch(/lean athletic build, toned/);
     expect(out).not.toMatch(/slim/i);
   });
 
@@ -276,7 +276,9 @@ describe("finishMediaPrompt appendAppearance", () => {
     const { finishMediaPrompt } = await import("../selfie");
     process.env.COMFY_BUILD = "";
     const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
-    expect(out).toBe(base);
+    expect(out).not.toMatch(/slim toned adult figure/i);
+    // The adult clause is not a style setting and has no off switch.
+    expect(out).toMatch(/Adult \d+-year-old/);
   });
 
   // Position, not wording. CLIP weights early tokens far more heavily and
@@ -291,8 +293,8 @@ describe("finishMediaPrompt appendAppearance", () => {
       { appendAppearance: true },
     );
     // Second sentence, so the framing still decides the composition.
-    expect(out.split(/(?<=\.)\s+/)[1]).toMatch(/^Slim slender build/);
-    expect(out.indexOf("Slim")).toBeLessThan(out.indexOf("completely naked"));
+    expect(out.split(/(?<=\.)\s+/)[1]).toMatch(/^Adult \d+-year-old woman/);
+    expect(out.indexOf("Adult")).toBeLessThan(out.indexOf("completely naked"));
   });
 
   it("keeps the original text intact when there is no sentence to follow", async () => {
@@ -301,7 +303,7 @@ describe("finishMediaPrompt appendAppearance", () => {
     const out = finishMediaPrompt("a prompt ending in a fragment,", "get naked", {
       appendAppearance: true,
     });
-    expect(out).toMatch(/^Slim slender build/);
+    expect(out).toMatch(/^Adult \d+-year-old woman/);
     expect(out).toMatch(/a prompt ending in a fragment,$/);
   });
 
@@ -397,7 +399,8 @@ describe("who she is, on a graph that has no picture of her", () => {
       appendAppearance: true,
       appearance: { age: 24, ethnicity: "Japanese" },
     });
-    expect(out).toMatch(/24-year-old Japanese woman/);
+    expect(out).toMatch(/Adult 24-year-old woman/);
+    expect(out).toMatch(/Japanese woman/);
   });
 
   it("uses the right noun for the companion", async () => {
@@ -408,7 +411,8 @@ describe("who she is, on a graph that has no picture of her", () => {
       appendAppearance: true,
       appearance: { age: 30, ethnicity: "Brazilian" },
     });
-    expect(out).toMatch(/30-year-old Brazilian man/);
+    expect(out).toMatch(/Adult 30-year-old man/);
+    expect(out).toMatch(/Brazilian man/);
   });
 
   it("still states the build alongside it", async () => {
@@ -420,7 +424,7 @@ describe("who she is, on a graph that has no picture of her", () => {
       appendAppearance: true,
       appearance: { age: 24, ethnicity: "Japanese" },
     });
-    expect(out).toMatch(/24-year-old Japanese woman, slim slender build/);
+    expect(out).toMatch(/Japanese woman, slim toned adult figure/);
   });
 
   it("degrades cleanly when the row is missing either field", async () => {
@@ -433,8 +437,8 @@ describe("who she is, on a graph that has no picture of her", () => {
     });
     // No bare "Woman," — the noun is already in the framing sentence, so with
     // neither field set the clause is the build alone.
-    expect(out).toMatch(/Slim slender build/);
-    expect(out).not.toMatch(/null|undefined|year-old/);
+    expect(out).toMatch(/slim toned adult figure/);
+    expect(out).not.toMatch(/null|undefined/);
   });
 
   // Her portrait IS the input on those paths, and describing her in words there
@@ -448,6 +452,7 @@ describe("who she is, on a graph that has no picture of her", () => {
       appearance: { age: 24, ethnicity: "Japanese" },
     });
     expect(out).not.toMatch(/Japanese/);
-    expect(out).toBe(base);
+    // The adult clause is unconditional; the ethnicity and build are not.
+    expect(out).toMatch(/Adult 24-year-old woman/);
   });
 });

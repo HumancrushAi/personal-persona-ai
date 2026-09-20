@@ -933,7 +933,13 @@ export function finishMediaPrompt(
   // Naming the waist and stomach gives that gap something to render instead of
   // leaving it to the checkpoint. Physique only, the same class of attribute as
   // hair colour and skin tone; COMFY_BUILD overrides the wording.
-  const DEFAULT_BUILD = "slim slender build, narrow waist, flat toned stomach";
+  // "slim slender build, narrow waist, flat toned stomach" was the first
+  // version and it is part of why a render came back reading as a child: every
+  // term in it is a smallness term, and nothing in it said adult. Slim is still
+  // what was asked for, so the shape words stay — with a grown woman's frame
+  // named alongside them, which is the part that was missing.
+  const DEFAULT_BUILD =
+    "slim toned adult figure with a grown woman's frame, narrow waist, flat toned stomach";
 
   // Her build, when nothing else carries it.
   //
@@ -945,34 +951,41 @@ export function finishMediaPrompt(
   // COMFY_BUILD sets the wording. It is a plain physical attribute, in the same
   // class as hair colour and skin tone — the codebase groups them in one
   // sentence — so it belongs to whoever runs the app rather than being baked in.
+  // She is an adult, said out loud, on every path.
+  //
+  // A tester was sent a render that read as a child, and the prompt had never
+  // once said otherwise: her age reached photoPrompt and was dropped, the
+  // negative prompt had no age terms in it at all, and the only thing in this
+  // app that thinks about age screens the USER'S message rather than the
+  // picture that comes back.
+  //
+  // Unconditional — not gated on appendAppearance, because a path that carries
+  // her portrait still needs to say it — and placed immediately after the
+  // framing sentence, which is the earliest position that does not cost the
+  // composition. The framing sentence stays first for the reason framingFor
+  // exists: it decides what the picture IS, and demoting it is how photos come
+  // back cropped.
+  //
+  // The age is floored at a legal adult's regardless of what the row says. A
+  // row is data and data can be wrong; no value of it should ever put a number
+  // below this into the prompt for an explicit picture.
+  const ADULT_FLOOR = 18;
+  const statedAge = Math.max(ADULT_FLOOR, Math.round(opts.appearance?.age ?? ADULT_FLOOR));
+
+  // Everything about her that the renderer cannot see for itself. The adult
+  // clause is always here; the rest only when no picture of her arrives.
+  const describes = [`adult ${statedAge}-year-old ${a.noun}, fully grown adult body`];
   if (opts.appendAppearance) {
-    // Who she is first, then what shape she is. Age and ethnicity come off her
-    // own row, so this is the one part of the description that differs per
-    // companion rather than being the same sentence for all of them.
-    // Only when her row actually says something. With neither field set this
-    // would be a bare "Woman," — the noun is already in the framing sentence,
-    // so repeating it alone adds nothing and reads as noise.
-    const identity = [
-      opts.appearance?.age ? `${opts.appearance.age}-year-old` : "",
-      (opts.appearance?.ethnicity ?? "").trim(),
-    ].filter(Boolean);
-    const who = identity.length ? `${identity.join(" ")} ${a.noun}` : "";
-    const build = [who, (process.env.COMFY_BUILD ?? DEFAULT_BUILD).trim()]
-      .filter(Boolean)
-      .join(", ");
-    if (build) {
-      // FRONT, not the end.
-      //
-      // Appended it did nothing, and the reason is the text encoder rather than
-      // the wording: CLIP weights early tokens far more heavily and chunks a
-      // long prompt, so one clause sitting at word 280 of 300 barely reaches the
-      // render. The framing sentence stays first because it decides the
-      // composition; the build goes immediately after it, before the act.
-      const [first, ...rest] = out.split(/(?<=\.)\s+/);
-      out = rest.length
-        ? `${first} ${build[0].toUpperCase()}${build.slice(1)}. ${rest.join(" ")}`
-        : `${build[0].toUpperCase()}${build.slice(1)}. ${out}`;
-    }
+    const ethnicity = (opts.appearance?.ethnicity ?? "").trim();
+    if (ethnicity) describes.push(`${ethnicity} ${a.noun}`);
+    const build = (process.env.COMFY_BUILD ?? DEFAULT_BUILD).trim();
+    if (build) describes.push(build);
+  }
+  {
+    const clause = describes.join(", ");
+    const [first, ...rest] = out.split(/(?<=\.)\s+/);
+    const sentence = `${clause[0].toUpperCase()}${clause.slice(1)}.`;
+    out = rest.length ? `${first} ${sentence} ${rest.join(" ")}` : `${sentence} ${out}`;
   }
 
   if (opts.appendProps) {

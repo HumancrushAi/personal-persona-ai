@@ -101,3 +101,48 @@ describe("stage directions never reach the user", () => {
     }
   });
 });
+
+// "It can't even understand basic communication."
+//
+// She sends a photo, the user says "send another one", and nothing happens —
+// wantsSelfie needs a word like pic or selfie in the message and that has none.
+// The request queued no render and fell through to the chat model, which is
+// where it copied a teaser and promised a photo that never came. One missing
+// branch produced both complaints.
+describe("a follow-up request for more of the same", () => {
+  it("recognises the ways people actually ask", async () => {
+    const { isFollowUpMediaRequest: f } = await import("../selfie");
+    for (const yes of [
+      "send another one",
+      "another one",
+      "another",
+      "send me another",
+      "one more",
+      "1 more",
+      "more",
+      "again",
+      "can you send another one",
+      "please send another",
+      "ok another one",
+    ]) {
+      expect(f(yes), yes).toBe(true);
+    }
+  });
+
+  // It only means anything when the last thing she sent was media, and the
+  // caller checks that — but it still must not swallow ordinary conversation.
+  it("leaves ordinary conversation alone", async () => {
+    const { isFollowUpMediaRequest: f } = await import("../selfie");
+    for (const no of [
+      "how old are you",
+      "how are you",
+      "where are you from my love",
+      "what are your hobbies",
+      "tell me more about your day at the beach with your sister",
+      "i want another coffee",
+      "",
+    ]) {
+      expect(f(no), no).toBe(false);
+    }
+  });
+});

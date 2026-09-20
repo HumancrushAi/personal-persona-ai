@@ -7,7 +7,7 @@ import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 import { hasUsableName, extractName, askedForName, isRealName, isEmailHandle } from "./user-name";
 import { chatComplete } from "./ai";
 import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
-import { wantsSelfie, wantsVideo, checkCrossGenderRequest } from "./selfie";
+import { wantsSelfie, wantsVideo, checkCrossGenderRequest, isFollowUpMediaRequest } from "./selfie";
 import { deductCredits } from "./credit-wallet";
 import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
@@ -269,11 +269,29 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // already on its way — so users asked again, and were charged again for a
     // second copy of the same picture. If one is already rendering, say so in
     // character and let the text path answer instead of queueing another.
+    // "send another one" means another of whatever she just sent.
+    //
+    // wantsSelfie needs a word like pic or selfie in the message and this has
+    // none, so the most natural follow-up in the language queued nothing and
+    // fell through to the chat model — which is where it then copied a teaser
+    // and promised a photo that was never coming. One missing branch produced
+    // both of the complaints.
+    //
+    // Only meaningful when the last thing she sent actually WAS media; on its
+    // own "again" is ordinary conversation.
+    const lastMedia = [...(history ?? [])]
+      .reverse()
+      .find((m: any) => m.role === "assistant" && (m.kind === "image" || m.kind === "video"));
+    const followUp =
+      lastMedia && isFollowUpMediaRequest(data.content)
+        ? ((lastMedia as any).kind as "image" | "video")
+        : null;
+
     const askedFor = wantsVideo(data.content)
       ? ("video" as const)
       : wantsSelfie(data.content)
         ? ("image" as const)
-        : null;
+        : followUp;
     const mediaAlreadyComing =
       askedFor !== null && (await mediaJobInFlight(supabase, data.conversationId, askedFor));
 
@@ -296,7 +314,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Auto-video: if the user asks her to send/make a video, queue it through
     // the same async job pipeline as the 🎬 button. Checked BEFORE the selfie
     // path so "send me a video of you…" doesn't get answered with a photo.
-    if (wantsVideo(data.content) && totalCredits(bal) >= VIDEO_COST) {
+    // askedFor carries the follow-up too, so "send another one" queues the
+    // same kind she last sent rather than falling through to the chat model.
+    if (askedFor === "video" && totalCredits(bal) >= VIDEO_COST) {
       // Same gate the auto-selfie below has run for a while, and the same
       // reason: a request for anatomy this companion does not have is refused
       // in character rather than rendered. It was missing on both video paths,
@@ -371,7 +391,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // that follows the request through the async job pipeline (same as the 📷
     // button — charged up front, auto-refunded if the job fails to launch).
     // Falls through to a normal text reply if the job can't start.
-    if (wantsSelfie(data.content) && totalCredits(bal) >= SELFIE_COST) {
+    if (askedFor === "image" && totalCredits(bal) >= SELFIE_COST) {
       const crossGenderWarning = checkCrossGenderRequest(c.gender, data.content);
       if (crossGenderWarning) {
         await supabase.from("messages").insert({

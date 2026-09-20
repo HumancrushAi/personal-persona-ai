@@ -390,6 +390,29 @@ export const REAR_RE =
   /\b(from behind|behind you|behind her|rear view|from the back|back view|back to (?:me|the camera)|turn(?:ed|ing)? around|face away|facing away|bend(?:ing)? over|bent over|doggy\w*|all fours|on your knees facing|twerk\w*|arch(?:ed|ing)? back towards|present(?:ing)?)\b/i;
 
 /**
+ * "send another one", "one more", "again" — a request that means whatever the
+ * last one meant.
+ *
+ * Reported as "it can't even understand basic communication", and that is a
+ * fair description: she sends a photo, the user says the most natural thing in
+ * the language, and nothing happens. wantsSelfie needs a word like pic, selfie
+ * or nude in the message, and "send another one" has none of them — so no
+ * render was queued and the message fell through to the chat model, which is
+ * exactly where it then copied a teaser and promised a photo that was never
+ * coming. One missing branch produced both complaints.
+ *
+ * Deliberately narrow. It only means anything when the previous thing she sent
+ * WAS media, and the caller checks that; on its own "again" is ordinary talk.
+ */
+export function isFollowUpMediaRequest(req: string): boolean {
+  const s = (req ?? "").trim().toLowerCase();
+  if (!s || s.length > 60) return false;
+  return /^(?:(?:can (?:you|u)|could (?:you|u)|please|pls|plz|now|and|ok|okay)\s+)*(?:send|gimme|give me|show me|take|do|make)?\s*(?:me\s+)?(?:another|one more|1 more|more|again|anotha)\b|^(?:again|more|another)\b/.test(
+    s,
+  );
+}
+
+/**
  * Whether the request wants a garment kept ON and a part visible at the same
  * time — "in lingerie with your pussy showing".
  *

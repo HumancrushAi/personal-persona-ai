@@ -880,6 +880,14 @@ export function finishMediaPrompt(
      * the reason every builder here leaves it out in the first place.
      */
     appendAppearance?: boolean;
+    /**
+     * Who she is, for the same reason as appendAppearance: on a text-to-image
+     * graph nothing else says. Her age and ethnicity are on the companion row
+     * and were being discarded — the prompt opened "Photograph of a woman
+     * indoors" for every companion in the app, so an Asian companion rendered
+     * white and a stranger every time.
+     */
+    appearance?: { age?: number | null; ethnicity?: string | null };
     still?: boolean;
   } = {},
 ): string {
@@ -938,7 +946,20 @@ export function finishMediaPrompt(
   // class as hair colour and skin tone — the codebase groups them in one
   // sentence — so it belongs to whoever runs the app rather than being baked in.
   if (opts.appendAppearance) {
-    const build = (process.env.COMFY_BUILD ?? DEFAULT_BUILD).trim();
+    // Who she is first, then what shape she is. Age and ethnicity come off her
+    // own row, so this is the one part of the description that differs per
+    // companion rather than being the same sentence for all of them.
+    // Only when her row actually says something. With neither field set this
+    // would be a bare "Woman," — the noun is already in the framing sentence,
+    // so repeating it alone adds nothing and reads as noise.
+    const identity = [
+      opts.appearance?.age ? `${opts.appearance.age}-year-old` : "",
+      (opts.appearance?.ethnicity ?? "").trim(),
+    ].filter(Boolean);
+    const who = identity.length ? `${identity.join(" ")} ${a.noun}` : "";
+    const build = [who, (process.env.COMFY_BUILD ?? DEFAULT_BUILD).trim()]
+      .filter(Boolean)
+      .join(", ");
     if (build) {
       // FRONT, not the end.
       //

@@ -373,3 +373,81 @@ describe("what the ComfyUI path actually sends", () => {
     expect(out).not.toMatch(/[.!?]\s*,/);
   });
 });
+
+// Every companion in the app rendered as the same anonymous woman.
+//
+// The prompt opened "Photograph of a woman indoors" and nothing ever said WHICH
+// woman. Her age and ethnicity are on her own row and reached photoPrompt, and
+// were then discarded — for the same reason her build was, the rules assume a
+// reference photo supplies all of it, and on a text-to-image graph nothing
+// does. So an Asian companion rendered white, every time.
+describe("who she is, on a graph that has no picture of her", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  const base = "Photograph of a woman indoors, framed head to knees. Warm lamplight.";
+
+  it("carries her age and ethnicity from her own row", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf } = await import("../anatomy");
+    const out = finishMediaPrompt(base, "get naked", {
+      anatomy: anatomyOf("female"),
+      appendAppearance: true,
+      appearance: { age: 24, ethnicity: "Japanese" },
+    });
+    expect(out).toMatch(/24-year-old Japanese woman/);
+  });
+
+  it("uses the right noun for the companion", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf } = await import("../anatomy");
+    const out = finishMediaPrompt(base, "get naked", {
+      anatomy: anatomyOf("male"),
+      appendAppearance: true,
+      appearance: { age: 30, ethnicity: "Brazilian" },
+    });
+    expect(out).toMatch(/30-year-old Brazilian man/);
+  });
+
+  it("still states the build alongside it", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf } = await import("../anatomy");
+    delete process.env.COMFY_BUILD;
+    const out = finishMediaPrompt(base, "get naked", {
+      anatomy: anatomyOf("female"),
+      appendAppearance: true,
+      appearance: { age: 24, ethnicity: "Japanese" },
+    });
+    expect(out).toMatch(/24-year-old Japanese woman, slim slender build/);
+  });
+
+  it("degrades cleanly when the row is missing either field", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf } = await import("../anatomy");
+    const out = finishMediaPrompt(base, "get naked", {
+      anatomy: anatomyOf("female"),
+      appendAppearance: true,
+      appearance: { age: null, ethnicity: null },
+    });
+    // No bare "Woman," — the noun is already in the framing sentence, so with
+    // neither field set the clause is the build alone.
+    expect(out).toMatch(/Slim slender build/);
+    expect(out).not.toMatch(/null|undefined|year-old/);
+  });
+
+  // Her portrait IS the input on those paths, and describing her in words there
+  // fights the photo — the failure the rules were written to avoid.
+  it("says none of it when her portrait reaches the renderer", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const { anatomyOf } = await import("../anatomy");
+    const out = finishMediaPrompt(base, "get naked", {
+      anatomy: anatomyOf("female"),
+      appendAppearance: false,
+      appearance: { age: 24, ethnicity: "Japanese" },
+    });
+    expect(out).not.toMatch(/Japanese/);
+    expect(out).toBe(base);
+  });
+});

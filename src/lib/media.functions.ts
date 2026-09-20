@@ -645,6 +645,10 @@ export async function photoPrompt(
     // describes her build, because both were written for a path that had her
     // photo. Only when nothing carries her likeness to the renderer.
     appendAppearance: !referenceReachesRenderer,
+    // Her own row, not a default. Without this every companion in the app
+    // rendered as the same anonymous woman, because the prompt opened
+    // "Photograph of a woman indoors" and nothing ever said which one.
+    appearance: { age: companion.age, ethnicity: companion.ethnicity },
     // Same condition as appendProps and for the same reason: the builders write
     // their own anatomy clause, the refined prompt no longer does.
     appendAnatomy: Boolean(refined?.[0]),

@@ -185,6 +185,37 @@ export function screenUserMessage(text: string): Screen {
   return { allowed: true };
 }
 
+/**
+ * Screen what the COMPANION says, not what the user typed.
+ *
+ * Nothing screened her replies. screenUserMessage has guarded the input for a
+ * long time and there was never a counterpart on the way out, so the model
+ * could write anything and it went straight to a paying user.
+ *
+ * It did. A reply came back containing "Tell me what Daddy's gonna do to make
+ * his little girl feel so good" — in explicit content, on an adults-only site.
+ * "little girl" is in MINOR_TERMS already: the identical words from the USER
+ * would have been refused outright. Said by her, they shipped.
+ *
+ * The same list, applied to the other direction. A model that will not follow
+ * "never describe anyone as little or girlish" in a system prompt does not get
+ * to be the last thing standing between that text and a user.
+ *
+ * Only the minor terms. This is an adults-only product and the explicit
+ * vocabulary is the point — this is not a filter on how explicit she may be,
+ * and it must never become one. It is the one line that is not hers to cross.
+ */
+export function screenAssistantReply(text: string): Screen {
+  const s = ` ${(text ?? "").toLowerCase()} `;
+  if (hasTerm(s, MINOR_TERMS)) {
+    return { allowed: false, category: "minor", reason: MINOR_REFUSAL };
+  }
+  if (hasUnderageAge(text ?? "")) {
+    return { allowed: false, category: "minor", reason: MINOR_REFUSAL };
+  }
+  return { allowed: true };
+}
+
 // Thrown code the client can detect to show a friendly message.
 export const BLOCKED_CONTENT = "BLOCKED_CONTENT";
 

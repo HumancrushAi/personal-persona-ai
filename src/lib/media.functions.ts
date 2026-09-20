@@ -13,7 +13,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
 import { textToSpeech, chatComplete } from "./ai";
-import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
+import { screenUserMessage, screenAssistantReply, BLOCKED_CONTENT } from "./safety";
 import {
   kontextSelfiePrompt,
   videoStillPrompt,
@@ -1253,8 +1253,13 @@ export const videoScript = createServerFn({ method: "POST" })
       .replace(/^["'\s]+|["'\s]+$/g, "")
       .slice(0, 200);
 
+    // Screened on the way out, like a chat reply. This line is written by the
+    // same model and then SPOKEN ALOUD to the user, so it is the last place
+    // that should be trusted unchecked — and until now it was the only
+    // model-written text in the app that nothing looked at.
+    const spoken = screenAssistantReply(line).allowed ? line : "";
     const voice = voiceFor(c);
-    const buf = await textToSpeech(line || `Hey you… I made this just for you.`, voice);
+    const buf = await textToSpeech(spoken || `Hey you… I made this just for you.`, voice);
     const audioUrl = `data:audio/mpeg;base64,${buf.toString("base64")}`;
 
     return { line, audioUrl, imageUrl: c.image_url as string, name: c.name as string };

@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { getScenario } from "./scenarios";
 import { applyDeduction, totalCredits } from "./credits";
-import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
+import { screenUserMessage, screenAssistantReply, BLOCKED_CONTENT } from "./safety";
 import { hasUsableName, extractName, askedForName, isRealName, isEmailHandle } from "./user-name";
 import { chatComplete } from "./ai";
 import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
@@ -608,7 +608,25 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // wantsSelfie and wantsVideo are checked far above and return before the
     // model is ever called. So any promise of media in this reply is false by
     // construction, and it is removed rather than trusted.
-    const reply = withoutFalseMediaPromise(await chatComplete(messages, { temperature }));
+    const drafted = withoutFalseMediaPromise(await chatComplete(messages, { temperature }));
+
+    // Screened on the way OUT, not only on the way in.
+    //
+    // A reply shipped containing "Tell me what Daddy's gonna do to make his
+    // little girl feel so good". "little girl" is in MINOR_TERMS: the same
+    // words typed by the user would have been refused before they were even
+    // stored. Said by her, nothing looked at them.
+    //
+    // The refusal is what the user sees AND what is stored, so the phrase never
+    // reaches the transcript — and therefore never comes back as history for
+    // her to build on next turn, which is how this file has been bitten before.
+    const outbound = screenAssistantReply(drafted);
+    const reply = outbound.allowed
+      ? drafted
+      : "Sorry — I can't do that. This site is 18+ only and everyone here is an adult.";
+    if (!outbound.allowed) {
+      console.warn("[safety] assistant reply blocked on the way out:", outbound.category);
+    }
 
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,

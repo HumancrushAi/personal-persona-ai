@@ -25,17 +25,18 @@ describe("a reply that promises a photo with none coming", () => {
     );
   });
 
-  it("replaces a reply that was nothing but the promise", () => {
+  it("reports failure when the reply was nothing but the promise", () => {
     for (const only of [
       "mmm okay… give me a sec, taking one just for you 📸",
       "mmm okay... taking a pic just for you 📸",
       "mmm okay… hold on, recording something just for you 🎬",
       "ok, snapping one for you 📸",
     ]) {
-      const out = strip(only);
-      expect(out).not.toMatch(/taking|recording|snapping/i);
-      // Not an empty bubble either.
-      expect(out.length).toBeGreaterThan(5);
+      // "" is the signal to ask the model again. It used to substitute a
+      // canned line here, which then entered the transcript as an assistant
+      // turn — and an assistant turn in the transcript is the most-copied
+      // thing in this system.
+      expect(strip(only)).toBe("");
     }
   });
 
@@ -237,5 +238,52 @@ describe("every phrasing of a media denial, not just can't", () => {
     ]) {
       expect(strip(flirt), flirt).toBe(flirt);
     }
+  });
+});
+
+// Round three, and this one was mine end to end.
+//
+//   user: how old are you   ->  No.
+//   user: how are you       ->  No.
+//   user: how old are you   ->  No.
+//   user: what's yr name    ->  I'm Jade 😊
+//
+// The short phrases failed and the longer ones worked, which looked like the
+// model not understanding English. It wasn't. The model answered "how are you"
+// with a media denial that opened with "No."; the sentence filter removed the
+// denial and shipped the orphaned "No.", because "no" was not in the filler
+// list. Then every one of those "No." replies went into the transcript, and
+// once the full conversation started reaching the model it read fifty turns of
+// "how are you" -> "No." and reproduced the pattern exactly. That is why it
+// looked phrase-specific and why deleting the instruction did not stop it.
+describe("a refusal fragment is not a reply", () => {
+  it("recognises the residue the sentence filter leaves behind", async () => {
+    const { isDegenerateReply: bad } = await import("../chat.functions");
+    for (const fragment of ["No.", "no", "  No!  ", "Sorry.", "nope", "*no*", ""]) {
+      expect(bad(fragment), JSON.stringify(fragment)).toBe(true);
+    }
+  });
+
+  it("does not mistake a real reply for one", async () => {
+    const { isDegenerateReply: bad } = await import("../chat.functions");
+    for (const real of [
+      "i'm 23 babe 😊",
+      "No way, you're too sweet 😊",
+      "i'm good, how are you?",
+      "sorry babe, i got distracted looking at you",
+      "I'm Jade 😊",
+    ]) {
+      expect(bad(real), real).toBe(false);
+    }
+  });
+
+  // The stripper must report failure rather than invent a line. A canned line
+  // becomes an assistant turn in the transcript, and an assistant turn in the
+  // transcript is the single most-copied thing in this whole system.
+  it("returns nothing when only media talk was there, so the caller can retry", async () => {
+    const { withoutFalseMediaPromise: strip } = await import("../chat.functions");
+    expect(strip("No. I don't send pictures here.")).toBe("");
+    expect(strip("I can't send photos. I don't share images.")).toBe("");
+    expect(strip("[sent a selfie]")).toBe("");
   });
 });

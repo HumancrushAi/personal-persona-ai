@@ -98,14 +98,17 @@ describe("the system prompt scripts no replies", () => {
     }
   });
 
-  // A budget, not a ban. Media has to be mentioned — she must not type
-  // "[sent a pic]" — but the moment it is the biggest subject in the prompt it
-  // becomes her answer to everything. It was 40+ before this test existed.
-  it("keeps media a small part of the prompt, not its loudest topic", () => {
+  // It was a budget of twelve. Now it is zero.
+  //
+  // The budget was not enough. The line that survived it spelled out every
+  // forbidden string — "[sent a pic]", "you cannot send pictures" — and naming
+  // a string to a language model raises its probability. All four forms are
+  // caught server-side instead, by guards the model cannot read.
+  it("does not mention media at all", () => {
     const mentions = (code.match(
       /\b(?:photo|photos|picture|pictures|pic|pics|selfie|selfies|image|images|video|videos)\b/gi,
     ) ?? []).length;
-    expect(mentions, "media is dominating the prompt again").toBeLessThanOrEqual(12);
+    expect(mentions, "the prompt mentions media again").toBe(0);
   });
 
   // Sixth instance, and the most literal one yet. TWO separate blocks told her

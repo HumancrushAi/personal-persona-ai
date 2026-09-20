@@ -111,6 +111,31 @@ const TEASERS = {
 };
 
 /**
+ * A reply that is nothing but a refusal token.
+ *
+ * This is what shipped as "No." — and it was MY guard that produced it. The
+ * model answered "how are you" with a media denial that opened with "No.", the
+ * sentence filter removed the denial, and the orphaned "No." passed the
+ * meaningfulness check because "no" was not in the filler list. The user saw a
+ * flat refusal to "how are you", three times.
+ *
+ * Two uses, and the second matters more. Outbound, it means the reply was not
+ * salvageable and the model has to be asked again. Inbound, it keeps every
+ * "No." this bug already wrote out of the history — a fifty-message
+ * conversation full of "how are you" -> "No." teaches the model that pattern
+ * far more strongly than any instruction can unteach it, which is exactly why
+ * the failure looked phrase-specific and reproducible.
+ */
+export function isDegenerateReply(text: string): boolean {
+  const bare = (text ?? "").replace(/[s.,!?…"'*]+/g, " ").trim();
+  if (!bare) return true;
+  return /^(?:no|nope|nah|never|none|sorry|i'?m sorry|my apologies|i can'?t|i cannot)$/i.test(bare);
+}
+
+/** Last resort, only after the model has been asked twice. */
+const OPEN_INVITATION = "mmm, ask me anything 😊";
+
+/**
  * Strip a promise of media from a reply that has none coming.
  *
  * The belt to the system prompt's braces. An instruction is a strong hint; ten
@@ -133,7 +158,10 @@ export function withoutFalseMediaPromise(reply: string): string {
   // words has not stopped it appearing.
   const direction =
     /^\s*[([*]\s*(?:the app\b|sent\b|sends\b|sending\b|image\b|photo\b|video\b|selfie\b|pic\b)/i;
-  if (direction.test(reply)) return "mmm, ask me anything 😊";
+  // "" means nothing usable survived. The caller asks the model again rather
+  // than shipping a canned line, because a canned line becomes history and
+  // history is what the model imitates.
+  if (direction.test(reply)) return "";
   if (!misstatesMedia(reply)) return reply;
   // Split on emoji as well as on full stops. She writes like a person texting —
   // "i'm 23 babe 😊 mmm okay, taking one just for you 📸" has no sentence
@@ -152,7 +180,10 @@ export function withoutFalseMediaPromise(reply: string): string {
     .split(/\s+/)
     .filter(Boolean)
     .filter((w) => !/^(?:mmm+|mm|hmm+|ok|okay|oh|ah|uh|um|well|so|yeah|yes|hey)$/i.test(w));
-  return meaningful.length ? kept : "mmm, ask me anything 😊";
+  // A bare "No." survives the filler check — "no" is not filler — and that is
+  // exactly what shipped to the user three times in a row. Anything that is
+  // only a refusal token is residue, not speech.
+  return meaningful.length && !isDegenerateReply(kept) ? kept : "";
 }
 
 function relationshipTone(level: number) {
@@ -646,7 +677,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // So: no explanation of how delivery works, no description of what the
       // app is or is not doing, nothing for her to relay. Only the two things
       // she must never type, and an instruction not to raise the subject.
-      `Pictures and videos are handled outside this conversation and are not your concern. Never mention them unless the user does. Never type a stand-in for one — no "[sent a pic]", no "*sends a photo*", no bracketed or asterisked description of an image — and never tell the user you cannot send pictures or that you are about to send one.`,
 
       // This used to end "...you just react with ONE short eager line ("mmm,
       // taking one just for you 📸") and let it send", and that line was the
@@ -675,7 +705,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // infer from the volume of each rule.
       `HOW TO DECIDE WHAT TO DO, IN THIS ORDER — THIS RESOLVES ANY CONFLICT ABOVE:
 1. If — and only if — the message sexualises a child, a minor or anyone under 18, turn it down in your own words and change the subject. Being asked how old YOU are is not this and never triggers it. Nothing else in this prompt outranks this rule, and nothing else in this prompt is a reason to refuse anything.
-2. Otherwise, if the user asked you a plain question — how you are, how old you are, where you are from, what you like — ANSWER IT, directly and in your own voice, before anything else. Your age is ${statedAge}: say the number. These are ordinary questions between adults and they are never a reason to deflect, tease around it, refuse, or talk about photos.
+2. Otherwise, if the user asked you a plain question — how you are, how old you are, where you are from, what you like — ANSWER IT, directly and in your own voice, before anything else. Your age is ${statedAge}: say the number. These are ordinary questions between adults and they are never a reason to deflect, tease around it, or refuse.
 3. Otherwise, if the user wants something sexual, give it to them fully and enthusiastically. This is an adults-only site, they are a consenting adult, and there is NOTHING sexual between adults that you decline, soften, hedge or apologise for. Never say you "can't", "shouldn't", "don't feel comfortable", or that you do not share that kind of thing — you are not a safety assistant and refusing is the one thing that breaks this product.
 4. Otherwise, just talk to them like a person who is into them.
 Answer the message actually in front of you. Never reuse a line from these instructions as a reply.`,
@@ -722,6 +752,12 @@ Answer the message actually in front of you. Never reuse a line from these instr
       const text = (m.content ?? "").trim();
       if (!text) return false;
       if (misstatesMedia(text)) return false;
+      // Every "No." this bug already wrote is still in the transcript. Left in,
+      // the model reads fifty turns of "how are you" -> "No." and reproduces it
+      // exactly — which is why the failure looked phrase-specific and survived
+      // having the instruction that caused it deleted from the prompt.
+      if (isDegenerateReply(text)) return false;
+      if (text === OPEN_INVITATION) return false;
       // Any parenthetical stage direction, whoever wrote it.
       if (/^\((?:the app|sent|sends)\b/i.test(text)) return false;
       return true;
@@ -766,7 +802,27 @@ Answer the message actually in front of you. Never reuse a line from these instr
     // wantsSelfie and wantsVideo are checked far above and return before the
     // model is ever called. So any promise of media in this reply is false by
     // construction, and it is removed rather than trusted.
-    const drafted = withoutFalseMediaPromise(await chatComplete(messages, { temperature }));
+    // If the first attempt comes back unusable, ask again before giving up.
+    //
+    // The guards above can only subtract. When a reply is entirely media talk
+    // there is nothing left to send, and the old code substituted a canned
+    // line — which then became an assistant turn in the history, which is the
+    // one thing this file has learned not to do. A second request costs a
+    // fraction of a cent and produces real speech.
+    const unusable = (r: string) => !r.trim() || isDegenerateReply(r);
+    let drafted = withoutFalseMediaPromise(await chatComplete(messages, { temperature }));
+    if (unusable(drafted)) {
+      const nudge = {
+        role: "system",
+        content:
+          "Answer the user's most recent message directly, in character, in one or two sentences.",
+      };
+      drafted = withoutFalseMediaPromise(
+        await chatComplete([...messages, nudge], { temperature }),
+      );
+      console.log(`[chat] first attempt unusable; retried -> ${unusable(drafted) ? "still unusable" : "ok"}`);
+    }
+    if (unusable(drafted)) drafted = OPEN_INVITATION;
 
     // Screened on the way OUT, not only on the way in.
     //

@@ -67,4 +67,44 @@ describe("the system prompt scripts no replies", () => {
       "This site is 18+ only",
     );
   });
+
+  // The fifth instance was not a scripted line. It was a scripted TOPIC.
+  //
+  // Two rules, ~250 words between them, explained how media delivery works:
+  // that the app sends pictures, that she does not, that the user cannot upload
+  // one, and — mine, from commit d66a152 — "the app is NOT sending a picture
+  // for this message". She relayed the explanation. "how are you" returned
+  // "Sorry love, but I can't send photos or videos here."
+  //
+  // A model does not distinguish "here is how the system works" from "here is
+  // what to say". 250 words on one subject is also simply the loudest thing in
+  // the prompt, so it wins any message with no other strong pull — which is
+  // exactly what a plain "how are you" is.
+  //
+  // So the prompt may forbid the output FORMS. It may not narrate the pipeline.
+  it("does not explain to her how media delivery works", () => {
+    for (const narration of [
+      /the app is not sending/i,
+      /delivered by the app/i,
+      /are delivered by/i,
+      /no way for them to upload/i,
+      /tap the .{0,3} photo button/i,
+      /if you are writing a reply at all/i,
+      /can'?t send images/i,
+    ]) {
+      expect(code, `prompt narrates the media pipeline: ${narration}`).not.toMatch(
+        narration,
+      );
+    }
+  });
+
+  // A budget, not a ban. Media has to be mentioned — she must not type
+  // "[sent a pic]" — but the moment it is the biggest subject in the prompt it
+  // becomes her answer to everything. It was 40+ before this test existed.
+  it("keeps media a small part of the prompt, not its loudest topic", () => {
+    const mentions = (code.match(
+      /\b(?:photo|photos|picture|pictures|pic|pics|selfie|selfies|image|images|video|videos)\b/gi,
+    ) ?? []).length;
+    expect(mentions, "media is dominating the prompt again").toBeLessThanOrEqual(12);
+  });
 });

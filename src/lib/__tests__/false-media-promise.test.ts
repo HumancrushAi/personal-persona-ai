@@ -146,3 +146,50 @@ describe("a follow-up request for more of the same", () => {
     }
   });
 });
+
+// The denial half of the same bug, reported live: "how are you" came back as
+// "Sorry love, but I can't send photos or videos here", and "how old are you"
+// as "aww i wish i could send you pics and vids, baby, but i can't do that
+// here". The user's question had nothing to do with pictures. The prompt was
+// carrying 250 words about how media delivery works, and she relayed them.
+//
+// The prompt no longer says any of it. This is the belt, because every earlier
+// version of that rule was also "removed from the prompt" and the line kept
+// coming back.
+describe("a reply cannot claim she is unable to send media", () => {
+  it("strips the denials that shipped to users", async () => {
+    const { withoutFalseMediaPromise: strip } = await import("../chat.functions");
+    for (const denial of [
+      "Sorry love, but I can't send photos or videos here.",
+      "aww i wish i could send you pics and vids, baby, but i can't do that here.",
+      "i can't send images.",
+      "I'm not able to send pictures, sorry.",
+      "there's no way for me to send a selfie here.",
+      "i cannot show you a photo.",
+    ]) {
+      expect(strip(denial), denial).not.toMatch(/can'?t|cannot|not able|no way|wish i could/i);
+    }
+  });
+
+  // The whole point of the sentence-level strip: the answer survives, only the
+  // apology about pictures goes.
+  it("keeps the part that answered the question", async () => {
+    const { withoutFalseMediaPromise: strip } = await import("../chat.functions");
+    const kept = strip("i'm 23 babe 😊 but i can't send you photos here.");
+    expect(kept).toContain("23");
+    expect(kept).not.toMatch(/can'?t/i);
+  });
+
+  it("leaves ordinary speech alone", async () => {
+    const { withoutFalseMediaPromise: strip } = await import("../chat.functions");
+    for (const fine of [
+      "i'm good babe, how are you?",
+      "i'm 23 😊 what about you",
+      "i can't believe you sent me that, you're bad 😏",
+      "i can't stop thinking about you",
+      "come closer, i want to show you something",
+    ]) {
+      expect(strip(fine), fine).toBe(fine);
+    }
+  });
+});

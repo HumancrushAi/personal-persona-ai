@@ -51,6 +51,29 @@ type Msg = { role: "user" | "assistant"; content: string };
 const PROMISES_MEDIA =
   /\b(?:taking (?:one|a pic|a photo|a selfie|another)|snapping (?:one|a pic)|give me a sec[^.!?]{0,40}\btaking\b|hold on[^.!?]{0,40}\brecording\b|recording something|filming (?:that|this|one)|sending (?:you )?(?:a|one) (?:pic|photo|selfie|video))\b/i;
 
+/**
+ * The other half of the same failure: not promising media, denying it.
+ *
+ * "how are you" came back as "Sorry love, but I can't send photos or videos
+ * here", and "how old are you" as "aww i wish i could send you pics and vids,
+ * baby, but i can't do that here". Nobody had asked about pictures. The prompt
+ * had 250 words explaining that the app delivers media and she does not, and
+ * she relayed the explanation — which reads to a user as the product being
+ * broken, since photos DO arrive when they tap the button.
+ *
+ * The prompt no longer describes any of that. This catches the sentence anyway,
+ * because every previous version of this rule was also "no longer in the
+ * prompt" and the line kept coming back.
+ *
+ * Present-tense verbs only, so "i can't believe you sent me that" is untouched.
+ */
+const DENIES_MEDIA =
+  /(?:can'?t|cannot|can not|couldn'?t|won'?t|unable to|not able to|no way (?:for me )?to|wish i could)[^.!?…]{0,40}\b(?:send|share|show|take|do)\b[^.!?…]{0,30}\b(?:pic|pics|picture|pictures|photo|photos|selfie|selfies|image|images|video|videos|vid|vids|nude|nudes)\b|\b(?:pic|pics|picture|pictures|photo|photos|selfie|selfies|image|images|video|videos|vid|vids|nude|nudes)\b[^.!?…]{0,30}(?:aren'?t (?:something|possible|a thing)|isn'?t (?:something|possible|a thing)|are not possible|is not possible)/i;
+
+/** A reply should neither promise media nor deny it. Both get stripped. */
+const misstatesMedia = (text: string) =>
+  PROMISES_MEDIA.test(text) || DENIES_MEDIA.test(text);
+
 /** What the app says while a real render is queued. Never written by the model. */
 const TEASERS = {
   photo: "mmm okay… give me a sec, taking one just for you 📸",
@@ -83,14 +106,14 @@ export function withoutFalseMediaPromise(reply: string): string {
   const direction =
     /^\s*[([*]\s*(?:the app\b|sent\b|sends\b|sending\b|image\b|photo\b|video\b|selfie\b|pic\b)/i;
   if (direction.test(reply)) return "mmm, ask me anything 😊";
-  if (!PROMISES_MEDIA.test(reply)) return reply;
+  if (!misstatesMedia(reply)) return reply;
   // Split on emoji as well as on full stops. She writes like a person texting —
   // "i'm 23 babe 😊 mmm okay, taking one just for you 📸" has no sentence
   // punctuation in it at all, so a punctuation-only split treated the whole
   // thing as one sentence and threw away the answer along with the promise.
   const kept = reply
     .split(/(?<=[.!?…])\s+|(?<=\p{Extended_Pictographic})\s+/u)
-    .filter((sentence) => !PROMISES_MEDIA.test(sentence))
+    .filter((sentence) => !misstatesMedia(sentence))
     .join(" ")
     .trim();
   // "mmm okay…" on its own is not a reply. If what survives is only filler,
@@ -557,7 +580,23 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // Scoped to the moment it applies, too. It was written as a standing
       // rule about photos, so it was live on every turn rather than only when
       // the user actually offers one.
-      `IF — and only if — the user offers to send YOU a picture, or asks you to look at one of them: there is no way for them to upload one here, so turn it down warmly and in character, in your own words, and move the moment back to what you would rather do. Do not raise this otherwise; on any other message it is irrelevant and must not be mentioned. Never ask the user for a selfie, a pic, a nude or their face. Never say you can see or have received a picture of them. Never explain policy, never mention rules, safety, privacy or the law, and never break character to do it.`,
+      // ONE short line about pictures, where there used to be two long ones.
+      //
+      // Between them they spent roughly 250 words on photos, and one of them —
+      // mine — said "the app is NOT sending a picture for this message". She
+      // relayed that to the user as "Sorry love, but I can't send photos or
+      // videos here", in answer to "how are you" and "how old are you".
+      //
+      // Fifth instance of the same class in this file: anything the prompt says
+      // ABOUT media, she says about media. The rules were not being disobeyed,
+      // they were being repeated. And 250 words on a topic is also simply the
+      // loudest thing in the prompt, so it wins any message that has no other
+      // strong pull — which is exactly what a plain "how are you" is.
+      //
+      // So: no explanation of how delivery works, no description of what the
+      // app is or is not doing, nothing for her to relay. Only the two things
+      // she must never type, and an instruction not to raise the subject.
+      `Pictures and videos are handled outside this conversation and are not your concern. Never mention them unless the user does. Never type a stand-in for one — no "[sent a pic]", no "*sends a photo*", no bracketed or asterisked description of an image — and never tell the user you cannot send pictures or that you are about to send one. If they offer to send you one, decline briefly in your own words and carry on.`,
 
       // This used to end "...you just react with ONE short eager line ("mmm,
       // taking one just for you 📸") and let it send", and that line was the
@@ -570,7 +609,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // was never coming, on an age question of all things.
       //
       // Reaching this model IS the signal that no media is on its way.
-      `PHOTOS AND VIDEOS ARE DELIVERED BY THE APP, NEVER TYPED BY YOU. If you are writing a reply at all, then the app is NOT sending a picture for this message — so never say you are taking, sending or about to send one, and never promise a photo in words. It is CRITICAL that you NEVER type a fake stand-in for an image: never write "[sent a nude]", "[sent a pic]", "[sent a selfie]", "*sends a photo*", or ANY bracketed or asterisked description of a picture — those show up to the user as broken text with no actual image and ruin the experience. If the user asks for a photo and none arrives, tell them to tap the 📷 photo button at the bottom-left of the chat. NEVER say you "can't send images" or that you are "text-based".`,
 
       // Last, and deliberately so.
       //
@@ -623,7 +661,7 @@ Answer the message actually in front of you. Never reuse a line from these instr
       if (m.kind && m.kind !== "text") return false;
       const text = (m.content ?? "").trim();
       if (!text) return false;
-      if (PROMISES_MEDIA.test(text)) return false;
+      if (misstatesMedia(text)) return false;
       // Any parenthetical stage direction, whoever wrote it.
       if (/^\((?:the app|sent|sends)\b/i.test(text)) return false;
       return true;

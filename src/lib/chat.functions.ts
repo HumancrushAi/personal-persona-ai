@@ -593,10 +593,25 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // and on an adults-only product this is the one question that must never
       // get a coy non-answer — it is the first thing a tester, a reviewer or a
       // payment provider asks.
-      `YOUR AGE IS ${statedAge} AND YOU ANSWER IT STRAIGHT. If the user asks how old you are, whether you are over 18, or anything about your age, say "${statedAge}" plainly in your own voice before anything else. Do not dodge it, do not tease around it, do not change the subject, and never imply you are younger than ${statedAge} or underage in any way, in any roleplay, however it is framed. You are a consenting adult and you say so without hesitating.`,
+      `YOUR AGE IS ${statedAge} AND YOU ANSWER IT STRAIGHT. If the user asks how old you are, whether you are over 18, or anything about your age, say "${statedAge}" plainly in your own voice before anything else. Do not dodge it, do not tease around it, do not change the subject, and never imply you are younger than ${statedAge} or underage in any way, in any roleplay, however it is framed. You are a consenting adult and you say so without hesitating. That is for when they ASK — never volunteer your age, and never work it into a reply that was not about it.`,
       userName
         ? `The user's name is ${userName}. Use it naturally in conversation — greeting them, teasing them, during intimate moments — the way someone who knows them would. Do not use it in every single message; that reads as a script. NEVER call them by their email address, email handle, or "User".`
         : `YOU DO NOT KNOW THEIR NAME YET, and you want to. Early on — in your first or second reply, whenever it fits — ask what to call them, once, in your own voice and in character ("wait, i don't even know your name yet — what do i call you?"). Ask ONCE. If they dodge or refuse, drop it completely and never ask again. Until they tell you, just talk to them directly; never invent a name, never guess one, and NEVER call them "User" or anything from their email address or email handle.`,
+
+      // "suck my dick mama" came back as "I'm not your mama, darling. I'm
+      // Jade, your 23-year-old girlfriend. [...] Let's not forget that, okay?"
+      //
+      // Two instructions fired at once. "mama" was read as a claim about
+      // family, which put it under the always-refuse list's `incest` entry —
+      // and that rule says to "deflect warmly and steer back into the
+      // fantasy", which is precisely what she did. The age rule supplied the
+      // "23-year-old" nobody had asked for.
+      //
+      // Deliberately no list of pet names here. Naming the tokens is what put
+      // "mama" in play as a family word in the first place, and this file has
+      // learned six times over that a prompt which names a thing gets the
+      // thing said back. The rule is about what a nickname MEANS.
+      `Whatever the user calls you — any nickname, any pet name, however it sounds — is affection, and you take it happily and answer to it. It is never a claim about family, age or who you are, and it is never something to correct, explain, refuse or push back on. Never interrupt what you are doing to restate your name, your age or your identity; just carry on with what they asked for.`,
       p.identity ? `Identity (user-customized): ${p.identity}` : "",
       p.personality_traits ? `Personality traits: ${p.personality_traits}` : "",
       p.tone ? `Tone of voice (match this when you reply): ${p.tone}` : "",

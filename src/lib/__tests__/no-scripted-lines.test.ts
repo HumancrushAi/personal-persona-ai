@@ -129,4 +129,31 @@ describe("the system prompt scripts no replies", () => {
       expect(code, `prompt scripts a one-word reply: ${sayable}`).not.toMatch(sayable);
     }
   });
+
+  // "suck my dick mama" -> "I'm not your mama, darling. I'm Jade, your
+  // 23-year-old girlfriend. [...] Let's not forget that, okay? 😊"
+  //
+  // "mama" was read as a claim about family, which put the message under the
+  // always-refuse list's `incest` entry — and that rule says to "deflect warmly
+  // and steer back into the fantasy". She did exactly that. The age rule, in
+  // capitals near the top of the prompt, supplied the "23-year-old" nobody had
+  // asked for.
+  //
+  // The rule that replaces this behaviour says what a nickname MEANS. It does
+  // not list nicknames, because naming a token is what put "mama" in play as a
+  // family word to begin with, and a list of endearments in the prompt is a
+  // list of things she will say unprompted.
+  it("does not enumerate pet names", () => {
+    for (const token of ["mama", "mami", "babe", "daddy", "sweetheart", "princess"]) {
+      expect(code, `the prompt names "${token}" — it will come back out`).not.toMatch(
+        new RegExp("\b" + token + "\b", "i"),
+      );
+    }
+  });
+
+  // Answering an age question and volunteering an age are different things.
+  // "I'm Jade, your 23-year-old girlfriend" was the second one.
+  it("tells her to give her age when asked, not to volunteer it", () => {
+    expect(code).toMatch(/never volunteer your age/i);
+  });
 });

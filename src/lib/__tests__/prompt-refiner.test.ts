@@ -487,16 +487,24 @@ describe("a viewpoint the user set themselves", () => {
     expect(sys).not.toMatch(/camera two metres away/);
   });
 
-  // The POV worked example looks up the front of the body. A close-up that set
-  // its own viewpoint gets the format lesson without that composition.
+  // The POV worked example shoots from the front. A close-up that set its own
+  // viewpoint gets the format lesson without that composition.
+  //
+  // Pinned to the example's opening clause rather than to a phrase from the
+  // middle of it. The middle is body wording, which is edited by hand and is
+  // meant to be — a test that reaches into it breaks on every such edit and
+  // says nothing about whether the gate still works. The opening clause is
+  // what identifies the example, and the gate is what this is testing.
+  const POV_MARKER = /close-up point-of-view photograph taken from between/;
+
   it("withholds the front-facing POV example from a close-up that set a viewpoint", async () => {
     const sys = await systemPromptFor("close up of your ass");
-    expect(sys).not.toMatch(/looking up along her body/);
+    expect(sys).not.toMatch(POV_MARKER);
   });
 
   it("keeps the POV example for a close-up that set none", async () => {
     const sys = await systemPromptFor("close up of your pussy");
-    expect(sys).toMatch(/looking up along her body/);
+    expect(sys).toMatch(POV_MARKER);
   });
 
   // Examples are the strongest instruction in the file and every one of them is

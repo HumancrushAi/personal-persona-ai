@@ -77,7 +77,7 @@ import {
 // head and face out of the picture. That is the headless torso a user was
 // actually sent. Framing is stated positively now (framingFor in selfie.ts).
 const QUALITY_NEGATIVE =
-  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, poreless, poreless skin, featureless, smooth blank skin where detail belongs, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, third hand, extra hand, disembodied hand, floating hand, three arms, melting object, deformed object, object merging into hand, morphing, flickering";
+  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, poreless, poreless skin, featureless, smooth blank skin where detail belongs, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, third hand, extra hand, disembodied hand, floating hand, three arms, two people, second person, extra person, crowd, group of people, bystander, someone else's hand, someone else's arm, melting object, deformed object, object merging into hand, morphing, flickering";
 
 // Motion terms. These stop the endpoint returning a near-still clip, and they
 // belong ONLY on a video.
@@ -662,14 +662,8 @@ export async function comfyJobInput(
   // picture looks like, and the starting latent must not overrule them. Anything
   // else — "send me a selfie", "send me a nude" — says nothing about
   // composition, so her portrait should supply it and identity holds.
-  const req = (request ?? "").trim();
-  let promptSetsComposition = false;
-  if (req) {
-    const { hasProp } = await import("./props");
-    const { STATED_POSTURE_RE, requestSetsViewpoint } = await import("./selfie");
-    promptSetsComposition =
-      hasProp(req) || STATED_POSTURE_RE.test(req) || requestSetsViewpoint(req);
-  }
+  const { requestComposesShot: composes } = await import("./selfie");
+  const promptSetsComposition = composes(request ?? "");
 
   return comfyInput(
     { ...comfySettings(prompt, { promptSetsComposition }), prompt, negative },
@@ -762,13 +756,24 @@ export async function photoPrompt(
   const { comfyTemplate, wantsReference } = await import("./comfy");
   const referenceReachesRenderer = provider !== "comfy" || wantsReference(comfyTemplate());
 
+  // ...but "reaches" is not the same as "carries".
+  //
+  // When the request composes the shot, denoise goes high so the pose and the
+  // prop can actually happen, and at that point the reference is no longer
+  // holding her likeness. The prompt was still withholding her appearance on
+  // the assumption that it was, so nothing described her at all and a brunette
+  // came back blonde. Describe her in words exactly when the photo has stopped
+  // doing it.
+  const { requestComposesShot } = await import("./selfie");
+  const promptLedShot = requestComposesShot(userRequest ?? "");
+
   return finishMediaPrompt(refined?.[0] ?? builder, userRequest ?? "", {
     anatomy: anatomyOf(companion.gender),
     appendProps: Boolean(refined?.[0]),
     // Appended for BOTH the refined prompt and the builder: neither of them
     // describes her build, because both were written for a path that had her
     // photo. Only when nothing carries her likeness to the renderer.
-    appendAppearance: !referenceReachesRenderer,
+    appendAppearance: !referenceReachesRenderer || promptLedShot,
     // Her own row, not a default. Without this every companion in the app
     // rendered as the same anonymous woman, because the prompt opened
     // "Photograph of a woman indoors" and nothing ever said which one.

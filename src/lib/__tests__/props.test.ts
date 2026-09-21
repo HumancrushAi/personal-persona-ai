@@ -313,3 +313,66 @@ describe("the word cap cannot eat the prop specification", () => {
     );
   });
 });
+
+// A render arrived with a second body at the edge of frame, and the toy
+// described as inserted but held by nobody.
+//
+// Nothing in the negative prompt said how many people are in the picture —
+// not one term — and the second hand had deliberately been left unplaced to
+// avoid contradicting the scene's own "hands resting on her thighs". With that
+// sentence rewritten there is nothing left to contradict, so the hand gets a
+// job: holding the toy, which is what the user asked for in the first place.
+describe("one person, two hands, and the toy actually held", () => {
+  const spec = async () => {
+    const { propClause } = await import("../props");
+    const { anatomyOf } = await import("../anatomy");
+    return propClause("stick a dildo in your pussy", { anatomy: anatomyOf("female") });
+  };
+
+  it("says a hand is holding the toy, not merely near it", async () => {
+    expect(await spec()).toMatch(/closed around the base of the toy and holding it/i);
+  });
+
+  it("gives the second hand somewhere to be", async () => {
+    expect(await spec()).toMatch(/the other rests on her own stomach/i);
+  });
+
+  // Positive and countable, like the hand count — "another person" in a
+  // negative spends itself on `person`.
+  it("states she is the only person in the picture", async () => {
+    expect(await spec()).toMatch(/alone, the only person in the picture/i);
+  });
+
+  it("names the crowd in the negative too", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const neg = negativeFor("stick a dildo in your pussy", "female", { moving: false });
+    for (const term of ["two people", "second person", "extra person", "someone else's hand"]) {
+      expect(neg, `"${term}" missing from the negative`).toContain(term);
+    }
+  });
+});
+
+// Her appearance was withheld whenever a reference reached the renderer. At the
+// high denoise a posed or prop request now uses, the reference reaches it but
+// no longer carries her — so nothing described her at all, and a brunette came
+// back blonde.
+describe("who composes the shot decides whether she is described", () => {
+  it("treats a prop, a posture and a viewpoint as prompt-led", async () => {
+    const { requestComposesShot } = await import("../selfie");
+    for (const req of [
+      "stick a dildo in your pussy",
+      "lie down on the bed",
+      "bend over and show me",
+      "turn around",
+    ]) {
+      expect(requestComposesShot(req), req).toBe(true);
+    }
+  });
+
+  it("leaves a plain request to her portrait", async () => {
+    const { requestComposesShot } = await import("../selfie");
+    for (const req of ["send me a selfie", "send me a nude", "send a pic", ""]) {
+      expect(requestComposesShot(req), JSON.stringify(req)).toBe(false);
+    }
+  });
+});

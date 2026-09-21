@@ -194,8 +194,16 @@ const vulvaAnatomy = (a: Anatomy) =>
 // else. And the second hand is deliberately left unplaced: naming somewhere for
 // it to be is how the contradiction started, and the scene has usually put the
 // arms somewhere already.
+//
+// The second hand DOES get a place now. It was left unplaced when the scene
+// still had its own competing "hands resting on her thighs"; with that rewritten
+// there is nothing to contradict, and leaving it unplaced meant the toy came
+// back unheld — it was being described as inserted but nobody was holding it.
+//
+// The solo statement is here rather than in a negative for the usual reason:
+// "another person" in the negative spends itself on `person`.
 const TWO_HANDS =
-  "Exactly two arms and two hands on her body in this frame, one of them closed on the base of the toy.";
+  "Exactly two arms and two hands on her body in this frame: one hand is closed around the base of the toy and holding it, and the other rests on her own stomach. She is alone, the only person in the picture.";
 
 const INSERTED_CLAUSE =
   "The toy is inserted into her, angled downward along the line between her open thighs: most of the shaft is hidden inside her body, with only the flared base showing, her fingers on it and her wrist against her inner thigh. Where it enters, her pussy presses snugly around the silicone, natural moisture glistening at the exact point of entry, in sharp focus.";

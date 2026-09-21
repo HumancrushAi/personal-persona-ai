@@ -1,7 +1,7 @@
 // Builds the image prompt for a companion selfie. Shared by the camera button
 // (media.functions) and the auto-selfie when a user asks for a pic in chat.
 
-import { TOY_VOCAB, propClause, propIsInserted } from "./props";
+import { TOY_VOCAB, hasProp, propClause, propIsInserted } from "./props";
 import { type Anatomy, type GenderKind, anatomyOf, mentionsPart, nudeAnatomy } from "./anatomy";
 
 // Explicit request vocabulary, grouped by category so the nudity gate and the
@@ -910,6 +910,27 @@ function withClauseUpFront(text: string, clause: string): string {
   const head = sentences.slice(0, 2).join(" ");
   const tail = sentences.slice(2).join(" ");
   return tail ? `${head} ${clause} ${tail}` : `${head} ${clause}`;
+}
+
+/**
+ * Does the REQUEST compose the picture, or does her portrait?
+ *
+ * A prop, a named posture or a viewpoint all mean the user has said what the
+ * picture looks like. Two things downstream need to know: the renderer, which
+ * must stop letting the starting latent overrule the prompt, and the prompt
+ * itself, which withholds her appearance on the assumption that a reference
+ * photo is supplying it — an assumption that stops being true the moment the
+ * reference is turned down far enough for the pose to obey.
+ *
+ * That gap is why a brunette came back blonde: at high denoise the reference
+ * was no longer carrying her, and nothing in the prompt had been allowed to.
+ *
+ * One function so the two cannot disagree about which case they are in.
+ */
+export function requestComposesShot(req: string): boolean {
+  const text = (req ?? "").trim();
+  if (!text) return false;
+  return hasProp(text) || STATED_POSTURE_RE.test(text) || requestSetsViewpoint(text);
 }
 
 export function finishMediaPrompt(

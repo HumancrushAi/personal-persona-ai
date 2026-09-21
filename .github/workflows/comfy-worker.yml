@@ -41,15 +41,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The runner ships with ~14GB free and this image is large: a CUDA base,
-      # a compiled insightface, and onnxruntime-gpu. Reclaiming the preinstalled
-      # Android SDK and .NET toolchains is the difference between a build that
-      # finishes and one that dies on "no space left on device".
-      - name: Free disk space
+      # The base image is the problem, not the build.
+      #
+      # runpod/worker-comfyui:5.10.0-base ships CUDA, torch and the whole ComfyUI
+      # stack: 6.66GB + 4.69GB + 2.06GB of compressed layers, well over 30GB once
+      # extracted. A GitHub-hosted runner has about 29GB free on / — so the first
+      # attempt died inside "[1/7] FROM ... extracting", before reaching a single
+      # build step, with no error of its own to report.
+      #
+      # /mnt is a separate 65GB+ temp disk that is otherwise unused, so Docker's
+      # data root is moved onto it. Deleting the preinstalled toolchains helps and
+      # is kept, but on its own it does not buy enough for an image this size.
+      - name: Make room for a very large base image
         run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
-          sudo docker image prune -af
-          df -h /
+          echo "--- before ---"; df -h / /mnt
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /usr/local/share/boost \
+            /opt/hostedtoolcache \
+            /usr/local/graalvm \
+            /usr/local/share/powershell \
+            /usr/share/swift || true
+          sudo systemctl stop docker
+          sudo mkdir -p /mnt/docker /etc/docker
+          echo '{"data-root": "/mnt/docker"}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker
+          sudo docker info | grep -i "docker root dir" || true
+          echo "--- after ---"; df -h / /mnt
 
       - uses: docker/setup-buildx-action@v3
 

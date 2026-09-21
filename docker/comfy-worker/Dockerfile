@@ -29,24 +29,11 @@ RUN apt-get update \
        build-essential cmake git wget curl unzip ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# One RUN, because it has to find things first and shell variables do not
-# survive between layers.
+# Discover where ComfyUI and its interpreter actually are, once, and record it.
 #
-# It used to call `comfy-node-install` and a bare `pip`. Both were assumptions
-# about a base image this repo does not build. The helper's node IDs come from a
-# registry, and `pip` is whichever Python is first on PATH — which on an image
-# that runs ComfyUI inside a virtualenv is the wrong one, so packages land
-# somewhere ComfyUI never looks and the graph fails at import with a green build
-# behind it.
-#
-# Then `$PY -m pip` failed too, in under twenty seconds. worker-comfyui 5.x
-# builds its virtualenv with `uv`, and a uv venv has no pip module in it unless
-# someone asks for one: `python -m pip` exits 1 immediately with "No module
-# named pip". So the installer is chosen rather than assumed as well — uv if it
-# is here, pip if the interpreter has it, ensurepip or get-pip if neither.
-#
-# Everything discovered is printed before any of it is used. Three builds have
-# now failed on something this block could have said in one line.
+# Everything after this sources /etc/hc-build.env rather than guessing again.
+# Confirmed from a build log rather than assumed: COMFY_DIR=/comfyui,
+# PY=/comfyui/.venv/bin/python, and that venv already carries pip 24.0.
 RUN set -eux; \
     COMFY_DIR=""; \
     for d in /comfyui/ComfyUI /comfyui /opt/ComfyUI /ComfyUI /workspace/ComfyUI; do \
@@ -62,57 +49,59 @@ RUN set -eux; \
       if [ -x "$p" ]; then PY="$p"; break; fi; \
     done; \
     if [ -z "$PY" ]; then echo "FATAL: no python interpreter found." >&2; exit 1; fi; \
-    echo "PHASE=detect COMFY_DIR=$COMFY_DIR PY=$PY"; \
     if ! "$PY" -m pip --version; then \
-      echo "PHASE=bootstrap-pip"; \
       "$PY" -m ensurepip --upgrade || { \
         curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py; \
         "$PY" /tmp/get-pip.py; \
       }; \
     fi; \
-    echo "PHASE=build-deps"; \
-    "$PY" -m pip install --no-cache-dir "numpy<2" cython onnxruntime-gpu; \
-    for repo in \
-        cubiq/ComfyUI_IPAdapter_plus \
-        ltdrdata/ComfyUI-Impact-Pack \
-        ltdrdata/ComfyUI-Impact-Subpack; do \
-      name="${repo#*/}"; \
-      echo "PHASE=clone $name"; \
-      git clone --depth 1 "https://github.com/$repo.git" "$COMFY_DIR/custom_nodes/$name"; \
-      req="$COMFY_DIR/custom_nodes/$name/requirements.txt"; \
-      if [ -f "$req" ]; then \
-        echo "PHASE=requirements $name"; \
-        { grep -vE '^[[:space:]]*(git\+|-e[[:space:]])' "$req" || true; } > /tmp/req.txt; \
-        echo "--- installing ---"; cat /tmp/req.txt; \
-        echo "--- skipped (vcs) ---"; { grep -E '^[[:space:]]*(git\+|-e[[:space:]])' "$req" || true; }; \
-        "$PY" -m pip install --no-cache-dir -r /tmp/req.txt \
-          || echo "WARN: requirements for $name did not install cleanly; continuing"; \
-      fi; \
-    done; \
-    echo "PHASE=insightface"; \
-    "$PY" -m pip install --no-cache-dir --no-build-isolation insightface==0.7.3; \
-    echo "PHASE=pin-numpy"; \
-    "$PY" -m pip install --no-cache-dir "numpy<2"; \
-    echo "PHASE=verify"; \
-    "$PY" -c "import insightface; print('insightface', insightface.__version__)"; \
-    "$PY" -c "import numpy; print('numpy', numpy.__version__)"; \
-    "$PY" -c "import onnxruntime; print('onnxruntime', onnxruntime.__version__)"; \
-    ls -1 "$COMFY_DIR/custom_nodes"; \
-    echo "PHASE=done"
+    printf 'COMFY_DIR=%s\nPY=%s\n' "$COMFY_DIR" "$PY" > /etc/hc-build.env; \
+    cat /etc/hc-build.env; \
+    "$PY" -m pip --version
 
-# Three node packs, not two.
-#
-# UltralyticsDetectorProvider — the face detector FaceDetailer takes its bbox
-# from — lives in Impact SUBPACK. It was split out of the main Impact Pack, so
-# installing only ComfyUI-Impact-Pack gives you FaceDetailer and no detector to
-# feed it, and the graph fails validation on node 13.
-#
-# numpy is pinned under 2 above: insightface 0.7.3 and several Impact Pack
-# dependencies still use the removed numpy 1.x C API, and an unpinned install
-# resolves to numpy 2 and fails at import with "numpy.core.multiarray failed to
-# import" — which reads like a broken install rather than a version conflict.
-# It is installed AFTER the node requirements so that a pack pulling numpy 2 in
-# as a transitive dependency does not win.
+# setuptools and wheel are here because of --no-build-isolation below: that flag
+# tells pip to build against THIS environment, so whatever the build needs has
+# to already be in it. numpy and cython for the same reason — insightface's
+# setup.py imports both at build time.
+RUN . /etc/hc-build.env \
+ && set -eux \
+ && "$PY" -m pip install --no-cache-dir --upgrade setuptools wheel \
+ && "$PY" -m pip install --no-cache-dir "numpy<2" cython onnxruntime-gpu
+
+COPY install-node.sh /hc-install-node.sh
+RUN chmod +x /hc-install-node.sh
+
+# One pack per layer, so a failure names the pack in the annotation instead of
+# quoting sixty lines of shell that mention all three.
+RUN /hc-install-node.sh cubiq/ComfyUI_IPAdapter_plus
+RUN /hc-install-node.sh ltdrdata/ComfyUI-Impact-Pack
+RUN /hc-install-node.sh ltdrdata/ComfyUI-Impact-Subpack
+
+# insightface has no wheel for this Python and CUDA pair, so pip compiles it.
+# Build isolation would hand that compile a clean environment without the numpy
+# and cython its setup.py imports, so the build runs against the environment
+# prepared above instead.
+RUN . /etc/hc-build.env \
+ && set -eux \
+ && "$PY" -m pip install --no-cache-dir --no-build-isolation insightface==0.7.3
+
+# numpy is reasserted last. Several node packs list a bare `numpy` and resolve
+# it to 2.x, and insightface 0.7.3 uses the removed 1.x C API — it then fails at
+# import with "numpy.core.multiarray failed to import", which reads like a
+# broken install rather than a version conflict.
+RUN . /etc/hc-build.env \
+ && set -eux \
+ && "$PY" -m pip install --no-cache-dir "numpy<2" \
+ && "$PY" -c "import insightface; print('insightface', insightface.__version__)" \
+ && "$PY" -c "import numpy; print('numpy', numpy.__version__)" \
+ && "$PY" -c "import onnxruntime; print('onnxruntime', onnxruntime.__version__)" \
+ && ls -1 "$COMFY_DIR/custom_nodes"
+
+# Three node packs, not two. UltralyticsDetectorProvider — the face detector
+# FaceDetailer takes its bbox from — lives in Impact SUBPACK. It was split out of
+# the main Impact Pack, so installing only ComfyUI-Impact-Pack gives you a
+# FaceDetailer with no detector to feed it, and the graph fails validation on
+# node 13.
 
 COPY provision-models.sh /provision-models.sh
 COPY entrypoint.sh /hc-entrypoint.sh

@@ -394,6 +394,30 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         ? ((lastMedia as any).kind as "image" | "video")
         : null;
 
+    // "send another one" must re-run the SAME act as the last media request,
+    // not the words "another one". Walk back to the user message that triggered
+    // the previous image/video and reuse that text for the new job.
+    let mediaRequestText = data.content;
+    if (followUp) {
+      const hist = (history ?? []) as any[];
+      const lastMediaIdx = [...hist]
+        .map((m, i) => ({ m, i }))
+        .reverse()
+        .find(({ m }) => m.role === "assistant" && (m.kind === "image" || m.kind === "video"))
+        ?.i;
+      if (lastMediaIdx != null) {
+        for (let i = lastMediaIdx - 1; i >= 0; i--) {
+          const m = hist[i];
+          if (m?.role === "user" && typeof m.content === "string" && m.content.trim()) {
+            if (!isFollowUpMediaRequest(m.content)) {
+              mediaRequestText = m.content;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     const askedFor = wantsVideo(data.content)
       ? ("video" as const)
       : wantsSelfie(data.content)
@@ -429,7 +453,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // in character rather than rendered. It was missing on both video paths,
       // so "send me a video of your pussy" to a male companion rendered one.
       // Before the debit, so a refusal never costs credits.
-      const crossGenderWarning = checkCrossGenderRequest(c.gender, data.content);
+      const crossGenderWarning = checkCrossGenderRequest(c.gender, mediaRequestText);
       if (crossGenderWarning) {
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
@@ -454,7 +478,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           userId,
           data.conversationId,
           { name: c.name, gender: c.gender, imageUrl: c.image_url },
-          data.content,
+          mediaRequestText,
           balAfter,
         );
 
@@ -499,7 +523,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // button — charged up front, auto-refunded if the job fails to launch).
     // Falls through to a normal text reply if the job can't start.
     if (askedFor === "image" && totalCredits(bal) >= SELFIE_COST) {
-      const crossGenderWarning = checkCrossGenderRequest(c.gender, data.content);
+      const crossGenderWarning = checkCrossGenderRequest(c.gender, mediaRequestText);
       if (crossGenderWarning) {
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
@@ -531,7 +555,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             short_bio: c.short_bio,
             imageUrl: c.image_url,
           },
-          data.content,
+          mediaRequestText,
           p.style_backstory,
           balAfter,
         );

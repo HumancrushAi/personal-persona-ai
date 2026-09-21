@@ -1,0 +1,95 @@
+# Builds the ComfyUI worker image for COMFY_GRAPH=faceid and pushes it to GHCR.
+#
+# Why this exists: the FaceID identity graph needs three ComfyUI custom node
+# packs and insightface, and a RunPod serverless worker is an ephemeral
+# container — anything installed into a running worker is gone at the next cold
+# start. So the nodes have to be baked into an image, and something has to build
+# that image. This is that something.
+#
+# GHCR rather than Docker Hub: it authenticates with the repository's own
+# GITHUB_TOKEN, so there is no account to create and no secret to add. The
+# package must be made public once, by hand, or RunPod cannot pull it — see
+# docker/comfy-worker/README.md.
+#
+# This image is for the IMAGE endpoint only. The video endpoint runs a different
+# image with the WAN stack in it and is untouched by this.
+name: comfy-worker
+
+on:
+  # The normal way to run it: Actions tab, "Run workflow".
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Extra tag to publish alongside latest (e.g. faceid-v2)"
+        required: false
+        default: ""
+  # Rebuild when the worker definition itself changes, so the image and the repo
+  # cannot drift apart unnoticed.
+  push:
+    branches: [main]
+    paths:
+      - "docker/comfy-worker/**"
+      - ".github/workflows/comfy-worker.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner ships with ~14GB free and this image is large: a CUDA base,
+      # a compiled insightface, and onnxruntime-gpu. Reclaiming the preinstalled
+      # Android SDK and .NET toolchains is the difference between a build that
+      # finishes and one that dies on "no space left on device".
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
+          sudo docker image prune -af
+          df -h /
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Lowercased because GHCR rejects an image path with capitals in it and
+      # GitHub org names are free to have them.
+      - name: Work out the image name
+        id: name
+        run: |
+          echo "image=ghcr.io/$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')/hc-comfy-worker" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/comfy-worker
+          file: docker/comfy-worker/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.name.outputs.image }}:latest
+            ${{ steps.name.outputs.image }}:${{ github.sha }}
+            ${{ inputs.tag != '' && format('{0}:{1}', steps.name.outputs.image, inputs.tag) || '' }}
+          # Layer cache in the registry, so a rebuild that only changes
+          # provision-models.sh does not recompile insightface.
+          cache-from: type=registry,ref=${{ steps.name.outputs.image }}:buildcache
+          cache-to: type=registry,ref=${{ steps.name.outputs.image }}:buildcache,mode=max
+
+      - name: What to do with it
+        run: |
+          echo "### Worker image pushed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.name.outputs.image }}:latest" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Paste that into the RunPod ComfyUI endpoint's Container Image, save, then set COMFY_GRAPH=faceid in Vercel." >> "$GITHUB_STEP_SUMMARY"
+          echo "First cold start downloads ~2GB of weights to the network volume and is slow. Every one after that is not." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "If RunPod cannot pull it, the GHCR package is still private: GitHub → Packages → hc-comfy-worker → Package settings → Change visibility → Public." >> "$GITHUB_STEP_SUMMARY"

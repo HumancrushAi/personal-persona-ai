@@ -492,10 +492,13 @@ export function comfyTemplate(): string {
   if (override) return override;
   const named = (process.env.COMFY_GRAPH ?? "").trim().toLowerCase();
   if (named === "faceid") return FACEID_WORKFLOW;
-  // Needs no custom nodes, so unlike faceid it can be switched on against the
-  // endpoint exactly as it stands.
-  if (named === "img2img") return IMG2IMG_WORKFLOW;
-  return DEFAULT_WORKFLOW;
+  // Explicit stock txt2img only when asked. Identity is the product default —
+  // a stranger every render is the worst failure mode.
+  if (named === "default" || named === "txt2img") return DEFAULT_WORKFLOW;
+  // img2img works on the stock worker (no custom nodes). FaceID is better when
+  // the worker image has IPAdapter + Impact Pack; set COMFY_GRAPH=faceid for that.
+  // Unset / empty / "img2img" all land here so production stays consistent.
+  return IMG2IMG_WORKFLOW;
 }
 
 /**

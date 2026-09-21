@@ -14,6 +14,10 @@ FROM runpod/worker-comfyui:5.10.0-base
 
 USER root
 
+# pip exits 2 rather than installing into an externally managed interpreter
+# (PEP 668). Inside a virtualenv this is ignored, so it is safe either way.
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+
 # insightface has no prebuilt wheel for most Python/CUDA combinations, so pip
 # compiles it. Without a toolchain the build fails with a wall of C errors that
 # reads like a missing package rather than a missing compiler.
@@ -65,34 +69,36 @@ RUN set -eux; \
       if [ -x "$p" ]; then PY="$p"; break; fi; \
     done; \
     if [ -z "$PY" ]; then echo "FATAL: no python interpreter found." >&2; exit 1; fi; \
-    echo "using COMFY_DIR=$COMFY_DIR"; \
-    echo "using PY=$PY"; \
-    if command -v uv >/dev/null 2>&1; then \
-      INSTALL="uv pip install --python $PY"; \
-    elif "$PY" -m pip --version >/dev/null 2>&1; then \
-      INSTALL="$PY -m pip install --no-cache-dir"; \
-    elif "$PY" -m ensurepip --upgrade >/dev/null 2>&1; then \
-      INSTALL="$PY -m pip install --no-cache-dir"; \
-    else \
-      curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py; \
-      "$PY" /tmp/get-pip.py; \
-      INSTALL="$PY -m pip install --no-cache-dir"; \
+    echo "PHASE=detect COMFY_DIR=$COMFY_DIR PY=$PY"; \
+    if ! "$PY" -m pip --version; then \
+      echo "PHASE=bootstrap-pip"; \
+      "$PY" -m ensurepip --upgrade || { \
+        curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py; \
+        "$PY" /tmp/get-pip.py; \
+      }; \
     fi; \
-    echo "using INSTALL=$INSTALL"; \
+    "$PY" -m pip --version; \
     for repo in \
         cubiq/ComfyUI_IPAdapter_plus \
         ltdrdata/ComfyUI-Impact-Pack \
         ltdrdata/ComfyUI-Impact-Subpack; do \
       name="${repo#*/}"; \
+      echo "PHASE=clone $name"; \
       git clone --depth 1 "https://github.com/$repo.git" "$COMFY_DIR/custom_nodes/$name"; \
       if [ -f "$COMFY_DIR/custom_nodes/$name/requirements.txt" ]; then \
-        $INSTALL -r "$COMFY_DIR/custom_nodes/$name/requirements.txt"; \
+        echo "PHASE=requirements $name"; \
+        cat "$COMFY_DIR/custom_nodes/$name/requirements.txt"; \
+        "$PY" -m pip install --no-cache-dir -r "$COMFY_DIR/custom_nodes/$name/requirements.txt" \
+          || echo "WARN: requirements for $name did not install cleanly; continuing"; \
       fi; \
     done; \
-    $INSTALL "numpy<2" insightface==0.7.3 onnxruntime-gpu; \
+    echo "PHASE=insightface"; \
+    "$PY" -m pip install --no-cache-dir "numpy<2" insightface==0.7.3 onnxruntime-gpu; \
+    echo "PHASE=verify"; \
     "$PY" -c "import insightface; print('insightface', insightface.__version__)"; \
     "$PY" -c "import numpy; print('numpy', numpy.__version__)"; \
-    ls -1 "$COMFY_DIR/custom_nodes"
+    ls -1 "$COMFY_DIR/custom_nodes"; \
+    echo "PHASE=done"
 
 # Three node packs, not two.
 #

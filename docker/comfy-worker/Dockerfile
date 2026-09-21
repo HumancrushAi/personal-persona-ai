@@ -48,13 +48,6 @@ RUN apt-get update \
 # Everything discovered is printed before any of it is used. Three builds have
 # now failed on something this block could have said in one line.
 RUN set -eux; \
-    echo "=== what is in this base image ==="; \
-    for d in /comfyui /opt/ComfyUI /ComfyUI /workspace/ComfyUI; do \
-      [ -d "$d" ] && echo "dir  $d" && ls -1 "$d" | head -20 || true; \
-    done; \
-    command -v uv || echo "no uv on PATH"; \
-    command -v python3 || echo "no python3 on PATH"; \
-    echo "=================================="; \
     COMFY_DIR=""; \
     for d in /comfyui/ComfyUI /comfyui /opt/ComfyUI /ComfyUI /workspace/ComfyUI; do \
       if [ -d "$d/custom_nodes" ]; then COMFY_DIR="$d"; break; fi; \
@@ -77,7 +70,8 @@ RUN set -eux; \
         "$PY" /tmp/get-pip.py; \
       }; \
     fi; \
-    "$PY" -m pip --version; \
+    echo "PHASE=build-deps"; \
+    "$PY" -m pip install --no-cache-dir "numpy<2" cython onnxruntime-gpu; \
     for repo in \
         cubiq/ComfyUI_IPAdapter_plus \
         ltdrdata/ComfyUI-Impact-Pack \
@@ -85,18 +79,24 @@ RUN set -eux; \
       name="${repo#*/}"; \
       echo "PHASE=clone $name"; \
       git clone --depth 1 "https://github.com/$repo.git" "$COMFY_DIR/custom_nodes/$name"; \
-      if [ -f "$COMFY_DIR/custom_nodes/$name/requirements.txt" ]; then \
+      req="$COMFY_DIR/custom_nodes/$name/requirements.txt"; \
+      if [ -f "$req" ]; then \
         echo "PHASE=requirements $name"; \
-        cat "$COMFY_DIR/custom_nodes/$name/requirements.txt"; \
-        "$PY" -m pip install --no-cache-dir -r "$COMFY_DIR/custom_nodes/$name/requirements.txt" \
+        { grep -vE '^[[:space:]]*(git\+|-e[[:space:]])' "$req" || true; } > /tmp/req.txt; \
+        echo "--- installing ---"; cat /tmp/req.txt; \
+        echo "--- skipped (vcs) ---"; { grep -E '^[[:space:]]*(git\+|-e[[:space:]])' "$req" || true; }; \
+        "$PY" -m pip install --no-cache-dir -r /tmp/req.txt \
           || echo "WARN: requirements for $name did not install cleanly; continuing"; \
       fi; \
     done; \
     echo "PHASE=insightface"; \
-    "$PY" -m pip install --no-cache-dir "numpy<2" insightface==0.7.3 onnxruntime-gpu; \
+    "$PY" -m pip install --no-cache-dir --no-build-isolation insightface==0.7.3; \
+    echo "PHASE=pin-numpy"; \
+    "$PY" -m pip install --no-cache-dir "numpy<2"; \
     echo "PHASE=verify"; \
     "$PY" -c "import insightface; print('insightface', insightface.__version__)"; \
     "$PY" -c "import numpy; print('numpy', numpy.__version__)"; \
+    "$PY" -c "import onnxruntime; print('onnxruntime', onnxruntime.__version__)"; \
     ls -1 "$COMFY_DIR/custom_nodes"; \
     echo "PHASE=done"
 

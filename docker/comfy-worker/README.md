@@ -88,6 +88,17 @@ herself.
 | Python | `insightface==0.7.3`, `onnxruntime-gpu`, `numpy<2` |
 | Weights | fetched to the volume at boot, not baked in — see `provision-models.sh` |
 
+A node pack's requirements are installed with its VCS lines removed. Impact
+Pack pins `git+https://github.com/facebookresearch/sam2`, which fails to build
+its build dependencies and took the whole image down with it. SAM2 is for
+SAM-based masking; the FaceID graph uses FaceDetailer with the Ultralytics
+detector and never touches it. The build log prints both what it installed and
+what it skipped.
+
+insightface is installed with `--no-build-isolation`, after numpy and cython.
+Its setup.py imports both at build time, and build isolation gives it a clean
+environment that has neither.
+
 Three node packs, not two: `UltralyticsDetectorProvider`, which feeds
 FaceDetailer its face bounding box, was split out of Impact Pack into Impact
 Subpack. Install only the main pack and the graph fails validation with a

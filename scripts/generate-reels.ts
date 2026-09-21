@@ -163,6 +163,12 @@ async function main() {
   const { data, error } = await db
     .from("companions")
     .select("id, name, image_url, sort_order")
+    // Custom companions are excluded, because getEffectiveCompanionReel returns
+    // null for anything with created_by set — a clip generated for one is never
+    // displayed anywhere. Without this the roster was 75 rather than 52, so a
+    // full run spent roughly forty minutes and a RunPod video job apiece on
+    // twenty-three clips the site cannot show.
+    .is("created_by", null)
     .order("sort_order");
   if (error) throw new Error(error.message);
 

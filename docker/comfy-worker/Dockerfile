@@ -29,22 +29,34 @@ RUN apt-get update \
 # survive between layers.
 #
 # It used to call `comfy-node-install` and a bare `pip`. Both were assumptions
-# about a base image this repo does not build: the helper is a convenience
-# script whose node IDs come from a registry, and `pip` is whichever Python is
-# first on PATH, which on an image that runs ComfyUI inside a virtualenv is the
-# wrong one — packages land somewhere ComfyUI never looks and the graph fails at
-# import with nothing in the build log to explain it.
+# about a base image this repo does not build. The helper's node IDs come from a
+# registry, and `pip` is whichever Python is first on PATH — which on an image
+# that runs ComfyUI inside a virtualenv is the wrong one, so packages land
+# somewhere ComfyUI never looks and the graph fails at import with a green build
+# behind it.
 #
-# So: locate ComfyUI and its interpreter, say which ones were found, and clone
-# the nodes from source at a pinned depth. Failing loudly with a directory
-# listing beats failing silently with a working image that cannot import.
+# Then `$PY -m pip` failed too, in under twenty seconds. worker-comfyui 5.x
+# builds its virtualenv with `uv`, and a uv venv has no pip module in it unless
+# someone asks for one: `python -m pip` exits 1 immediately with "No module
+# named pip". So the installer is chosen rather than assumed as well — uv if it
+# is here, pip if the interpreter has it, ensurepip or get-pip if neither.
+#
+# Everything discovered is printed before any of it is used. Three builds have
+# now failed on something this block could have said in one line.
 RUN set -eux; \
+    echo "=== what is in this base image ==="; \
+    for d in /comfyui /opt/ComfyUI /ComfyUI /workspace/ComfyUI; do \
+      [ -d "$d" ] && echo "dir  $d" && ls -1 "$d" | head -20 || true; \
+    done; \
+    command -v uv || echo "no uv on PATH"; \
+    command -v python3 || echo "no python3 on PATH"; \
+    echo "=================================="; \
     COMFY_DIR=""; \
     for d in /comfyui/ComfyUI /comfyui /opt/ComfyUI /ComfyUI /workspace/ComfyUI; do \
       if [ -d "$d/custom_nodes" ]; then COMFY_DIR="$d"; break; fi; \
     done; \
     if [ -z "$COMFY_DIR" ]; then \
-      echo "FATAL: no ComfyUI custom_nodes directory found in this base image." >&2; \
+      echo "FATAL: no ComfyUI custom_nodes directory found." >&2; \
       ls -la / /comfyui 2>/dev/null || true; \
       exit 1; \
     fi; \
@@ -55,7 +67,18 @@ RUN set -eux; \
     if [ -z "$PY" ]; then echo "FATAL: no python interpreter found." >&2; exit 1; fi; \
     echo "using COMFY_DIR=$COMFY_DIR"; \
     echo "using PY=$PY"; \
-    "$PY" -m pip install --no-cache-dir --upgrade pip; \
+    if command -v uv >/dev/null 2>&1; then \
+      INSTALL="uv pip install --python $PY"; \
+    elif "$PY" -m pip --version >/dev/null 2>&1; then \
+      INSTALL="$PY -m pip install --no-cache-dir"; \
+    elif "$PY" -m ensurepip --upgrade >/dev/null 2>&1; then \
+      INSTALL="$PY -m pip install --no-cache-dir"; \
+    else \
+      curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py; \
+      "$PY" /tmp/get-pip.py; \
+      INSTALL="$PY -m pip install --no-cache-dir"; \
+    fi; \
+    echo "using INSTALL=$INSTALL"; \
     for repo in \
         cubiq/ComfyUI_IPAdapter_plus \
         ltdrdata/ComfyUI-Impact-Pack \
@@ -63,10 +86,10 @@ RUN set -eux; \
       name="${repo#*/}"; \
       git clone --depth 1 "https://github.com/$repo.git" "$COMFY_DIR/custom_nodes/$name"; \
       if [ -f "$COMFY_DIR/custom_nodes/$name/requirements.txt" ]; then \
-        "$PY" -m pip install --no-cache-dir -r "$COMFY_DIR/custom_nodes/$name/requirements.txt"; \
+        $INSTALL -r "$COMFY_DIR/custom_nodes/$name/requirements.txt"; \
       fi; \
     done; \
-    "$PY" -m pip install --no-cache-dir "numpy<2" insightface==0.7.3 onnxruntime-gpu; \
+    $INSTALL "numpy<2" insightface==0.7.3 onnxruntime-gpu; \
     "$PY" -c "import insightface; print('insightface', insightface.__version__)"; \
     "$PY" -c "import numpy; print('numpy', numpy.__version__)"; \
     ls -1 "$COMFY_DIR/custom_nodes"

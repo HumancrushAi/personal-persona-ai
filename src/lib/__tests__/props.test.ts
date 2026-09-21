@@ -252,3 +252,64 @@ describe("where the prop spec sits in the prompt", () => {
     expect(out.trim()).not.toMatch(/silicone[^.]*\.\s*$/i);
   });
 });
+
+// A render came back with three hands. The prompt had asked for it: the scene
+// said "her hands resting on her thighs" — both of them — while the inserted
+// clause put a hand on the toy. Neither sentence is wrong alone, which is why
+// it survived every pass over each of them separately.
+//
+// Underneath that was the larger one. PROMPT_WORD_BUDGET is 300 words and
+// capPromptWords cuts from the END, which is where everything gets appended.
+// The builder produced 370 words, and the two clauses the cap removed were the
+// hand count and the hand description — so the sentences saying how many hands
+// exist never reached the renderer at all. Every earlier round of work on the
+// prop spec was partly landing in the bin for the same reason.
+describe("the word cap cannot eat the prop specification", () => {
+  const finish = async (base: string) => {
+    const { finishMediaPrompt } = await import("../selfie");
+    return finishMediaPrompt(base, "stick a dildo in your pussy", {
+      appendProps: true,
+      still: true,
+      appearance: { age: 23, ethnicity: "european" },
+    } as any);
+  };
+
+  it("keeps the whole spec when the scene is far over budget", async () => {
+    const bloat = ("She stands in a room with a window and a lamp and a chair. ".repeat(40)).trim();
+    const out = await finish(bloat);
+    expect(out.split(/\s+/).length, "over the word budget").toBeLessThanOrEqual(310);
+    expect(out, "the toy's placement was cut").toMatch(/inserted/i);
+    expect(out, "the toy's material was cut").toMatch(/silicone/i);
+    expect(out, "the hand count was cut — this is the third hand").toMatch(
+      /exactly two arms and two hands/i,
+    );
+  });
+
+  // Same guarantee on the other path: the builder writes the spec into its own
+  // text, so it is lifted out before the cut and put back after it.
+  it("keeps it when the builder already wrote it in", async () => {
+    const { stillImagePrompt, finishMediaPrompt } = await import("../selfie");
+    const raw = stillImagePrompt({ gender: "female", name: "Jade" }, "stick a dildo in your pussy");
+    const out = finishMediaPrompt(raw, "stick a dildo in your pussy", {
+      appendProps: false,
+      still: true,
+      appearance: { age: 23, ethnicity: "european" },
+    } as any);
+    expect(out).toMatch(/exactly two arms and two hands/i);
+    expect(out).toMatch(/five separate countable fingers/i);
+    // ...and exactly once. Lifting it out and putting it back must not double it.
+    expect(out.match(/exactly two arms and two hands/gi)).toHaveLength(1);
+  });
+
+  it("no longer places both hands somewhere else while one is on the toy", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const out = finishMediaPrompt(
+      "She is reclining back against pillows, her hands resting on her thighs, soft daylight.",
+      "stick a dildo in your pussy",
+      { appendProps: true, appearance: { age: 23, ethnicity: "european" } } as any,
+    );
+    expect(out, "both hands are placed away from the toy").not.toMatch(
+      /hands\s+resting\s+on\s+(?:her|his|their)\s+thighs/i,
+    );
+  });
+});

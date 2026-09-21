@@ -182,6 +182,21 @@ const vulvaAnatomy = (a: Anatomy) =>
 //   3. CONTACT — both ends anchored to named body parts: tip inside her, base at
 //      her hand, wrist against her inner thigh. An object with both ends pinned
 //      low has nowhere to travel.
+// Stated as a COUNT, and with no second location.
+//
+// The render came back with three hands. It was told to: the scene said "her
+// hands resting on her thighs" — both of them — and the inserted clause said
+// her fingers were on the toy. Two hands there, one hand here, and the render
+// resolved the arithmetic the only way it could.
+//
+// A count is the fix, not a prohibition. "extra hand" in the negative spends
+// itself on `hand`, which is the rule this file already follows everywhere
+// else. And the second hand is deliberately left unplaced: naming somewhere for
+// it to be is how the contradiction started, and the scene has usually put the
+// arms somewhere already.
+const TWO_HANDS =
+  "Exactly two arms and two hands on her body in this frame, one of them closed on the base of the toy.";
+
 const INSERTED_CLAUSE =
   "The toy is inserted into her, angled downward along the line between her open thighs: most of the shaft is hidden inside her body, with only the flared base showing, her fingers on it and her wrist against her inner thigh. Where it enters, her pussy presses snugly around the silicone, natural moisture glistening at the exact point of entry, in sharp focus.";
 
@@ -230,7 +245,7 @@ export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): strin
 
   const a = opts.anatomy ?? anatomyOf("female");
   const inserted = INSERTED_RE.test(text);
-  const parts = inserted ? [INSERTED_CLAUSE, prop.spec] : [prop.spec];
+  const parts = inserted ? [INSERTED_CLAUSE, prop.spec, TWO_HANDS] : [prop.spec];
   if (BIG_RE.test(text)) parts.push(BIG_CLAUSE);
   parts.push(HAND_CLAUSE);
   if (a.hasVulva) parts.push(vulvaAnatomy(a));

@@ -889,6 +889,29 @@ function withoutDeadReference(clause: string, noReference?: boolean): string {
   return kept.length >= 60 ? kept : clause;
 }
 
+/**
+ * Put a clause third, after the framing and identity sentences.
+ *
+ * Shared by the two places that need it, because they disagreed: one inserted
+ * the prop specification near the front and the other let the cap cut it off
+ * the back, so on the path that used both, the clause was moved forward and
+ * then deleted anyway.
+ *
+ * The refiner writes comma-separated fragments with no terminating full stop,
+ * so the boundary is normalised before splitting — a bare space once ran its
+ * last fragment into the spec ("…shot on Sony A7 IV 85mm lens The toy is
+ * inserted into her").
+ */
+function withClauseUpFront(text: string, clause: string): string {
+  if (!clause) return text;
+  const tidy = text.replace(/[\s,;:]+$/, "");
+  const stopped = /[.!?]$/.test(tidy) ? tidy : `${tidy}.`;
+  const sentences = stopped.split(/(?<=\.)\s+/);
+  const head = sentences.slice(0, 2).join(" ");
+  const tail = sentences.slice(2).join(" ");
+  return tail ? `${head} ${clause} ${tail}` : `${head} ${clause}`;
+}
+
 export function finishMediaPrompt(
   base: string,
   req: string,
@@ -1019,35 +1042,6 @@ export function finishMediaPrompt(
     out = rest.length ? `${first} ${sentence} ${rest.join(" ")}` : `${sentence} ${out}`;
   }
 
-  if (opts.appendProps) {
-    const props = propClause(request, { anatomy: a });
-    if (props) {
-      // Third sentence, not last.
-      //
-      // This was appended to the end of a ~300-word prompt, which is exactly
-      // where the text encoder weighs a token least — the same position that
-      // made COMFY_BUILD's "slim" do nothing until it was moved to the front.
-      // The prop spec is the longest and most specific passage in the whole
-      // prompt, and it was sitting where it counted for least. That is how a
-      // toy described down to its material, colour, length, thickness and base
-      // still arrived malformed.
-      //
-      // Sentences one and two are framing and identity, both of which have
-      // their own reason to be first. The prop goes straight after them, ahead
-      // of the scene description.
-      //
-      // The refiner writes comma-separated fragments with no terminating full
-      // stop, so the boundary is normalised before splitting — a bare space
-      // once ran its last fragment into the spec ("…shot on Sony A7 IV 85mm
-      // lens The toy is inserted into her").
-      const tidy = out.replace(/[\s,;:]+$/, "");
-      const stopped = /[.!?]$/.test(tidy) ? tidy : `${tidy}.`;
-      const sentences = stopped.split(/(?<=\.)\s+/);
-      const head = sentences.slice(0, 2).join(" ");
-      const tail = sentences.slice(2).join(" ");
-      out = tail ? `${head} ${props} ${tail}` : `${head} ${props}`;
-    }
-  }
 
   // A toy the user asked to have inserted, described as being held, is the
   // single failure this whole path exists to prevent — and "holding a dildo" in
@@ -1056,6 +1050,20 @@ export function finishMediaPrompt(
   // hand is doing there.
   if (propIsInserted(request)) {
     const poss = a.poss;
+    // Both hands cannot be on her thighs while one of them is on the toy.
+    //
+    // The reclining builder scene ends "her hands resting on her thighs", the
+    // inserted clause puts a hand on the toy, and a render went out with three
+    // of them. Neither sentence is wrong on its own, which is why this survived
+    // every pass over each of them separately — it exists only in the join.
+    //
+    // Rewritten to one hand with no location, so it agrees with the toy clause
+    // instead of competing with it. Runs on the refined prompt too, which can
+    // write the same sentence.
+    out = out.replace(
+      /\b(?:her|his|their)\s+hands\s+(?:resting|rest|placed|lying|laid|folded)?\s*(?:on|at|by|against|in)\s+(?:her|his|their)\s+(?:thighs|sides|hips|lap|stomach|belly|chest|waist)\b/gi,
+      `${poss} other hand relaxed`,
+    );
     out = out.replace(
       /\b(?:holding|holds|gripping|grips|clutching|raising|lifting)\s+(?:a|an|the|her|his)?\s*(?:large |big |thick |huge )?(?:silicone |matte |black )*(?:dildo|sex toy|toy|vibrator|plug|wand)\b/gi,
       `with the toy inserted between ${poss} open thighs, ${poss} fingers closed on its base`,
@@ -1072,14 +1080,39 @@ export function finishMediaPrompt(
   // appending after meant the cap could quietly delete the cue the builder had
   // already written — measured on the dildo request, which is exactly the one
   // where a mid-motion frame does the most damage.
-  const capped = capPromptWords(
-    out,
-    opts.still
-      ? PROMPT_WORD_BUDGET - STILL_CUE_WORDS
-      : opts.moving
-        ? PROMPT_WORD_BUDGET - MOTION_CUE_WORDS
-        : undefined,
-  );
+  // The word cap cuts from the END, and everything appended here was at the end.
+  //
+  // Measured on the dildo request: the builder produced 370 words, the cap took
+  // it to 300, and the two clauses it removed were the hand count and the hand
+  // description. That is the whole of the third hand — the sentences that said
+  // how many hands there are never reached the renderer. It also means every
+  // previous round of work on the prop spec was partly landing in the bin,
+  // which is why detailed, correct specifications kept producing nothing.
+  //
+  // So the prop specification is lifted out before the cut and put back after
+  // it, at the front where the encoder weighs it hardest. The scene text loses
+  // the words instead, which is what a budget should spend first.
+  const propText = propClause(request, { anatomy: a });
+  // Two ways the spec can be needed: the builder already wrote it into its own
+  // text, or the refiner replaced the builder wholesale and it has to be added.
+  // Both end up in the same place — third, after the cut.
+  const alreadyIn = Boolean(propText) && out.includes(propText);
+  const wantProp = Boolean(propText) && (alreadyIn || Boolean(opts.appendProps));
+  const reserve = wantProp ? propText.trim().split(/\s+/).length : 0;
+  const cueWords = opts.still ? STILL_CUE_WORDS : opts.moving ? MOTION_CUE_WORDS : 0;
+
+  let body = out;
+  if (alreadyIn) {
+    body = out
+      .replace(propText, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.])/g, "$1")
+      .replace(/\.\s*\./g, ".")
+      .trim();
+  }
+
+  body = capPromptWords(body, PROMPT_WORD_BUDGET - reserve - cueWords);
+  const capped = wantProp ? withClauseUpFront(body, propText) : body;
   // Specific phrases, not the bare word "still" — the prop clause contains
   // "only the flared base still visible", which matched and silently suppressed
   // the cue on the one request that most needs it.

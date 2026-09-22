@@ -128,9 +128,17 @@ async function main() {
   // catch fired, nothing had been logged yet, and the run looked like it had
   // never started. Wrapped the same way as everything else in this file now.
   const { data, error } = await withRetry(async () => {
+    // Custom companions excluded. They are user-created, some presumably
+    // with a portrait the user chose or generated deliberately, and this script
+    // would overwrite it with a random draw from the generic wardrobe pools.
+    // This ran unfiltered once tonight and reached 6 of the 75 rows (all in the
+    // live catalogue, none custom, confirmed from the log) before being caught
+    // and stopped — the same 75-vs-52 mistake generate-reels.ts had, fixed
+    // there for the identical reason.
     const res = await db
       .from("companions")
       .select("id, name, age, ethnicity, gender, art_style, short_bio, image_url, sort_order")
+      .is("created_by", null)
       .order("sort_order");
     if (res.error) throw new Error(res.error.message);
     return res;

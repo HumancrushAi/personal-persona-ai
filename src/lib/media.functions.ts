@@ -226,6 +226,7 @@ export function negativeFor(
 import { propClause, propNegative } from "./props";
 import { anatomyOf, crossSexNegative, genderKind } from "./anatomy";
 import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
+import { companionImage } from "./companion-images";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
 const SELFIE_COST = 8;
@@ -920,8 +921,27 @@ export const requestVideo = createServerFn({ method: "POST" })
 function resolveHostedImage(imageUrl?: string | null): string | null {
   const u = (imageUrl ?? "").trim();
   if (!u) return null;
+
+  // Already a real URL (create-flow uploads, admin regenerate, data URLs)
   if (/^(https?:|data:)/i.test(u)) return u;
-  if (u.startsWith("/")) return `${process.env.PUBLIC_SITE_URL || "https://humancrush.com"}${u}`;
+
+  const base = (process.env.PUBLIC_SITE_URL || "https://humancrush.com").replace(
+    /\/$/,
+    "",
+  );
+
+  // Site-relative path
+  if (u.startsWith("/")) return `${base}${u}`;
+
+  // Seeded companions store bare filenames like "01-aria.jpg".
+  // companionImage() maps those to the Vite-bundled asset URL.
+  const resolved = companionImage(u);
+  if (resolved) {
+    if (/^(https?:|data:)/i.test(resolved)) return resolved;
+    if (resolved.startsWith("/")) return `${base}${resolved}`;
+    return resolved;
+  }
+
   return null;
 }
 

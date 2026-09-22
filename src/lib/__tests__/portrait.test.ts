@@ -69,6 +69,39 @@ describe("portraitPrompt", () => {
     expect(new Set(pairs).size).toBe(pairs.length);
   });
 
+  // A bikini in a kitchen was the original bug this pairing logic exists to
+  // prevent. Swimwear now gets its own scene pool, so it is impossible for the
+  // two to land together — checked here rather than trusted, since the whole
+  // point of a regression test is to catch the next person who "simplifies"
+  // this back into one shared scene pool.
+  it("never puts swimwear in an indoor scene, or loungewear at the pool", () => {
+    const SWIM_WORDS = /bikini|swimsuit|swim shorts|swim briefs|swim trunks|rash vest/i;
+    const SWIM_PLACES = /pool|beach|boardwalk|lounger|shore|tide/i;
+    for (const n of ROSTER) {
+      const p = portraitPrompt(subject(n));
+      const outfit = outfitOf(p);
+      const scene = sceneOf(p);
+      if (SWIM_WORDS.test(outfit)) {
+        expect(scene, `${n}: swimwear outfit "${outfit}" in a non-swim scene "${scene}"`).toMatch(
+          SWIM_PLACES,
+        );
+      } else {
+        expect(scene, `${n}: indoor outfit "${outfit}" in a swim scene "${scene}"`).not.toMatch(
+          SWIM_PLACES,
+        );
+      }
+    }
+  });
+
+  // The roster should actually see some swimwear — the whole reason the pool
+  // exists — not just prove it never collides with the wrong scene.
+  it("puts a real share of the roster in swimwear", () => {
+    const SWIM_WORDS = /bikini|swimsuit|swim shorts|swim briefs|swim trunks|rash vest/i;
+    const inSwim = ROSTER.filter((n) => SWIM_WORDS.test(outfitOf(portraitPrompt(subject(n)))));
+    expect(inSwim.length).toBeGreaterThanOrEqual(4);
+    expect(inSwim.length).toBeLessThanOrEqual(ROSTER.length - 4);
+  });
+
   it("is deterministic, so reruns don't reshuffle a companion's look", () => {
     expect(portraitPrompt(subject("Aria"))).toBe(portraitPrompt(subject("Aria")));
   });

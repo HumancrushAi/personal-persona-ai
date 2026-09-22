@@ -59,3 +59,6 @@ marketing/adult-explicit/plates/*-hi.png
 
 # Local renders from scripts/test-still.ts
 .stills/
+
+# Claude Code scratch directory
+.tmp/

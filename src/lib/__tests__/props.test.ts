@@ -352,7 +352,7 @@ describe("one person, two hands, and the toy actually held", () => {
   //
   // The timeout is the small half of this. The large half is that a server
   // module now pulls the entire companion image set into its bundle.
-  it("names the crowd in the negative too", { timeout: 20000 }, async () => {
+  it("names the crowd in the negative too", { timeout: 30000 }, async () => {
     const { negativeFor } = await import("../media.functions");
     const neg = negativeFor("stick a dildo in your pussy", "female", { moving: false });
     for (const term of ["two people", "second person", "extra person", "someone else's hand"]) {

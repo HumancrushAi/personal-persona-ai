@@ -81,33 +81,66 @@ function hashName(name: string): number {
 // Clothes worn at home, with their colour and fabric stated. Sexy because they
 // are intimate and real, not because an adjective says so. No commas inside an
 // entry: the prompt is comma-joined and the tests read the outfit back out.
+// Skimpy, and paired with a place that makes sense for it.
+//
+// Two settings, not one. An outfit and a scene used to be picked independently,
+// which is how "a string bikini" once landed "sitting at a kitchen table" — the
+// bug the comment above records. Swimwear cannot be location-neutral, so it
+// gets its own scenes and the two are chosen together.
+//
+// No commas inside an entry: the prompt is comma-joined and the tests read the
+// outfit back out of it.
 const FEM_OUTFITS = [
-  "a black lace bra and matching briefs under an open oversized white button-up shirt",
-  "a fitted white ribbed tank top and pale grey cotton sleep shorts",
-  "a thin-strapped champagne satin slip that ends mid-thigh",
-  "a matching sage green cotton bralette and underwear set",
-  "a cropped white baby tee and low-rise blue jeans with the top button undone",
-  "a sheer black mesh bodysuit under a loose cream knit cardigan",
-  "a short dusty pink silk robe tied loosely over a lace bralette",
-  "an oversized grey university hoodie over black lace underwear",
+  "a black lace bra and matching thong under an open sheer robe",
+  "a tiny white ribbed crop top and high-cut cotton briefs",
+  "a thin-strapped champagne satin slip that stops high on the thigh",
+  "a matching sage green lace bralette and high-leg underwear set",
+  "a sheer black mesh bodysuit over a strapless black bra",
+  "a short dusty pink silk robe hanging open over a lace bralette and briefs",
+  "a skin-tight ribbed mini dress that stops high on the thigh",
+  "an oversized grey hoodie worn over black lace underwear and nothing on the legs",
+] as const;
+
+const FEM_SWIM = [
+  "a red string bikini tied high on the hips",
+  "a black cut-out one-piece swimsuit with a deep neckline",
+  "a white triangle bikini top and matching high-leg bottoms",
+  "a metallic gold bandeau bikini",
+  "a sheer sarong knotted low over a turquoise bikini",
 ] as const;
 
 const MASC_OUTFITS = [
-  "a plain white t-shirt and grey sweatpants",
-  "an unbuttoned red flannel shirt over a bare chest and faded jeans",
-  "a fitted black t-shirt and dark jeans",
   "grey boxer briefs and an open navy zip hoodie",
-  "a white cotton tank top and black basketball shorts",
-  "a loose linen shirt with the sleeves pushed up and beige chinos",
+  "an unbuttoned red flannel shirt over a bare chest and faded jeans",
+  "a fitted black tank top and low-slung grey sweatpants",
+  "black boxer briefs and nothing else",
+  "a white cotton tank top and short black gym shorts",
+  "an open linen shirt over a bare chest and beige chinos",
+] as const;
+
+const MASC_SWIM = [
+  "a pair of low-slung black swim shorts",
+  "tight navy swim briefs",
+  "red swim shorts worn low on the hips with an open linen shirt",
+  "short white swim trunks",
+  "teal swim briefs and a gold chain",
 ] as const;
 
 const ENBY_OUTFITS = [
-  "an oversized faded band t-shirt and black bike shorts",
-  "a loose white button-up shirt and relaxed charcoal trousers",
-  "a cropped grey hoodie and black joggers",
-  "a ribbed olive tank top and wide-leg light jeans",
-  "a sheer black long-sleeve mesh top and cargo shorts",
-  "an open brown cardigan over a plain white tank and denim shorts",
+  "a cropped grey hoodie and black briefs",
+  "a sheer black long-sleeve mesh top and short cotton shorts",
+  "a ribbed olive tank top and high-cut underwear",
+  "an open brown cardigan over a plain white tank and micro denim shorts",
+  "a tight black bodysuit cut high on the hip",
+  "an oversized faded band t-shirt worn with nothing on the legs",
+] as const;
+
+const ENBY_SWIM = [
+  "a black high-cut one-piece swimsuit",
+  "a plain white bikini top and board shorts",
+  "olive swim briefs and an open mesh tank",
+  "a cut-out grey swimsuit",
+  "navy swim shorts and a cropped rash vest",
 ] as const;
 
 // Where and how, together, so the pose can never contradict the place. Each is
@@ -133,6 +166,24 @@ const SCENES: readonly ((p: { poss: string; refl: string }) => string)[] = [
   (p) =>
     `sitting on a bedroom floor with ${p.poss} back against the side of the bed next to a phone charger and a half-finished mug of coffee`,
   () => `standing in a sunlit living room beside a cluttered bookshelf and a plant that needs watering`,
+] as const;
+
+// Swimwear scenes, kept separate from SCENES for the same reason the outfits
+// are: a bikini in a kitchen was the bug this file records above. Each of
+// these is a place swimwear actually belongs, grounded the same way the
+// indoor scenes are — pool deck furniture, a beach towel, damp hair — rather
+// than a resort-brochure "crystal clear infinity pool".
+const SWIM_SCENES: readonly ((p: { poss: string; refl: string }) => string)[] = [
+  (p) =>
+    `sitting on the edge of a backyard pool with ${p.poss} feet in the water and a folded towel beside ${p.refl}`,
+  (p) =>
+    `standing on a wooden beach boardwalk with sand on ${p.poss} legs and sunglasses pushed up into ${p.poss} hair`,
+  (p) =>
+    `lying back on a pool lounger under an umbrella with a half-empty water bottle beside ${p.refl}`,
+  (p) =>
+    `standing at the edge of the shore with wet sand underfoot and the tide reaching ${p.poss} ankles`,
+  (p) =>
+    `leaning against the ladder of an apartment complex pool with ${p.poss} hair still damp`,
 ] as const;
 
 // How a real photo of a real person looks, stated as what IS there. Phone
@@ -164,14 +215,27 @@ export function portraitPrompt(c: PortraitSubject, extra?: string): string {
       : g === "non-binary"
         ? ENBY_OUTFITS
         : FEM_OUTFITS;
-  // Salts 27 and 16, not the 2 and 3 these started from. They are arbitrary
-  // numbers, and they were chosen: with these pool sizes, 2 and 3 gave three of
-  // the 29 live companions an outfit AND a scene another companion already had
-  // — the same photo twice on the homepage grid. 27 and 16 give every live
-  // companion a different pair and use every outfit and every scene. Changing a
-  // pool's length changes the spread; the roster test says so if it breaks.
-  const outfit = pick(outfits, seed, 27);
-  const scene = pick(SCENES, seed, 16)(pronouns(g));
+  const swimOutfits =
+    g === "male" || g === "trans-male" ? MASC_SWIM : g === "non-binary" ? ENBY_SWIM : FEM_SWIM;
+
+  // Roughly one in three lands in swimwear rather than lingerie/loungewear.
+  // Deterministic like everything else here, off its own salt so it does not
+  // move in step with which outfit or scene gets picked.
+  const swim = pick([false, false, true] as const, seed, 1);
+
+  // Salts 1, 4 and 28. Arbitrary numbers, brute-force searched: with these pool
+  // sizes, several small salts (2 and 3 among them) gave two or three of the 29
+  // live companions an outfit AND a scene another companion already had — the
+  // same photo twice on the homepage grid, now doubled by swim-vs-not being a
+  // third dimension of the same collision. These three give every live
+  // companion a distinct (swim, outfit, scene) triple. Changing a pool's length,
+  // or the roster, changes the spread; the roster test says so if it breaks —
+  // rerun the search in that case rather than nudging a number by hand.
+  //
+  // Swimwear draws from its own outfit pool and its own scene pool — a bikini
+  // still cannot land in a kitchen, it lands in one of the SWIM_SCENES instead.
+  const outfit = swim ? pick(swimOutfits, seed, 4) : pick(outfits, seed, 4);
+  const scene = swim ? pick(SWIM_SCENES, seed, 28)(pronouns(g)) : pick(SCENES, seed, 28)(pronouns(g));
 
   if (c.art_style === "anime") {
     return [

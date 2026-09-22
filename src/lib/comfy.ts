@@ -487,6 +487,24 @@ export function comfyError(output: any): string | null {
  * it needs are not in the stock worker image, and a graph naming a class the
  * worker does not have fails every job rather than degrading.
  */
+/**
+ * Does this graph sample from an encoded portrait, or from empty noise?
+ *
+ * Asked of the GRAPH rather than of COMFY_GRAPH, because those two stopped
+ * agreeing. comfyTemplate now returns the img2img graph when COMFY_GRAPH is
+ * unset, while the denoise default was still reading the variable and matching
+ * the literal string "img2img" — so an unset variable produced an img2img
+ * graph sampled at denoise 1, which discards the starting latent entirely and
+ * renders the stranger the whole graph exists to prevent.
+ *
+ * A VAEEncode feeding the sampler is what makes a graph image-to-image, so
+ * that is what this looks for. It stays correct for a hand-written
+ * COMFY_WORKFLOW_JSON too, which no amount of env-var matching would.
+ */
+export function usesStartLatent(template = comfyTemplate()): boolean {
+  return /"class_type"\s*:\s*"VAEEncode"/.test(template);
+}
+
 export function comfyTemplate(): string {
   const override = (process.env.COMFY_WORKFLOW_JSON ?? "").trim();
   if (override) return override;
@@ -562,7 +580,7 @@ function numberSetting(name: string, fallback: number): number {
 
 export function comfySettings(
   prompt = "",
-  opts: { promptSetsComposition?: boolean } = {},
+  opts: { promptSetsComposition?: boolean; template?: string } = {},
 ): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
   return {
     seed: seedFor(prompt),
@@ -600,7 +618,7 @@ export function comfySettings(
     // it anchors identity without anchoring composition.
     denoise: numberSetting(
       opts.promptSetsComposition ? "COMFY_DENOISE_POSED" : "COMFY_DENOISE",
-      (process.env.COMFY_GRAPH ?? "").trim().toLowerCase() === "img2img"
+      usesStartLatent(opts.template)
         ? opts.promptSetsComposition
           ? 0.92
           : 0.72

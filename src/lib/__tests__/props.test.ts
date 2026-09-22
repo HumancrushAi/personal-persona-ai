@@ -343,7 +343,16 @@ describe("one person, two hands, and the toy actually held", () => {
     expect(await spec()).toMatch(/alone, the only person in the picture/i);
   });
 
-  it("names the crowd in the negative too", async () => {
+  // Twenty seconds, for a test that does no work.
+  //
+  // media.functions.ts now imports companion-images.ts, which runs an EAGER
+  // import.meta.glob over every companion jpg. Importing anything from
+  // media.functions therefore waits for Vite to process that whole asset
+  // directory, which took this assertion from 544ms to past the 5s default.
+  //
+  // The timeout is the small half of this. The large half is that a server
+  // module now pulls the entire companion image set into its bundle.
+  it("names the crowd in the negative too", { timeout: 20000 }, async () => {
     const { negativeFor } = await import("../media.functions");
     const neg = negativeFor("stick a dildo in your pussy", "female", { moving: false });
     for (const term of ["two people", "second person", "extra person", "someone else's hand"]) {

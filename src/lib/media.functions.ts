@@ -667,7 +667,7 @@ export async function comfyJobInput(
   const promptSetsComposition = composes(request ?? "");
 
   return comfyInput(
-    { ...comfySettings(prompt, { promptSetsComposition }), prompt, negative },
+    { ...comfySettings(prompt, { promptSetsComposition, template }), prompt, negative },
     { template, referenceBase64 },
   );
 }

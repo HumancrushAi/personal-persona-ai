@@ -59,6 +59,12 @@ RUN set -eux; \
     cat /etc/hc-build.env; \
     "$PY" -m pip --version
 
+# cython is pinned under 3. This venv is Python 3.12, and insightface 0.7.3 is
+# from 2023 with no cp312 wheel, so pip compiles it from source. Cython 3.0
+# changed its language defaults and breaks setup.py files written against 0.29 —
+# which insightface's is. The failure is a wall of C errors that reads like a
+# broken toolchain rather than a version conflict.
+#
 # setuptools and wheel are here because of --no-build-isolation below: that flag
 # tells pip to build against THIS environment, so whatever the build needs has
 # to already be in it. numpy and cython for the same reason — insightface's
@@ -66,7 +72,7 @@ RUN set -eux; \
 RUN . /etc/hc-build.env \
  && set -eux \
  && "$PY" -m pip install --no-cache-dir --upgrade setuptools wheel \
- && "$PY" -m pip install --no-cache-dir "numpy<2" cython onnxruntime-gpu
+ && "$PY" -m pip install --no-cache-dir "numpy<2" "cython<3" onnxruntime-gpu
 
 COPY install-node.sh /hc-install-node.sh
 RUN chmod +x /hc-install-node.sh

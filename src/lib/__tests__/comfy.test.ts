@@ -288,11 +288,22 @@ describe("comfyTemplate selection", () => {
     process.env = { ...saved };
   });
 
-  it("defaults to the stock graph, which needs no custom nodes", async () => {
-    const { comfyTemplate, DEFAULT_WORKFLOW } = await import("../comfy");
+  // Defaults to img2img, not to the stock graph.
+  //
+  // The stock graph is text-to-image: nothing anchors her likeness, so every
+  // render is a different woman. That is the worst failure this product has, so
+  // an unconfigured deployment gets the graph that at least starts from her
+  // portrait, and the stock one has to be asked for by name.
+  it("defaults to the graph that starts from her portrait", async () => {
+    const { comfyTemplate, IMG2IMG_WORKFLOW, DEFAULT_WORKFLOW } = await import("../comfy");
     delete process.env.COMFY_GRAPH;
     delete process.env.COMFY_WORKFLOW_JSON;
+    expect(comfyTemplate()).toBe(IMG2IMG_WORKFLOW);
+    process.env.COMFY_GRAPH = "default";
     expect(comfyTemplate()).toBe(DEFAULT_WORKFLOW);
+    process.env.COMFY_GRAPH = "txt2img";
+    expect(comfyTemplate()).toBe(DEFAULT_WORKFLOW);
+    delete process.env.COMFY_GRAPH;
   });
 
   it("selects the identity graph by name", async () => {
@@ -434,11 +445,22 @@ describe("IMG2IMG_WORKFLOW", () => {
     expect(d).toBeGreaterThan(0.5);
   });
 
-  it("leaves the text-to-image graph on full denoise", async () => {
-    const { comfySettings } = await import("../comfy");
+  // Denoise follows the GRAPH, not the variable.
+  //
+  // These two disagreed once: comfyTemplate started returning img2img for an
+  // unset COMFY_GRAPH while the denoise default still matched the literal
+  // string "img2img", so an unset variable produced an img2img graph sampled at
+  // denoise 1 — which throws the starting latent away and renders the stranger
+  // the graph exists to prevent. Asking the graph cannot drift like that.
+  it("leaves a text-to-image graph on full denoise", async () => {
+    const { comfySettings, DEFAULT_WORKFLOW, IMG2IMG_WORKFLOW } = await import("../comfy");
     delete process.env.COMFY_GRAPH;
     delete process.env.COMFY_DENOISE;
-    expect(comfySettings("p").denoise).toBe(1);
+    expect(comfySettings("p", { template: DEFAULT_WORKFLOW }).denoise).toBe(1);
+    // ...and turns it down for one that samples from her portrait, even with
+    // COMFY_GRAPH unset.
+    expect(comfySettings("p", { template: IMG2IMG_WORKFLOW }).denoise).toBe(0.72);
+    expect(comfySettings("p").denoise).toBe(0.72);
   });
 
   it("is selected by name", async () => {
@@ -503,7 +525,10 @@ describe("denoise follows whoever is composing the picture", () => {
   it("stays at 1 on a text-to-image graph", async () => {
     const { comfySettings } = await import("../comfy");
     const prev = process.env.COMFY_GRAPH;
-    delete process.env.COMFY_GRAPH;
+    // Explicitly, not by unsetting it: an unset COMFY_GRAPH now selects the
+    // img2img graph, which is the whole reason denoise stopped reading this
+    // variable and started reading the graph.
+    process.env.COMFY_GRAPH = "default";
     try {
       expect(comfySettings("x", { promptSetsComposition: true }).denoise).toBe(1);
     } finally {

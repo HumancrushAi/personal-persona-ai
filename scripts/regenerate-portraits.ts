@@ -122,10 +122,19 @@ async function generateWithRetry(
 }
 
 async function main() {
-  const { data, error } = await db
-    .from("companions")
-    .select("id, name, age, ethnicity, gender, art_style, short_bio, image_url, sort_order")
-    .order("sort_order");
+  // Every network call past this point is wrapped in withRetry — except this
+  // one was not. A single transient "fetch failed" here used to kill the
+  // whole batch before a single companion was touched: main()'s top-level
+  // catch fired, nothing had been logged yet, and the run looked like it had
+  // never started. Wrapped the same way as everything else in this file now.
+  const { data, error } = await withRetry(async () => {
+    const res = await db
+      .from("companions")
+      .select("id, name, age, ethnicity, gender, art_style, short_bio, image_url, sort_order")
+      .order("sort_order");
+    if (res.error) throw new Error(res.error.message);
+    return res;
+  }, "fetch roster");
   if (error) throw new Error(error.message);
 
   let rows = (data ?? []) as Row[];

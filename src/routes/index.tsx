@@ -725,14 +725,14 @@ function Landing() {
                       key={reel}
                       src={reel}
                       poster={companionImage(c.image_url)}
-                      className="absolute inset-0 h-full w-full object-cover object-top animate-live"
+                      className="absolute inset-0 h-full w-full object-cover object-top"
                     />
                   ) : (
                     <img
                       src={companionImage(c.image_url)}
                       alt={c.name}
                       loading="lazy"
-                      className="animate-live absolute inset-0 h-full w-full object-cover object-top"
+                      className="absolute inset-0 h-full w-full object-cover object-top"
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
@@ -810,12 +810,21 @@ function Landing() {
                   className="group relative overflow-hidden rounded-3xl border border-white/5 bg-[#0a070e]/80 text-left shadow-lg transition duration-300 hover:shadow-[0_0_25px_rgba(244,63,94,0.15)] hover:border-pink-500/30"
                 >
                   <div className="relative w-full aspect-[2/3] overflow-hidden">
-                    <img
-                      src={companionImage(c.image_url)}
-                      alt={c.name}
-                      loading="lazy"
-                      className="h-full w-full object-cover object-top transition duration-700 ease-out group-hover:scale-[1.05]"
-                    />
+                    {reel ? (
+                      <AutoPlayVideo
+                        key={reel}
+                        src={reel}
+                        poster={companionImage(c.image_url)}
+                        className="absolute inset-0 h-full w-full object-cover object-top"
+                      />
+                    ) : (
+                      <img
+                        src={companionImage(c.image_url)}
+                        alt={c.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover object-top"
+                      />
+                    )}
 
                     {/* Badge: NEW */}
                     {isNew && (
@@ -890,12 +899,21 @@ function Landing() {
                       className="group relative overflow-hidden rounded-3xl border border-purple-500/20 bg-[#0a070e]/80 text-left shadow-lg transition duration-300 hover:shadow-[0_0_25px_rgba(168,85,247,0.2)] hover:border-purple-500/50"
                     >
                       <div className="relative w-full aspect-[2/3] overflow-hidden">
-                        <img
-                          src={companionImage(c.image_url)}
-                          alt={c.name}
-                          loading="lazy"
-                          className="h-full w-full object-cover object-top transition duration-700 ease-out group-hover:scale-[1.05]"
-                        />
+                        {reel ? (
+                          <AutoPlayVideo
+                            key={reel}
+                            src={reel}
+                            poster={companionImage(c.image_url)}
+                            className="absolute inset-0 h-full w-full object-cover object-top"
+                          />
+                        ) : (
+                          <img
+                            src={companionImage(c.image_url)}
+                            alt={c.name}
+                            loading="lazy"
+                            className="h-full w-full object-cover object-top"
+                          />
+                        )}
 
                         {/* Quick action buttons / icons overlay (lock, video) */}
                         <div className="absolute right-3 top-3 flex flex-col gap-1.5">
@@ -1273,13 +1291,13 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
               src={reel}
               poster={companionImage(companion.image_url)}
               onError={() => setReelFailed(true)}
-              className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+              className="relative z-[1] mx-auto h-full w-full object-contain object-top"
             />
           ) : (
             <img
               src={companionImage(companion.image_url)}
               alt={companion.name}
-              className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+              className="relative z-[1] mx-auto h-full w-full object-contain object-top"
             />
           )}
           <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/35" />
@@ -1716,7 +1734,7 @@ function BannerSlider({
                   <img
                     src={companionImage(s.companion.image_url)}
                     alt={s.companion.name}
-                    className="pointer-events-none h-full w-full object-cover object-center animate-live scale-[1.18] transition duration-500"
+                    className="pointer-events-none h-full w-full object-cover object-center scale-[1.02] transition duration-500"
                   />
                 ) : (
                   <div className="h-full w-full bg-neutral-950" />

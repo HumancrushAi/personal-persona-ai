@@ -101,7 +101,14 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
     id: "667ae29d-7e55-4588-b9c8-7bfad68f455e",
     name: "Jade",
     title: "Midnight vibes",
-    sub: "alt goth babe · vinyl & midnight chats 🖤",
+    sub: "sheer black mesh lace corset · alt goth babe 🖤",
+    gender: "f",
+  },
+  {
+    id: "f9aa06f5-7f49-4f5f-be43-f707e8a2ef78",
+    name: "Mei",
+    title: "Soft elegance",
+    sub: "white silk slip dress · sweet & quiet poet 💋",
     gender: "f",
   },
   {

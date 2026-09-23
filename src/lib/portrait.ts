@@ -91,14 +91,14 @@ function hashName(name: string): number {
 // No commas inside an entry: the prompt is comma-joined and the tests read the
 // outfit back out of it.
 const FEM_OUTFITS = [
-  "a black lace bra and matching thong under an open sheer robe",
-  "a tiny white ribbed crop top and high-cut cotton briefs",
-  "a thin-strapped champagne satin slip that stops high on the thigh",
-  "a matching sage green lace bralette and high-leg underwear set",
-  "a sheer black mesh bodysuit over a strapless black bra",
-  "a short dusty pink silk robe hanging open over a lace bralette and briefs",
-  "a skin-tight ribbed mini dress that stops high on the thigh",
-  "an oversized grey hoodie worn over black lace underwear and nothing on the legs",
+  "a red silk slip dress with thin straps and a deep neckline",
+  "a seductive black lace corset mini dress with a lace hem",
+  "a thin-strapped champagne satin slip dress that stops high on the thigh",
+  "a white silk camisole dress with delicate lace trim",
+  "a sheer black mesh bodycon mini dress over matching lingerie",
+  "a short dusty pink silk robe over a lace slip dress",
+  "a skin-tight plunge red silk mini dress with a high thigh slit",
+  "a revealing emerald satin slip dress with a deep backless cut",
 ] as const;
 
 const FEM_SWIM = [
@@ -127,12 +127,12 @@ const MASC_SWIM = [
 ] as const;
 
 const ENBY_OUTFITS = [
-  "a cropped grey hoodie and black briefs",
-  "a sheer black long-sleeve mesh top and short cotton shorts",
-  "a ribbed olive tank top and high-cut underwear",
-  "an open brown cardigan over a plain white tank and micro denim shorts",
-  "a tight black bodysuit cut high on the hip",
-  "an oversized faded band t-shirt worn with nothing on the legs",
+  "a short black sheer mesh slip dress",
+  "a thin-strapped champagne satin slip dress",
+  "a ribbed olive crop tank top and high-cut silk briefs",
+  "a short silk robe over a sheer lace bralette and briefs",
+  "a tight black lace bodysuit cut high on the hip",
+  "a short satin camisole slip dress",
 ] as const;
 
 const ENBY_SWIM = [

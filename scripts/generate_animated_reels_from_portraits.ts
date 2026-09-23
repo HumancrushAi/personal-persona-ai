@@ -120,15 +120,29 @@ async function generateAnimatedReel(companionId: string, companionName: string) 
 }
 
 async function main() {
-  console.log("=== GENERATING 1:1 MATCHING ANIMATED VIDEO REELS FROM PORTRAITS ===");
+  console.log("=== GENERATING 1:1 MATCHING ANIMATED VIDEO REELS FOR ALL COMPANIONS ===");
+
+  const { data: companions, error } = await db
+    .from("companions")
+    .select("id, name, image_url")
+    .is("created_by", null)
+    .order("sort_order");
+
+  if (error || !companions) {
+    console.error("❌ Failed to fetch companions from DB:", error?.message);
+    process.exit(1);
+  }
+
+  console.log(`Found ${companions.length} default companions to process.`);
 
   let successCount = 0;
-  for (const c of TARGET_COMPANIONS) {
+  for (const c of companions) {
+    if (!c.image_url) continue;
     const ok = await generateAnimatedReel(c.id, c.name);
     if (ok) successCount++;
   }
 
-  console.log(`\n=== COMPLETED ${successCount}/${TARGET_COMPANIONS.length} ANIMATED REELS ===`);
+  console.log(`\n=== COMPLETED ${successCount}/${companions.length} ANIMATED REELS ===`);
 }
 
 main().then(() => process.exit(0)).catch((e) => {

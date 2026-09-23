@@ -108,14 +108,14 @@ function CamCard({ c }: { c: any }) {
           preload="auto"
           onError={() => setReelFailed(true)}
           poster={companionImage(c.image_url)}
-          className="absolute inset-0 h-full w-full object-cover object-top animate-live"
+          className="absolute inset-0 h-full w-full object-cover object-top"
         />
       ) : (
         <img
           src={companionImage(c.image_url)}
           alt={c.name}
           loading="lazy"
-          className="animate-live absolute inset-0 h-full w-full object-cover object-top"
+          className="absolute inset-0 h-full w-full object-cover object-top"
         />
       )}
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">

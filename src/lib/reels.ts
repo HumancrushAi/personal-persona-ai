@@ -33,6 +33,9 @@ export const companionReelUrl = (id: string | null | undefined): string | null =
 //
 //   npx vite-node scripts/generate-reels.ts -- --force --only=Mina
 const MISMATCHED_REELS = new Set([
+  "f668101d-486e-45e2-9e87-69e70e272401", // Raven (old hoodie video)
+  "f9aa06f5-7f49-4f5f-be43-f707e8a2ef78", // Mei (old hoodie video)
+  "667ae29d-7e55-4588-b9c8-7bfad68f455e", // Jade (old hoodie video)
   "347215a1-7c96-4b0a-ada5-d21143578eae", // Chloe
   "b3b12aee-0c9e-4acf-95a5-0bd39a4e3da6", // Mina
   "48a8b105-4980-4220-a735-8cc958b5a1aa", // Esmé

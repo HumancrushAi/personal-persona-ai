@@ -108,14 +108,14 @@ async function main() {
     console.log(`\n🎥 Processing video reel for ${t.name} (${t.id})...`);
     
     // Fetch companion's updated image_url from DB
-    const { data: comp } = await db
+    const { data: comp, error: fetchErr } = await db
       .from("companions")
-      .select("image_url")
+      .select("id, name, image_url")
       .eq("id", t.id)
-      .single();
+      .maybeSingle();
 
-    if (!comp?.image_url) {
-      console.error(`❌ Could not find image_url for ${t.name}`);
+    if (fetchErr || !comp?.image_url) {
+      console.error(`❌ Could not find image_url for ${t.name}:`, fetchErr?.message);
       continue;
     }
 

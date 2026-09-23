@@ -1728,13 +1728,13 @@ function BannerSlider({
                       const v = e.currentTarget;
                       if (v.paused) v.play().catch(() => {});
                     }}
-                    className="pointer-events-none h-full w-full object-cover object-center scale-[1.18] transition duration-500"
+                    className="pointer-events-none h-full w-full object-cover object-center"
                   />
                 ) : s.companion ? (
                   <img
                     src={companionImage(s.companion.image_url)}
                     alt={s.companion.name}
-                    className="pointer-events-none h-full w-full object-cover object-center scale-[1.02] transition duration-500"
+                    className="pointer-events-none h-full w-full object-cover object-center"
                   />
                 ) : (
                   <div className="h-full w-full bg-neutral-950" />

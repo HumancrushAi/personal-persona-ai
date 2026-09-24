@@ -336,7 +336,7 @@ describe("numeric settings", () => {
   it("falls back when the value is not a number", async () => {
     const { comfySettings } = await import("../comfy");
     process.env.COMFY_IPA_LORA = "FACEID PLUS V2";
-    expect(comfySettings("p").ipaLora).toBe(0.6);
+    expect(comfySettings("p").ipaLora).toBe(0.7);
   });
 
   it("never lets NaN into the graph", async () => {
@@ -459,8 +459,8 @@ describe("IMG2IMG_WORKFLOW", () => {
     expect(comfySettings("p", { template: DEFAULT_WORKFLOW }).denoise).toBe(1);
     // ...and turns it down for one that samples from her portrait, even with
     // COMFY_GRAPH unset.
-    expect(comfySettings("p", { template: IMG2IMG_WORKFLOW }).denoise).toBe(0.72);
-    expect(comfySettings("p").denoise).toBe(0.72);
+    expect(comfySettings("p", { template: IMG2IMG_WORKFLOW }).denoise).toBe(0.65);
+    expect(comfySettings("p").denoise).toBe(0.65);
   });
 
   it("is selected by name", async () => {
@@ -509,15 +509,15 @@ describe("denoise follows whoever is composing the picture", () => {
   it("lets her portrait compose a request that says nothing about composition", async () => {
     const { comfySettings } = await import("../comfy");
     await withGraph(() => {
-      expect(comfySettings("x", { promptSetsComposition: false }).denoise).toBe(0.72);
-      expect(comfySettings("x").denoise).toBe(0.72);
+      expect(comfySettings("x", { promptSetsComposition: false }).denoise).toBe(0.65);
+      expect(comfySettings("x").denoise).toBe(0.65);
     });
   });
 
   it("lets the prompt compose a request that names a prop, posture or viewpoint", async () => {
     const { comfySettings } = await import("../comfy");
     await withGraph(() => {
-      expect(comfySettings("x", { promptSetsComposition: true }).denoise).toBe(0.92);
+      expect(comfySettings("x", { promptSetsComposition: true }).denoise).toBe(0.78);
     });
   });
 

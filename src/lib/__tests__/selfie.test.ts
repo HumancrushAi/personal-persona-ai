@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { requestIsNude, selfiePrompt, wantsSelfie, wantsVideo } from "../selfie";
+import {
+  normalizeRequest,
+  requestIsNude,
+  requestedShot,
+  selfiePrompt,
+  wantsSelfie,
+  wantsVideo,
+} from "../selfie";
 
 describe("wantsVideo", () => {
   it("detects video requests", () => {
@@ -282,5 +289,49 @@ describe("requestIsNude", () => {
   it("still treats a named body part or act as nude, whatever else is said", () => {
     expect(requestIsNude("show me your tits in lingerie")).toBe(true);
     expect(requestIsNude("send me a naughty pic of your pussy")).toBe(true);
+  });
+});
+
+describe("photo vocabulary", () => {
+  it("reads portrait, headshot, backshot, pix and friends as a photo request", () => {
+    for (const t of [
+      "send me a face potrait",
+      "send me a portrait",
+      "headshot please",
+      "send me a headshot",
+      "send a backshot",
+      "pix?",
+      "send pix",
+      "send me some pics",
+      "can i get a snapshot of you",
+      "send me a photograph of you",
+      "send me a picture of you",
+    ]) {
+      expect(wantsSelfie(t), t).toBe(true);
+    }
+  });
+
+  it("still leaves ordinary chat alone", () => {
+    for (const t of [
+      "i painted a portrait of my dog last year and it was hard",
+      "send me your snap",
+      "love those photos you sent earlier today babe",
+    ]) {
+      expect(wantsSelfie(t), t).toBe(false);
+    }
+  });
+
+  it("frames a portrait on the face and a backshot from behind", () => {
+    expect(requestedShot("send me a face potrait")).toBe("face");
+    expect(requestedShot("headshot please")).toBe("face");
+    expect(requestedShot("send me a pic of your pretty face")).toBe("face");
+    expect(requestedShot("send a backshot")).toBe("back");
+    expect(requestedShot("send me a nude portrait")).toBe(null);
+    expect(requestedShot("send me a pic")).toBe(null);
+  });
+
+  it("strips the photo lead-in so the action reads cleanly", () => {
+    expect(normalizeRequest("send me a face portrait of you smiling", "she")).toBe("smiling");
+    expect(normalizeRequest("send pix of you in the kitchen", "she")).toBe("in the kitchen");
   });
 });

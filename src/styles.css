@@ -107,16 +107,6 @@
   box-shadow: var(--shadow-glow);
 }
 
-/* Subtle "live" motion for cam / profile cards */
-@keyframes live-ken {
-  0% { transform: scale(1.02) translate(0, 0); }
-  50% { transform: scale(1.09) translate(-1.5%, -1%); }
-  100% { transform: scale(1.02) translate(0, 0); }
-}
-.animate-live {
-  animation: live-ken 9s ease-in-out infinite;
-}
-
 /* Touch-target floor.
  *
  * Rather than chase every screen one at a time — and the chat is behind auth,

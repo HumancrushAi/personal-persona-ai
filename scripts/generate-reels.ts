@@ -13,8 +13,12 @@
 // Costs a RunPod video job per companion (~2 min each). Existing clips are
 // skipped unless --force, so an interrupted run resumes safely.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import sharp from "sharp";
+import ffmpegPath from "ffmpeg-static";
 import { createClient } from "@supabase/supabase-js";
 import { runpodRun, runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } from "../src/lib/runpod";
 
@@ -56,33 +60,67 @@ if (!process.env.RUNPOD_API_KEY || !endpoint) {
 const db = createClient(url, serviceKey, { auth: { persistSession: false } });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function motionForCompanion(c: { name: string; gender: string; short_bio?: string }): string {
+function motionForCompanion(
+  c: { name: string; gender: string; short_bio?: string },
+  attempt = 0,
+): string {
   const g = (c.gender || "").toLowerCase();
-  const pronoun = g.includes("male") && !g.includes("trans-female") ? "he" : "she";
+  // Exact matches: "female".includes("male") is true.
+  const pronoun = g === "male" || g === "trans-male" ? "he" : "she";
   const posPronoun = pronoun === "he" ? "his" : "her";
 
+  // Motion only — never a place. These used to name settings ("rests by the
+  // crystal clear swimming pool", "ocean breeze", "modern lounge"), and the
+  // model obliged: Jade's clip opened on her bedroom portrait and dissolved
+  // into a swimming pool halfway through. The reel has to BE the photo, moving,
+  // so every prompt pins the room, outfit and framing to the first frame.
+  const SAME = "same room, same outfit, same pose and same framing as the first frame throughout";
   const MOTIONS = [
-    // Pool / Swimming
-    `${pronoun} rests by the crystal clear swimming pool water with light water ripples, gentle head turns, blinking, and a radiant charming smile at the camera, natural loop`,
-    // Dancing / Music vibes
-    `${pronoun} sways gently and dances rhythmically to music, moving shoulders with playful laughing expression, blinking naturally, looking at the camera, smooth loop`,
-    // Cafe / Lounge
-    `${pronoun} sits relaxed at a modern lounge, leaning forward slightly, smiling warmly and making flirty eye contact with the camera, natural idle motion`,
-    // Beach / Golden hour
-    `${pronoun} turns gently in the soft warm ocean breeze, hair shifting softly, blinking and laughing with genuine warmth at the lens, seamless loop`,
-    // Sun lounger / Relaxation
-    `${pronoun} relaxes on a luxury lounge chair, resting comfortably, turning head to smile warmly with captivating eye contact, natural breathing`,
-    // Playful / Flirty
-    `${pronoun} smiles playfully, adjusting ${posPronoun} hair with natural hand and head movement, blinking gently and making seductive eye contact, seamless video loop`,
+    `${pronoun} smiles warmly at the camera, blinking naturally, a gentle head tilt and slow natural breathing, ${posPronoun} hair shifting slightly, ${SAME}, seamless loop`,
+    `${pronoun} gives a soft playful laugh, ${posPronoun} shoulders relaxing, glancing away and back into the lens, ${SAME}, seamless loop`,
+    `${pronoun} slowly tucks a strand of hair behind ${posPronoun} ear and smiles at the camera, blinking, subtle breathing, ${SAME}, seamless loop`,
+    `${pronoun} sways gently where ${pronoun} is, flirty eye contact with the camera, blinking, a soft smile, ${SAME}, seamless loop`,
   ];
 
   let seed = 0;
   for (let i = 0; i < c.name.length; i++) seed = (seed * 31 + c.name.charCodeAt(i)) >>> 0;
-  return MOTIONS[seed % MOTIONS.length];
+  return MOTIONS[(seed + attempt) % MOTIONS.length];
+}
+
+// How far the clip wanders from its own first frame: the largest mean
+// difference (0-255) between frame 0 and any later frame, on a 32x32 greyscale
+// thumbnail. Real motion stays low — Aria turning, laughing and tossing her
+// hair peaked at 25 — while Jade's clip dissolving into a swimming pool hit 81.
+const MAX_DRIFT = 40;
+
+function driftFromFirstFrame(clip: Buffer, id: string): number {
+  const src = join(tmpdir(), `reel-${id}-check.mp4`);
+  writeFileSync(src, clip);
+  try {
+    const raw = execFileSync(
+      ffmpegPath as unknown as string,
+      ["-loglevel", "error", "-i", src, "-vf", "scale=32:32,format=gray", "-f", "rawvideo", "-"],
+      { maxBuffer: 64 * 1024 * 1024 },
+    );
+    const N = 32 * 32;
+    let worst = 0;
+    for (let f = 1; f < raw.length / N; f++) {
+      let sum = 0;
+      for (let k = 0; k < N; k++) sum += Math.abs(raw[f * N + k] - raw[k]);
+      worst = Math.max(worst, sum / N);
+    }
+    return worst;
+  } finally {
+    try {
+      unlinkSync(src);
+    } catch {
+      /* never written */
+    }
+  }
 }
 
 const NEGATIVE =
-  "blurry, low quality, deformed, extra limbs, watermark, text, static, still, frozen, no movement, bad anatomy, cartoon, anime, 3d render, nudity, naked, topless";
+  "blurry, low quality, deformed, extra limbs, watermark, text, static, still, frozen, no movement, bad anatomy, cartoon, anime, 3d render, nudity, naked, topless, scene change, background change, transition, dissolve, cut, water, swimming pool, beach, outfit change";
 
 // The video endpoint returns a 640x640 square, and it gets there by centre-
 // cropping whatever you send it — feeding it the 768x1024 portrait directly
@@ -92,8 +130,12 @@ const NEGATIVE =
 // sites use anyway.
 //
 // The squared frame is uploaded alongside the clip so RunPod has a public URL to
-// fetch, and so a failed run can be inspected afterwards.
-async function squareStartFrame(portraitUrl: string, id: string): Promise<string> {
+// fetch, and so a failed run can be inspected afterwards. The portrait's aspect
+// is returned so the padding can be cropped back off the finished clip.
+async function squareStartFrame(
+  portraitUrl: string,
+  id: string,
+): Promise<{ url: string; aspect: number }> {
   const res = await withRetry(() => fetch(portraitUrl), "portrait");
   if (!res.ok) throw new Error(`could not fetch portrait (${res.status})`);
   const src = Buffer.from(await res.arrayBuffer());
@@ -116,7 +158,38 @@ async function squareStartFrame(portraitUrl: string, id: string): Promise<string
     .upload(path, squared, { contentType: "image/png", upsert: true });
   if (error) throw error;
 
-  return db.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  return { url: db.storage.from("avatars").getPublicUrl(path).data.publicUrl, aspect: w / h };
+}
+
+// The clip comes back square with squareStartFrame's padding bars still in it.
+// Cropping them off leaves exactly the portrait's framing, so the reel lines up
+// with the photo and the site never has to scale it up to hide the bars.
+function cropToPortrait(clip: Buffer, aspect: number, id: string): Buffer {
+  const src = join(tmpdir(), `reel-${id}-raw.mp4`);
+  const out = join(tmpdir(), `reel-${id}.mp4`);
+  writeFileSync(src, clip);
+  const crop =
+    aspect <= 1 ? `crop=trunc(ih*${aspect}/2)*2:ih` : `crop=iw:trunc(iw/${aspect}/2)*2`;
+  try {
+    execFileSync(
+      ffmpegPath as unknown as string,
+      [
+        "-y", "-loglevel", "error", "-i", src, "-vf", crop, "-an",
+        "-c:v", "libx264", "-crf", "20", "-preset", "medium",
+        "-pix_fmt", "yuv420p", "-movflags", "+faststart", out,
+      ],
+      { stdio: "pipe" },
+    );
+    return readFileSync(out);
+  } finally {
+    for (const f of [src, out]) {
+      try {
+        unlinkSync(f);
+      } catch {
+        /* never written */
+      }
+    }
+  }
 }
 
 // A single network blip used to kill the whole remaining batch: one `fetch
@@ -162,7 +235,7 @@ async function waitForClip(jobId: string, label: string): Promise<string> {
 async function main() {
   const { data, error } = await db
     .from("companions")
-    .select("id, name, image_url, sort_order")
+    .select("id, name, gender, image_url, sort_order")
     // Custom companions are excluded, because getEffectiveCompanionReel returns
     // null for anything with created_by set — a clip generated for one is never
     // displayed anywhere. Without this the roster was 75 rather than 52, so a
@@ -172,7 +245,7 @@ async function main() {
     .order("sort_order");
   if (error) throw new Error(error.message);
 
-  let rows = (data ?? []) as { id: string; name: string; image_url: string }[];
+  let rows = (data ?? []) as { id: string; name: string; gender: string; image_url: string }[];
   if (only) rows = rows.filter((r) => only.includes(r.name.toLowerCase()));
 
   // Skip companions that already have a clip, so a partial run resumes.
@@ -205,27 +278,37 @@ async function main() {
 
     process.stdout.write(`${label} … framing`);
     try {
-      const startFrame = await squareStartFrame(c.image_url, c.id);
+      const { url: startFrame, aspect } = await squareStartFrame(c.image_url, c.id);
 
-      process.stdout.write(`${label} … queueing `);
-      const job = await withRetry(
-        () =>
-          runpodRun(endpoint!, {
-            image_url: startFrame,
-            fps: Number(process.env.RUNPOD_VIDEO_FPS || "16"),
-            frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
-            num_scenes: 1,
-            sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
-            prompts: [motionForCompanion(c)],
-            negative_prompt: NEGATIVE,
-          }),
-        "submit",
-      );
+      // A clip that drifts away from the portrait is never uploaded: the old
+      // one stays up, and the next attempt tries a different motion prompt.
+      let bytes: Buffer | null = null;
+      let drift = 0;
+      for (let attempt = 0; attempt < 3 && !bytes; attempt++) {
+        process.stdout.write(`${label} … queueing `);
+        const job = await withRetry(
+          () =>
+            runpodRun(endpoint!, {
+              image_url: startFrame,
+              fps: Number(process.env.RUNPOD_VIDEO_FPS || "16"),
+              frames_per_scene: Number(process.env.RUNPOD_VIDEO_FRAMES || "82"),
+              num_scenes: 1,
+              sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "10"),
+              prompts: [motionForCompanion(c, attempt)],
+              negative_prompt: NEGATIVE,
+            }),
+          "submit",
+        );
 
-      const clipUrl = await waitForClip(job.id, label);
-      const res = await withRetry(() => fetch(clipUrl), "download");
-      if (!res.ok) throw new Error(`could not fetch clip (${res.status})`);
-      const bytes = Buffer.from(await res.arrayBuffer());
+        const clipUrl = await waitForClip(job.id, label);
+        const res = await withRetry(() => fetch(clipUrl), "download");
+        if (!res.ok) throw new Error(`could not fetch clip (${res.status})`);
+        const clip = cropToPortrait(Buffer.from(await res.arrayBuffer()), aspect, c.id);
+        drift = driftFromFirstFrame(clip, c.id);
+        if (drift <= MAX_DRIFT) bytes = clip;
+        else console.log(`${label} … drifted ${drift.toFixed(0)} from the portrait, retrying`);
+      }
+      if (!bytes) throw new Error(`every attempt drifted from the portrait (last ${drift.toFixed(0)})`);
 
       const { error: upErr } = await db.storage
         .from("reels")
@@ -233,7 +316,9 @@ async function main() {
       if (upErr) throw upErr;
 
       ok++;
-      console.log(`\r${label} … ✅ ${Math.round(bytes.length / 1024)}KB          `);
+      console.log(
+        `\r${label} … ✅ ${Math.round(bytes.length / 1024)}KB, drift ${drift.toFixed(0)}          `,
+      );
     } catch (e: any) {
       failures.push(`${c.name}: ${e.message || e}`);
       console.log(`\r${label} … ❌ ${e.message || e}          `);

@@ -725,14 +725,14 @@ function Landing() {
                       key={reel}
                       src={reel}
                       poster={companionImage(c.image_url)}
-                      className="absolute inset-0 h-full w-full object-cover object-top animate-live"
+                      className="absolute inset-0 h-full w-full object-cover object-top"
                     />
                   ) : (
                     <img
                       src={companionImage(c.image_url)}
                       alt={c.name}
                       loading="lazy"
-                      className="animate-live absolute inset-0 h-full w-full object-cover object-top"
+                      className="absolute inset-0 h-full w-full object-cover object-top"
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
@@ -1273,13 +1273,13 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
               src={reel}
               poster={companionImage(companion.image_url)}
               onError={() => setReelFailed(true)}
-              className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+              className="relative z-[1] mx-auto h-full w-full object-contain object-top"
             />
           ) : (
             <img
               src={companionImage(companion.image_url)}
               alt={companion.name}
-              className="relative z-[1] mx-auto h-full w-full object-contain object-top animate-live"
+              className="relative z-[1] mx-auto h-full w-full object-contain object-top"
             />
           )}
           <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/35" />
@@ -1710,13 +1710,13 @@ function BannerSlider({
                       const v = e.currentTarget;
                       if (v.paused) v.play().catch(() => {});
                     }}
-                    className="pointer-events-none h-full w-full object-cover object-center scale-[1.18] transition duration-500"
+                    className="pointer-events-none h-full w-full object-cover object-center"
                   />
                 ) : s.companion ? (
                   <img
                     src={companionImage(s.companion.image_url)}
                     alt={s.companion.name}
-                    className="pointer-events-none h-full w-full object-cover object-center animate-live scale-[1.18] transition duration-500"
+                    className="pointer-events-none h-full w-full object-cover object-center"
                   />
                 ) : (
                   <div className="h-full w-full bg-neutral-950" />

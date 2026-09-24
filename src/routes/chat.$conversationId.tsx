@@ -741,13 +741,13 @@ function ChatPage() {
               key={p.companion_id}
               src={reelUrl}
               poster={p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined}
-              className="relative z-[1] h-full w-full object-cover object-top animate-live"
+              className="relative z-[1] h-full w-full object-cover object-top"
             />
           ) : p?.companions?.image_url ? (
             <img
               src={companionImage(p.companions.image_url)}
               alt={p?.nickname ?? ""}
-              className="relative z-[1] h-full w-full object-cover object-top animate-live"
+              className="relative z-[1] h-full w-full object-cover object-top"
             />
           ) : null;
         })()}
@@ -866,13 +866,13 @@ function ChatPage() {
                     poster={
                       p?.companions?.image_url ? companionImage(p.companions.image_url) : undefined
                     }
-                    className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+                    className="relative z-[1] mx-auto h-full w-full object-cover object-top"
                   />
                 ) : p?.companions?.image_url ? (
                   <img
                     src={companionImage(p.companions.image_url)}
                     alt={p?.nickname ?? ""}
-                    className="relative z-[1] mx-auto h-full w-full object-cover object-top animate-live"
+                    className="relative z-[1] mx-auto h-full w-full object-cover object-top"
                   />
                 ) : null;
               })()}

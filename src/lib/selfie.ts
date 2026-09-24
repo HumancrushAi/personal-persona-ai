@@ -229,12 +229,24 @@ function booruPonyPrompt(
 // dildo in your ass") and gets dropped straight into "She is ___." — which reads
 // as broken grammar to the model and costs prompt adherence. Strip the ask and
 // flip second person to third so the sentence describes HER doing the thing.
+// Every word people use for "a photo of you", including the common misspellings
+// of portrait. "face potrait" is how a real user asked; it matched nothing, so
+// the message went to the text model, which declined to send a photo at all.
+const PHOTO_NOUNS =
+  "pictures?|pics?|pix|photos?|photographs?|portraits?|potraits?|portaits?|protraits?|headshots?|head shots?|backshots?|back shots?|snapshots?|selfies?|selfy|images?";
+// The same words with an optional "face"/"body" qualifier in front, as the
+// lead-in to strip: "send me a face portrait of you smiling".
+const PHOTO_LEAD = `(?:(?:face|head|full[- ]?body|body|close[- ]?up)\\s*)?(?:${PHOTO_NOUNS}|shots?|videos?|vids?|clips?|nudes?)`;
+
 export function normalizeRequest(req: string, subject: "she" | "he" | "they"): string {
   let s = req.trim();
 
   // "send me a pic of", "show me", "can you take a photo of", "i wanna see"...
   s = s.replace(
-    /^\s*(?:hey|hi|yo|please|pls|plz)?[,\s]*(?:can|could|will|would)?\s*(?:you|u)?\s*(?:please|pls)?\s*(?:send|show|take|snap|give|make|do|shoot|film|record)\s*(?:me|us)?\s*(?:a|an|some|the|another)?\s*(?:new|quick|sexy|hot|nice)?\s*(?:pictures?|pics?|photos?|selfies?|images?|shots?|videos?|vids?|clips?|nudes?)?\s*(?:of|with|where)?\s*/i,
+    new RegExp(
+      `^\\s*(?:hey|hi|yo|please|pls|plz)?[,\\s]*(?:can|could|will|would)?\\s*(?:you|u)?\\s*(?:please|pls)?\\s*(?:send|show|take|snap|give|make|do|shoot|film|record)\\s*(?:me|us)?\\s*(?:a|an|some|the|another)?\\s*(?:new|quick|sexy|hot|nice)?\\s*(?:${PHOTO_LEAD})?\\s*(?:of|with|where)?\\s*`,
+      "i",
+    ),
     "",
   );
   s = s.replace(/^\s*(?:i\s*(?:wanna|want\s*to|would\s*like\s*to|'?d\s*like\s*to)\s*see)\s*/i, "");
@@ -243,7 +255,10 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   // patterns above, so the request kept its lead-in and came out as "She is a
   // video of she bouncing on a dick."
   s = s.replace(
-    /^\s*(?:a|an|another|some)?\s*(?:new|quick|sexy|hot|nice)?\s*(?:pictures?|pics?|photos?|selfies?|images?|shots?|videos?|vids?|clips?|nudes?)\s*(?:of|with)?\s*/i,
+    new RegExp(
+      `^\\s*(?:a|an|another|some)?\\s*(?:new|quick|sexy|hot|nice)?\\s*${PHOTO_LEAD}\\s*(?:of|with)?\\s*`,
+      "i",
+    ),
     "",
   );
 
@@ -534,6 +549,7 @@ function framingFor(
   name?: string,
   isCloseUp?: boolean,
   groinFocus?: boolean,
+  shot?: Shot,
 ): string {
   // "pussy close to my face" is not a zoom setting, it is a viewpoint: the
   // camera is where the person asking is. Describing that viewpoint as a real
@@ -568,6 +584,15 @@ function framingFor(
     return `Photograph of ${article(noun)} ${noun} indoors, framed from ${poss} chin down to ${poss} knees with ${poss} mouth and chin at the top edge of the frame, ${poss} hips and groin in the centre of the frame in sharp focus, ${poss} hands resting on ${poss} thighs, camera about one metre away at hip height.`;
   }
 
+  // "portrait", "headshot", "face pic": the face IS the request, so it fills
+  // the frame instead of sitting small at the top of a full-length shot.
+  if (shot === "face") {
+    return `Head and shoulders portrait photograph of ${article(noun)} ${noun}, framed from the top of ${poss} head down to ${poss} upper chest, ${poss} face filling the upper half of the frame in sharp focus and looking into the lens, camera about one metre away at eye level.`;
+  }
+  if (shot === "back") {
+    return `Photograph of ${article(noun)} ${noun} indoors seen from behind, framed from the top of ${poss} head down to ${poss} knees, ${poss} back and hips towards the camera and ${poss} head turned to look back over ${poss} shoulder into the lens, ${poss} face clearly visible, camera about two metres away at chest height.`;
+  }
+
   // An act request gets a medium shot: the act is at the centre of the frame at
   // usable size, and the face is still in it.
   if (posed || hasReq) {
@@ -582,6 +607,23 @@ function framingFor(
     stance = " " + postures[hash % postures.length];
   }
   return `Full length photograph of ${article(noun)} ${noun}${stance} in a room, ${poss} whole body in frame from ${poss} head to ${poss} feet, ${poss} face clearly visible at the top of the frame, camera about three metres away.`;
+}
+
+type Shot = "face" | "back" | null;
+
+// Which fixed composition the request names, if any. A face shot only applies
+// to a clothed request: "pic of your face while you're naked" is a nude, and
+// cropping to the shoulders would cut out what was asked for.
+export function requestedShot(req: string): Shot {
+  if (/\b(?:back ?shots?|from behind|from the back)\b/i.test(req)) return "back";
+  if (
+    !requestIsNude(req) &&
+    /\b(?:portraits?|potraits?|portaits?|protraits?|head ?shots?|face ?(?:pics?|pix|photos?|pictures?|shots?|selfies?)|close[- ]?up of (?:your|ur|her|his) face|(?:pics?|pix|photos?|pictures?|selfies?) of (?:your|ur) (?:\w+ )?face)\b/i.test(
+      req,
+    )
+  )
+    return "face";
+  return null;
 }
 
 // Requests that carry their own posture, which "standing" would fight.
@@ -714,6 +756,7 @@ function buildStillPrompt(
       // Only where there is a vulva to point the camera at, only on a still,
       // and only where the renderer actually needs the help.
       a.hasVulva && mentionsPart(req, "vulva") && !rendersAtStillResolution(),
+      requestedShot(req),
     ),
     actionSentence(subject, action),
     posture,
@@ -759,7 +802,16 @@ export function videoActionPrompt(
   const isCloseUp = CLOSE_UP_RE.test(req);
 
   return [
-    framingFor(noun, poss, POSTURE_RE.test(req), !!req, c.name, isCloseUp),
+    framingFor(
+      noun,
+      poss,
+      POSTURE_RE.test(req),
+      !!req,
+      c.name,
+      isCloseUp,
+      false,
+      requestedShot(req),
+    ),
     actionSentence(subject, action),
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a }),
@@ -781,6 +833,7 @@ export function kontextSelfiePrompt(
   const a = anatomyOf(c.gender);
   const { noun, subject, object } = a;
   const explicit = actionTags(req, a);
+  const shot = requestedShot(req);
 
   const state = requestIsNude(req)
     ? `completely naked, bare skin.${requestSetsViewpoint(req) ? "" : ` ${nudeAnatomy(c.gender)}`}`
@@ -792,7 +845,13 @@ export function kontextSelfiePrompt(
     `Now show ${object} ${req || "taking a seductive selfie, looking at the camera"}, ${state}.`,
     explicit,
     styleBackstory || "",
-    "Photorealistic amateur selfie, full body in frame, natural indoor lighting, detailed skin, sharp focus.",
+    `Photorealistic amateur selfie, ${
+      shot === "face"
+        ? "head and shoulders in frame, face filling the frame"
+        : shot === "back"
+          ? "seen from behind, looking back over the shoulder at the camera"
+          : "full body in frame"
+    }, natural indoor lighting, detailed skin, sharp focus.`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -1175,8 +1234,7 @@ export function selfiePrompt(
 // paid (8-credit) image generation, so the object must be an actual
 // picture/body noun — bare "you" is deliberately NOT a trigger ("see you
 // tomorrow", "show you how I feel" must stay text).
-const SELFIE_OBJECT =
-  "pic|pics|picture|pictures|photo|photos|image|images|selfie|selfies|nude|nudes|naked|topless|body|tits|boobs|breasts|cleavage|pussy|vagina|ass|butt|booty|dick|cock|penis|lingerie|underwear|bra|panties|thong|bikini";
+const SELFIE_OBJECT = `${PHOTO_NOUNS}|nude|nudes|naked|topless|body|tits|boobs|breasts|cleavage|pussy|vagina|ass|butt|booty|dick|cock|penis|lingerie|underwear|bra|panties|thong|bikini`;
 
 export function wantsSelfie(t: string): boolean {
   const s = t.toLowerCase();
@@ -1204,7 +1262,13 @@ export function wantsSelfie(t: string): boolean {
   // "gimme a pic babe". Capped at five words so "i really loved those pics you
   // sent me earlier" stays a comment about photos rather than a new order.
   const words = s.split(/\s+/).filter(Boolean);
-  if (words.length <= 5 && /\b(?:pic|pics|picture|photo|selfie|nude|nudes)\b/.test(s)) return true;
+  if (
+    words.length <= 5 &&
+    /\b(?:pic|pics|pix|picture|photo|portrait|potrait|portait|protrait|headshot|backshot|snapshot|selfie|selfy|nude|nudes)\b/.test(
+      s,
+    )
+  )
+    return true;
 
   // Verb + (within ~30 chars) a concrete picture/body object.
   const verbs =

@@ -20,6 +20,11 @@
 //
 // State where the object IS, what it touches, and how much of it you can see.
 // Say nothing about where it is not. Wrong objects belong in the NEGATIVE only.
+//
+// ORIENTATION (insertion): name which end is inside and which end is outside.
+// "Flared base showing" alone is not enough — the model still draws the wide
+// suction-cup end as the leading tip. Pin both ends: rounded tip deep inside,
+// wide flared base outside in her hand.
 
 import { type Anatomy, anatomyOf } from "./anatomy";
 
@@ -28,9 +33,9 @@ export const TOY_VOCAB = String.raw`dildos?|vibrators?|sex\s*toys?|butt\s*plugs?
 
 const kw = (src: string) => new RegExp(String.raw`\b(?:${src})\b`, "i");
 
-// Wrong objects / bad activities. Object nouns and verbs only.
+// Wrong objects / bad activities / wrong orientation. Object nouns and verbs only.
 const SHARED_NEGATIVE =
-  "baseball bat, cricket bat, club, wooden pole, broom handle, rolling pin, table leg, tree branch, weapon, wood grain, wooden texture, giant novelty prop, oversized prop, cartoon prop, balloon, sausage, melting object, deformed object, object fused to hand, object merging into skin, floating object, duplicated object, extra object, bong, pipe, hookah, vape, bottle, flask, microphone, telescope, smoking, vaping, drinking, blowing, dildo resting on skin, toy lying on body, external only, held against body, pressed on thigh, not inserted, outside only";
+  "baseball bat, cricket bat, club, wooden pole, broom handle, rolling pin, table leg, tree branch, weapon, wood grain, wooden texture, giant novelty prop, oversized prop, cartoon prop, balloon, sausage, melting object, deformed object, object fused to hand, object merging into skin, floating object, duplicated object, extra object, bong, pipe, hookah, vape, bottle, flask, microphone, telescope, smoking, vaping, drinking, blowing, dildo resting on skin, toy lying on body, external only, held against body, pressed on thigh, not inserted, outside only, inverted dildo, upside-down dildo, toy inverted, flared base inside, suction cup inside, wide base entering, tip outside body, base-first insertion, backwards toy";
 
 type Prop = {
   id: string;
@@ -76,7 +81,9 @@ const PROPS: Prop[] = [
     match: kw(
       String.raw`dildos?|sex\s*toys?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo`,
     ),
-    spec: "The dildo is a separate solid object: smooth matte purple or pink silicone, firm rounded tip, visible flared base. Real toy scale — about as long as her hand from wrist to fingertip, roughly two fingers thick. Clean hard edges, sharp focus, clearly distinct from skin and from her fingers.",
+    // Two ends named so the renderer cannot swap them: tip = narrow/round,
+    // base = wide flare. Scale stays body-relative.
+    spec: "The dildo is a separate solid object of smooth matte purple or pink silicone. It has two clearly different ends: a firm narrow rounded tip at one end, and a wide flat flared base (suction-cup style) at the other. Real toy scale — about as long as her hand from wrist to fingertip, roughly two fingers thick. Clean hard edges, sharp focus, clearly distinct from skin and from her fingers.",
   },
 ];
 
@@ -87,20 +94,23 @@ const BIG_CLAUSE =
   "It is noticeably large for a sex toy while staying a realistic one: at most as long as her forearm and at most as thick as her wrist.";
 
 const HAND_CLAUSE =
-  "Her hand closes around the base with five separate countable fingers and a clean visible edge between skin and silicone.";
+  "Her hand closes around the wide flared base with five separate countable fingers and a clean visible edge between skin and silicone.";
 
 const vulvaAnatomy = (a: Anatomy) =>
   `${a.subject[0].toUpperCase()}${a.subject.slice(1)} has a natural soft vulva; the toy is a separate manufactured object against ${a.poss} skin.`;
 
 const TWO_HANDS =
-  "Exactly two hands: one hand grips only the flared base of the inserted toy, the other rests on her lower stomach. She is alone in the frame.";
+  "Exactly two hands: one hand grips only the wide flared base of the inserted toy (the outer end), the other rests on her lower stomach. She is alone in the frame.";
 
 // Placement FIRST — renderer weights early tokens hardest.
-// Occlusion (shaft mostly inside) is what forces real insertion, not "holding".
+// Orientation is pinned at both ends so the model cannot draw the toy backwards
+// (wide base as the "tip" going in). Positive only — wrong orientation lives
+// in SHARED_NEGATIVE.
 const INSERTED_CLAUSE =
-  "Penetration in progress and already complete in this still: the dildo is deep inside her pussy, most of the shaft hidden inside her body, only the flared base and a short length of silicone still visible outside. " +
-  "Her open thighs frame the entry. At the exact point where the toy enters her, her pussy lips grip the silicone tightly, stretched around it, with clear wetness at the rim of entry, sharp focus on the insertion. " +
-  "The toy is angled down between her legs along the line of her thighs. One hand holds only the base, fingers on the flared end, wrist low near her inner thigh. This is insertion, not a toy resting on her skin.";
+  "Penetration already complete in this still, toy oriented the correct way: the narrow rounded tip is the leading end, deep inside her pussy; the wide flat flared base is the outer end, fully outside her body. " +
+  "Most of the shaft is hidden inside her; only the flared base and a short length of silicone remain visible outside. " +
+  "Her open thighs frame the entry. At the exact point where the shaft enters, her pussy lips grip the silicone tightly, stretched around the shaft (not around the base), with clear wetness at the rim of entry, sharp focus on the insertion. " +
+  "The toy is angled down between her legs along the line of her thighs. One hand holds only the wide flared base outside her body, fingers on the outer end, wrist low near her inner thigh. This is tip-first insertion, not a toy resting on her skin.";
 
 // "stick a dildo in your pussy" must match — verb then body part within 25 chars.
 const INSERTED_RE =

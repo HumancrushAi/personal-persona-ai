@@ -616,20 +616,24 @@ export function comfySettings(
     // a plain "send me a selfie" the reference should win, and it stays low.
     // There is no single value that does both, which is what FaceID is for:
     // it anchors identity without anchoring composition.
+    // IDENTITY FIRST.
+    // High denoise (0.90+) follows a hard pose (dildo insert) but wipes the
+    // portrait — chat selfies stop matching the site card (Jade → stranger).
+    // 0.78 still changes pose/wardrobe; face, hair, skin and eyes stay hers.
+    // Override with COMFY_DENOISE / COMFY_DENOISE_POSED in Vercel if needed.
     denoise: numberSetting(
       opts.promptSetsComposition ? "COMFY_DENOISE_POSED" : "COMFY_DENOISE",
       usesStartLatent(opts.template)
         ? opts.promptSetsComposition
-          ? 0.92
-          : 0.72
+          ? 0.78
+          : 0.65
         : 1,
     ),
-    // Read for every graph and used only by the one that has the nodes. Cheaper
-    // than a second settings function, and it means switching COMFY_GRAPH needs
-    // no other change.
-    ipaWeight: numberSetting("COMFY_IPA_WEIGHT", 0.75),
-    ipaLora: numberSetting("COMFY_IPA_LORA", 0.6),
+    // FaceID path: pull harder toward the reference face (site portrait).
+    ipaWeight: numberSetting("COMFY_IPA_WEIGHT", 0.88),
+    ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
-    faceDenoise: numberSetting("COMFY_FACE_DENOISE", 0.5),
+    // Keep FaceDetailer from inventing a new face on the refine pass.
+    faceDenoise: numberSetting("COMFY_FACE_DENOISE", 0.35),
   };
 }

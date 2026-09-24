@@ -615,7 +615,9 @@ type Shot = "face" | "back" | null;
 // to a clothed request: "pic of your face while you're naked" is a nude, and
 // cropping to the shoulders would cut out what was asked for.
 export function requestedShot(req: string): Shot {
-  if (/\b(?:back ?shots?|from behind|from the back)\b/i.test(req)) return "back";
+  // Only the word itself. "from behind, on all fours" is a viewpoint the user
+  // wrote out, and requestSetsViewpoint hands that to their own words instead.
+  if (/\bback ?shots?\b/i.test(req)) return "back";
   if (
     !requestIsNude(req) &&
     /\b(?:portraits?|potraits?|portaits?|protraits?|head ?shots?|face ?(?:pics?|pix|photos?|pictures?|shots?|selfies?)|close[- ]?up of (?:your|ur|her|his) face|(?:pics?|pix|photos?|pictures?|selfies?) of (?:your|ur) (?:\w+ )?face)\b/i.test(

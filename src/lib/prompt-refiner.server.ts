@@ -88,12 +88,12 @@ Leave her hair colour, hair length, eye colour, skin tone and build out entirely
 
 Every prompt must contain, in this order:
 - "exact same woman as the reference image, identical face, hair and skin"
-- FRAMING, as the second thing in the prompt. ${shot === "face"
-    ? `The user asked for a portrait / headshot. Frame a head-and-shoulders portrait: her face fills the upper half of the frame in sharp focus, looking into the lens, cropped at the upper chest.`
-    : shot === "back"
-      ? `The user asked for a backshot. Photograph her from behind, head to knees, her back and hips towards the camera and her head turned to look back over her shoulder into the lens.`
-      : rearView
+- FRAMING, as the second thing in the prompt. ${rearView
     ? `The user set the viewpoint themselves, so write THEIR viewpoint in THEIR words. Frame tightly around the body part they asked for.`
+    : shot === "face"
+      ? `The user asked for a portrait / headshot. Frame a head-and-shoulders portrait: her face fills the upper half of the frame in sharp focus, looking into the lens, cropped at the upper chest.`
+      : shot === "back"
+        ? `The user asked for a backshot. Photograph her from behind, head to knees, her back and hips towards the camera and her head turned to look back over her shoulder into the lens.`
     : closeUp
       ? `The user asked for a close-up. Frame tightly on the requested body part only.`
       : groinFocus

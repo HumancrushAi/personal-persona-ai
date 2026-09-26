@@ -650,10 +650,13 @@ export async function comfyJobInput(
     if (portrait) {
       referenceBase64 = portrait;
     } else {
-      console.warn(
-        "[media] no portrait for this companion — falling back to text-to-image; she will not look the same twice. Upload an avatar in the admin panel.",
+      // NEVER fall back to empty-latent txt2img. That path produces a random
+      // stranger (wrong ethnicity, wrong face) — the exact failure testers
+      // reported (Black companion → white girl with purple hair). Fail and
+      // refund so the bug is visible instead of billing for the wrong person.
+      throw new Error(
+        "Could not load this companion's reference portrait for identity. Check image_url is a public https URL (Supabase avatars), then retry.",
       );
-      template = DEFAULT_WORKFLOW;
     }
   }
 

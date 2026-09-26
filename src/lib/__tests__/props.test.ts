@@ -378,9 +378,18 @@ describe("who composes the shot decides whether she is described", () => {
     }
   });
 
+  // Her portrait is clothed. At the low denoise a nude kept the portrait's
+  // outfit and came back dressed, so undressing is prompt-led too.
+  it("treats undressing as prompt-led", async () => {
+    const { requestComposesShot } = await import("../selfie");
+    for (const req of ["send me a nude", "send a naked pic", "show me your tits"]) {
+      expect(requestComposesShot(req), req).toBe(true);
+    }
+  });
+
   it("leaves a plain request to her portrait", async () => {
     const { requestComposesShot } = await import("../selfie");
-    for (const req of ["send me a selfie", "send me a nude", "send a pic", ""]) {
+    for (const req of ["send me a selfie", "send a pic", "send me a sexy pic in a dress", ""]) {
       expect(requestComposesShot(req), JSON.stringify(req)).toBe(false);
     }
   });

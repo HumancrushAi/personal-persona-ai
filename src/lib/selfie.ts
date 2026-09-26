@@ -987,11 +987,21 @@ function withClauseUpFront(text: string, clause: string): string {
  * was no longer carrying her, and nothing in the prompt had been allowed to.
  *
  * One function so the two cannot disagree about which case they are in.
+ *
+ * Undressing counts too. Her portrait is clothed, so at the low denoise a plain
+ * "send a nude" kept the portrait's outfit and came back dressed. Taking the
+ * clothes off changes most of the picture, the same as a pose does.
  */
 export function requestComposesShot(req: string): boolean {
   const text = (req ?? "").trim();
   if (!text) return false;
-  return hasProp(text) || STATED_POSTURE_RE.test(text) || requestSetsViewpoint(text);
+  return (
+    hasProp(text) ||
+    STATED_POSTURE_RE.test(text) ||
+    requestSetsViewpoint(text) ||
+    requestIsNude(text) ||
+    PARTIAL_UNDRESS_RE.test(text)
+  );
 }
 
 export function finishMediaPrompt(

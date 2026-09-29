@@ -619,16 +619,17 @@ export function comfySettings(
     // IDENTITY FIRST.
     // High denoise (0.90+) follows a hard pose (dildo insert) but wipes the
     // portrait — chat selfies stop matching the site card (Jade → stranger).
-    // 0.78 still changes pose/wardrobe; face, hair, skin and eyes stay hers.
-    // Override with COMFY_DENOISE / COMFY_DENOISE_POSED in Vercel if needed.
-    // Identity vs wardrobe: 0.65 keeps face locked; posed/nude needs more room
-    // to undress (0.82). Never 0.90+ — that is how chat selfies became strangers.
+    // 0.65 keeps her face locked on a plain request (nudes included); 0.76 is
+    // only for a request that names a pose, prop or viewpoint, and still keeps
+    // face, hair, skin and eyes hers. 0.82 for every nude made the reference too
+    // weak and faces drifted. Never 0.90+ — that is how chat selfies became
+    // strangers. Override with COMFY_DENOISE / COMFY_DENOISE_POSED in Vercel.
     denoise: numberSetting(
       opts.promptSetsComposition ? "COMFY_DENOISE_POSED" : "COMFY_DENOISE",
       usesStartLatent(opts.template)
         ? opts.promptSetsComposition
-          ? 0.82
-          : 0.62
+          ? 0.76
+          : 0.65
         : 1,
     ),
     // FaceID path: pull harder toward the reference face (site portrait).

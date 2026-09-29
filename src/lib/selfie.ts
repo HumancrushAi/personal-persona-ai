@@ -988,21 +988,22 @@ function withClauseUpFront(text: string, clause: string): string {
  *
  * One function so the two cannot disagree about which case they are in.
  *
- * Undressing counts too. Her portrait is clothed, so at the low denoise a plain
- * "send a nude" kept the portrait's outfit and came back dressed. Taking the
- * clothes off changes most of the picture, the same as a pose does.
+ * A plain nude does NOT count. Sending every nude to the posed denoise made the
+ * reference too weak and her face drifted to a stranger's; identity wins, and
+ * only a nude that also names a pose, prop or viewpoint goes prompt-led.
  */
 export function requestComposesShot(req: string): boolean {
   const text = (req ?? "").trim();
   if (!text) return false;
-  return (
-    hasProp(text) ||
-    STATED_POSTURE_RE.test(text) ||
-    requestSetsViewpoint(text) ||
-    requestIsNude(text) ||
-    PARTIAL_UNDRESS_RE.test(text)
-  );
+  return hasProp(text) || STATED_POSTURE_RE.test(text) || requestSetsViewpoint(text);
 }
+
+// The same person as the portrait on her site card, stated every time the
+// portrait is sent. Chat photos were drifting to a different face (Jade in chat
+// was not the Jade on the homepage), mostly on posed requests where the
+// reference carries less of her.
+export const IDENTITY_LOCK =
+  "exact same person as the reference image, identical face, facial features, eye colour, hair colour, hairstyle and skin tone to the reference image";
 
 export function finishMediaPrompt(
   base: string,
@@ -1035,6 +1036,11 @@ export function finishMediaPrompt(
     still?: boolean;
     /** This prompt is for a CLIP. Appends the motion tail, as still appends the still cue. */
     moving?: boolean;
+    /**
+     * Her site portrait is sent to the renderer as the reference. Adds
+     * IDENTITY_LOCK so the face stays the one on her card.
+     */
+    referenceImage?: boolean;
   } = {},
 ): string {
   // Applied to the WHOLE prompt, not just the appended clause: the builders
@@ -1121,6 +1127,9 @@ export function finishMediaPrompt(
   // Everything about her that the renderer cannot see for itself. The adult
   // clause is always here; the rest only when no picture of her arrives.
   const describes = [`adult ${statedAge}-year-old ${a.noun}, fully grown adult body`];
+  // Added after withoutDeadReference has run, so it survives even when her
+  // appearance is also written out in words.
+  if (opts.referenceImage) describes.push(IDENTITY_LOCK);
   if (opts.appendAppearance) {
     const ethnicity = (opts.appearance?.ethnicity ?? "").trim();
     if (ethnicity) describes.push(`${ethnicity} ${a.noun}`);

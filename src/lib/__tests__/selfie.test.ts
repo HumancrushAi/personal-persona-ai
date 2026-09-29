@@ -335,3 +335,28 @@ describe("photo vocabulary", () => {
     expect(normalizeRequest("send pix of you in the kitchen", "she")).toBe("in the kitchen");
   });
 });
+
+describe("identity lock", () => {
+  it("ties the face to her site portrait whenever the portrait is sent", async () => {
+    const { finishMediaPrompt, IDENTITY_LOCK } = await import("../selfie");
+    const withRef = finishMediaPrompt("Photograph of a woman indoors.", "send me a nude", {
+      referenceImage: true,
+      appearance: { age: 24 },
+    });
+    expect(withRef).toContain(IDENTITY_LOCK);
+    const noRef = finishMediaPrompt("Photograph of a woman indoors.", "send me a nude", {
+      appearance: { age: 24 },
+    });
+    expect(noRef).not.toContain("reference image");
+  });
+
+  it("survives when her appearance is also written out", async () => {
+    const { finishMediaPrompt, IDENTITY_LOCK } = await import("../selfie");
+    const p = finishMediaPrompt("Photograph of a woman indoors.", "lie down on the bed", {
+      referenceImage: true,
+      appendAppearance: true,
+      appearance: { age: 24, ethnicity: "Korean" },
+    });
+    expect(p).toContain(IDENTITY_LOCK);
+  });
+});

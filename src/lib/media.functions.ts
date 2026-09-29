@@ -778,6 +778,9 @@ export async function photoPrompt(
     // describes her build, because both were written for a path that had her
     // photo. Only when nothing carries her likeness to the renderer.
     appendAppearance: !referenceReachesRenderer || promptLedShot,
+    // Her site portrait (companions.image_url, the same image as her homepage
+    // card) is the reference; say so, so the face is hers and not a stranger's.
+    referenceImage: referenceReachesRenderer,
     // Her own row, not a default. Without this every companion in the app
     // rendered as the same anonymous woman, because the prompt opened
     // "Photograph of a woman indoors" and nothing ever said which one.
@@ -928,7 +931,7 @@ function resolveHostedImage(imageUrl?: string | null): string | null {
   // Already a real URL (create-flow uploads, admin regenerate, data URLs)
   if (/^(https?:|data:)/i.test(u)) return u;
 
-  const base = (process.env.PUBLIC_SITE_URL || "https://humancrush.com").replace(
+  const base = (process.env.PUBLIC_SITE_URL || "https://www.humancrush.com").replace(
     /\/$/,
     "",
   );
@@ -950,7 +953,7 @@ function resolveHostedImage(imageUrl?: string | null): string | null {
 
 // Each provider posts completions to its own receiver route.
 function webhookFor(provider: "runpod"): string {
-  const base = process.env.PUBLIC_SITE_URL || "https://humancrush.com";
+  const base = process.env.PUBLIC_SITE_URL || "https://www.humancrush.com";
   return `${base}/api/public/${provider}-webhook`;
 }
 

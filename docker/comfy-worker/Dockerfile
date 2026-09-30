@@ -87,8 +87,16 @@ RUN /hc-install-node.sh ltdrdata/ComfyUI-Impact-Subpack
 # Build isolation would hand that compile a clean environment without the numpy
 # and cython its setup.py imports, so the build runs against the environment
 # prepared above instead.
+#
+# The pins are reasserted IN THIS STEP. The Impact Pack install above pulls a
+# bare `numpy` and upgraded it to 2.5.3, so insightface's Cython 0.29 code was
+# compiled against numpy 2 headers and failed on mesh_core_cython.pyx ("Python
+# objects cannot be cast to pointers of primitive types"). Every build of this
+# image died there.
 RUN . /etc/hc-build.env \
  && set -eux \
+ && "$PY" -m pip install --no-cache-dir "numpy<2" "cython<3" \
+ && "$PY" -c "import numpy, Cython; print('building against numpy', numpy.__version__, 'cython', Cython.__version__)" \
  && "$PY" -m pip install --no-cache-dir --no-build-isolation insightface==0.7.3
 
 # numpy is reasserted last. Several node packs list a bare `numpy` and resolve
@@ -101,6 +109,8 @@ RUN . /etc/hc-build.env \
  && "$PY" -c "import insightface; print('insightface', insightface.__version__)" \
  && "$PY" -c "import numpy; print('numpy', numpy.__version__)" \
  && "$PY" -c "import onnxruntime; print('onnxruntime', onnxruntime.__version__)" \
+ && "$PY" -c "import cv2; print('opencv', cv2.__version__)" \
+ && "$PY" -c "import ultralytics; print('ultralytics', ultralytics.__version__)" \
  && ls -1 "$COMFY_DIR/custom_nodes"
 
 # Three node packs, not two. UltralyticsDetectorProvider — the face detector

@@ -176,7 +176,7 @@ const BUILD_NEGATIVE =
 // on the clothes already in the start frame, so explicit acts were performed
 // fully dressed.
 const CLOTHING_NEGATIVE =
-  "clothed, wearing clothes, dressed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, dress, swimsuit, fabric covering body, partially undressed";
+  "clothed, wearing clothes, dressed, fully clothed, partially clothed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, blouse, dress, swimsuit, bikini, fabric covering body, fabric covering breasts, fabric covering groin, clothes on, still dressed, remains of clothing";
 
 // `moving` says whether the output is a clip (true) or one still frame cut out
 // of one (false). It is not a detail: see MOTION_NEGATIVE above.
@@ -666,11 +666,19 @@ export async function comfyJobInput(
   // picture looks like, and the starting latent must not overrule them. Anything
   // else — "send me a selfie", "send me a nude" — says nothing about
   // composition, so her portrait should supply it and identity holds.
-  const { requestComposesShot: composes } = await import("./selfie");
-  const promptSetsComposition = composes(request ?? "");
+  const { requestComposesShot: composes, requestIsNude, requestKeepsGarment } =
+    await import("./selfie");
+  const req = request ?? "";
+  const promptSetsComposition = composes(req);
+  // Nude without a hard pose still needs medium denoise or the clothed portrait wins.
+  const needsUndress = requestIsNude(req) && !requestKeepsGarment(req);
 
   return comfyInput(
-    { ...comfySettings(prompt, { promptSetsComposition, template }), prompt, negative },
+    {
+      ...comfySettings(prompt, { promptSetsComposition, needsUndress, template }),
+      prompt,
+      negative,
+    },
     { template, referenceBase64 },
   );
 }
@@ -778,9 +786,6 @@ export async function photoPrompt(
     // describes her build, because both were written for a path that had her
     // photo. Only when nothing carries her likeness to the renderer.
     appendAppearance: !referenceReachesRenderer || promptLedShot,
-    // Her site portrait (companions.image_url, the same image as her homepage
-    // card) is the reference; say so, so the face is hers and not a stranger's.
-    referenceImage: referenceReachesRenderer,
     // Her own row, not a default. Without this every companion in the app
     // rendered as the same anonymous woman, because the prompt opened
     // "Photograph of a woman indoors" and nothing ever said which one.
@@ -924,11 +929,18 @@ export const requestVideo = createServerFn({ method: "POST" })
 // PUBLIC_SITE_URL. A bare bundled filename isn't reachable from outside, so it
 // returns null (caller errors + refunds, prompting the admin to upload or
 // regenerate a hosted photo).
+/**
+ * The exact portrait the homepage uses (companions.image_url).
+ *
+ * Chat selfies must start from THIS URL so Aria on the site is Aria in chat.
+ * Prefer public https (Supabase avatars after regen). Filenames fall through
+ * companionImage() → site-relative assets — never invent a different photo.
+ */
 function resolveHostedImage(imageUrl?: string | null): string | null {
   const u = (imageUrl ?? "").trim();
   if (!u) return null;
 
-  // Already a real URL (create-flow uploads, admin regenerate, data URLs)
+  // Homepage + chat share this: full public URL from admin regen / create flow
   if (/^(https?:|data:)/i.test(u)) return u;
 
   const base = (process.env.PUBLIC_SITE_URL || "https://www.humancrush.com").replace(
@@ -936,11 +948,11 @@ function resolveHostedImage(imageUrl?: string | null): string | null {
     "",
   );
 
-  // Site-relative path
+  // Site-relative path (same origin as the card image)
   if (u.startsWith("/")) return `${base}${u}`;
 
   // Seeded companions store bare filenames like "01-aria.jpg".
-  // companionImage() maps those to the Vite-bundled asset URL.
+  // companionImage() maps those to the Vite-bundled asset URL — same as UI.
   const resolved = companionImage(u);
   if (resolved) {
     if (/^(https?:|data:)/i.test(resolved)) return resolved;
@@ -953,7 +965,7 @@ function resolveHostedImage(imageUrl?: string | null): string | null {
 
 // Each provider posts completions to its own receiver route.
 function webhookFor(provider: "runpod"): string {
-  const base = process.env.PUBLIC_SITE_URL || "https://www.humancrush.com";
+  const base = process.env.PUBLIC_SITE_URL || "https://humancrush.com";
   return `${base}/api/public/${provider}-webhook`;
 }
 

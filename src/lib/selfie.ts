@@ -645,6 +645,16 @@ const POSTURE_RE =
 // were rolled back, and mottling is what blotchy, patchy, discoloured skin is
 // called — on a close frame of a vulva that is the difference between real and
 // diseased. Pores, fine texture and a matte finish already carry the realism.
+// Lock chat selfies to the same person as companions.image_url (homepage card).
+// Applied whenever a reference portrait is used (img2img / FaceID) — not on
+// pure text-to-image graphs that have no photo of her.
+const IDENTITY_LOCK =
+  "CRITICAL identity lock — same person as the reference photo only: identical face shape, bone structure, eyes and eye color, exact same hair color and hairstyle, same skin tone and undertone, same body proportions. Do not change ethnicity, do not invent different hair color, do not age or beautify into a different person. Only clothing, pose, and props may change.";
+
+/** Forced when the user asked for nude — img2img otherwise keeps portrait clothes. */
+const NUDE_FORCE =
+  "Completely nude, fully undressed, no clothes, bare skin only, nothing covering breasts or groin, wardrobe fully removed.";
+
 const QUALITY =
   "Candid photograph, 50mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, matte natural skin finish, subtle skin imperfections, natural asymmetry, soft natural shadows. Looks like a real photo taken on a real camera.";
 
@@ -988,22 +998,29 @@ function withClauseUpFront(text: string, clause: string): string {
  *
  * One function so the two cannot disagree about which case they are in.
  *
- * A plain nude does NOT count. Sending every nude to the posed denoise made the
- * reference too weak and her face drifted to a stranger's; identity wins, and
- * only a nude that also names a pose, prop or viewpoint goes prompt-led.
+ * Undressing counts too. Her portrait is clothed, so at the low denoise a plain
+ * "send a nude" kept the portrait's outfit and came back dressed. Taking the
+ * clothes off changes most of the picture, the same as a pose does.
+ */
+/**
+ * Whether the request needs HIGH denoise (pose / prop / viewpoint change).
+ *
+ * CRITICAL: do NOT include requestIsNude() here.
+ * "send a nude" used to flip COMFY_DENOISE_POSED (~0.9), which wiped the
+ * site portrait and produced a different woman in chat than on the homepage.
+ * High denoise is only for props, stated postures, or camera angles.
+ * Plain nude / undress uses the lower COMFY_DENOISE so face/hair/skin stay hers.
  */
 export function requestComposesShot(req: string): boolean {
   const text = (req ?? "").trim();
   if (!text) return false;
-  return hasProp(text) || STATED_POSTURE_RE.test(text) || requestSetsViewpoint(text);
+  return (
+    hasProp(text) ||
+    STATED_POSTURE_RE.test(text) ||
+    requestSetsViewpoint(text) ||
+    PARTIAL_UNDRESS_RE.test(text)
+  );
 }
-
-// The same person as the portrait on her site card, stated every time the
-// portrait is sent. Chat photos were drifting to a different face (Jade in chat
-// was not the Jade on the homepage), mostly on posed requests where the
-// reference carries less of her.
-export const IDENTITY_LOCK =
-  "exact same person as the reference image, identical face, facial features, eye colour, hair colour, hairstyle and skin tone to the reference image";
 
 export function finishMediaPrompt(
   base: string,
@@ -1036,11 +1053,6 @@ export function finishMediaPrompt(
     still?: boolean;
     /** This prompt is for a CLIP. Appends the motion tail, as still appends the still cue. */
     moving?: boolean;
-    /**
-     * Her site portrait is sent to the renderer as the reference. Adds
-     * IDENTITY_LOCK so the face stays the one on her card.
-     */
-    referenceImage?: boolean;
   } = {},
 ): string {
   // Applied to the WHOLE prompt, not just the appended clause: the builders
@@ -1127,9 +1139,6 @@ export function finishMediaPrompt(
   // Everything about her that the renderer cannot see for itself. The adult
   // clause is always here; the rest only when no picture of her arrives.
   const describes = [`adult ${statedAge}-year-old ${a.noun}, fully grown adult body`];
-  // Added after withoutDeadReference has run, so it survives even when her
-  // appearance is also written out in words.
-  if (opts.referenceImage) describes.push(IDENTITY_LOCK);
   if (opts.appendAppearance) {
     const ethnicity = (opts.appearance?.ethnicity ?? "").trim();
     if (ethnicity) describes.push(`${ethnicity} ${a.noun}`);
@@ -1214,6 +1223,19 @@ export function finishMediaPrompt(
 
   body = capPromptWords(body, PROMPT_WORD_BUDGET - reserve - cueWords);
   const capped = wantProp ? withClauseUpFront(body, propText) : body;
+  // Nude must mean nude: portrait start frames are clothed, so say it hard.
+  if (requestIsNude(request) && !requestKeepsGarment(request) && !/completely nude|fully undressed/i.test(capped)) {
+    capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${NUDE_FORCE}`;
+  }
+
+  // Lock identity to the homepage portrait whenever that photo is the start frame.
+  // appendAppearance is only set for pure text-to-image (no reference) — there
+  // IDENTITY_LOCK would fight a described build. On img2img/FaceID, this line is
+  // what keeps Aria in chat the same person as Aria on the site.
+  if (!opts.appendAppearance && !/CRITICAL identity lock|same person as the reference photo/i.test(capped)) {
+    capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${IDENTITY_LOCK}`;
+  }
+
   // Specific phrases, not the bare word "still" — the prop clause contains
   // "only the flared base still visible", which matched and silently suppressed
   // the cue on the one request that most needs it.

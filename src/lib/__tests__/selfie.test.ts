@@ -370,3 +370,26 @@ describe("identity lock", () => {
     }
   });
 });
+
+describe("a follow-up that adds something", () => {
+  it("keeps the new detail instead of dropping it", async () => {
+    const { followUpDetail } = await import("../selfie");
+    expect(followUpDetail("send me another with your legs spread")).toBe("with your legs spread");
+    expect(followUpDetail("another one with legs spread")).toBe("with legs spread");
+    expect(followUpDetail("one more but on your knees")).toBe("but on your knees");
+  });
+
+  it("adds nothing for a plain 'another'", async () => {
+    const { followUpDetail } = await import("../selfie");
+    for (const t of ["send another", "another one please", "one more babe", "again", "more pics"]) {
+      expect(followUpDetail(t), t).toBe("");
+    }
+  });
+
+  it("reads spread legs as a pose, so the portrait's pose gives way", async () => {
+    const { requestComposesShot } = await import("../selfie");
+    for (const t of ["spread your legs", "send a nude with legs spread", "legs open", "open your legs"]) {
+      expect(requestComposesShot(t), t).toBe(true);
+    }
+  });
+});

@@ -427,6 +427,32 @@ export function isFollowUpMediaRequest(req: string): boolean {
   );
 }
 
+// Words that add nothing to a follow-up: "another one please babe".
+const FOLLOW_UP_FILLER =
+  /\b(?:one|ones|pic|pics|pix|picture|pictures|photo|photos|selfie|selfies|of you|please|pls|plz|babe|baby|hun|honey|now|too|then|but|and|ok|okay|for me|lol)\b/gi;
+
+/**
+ * What a follow-up adds on top of "another": "send me another with your legs
+ * spread" -> "with your legs spread". Empty when it adds nothing.
+ *
+ * isFollowUpMediaRequest only reads the START of the message, and the caller
+ * then reused the previous request word for word — so "another one with your
+ * legs spread" came back as a copy of the last photo and the pose was dropped.
+ */
+export function followUpDetail(req: string): string {
+  if (!isFollowUpMediaRequest(req)) return "";
+  const rest = (req ?? "")
+    .trim()
+    .replace(
+      /^(?:(?:can (?:you|u)|could (?:you|u)|please|pls|plz|now|and|ok|okay)\s+)*(?:send|gimme|give me|show me|take|do|make)?\s*(?:me\s+)?(?:another|one more|1 more|more|again|anotha)\b/i,
+      "",
+    )
+    .replace(/[?!.]+$/g, "")
+    .trim();
+  const meaningful = rest.replace(FOLLOW_UP_FILLER, "").replace(/[\s,?!.]+/g, "");
+  return meaningful ? rest.replace(/^(?:one|pic|photo|picture)\b\s*/i, "").trim() : "";
+}
+
 /**
  * Whether the request wants a garment kept ON and a part visible at the same
  * time — "in lingerie with your pussy showing".
@@ -481,7 +507,7 @@ export function requestSetsViewpoint(req: string): boolean {
 // exactly what should still be inferred from, so only postures the user actually
 // NAMED belong in this list.
 export const STATED_POSTURE_RE =
-  /\b(lie|lying|lay|laying|lie down|lying down|lay down|flat on|on (?:your|her|his|their) (?:back|side|stomach|front|knees)|stand|standing|stand up|upright|sit|sitting|seated|sit up|kneel\w*|squat\w*|crouch\w*|bend over|bent over|all fours|crawl\w*|straddl\w*|rid(?:e|ing)|turn\w*|face (?:me|away|the)|facing|lean\w*|arch\w*|on top|spread eagle|legs crossed|cross(?:ed)? (?:your|her) legs)\b/i;
+  /\b(lie|lying|lay|laying|lie down|lying down|lay down|flat on|on (?:your|her|his|their) (?:back|side|stomach|front|knees)|stand|standing|stand up|upright|sit|sitting|seated|sit up|kneel\w*|squat\w*|crouch\w*|bend over|bent over|all fours|crawl\w*|straddl\w*|rid(?:e|ing)|turn\w*|face (?:me|away|the)|facing|lean\w*|arch\w*|on top|spread eagle|spread\w*|legs (?:open|apart)|open (?:your|her|his|their) legs|legs crossed|cross(?:ed)? (?:your|her) legs)\b/i;
 
 // Detects a garment the user put in a PARTIAL position — pulled down, pushed
 // aside, unzipped — as distinct from dressed and from nude.

@@ -8,7 +8,7 @@ import { hasUsableName, extractName, askedForName, isRealName, isEmailHandle } f
 import { chatComplete, modelContextTokens, resolveChatModel } from "./ai";
 import { estimateTokens, fitToBudget } from "./history-budget";
 import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
-import { wantsSelfie, wantsVideo, checkCrossGenderRequest, isFollowUpMediaRequest } from "./selfie";
+import { wantsSelfie, wantsVideo, checkCrossGenderRequest, isFollowUpMediaRequest, followUpDetail } from "./selfie";
 import { deductCredits } from "./credit-wallet";
 import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
@@ -411,7 +411,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           const m = hist[i];
           if (m?.role === "user" && typeof m.content === "string" && m.content.trim()) {
             if (!isFollowUpMediaRequest(m.content)) {
-              mediaRequestText = m.content;
+              // Keep what THIS message adds: "another one with your legs
+              // spread" is the last request plus the pose, not a copy of it.
+              const detail = followUpDetail(data.content);
+              mediaRequestText = detail ? `${m.content.trim()}, ${detail}` : m.content;
               break;
             }
           }

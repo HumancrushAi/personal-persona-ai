@@ -541,9 +541,17 @@ export async function startImageJob(
     // negativeFor defaulted to female and a male companion's nude photo was
     // rendered with "penis, cock, male genitalia" in its negative prompt.
     const negative = negativeFor(userRequest, companion.gender, { moving: false });
+    // How many photos this chat already has: the Nth photo of a request always
+    // renders the same way, but the next one is a new picture, not a copy.
+    const { count: photosSoFar } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("conversation_id", conversationId)
+      .eq("kind", "image");
+    const seedSalt = String(photosSoFar ?? 0);
     const input =
       provider === "comfy"
-        ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest)
+        ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt)
         : provider === "kontext"
           ? {
               prompt: imagePrompt,
@@ -556,7 +564,7 @@ export async function startImageJob(
               // Was -1, which tells the endpoint to pick its own random seed —
               // the same per-job lottery comfySettings had. Derived from the
               // prompt so the same request reproduces; see seedFor.
-              seed: (await import("./comfy")).seedFor(imagePrompt),
+              seed: (await import("./comfy")).seedFor(`${imagePrompt}#${seedSalt}`),
               num_inference_steps: Number(process.env.RUNPOD_IMAGE_STEPS || "28"),
               guidance: Number(process.env.RUNPOD_IMAGE_GUIDANCE || "2.5"),
               image: sourceImage,
@@ -626,6 +634,7 @@ export async function comfyJobInput(
   negative: string,
   portraitUrl: string | null,
   request?: string,
+  seedSalt?: string,
 ): Promise<Record<string, unknown>> {
   const { comfyInput, comfySettings, comfyTemplate, wantsReference, DEFAULT_WORKFLOW } =
     await import("./comfy");
@@ -675,7 +684,7 @@ export async function comfyJobInput(
 
   return comfyInput(
     {
-      ...comfySettings(prompt, { promptSetsComposition, needsUndress, template }),
+      ...comfySettings(prompt, { promptSetsComposition, needsUndress, template, seedSalt }),
       prompt,
       negative,
     },

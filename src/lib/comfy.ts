@@ -585,10 +585,16 @@ export function comfySettings(
     /** True when user asked for nude — medium denoise to remove clothes without wiping face. */
     needsUndress?: boolean;
     template?: string;
+    /**
+     * Mixed into the seed so a second photo in the same chat is a new picture.
+     * seedFor(prompt) alone made "send another" a copy of the first one: same
+     * request, same prompt, same seed, same composition.
+     */
+    seedSalt?: string;
   } = {},
 ): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
   return {
-    seed: seedFor(prompt),
+    seed: seedFor(opts.seedSalt ? `${prompt}#${opts.seedSalt}` : prompt),
     steps: numberSetting("COMFY_STEPS", 30),
     // 7, up from 5. Five is loose for SDXL and the reported failure was the
     // render ignoring what the prompt asked for; 6.5-7.5 is the band where an

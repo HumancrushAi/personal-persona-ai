@@ -553,3 +553,17 @@ describe("denoise follows whoever is composing the picture", () => {
     }
   });
 });
+
+describe("a second photo in the same chat", () => {
+  it("gets a new seed, so 'send another' is not a copy of the first", async () => {
+    const { comfySettings } = await import("../comfy");
+    const prev = process.env.COMFY_SEED;
+    delete process.env.COMFY_SEED;
+    const first = comfySettings("same prompt", { seedSalt: "0" }).seed;
+    const second = comfySettings("same prompt", { seedSalt: "1" }).seed;
+    expect(second).not.toBe(first);
+    // ...while the same slot still reproduces.
+    expect(comfySettings("same prompt", { seedSalt: "1" }).seed).toBe(second);
+    if (prev !== undefined) process.env.COMFY_SEED = prev;
+  });
+});

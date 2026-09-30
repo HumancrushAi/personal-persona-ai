@@ -580,7 +580,12 @@ function numberSetting(name: string, fallback: number): number {
 
 export function comfySettings(
   prompt = "",
-  opts: { promptSetsComposition?: boolean; template?: string } = {},
+  opts: {
+    promptSetsComposition?: boolean;
+    /** True when user asked for nude — medium denoise to remove clothes without wiping face. */
+    needsUndress?: boolean;
+    template?: string;
+  } = {},
 ): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
   return {
     seed: seedFor(prompt),
@@ -619,21 +624,27 @@ export function comfySettings(
     // IDENTITY FIRST.
     // High denoise (0.90+) follows a hard pose (dildo insert) but wipes the
     // portrait — chat selfies stop matching the site card (Jade → stranger).
-    // 0.65 keeps her face locked on a plain request (nudes included); 0.76 is
-    // only for a request that names a pose, prop or viewpoint, and still keeps
-    // face, hair, skin and eyes hers. 0.82 for every nude made the reference too
-    // weak and faces drifted. Never 0.90+ — that is how chat selfies became
-    // strangers. Override with COMFY_DENOISE / COMFY_DENOISE_POSED in Vercel.
-    denoise: numberSetting(
-      opts.promptSetsComposition ? "COMFY_DENOISE_POSED" : "COMFY_DENOISE",
-      usesStartLatent(opts.template)
-        ? opts.promptSetsComposition
-          ? 0.76
-          : 0.65
-        : 1,
-    ),
+    // 0.78 still changes pose/wardrobe; face, hair, skin and eyes stay hers.
+    // Override with COMFY_DENOISE / COMFY_DENOISE_POSED in Vercel if needed.
+    // Identity vs wardrobe: 0.65 keeps face locked; posed/nude needs more room
+    // to undress (0.82). Never 0.90+ — that is how chat selfies became strangers.
+    // Three tiers so nude undresses without becoming a stranger:
+    //   clothed selfie  → 0.62 (face locked)
+    //   nude undress    → 0.73 (clothes off, hair/face hold)
+    //   prop / hard pose → 0.78 (toy/pose; face still from reference)
+    // Never 0.90+ — that wiped site identity in chat.
+    denoise: (() => {
+      if (!usesStartLatent(opts.template)) return 1;
+      if (opts.promptSetsComposition) {
+        return numberSetting("COMFY_DENOISE_POSED", 0.78);
+      }
+      if (opts.needsUndress) {
+        return numberSetting("COMFY_DENOISE_NUDE", 0.73);
+      }
+      return numberSetting("COMFY_DENOISE", 0.62);
+    })(),
     // FaceID path: pull harder toward the reference face (site portrait).
-    ipaWeight: numberSetting("COMFY_IPA_WEIGHT", 0.88),
+    ipaWeight: numberSetting("COMFY_IPA_WEIGHT", 0.9),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
     // Keep FaceDetailer from inventing a new face on the refine pass.

@@ -59,20 +59,17 @@ RUN set -eux; \
     cat /etc/hc-build.env; \
     "$PY" -m pip --version
 
-# cython is pinned under 3. This venv is Python 3.12, and insightface 0.7.3 is
-# from 2023 with no cp312 wheel, so pip compiles it from source. Cython 3.0
-# changed its language defaults and breaks setup.py files written against 0.29 —
-# which insightface's is. The failure is a wall of C errors that reads like a
-# broken toolchain rather than a version conflict.
-#
 # setuptools and wheel are here because of --no-build-isolation below: that flag
 # tells pip to build against THIS environment, so whatever the build needs has
-# to already be in it. numpy and cython for the same reason — insightface's
-# setup.py imports both at build time.
+# to already be in it.
+#
+# numpy is NOT pinned under 2 any more. The node packs pull numpy 2 (opencv 5,
+# scipy, contourpy and tifffile all require it), so forcing 1.26 broke them, and
+# pinning early did not hold anyway: the Impact Pack install upgraded it back.
 RUN . /etc/hc-build.env \
  && set -eux \
  && "$PY" -m pip install --no-cache-dir --upgrade setuptools wheel \
- && "$PY" -m pip install --no-cache-dir "numpy<2" "cython<3" onnxruntime-gpu
+ && "$PY" -m pip install --no-cache-dir onnxruntime-gpu
 
 COPY install-node.sh /hc-install-node.sh
 RUN chmod +x /hc-install-node.sh
@@ -83,30 +80,33 @@ RUN /hc-install-node.sh cubiq/ComfyUI_IPAdapter_plus
 RUN /hc-install-node.sh ltdrdata/ComfyUI-Impact-Pack
 RUN /hc-install-node.sh ltdrdata/ComfyUI-Impact-Subpack
 
-# insightface has no wheel for this Python and CUDA pair, so pip compiles it.
-# Build isolation would hand that compile a clean environment without the numpy
-# and cython its setup.py imports, so the build runs against the environment
-# prepared above instead.
+# insightface has no wheel for this Python, so pip compiles it — against the
+# numpy 2 the node packs installed, with Cython 3.
 #
-# The pins are reasserted IN THIS STEP. The Impact Pack install above pulls a
-# bare `numpy` and upgraded it to 2.5.3, so insightface's Cython 0.29 code was
-# compiled against numpy 2 headers and failed on mesh_core_cython.pyx ("Python
-# objects cannot be cast to pointers of primitive types"). Every build of this
-# image died there.
+# Every earlier build died here. With Cython 0.29 and numpy 2, mesh_core_cython
+# failed ("Python objects cannot be cast to pointers of primitive types"):
+# numpy 2's own .pxd says it needs Cython 3. With that fixed, the compile then
+# found no Python.h — the venv runs the system python3.12, whose headers come
+# from python3.12-dev.
+#
+# Built against numpy 2 it also runs on numpy 2, so nothing has to be pinned
+# back afterwards.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3.12-dev \
+  && rm -rf /var/lib/apt/lists/* \
+  && test -f /usr/include/python3.12/Python.h
+
 RUN . /etc/hc-build.env \
  && set -eux \
- && "$PY" -m pip install --no-cache-dir "numpy<2" "cython<3" \
+ && "$PY" -m pip install --no-cache-dir "cython>=3" \
  && "$PY" -c "import numpy, Cython; print('building against numpy', numpy.__version__, 'cython', Cython.__version__)" \
  && "$PY" -m pip install --no-cache-dir --no-build-isolation insightface==0.7.3
 
-# numpy is reasserted last. Several node packs list a bare `numpy` and resolve
-# it to 2.x, and insightface 0.7.3 uses the removed 1.x C API — it then fails at
-# import with "numpy.core.multiarray failed to import", which reads like a
-# broken install rather than a version conflict.
+# Everything FaceID needs has to import together, in the image, rather than on
+# a paying user's first photo.
 RUN . /etc/hc-build.env \
  && set -eux \
- && "$PY" -m pip install --no-cache-dir "numpy<2" \
- && "$PY" -c "import insightface; print('insightface', insightface.__version__)" \
+ && "$PY" -c "import insightface; from insightface.app import FaceAnalysis; print('insightface', insightface.__version__)" \
  && "$PY" -c "import numpy; print('numpy', numpy.__version__)" \
  && "$PY" -c "import onnxruntime; print('onnxruntime', onnxruntime.__version__)" \
  && "$PY" -c "import cv2; print('opencv', cv2.__version__)" \

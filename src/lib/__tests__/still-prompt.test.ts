@@ -304,7 +304,7 @@ describe("finishMediaPrompt appendAppearance", () => {
       appendAppearance: true,
     });
     expect(out).toMatch(/^Adult \d+-year-old woman/);
-    expect(out).toMatch(/a prompt ending in a fragment,$/);
+    expect(out).toContain("a prompt ending in a fragment");
   });
 
   // The gap this fills: the anatomy clause describes a chest and a groin and

@@ -176,7 +176,7 @@ const BUILD_NEGATIVE =
 // on the clothes already in the start frame, so explicit acts were performed
 // fully dressed.
 const CLOTHING_NEGATIVE =
-  "clothed, wearing clothes, dressed, fully clothed, partially clothed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, blouse, dress, swimsuit, bikini, fabric covering body, fabric covering breasts, fabric covering groin, clothes on, still dressed, remains of clothing";
+  "clothed, wearing clothes, dressed, fully clothed, partially clothed, trousers, pants, jeans, shorts, skirt, leggings, underwear, panties, bra, lingerie, shirt, top, blouse, dress, swimsuit, bikini, fabric covering body, fabric covering chest, fabric covering hips, clothes on, still dressed, remains of clothing";
 
 // `moving` says whether the output is a clip (true) or one still frame cut out
 // of one (false). It is not a detail: see MOTION_NEGATIVE above.

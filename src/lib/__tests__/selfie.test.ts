@@ -337,26 +337,36 @@ describe("photo vocabulary", () => {
 });
 
 describe("identity lock", () => {
-  it("ties the face to her site portrait whenever the portrait is sent", async () => {
+  it("ties the face to her site portrait whenever the portrait is the reference", async () => {
     const { finishMediaPrompt, IDENTITY_LOCK } = await import("../selfie");
-    const withRef = finishMediaPrompt("Photograph of a woman indoors.", "send me a nude", {
-      referenceImage: true,
+    const p = finishMediaPrompt("Photograph of a woman indoors.", "send me a pic", {
       appearance: { age: 24 },
     });
-    expect(withRef).toContain(IDENTITY_LOCK);
-    const noRef = finishMediaPrompt("Photograph of a woman indoors.", "send me a nude", {
-      appearance: { age: 24 },
-    });
-    expect(noRef).not.toContain("reference image");
+    expect(p).toContain(IDENTITY_LOCK);
   });
 
-  it("survives when her appearance is also written out", async () => {
+  it("stays off a text-to-image prompt that describes her instead", async () => {
     const { finishMediaPrompt, IDENTITY_LOCK } = await import("../selfie");
-    const p = finishMediaPrompt("Photograph of a woman indoors.", "lie down on the bed", {
-      referenceImage: true,
+    const p = finishMediaPrompt("Photograph of a woman indoors.", "send me a pic", {
       appendAppearance: true,
       appearance: { age: 24, ethnicity: "Korean" },
     });
+    expect(p).not.toContain(IDENTITY_LOCK);
+  });
+
+  it("forces nudity on a nude request and keeps both inside the budget", async () => {
+    const { finishMediaPrompt, NUDE_FORCE, IDENTITY_LOCK } = await import("../selfie");
+    const long = `Photograph of a woman indoors. ${"soft warm light on the sheets, ".repeat(80)}`;
+    const p = finishMediaPrompt(long, "send me a nude", { appearance: { age: 24 } });
+    expect(p).toContain(NUDE_FORCE);
     expect(p).toContain(IDENTITY_LOCK);
+    expect(p.split(/\s+/).length).toBeLessThanOrEqual(300);
+  });
+
+  it("uses no negation the renderer would draw", async () => {
+    const { NUDE_FORCE, IDENTITY_LOCK } = await import("../selfie");
+    for (const s of [NUDE_FORCE, IDENTITY_LOCK]) {
+      expect(s).not.toMatch(/\b(?:no|not|never|without|nothing|don'?t|do not)\b/i);
+    }
   });
 });

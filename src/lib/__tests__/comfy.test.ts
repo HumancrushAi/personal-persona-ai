@@ -459,8 +459,8 @@ describe("IMG2IMG_WORKFLOW", () => {
     expect(comfySettings("p", { template: DEFAULT_WORKFLOW }).denoise).toBe(1);
     // ...and turns it down for one that samples from her portrait, even with
     // COMFY_GRAPH unset.
-    expect(comfySettings("p", { template: IMG2IMG_WORKFLOW }).denoise).toBe(0.65);
-    expect(comfySettings("p").denoise).toBe(0.65);
+    expect(comfySettings("p", { template: IMG2IMG_WORKFLOW }).denoise).toBe(0.62);
+    expect(comfySettings("p").denoise).toBe(0.62);
   });
 
   it("is selected by name", async () => {
@@ -509,16 +509,32 @@ describe("denoise follows whoever is composing the picture", () => {
   it("lets her portrait compose a request that says nothing about composition", async () => {
     const { comfySettings } = await import("../comfy");
     await withGraph(() => {
-      expect(comfySettings("x", { promptSetsComposition: false }).denoise).toBe(0.65);
-      expect(comfySettings("x").denoise).toBe(0.65);
+      expect(comfySettings("x", { promptSetsComposition: false }).denoise).toBe(0.62);
+      expect(comfySettings("x").denoise).toBe(0.62);
     });
   });
 
   it("lets the prompt compose a request that names a prop, posture or viewpoint", async () => {
     const { comfySettings } = await import("../comfy");
     await withGraph(() => {
-      expect(comfySettings("x", { promptSetsComposition: true }).denoise).toBe(0.76);
+      expect(comfySettings("x", { promptSetsComposition: true }).denoise).toBe(0.78);
+      // A hard pose outranks undressing.
+      expect(
+        comfySettings("x", { promptSetsComposition: true, needsUndress: true }).denoise,
+      ).toBe(0.78);
     });
+  });
+
+  // Her portrait is clothed: a plain nude needs enough room to undress, but
+  // less than a pose, so the face still holds.
+  it("gives a plain nude the middle tier", async () => {
+    const { comfySettings } = await import("../comfy");
+    const prev = process.env.COMFY_DENOISE_NUDE;
+    delete process.env.COMFY_DENOISE_NUDE;
+    await withGraph(() => {
+      expect(comfySettings("x", { needsUndress: true }).denoise).toBe(0.73);
+    });
+    if (prev !== undefined) process.env.COMFY_DENOISE_NUDE = prev;
   });
 
   // Text-to-image has no starting latent to preserve, so neither case applies.

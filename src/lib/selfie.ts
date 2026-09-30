@@ -648,12 +648,18 @@ const POSTURE_RE =
 // Lock chat selfies to the same person as companions.image_url (homepage card).
 // Applied whenever a reference portrait is used (img2img / FaceID) — not on
 // pure text-to-image graphs that have no photo of her.
-const IDENTITY_LOCK =
-  "CRITICAL identity lock — same person as the reference photo only: identical face shape, bone structure, eyes and eye color, exact same hair color and hairstyle, same skin tone and undertone, same body proportions. Do not change ethnicity, do not invent different hair color, do not age or beautify into a different person. Only clothing, pose, and props may change.";
+//
+// Positive words only, like every other clause here: the renderer cannot read
+// "do not" and draws the nouns next to it, so "do not invent different hair
+// color" asked for different hair colour.
+// Short on purpose: it is reserved out of the same 300-word budget as the prop
+// spec, and on a toy request the spec alone takes about 254 of those words.
+export const IDENTITY_LOCK =
+  "Same person as the reference photo: identical face, eyes, eye color, hair color, hairstyle, skin tone, ethnicity, age and body proportions.";
 
 /** Forced when the user asked for nude — img2img otherwise keeps portrait clothes. */
-const NUDE_FORCE =
-  "Completely nude, fully undressed, no clothes, bare skin only, nothing covering breasts or groin, wardrobe fully removed.";
+export const NUDE_FORCE =
+  "Completely nude, fully undressed, bare skin everywhere, bare breasts and bare groin, wardrobe fully removed.";
 
 const QUALITY =
   "Candid photograph, 50mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, matte natural skin finish, subtle skin imperfections, natural asymmetry, soft natural shadows. Looks like a real photo taken on a real camera.";
@@ -1221,18 +1227,30 @@ export function finishMediaPrompt(
       .trim();
   }
 
-  body = capPromptWords(body, PROMPT_WORD_BUDGET - reserve - cueWords);
-  const capped = wantProp ? withClauseUpFront(body, propText) : body;
   // Nude must mean nude: portrait start frames are clothed, so say it hard.
-  if (requestIsNude(request) && !requestKeepsGarment(request) && !/completely nude|fully undressed/i.test(capped)) {
-    capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${NUDE_FORCE}`;
-  }
-
+  const forceNude =
+    requestIsNude(request) &&
+    !requestKeepsGarment(request) &&
+    !/completely nude|fully undressed/i.test(body);
   // Lock identity to the homepage portrait whenever that photo is the start frame.
   // appendAppearance is only set for pure text-to-image (no reference) — there
   // IDENTITY_LOCK would fight a described build. On img2img/FaceID, this line is
   // what keeps Aria in chat the same person as Aria on the site.
-  if (!opts.appendAppearance && !/CRITICAL identity lock|same person as the reference photo/i.test(capped)) {
+  const lockIdentity =
+    !opts.appendAppearance &&
+    !/CRITICAL identity lock|same person as the reference photo/i.test(body);
+  // Both are appended after the cut, so their words are reserved before it;
+  // otherwise they pushed a capped prompt 57 words past the budget.
+  const tailWords =
+    (forceNude ? NUDE_FORCE.split(/\s+/).length : 0) +
+    (lockIdentity ? IDENTITY_LOCK.split(/\s+/).length : 0);
+
+  body = capPromptWords(body, PROMPT_WORD_BUDGET - reserve - cueWords - tailWords);
+  let capped = wantProp ? withClauseUpFront(body, propText) : body;
+  if (forceNude) {
+    capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${NUDE_FORCE}`;
+  }
+  if (lockIdentity) {
     capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${IDENTITY_LOCK}`;
   }
 

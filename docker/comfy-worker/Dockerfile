@@ -113,6 +113,25 @@ RUN . /etc/hc-build.env \
  && "$PY" -c "import ultralytics; print('ultralytics', ultralytics.__version__)" \
  && ls -1 "$COMFY_DIR/custom_nodes"
 
+# Load the custom nodes the way the worker will, and fail the build if any of
+# the FaceID packs did not register.
+#
+# Importing the python packages is not enough: the first image passed that and
+# still died in production on "Node 'UltralyticsDetectorProvider' not found",
+# because ComfyUI-Impact-Subpack failed to load inside ComfyUI. ComfyUI only
+# logs that and carries on, so it is checked here, where the traceback lands in
+# the build log instead of a refunded chat photo.
+RUN . /etc/hc-build.env \
+ && set -ux \
+ && cd "$COMFY_DIR" \
+ && ("$PY" main.py --cpu --quick-test-for-ci > /tmp/node-load.log 2>&1; true) \
+ && cat /tmp/node-load.log | tail -150 \
+ && if grep -qE "IMPORT FAILED|Cannot import" /tmp/node-load.log; then \
+      echo "=== custom node import failures ==="; \
+      grep -nE -B2 -A25 "Cannot import" /tmp/node-load.log; \
+      exit 1; \
+    fi
+
 # Three node packs, not two. UltralyticsDetectorProvider — the face detector
 # FaceDetailer takes its bbox from — lives in Impact SUBPACK. It was split out of
 # the main Impact Pack, so installing only ComfyUI-Impact-Pack gives you a

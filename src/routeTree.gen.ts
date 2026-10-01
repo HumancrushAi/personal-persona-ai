@@ -9,73 +9,37 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as MeRouteImport } from './routes/me'
-import { Route as HistoryRouteImport } from './routes/history'
-import { Route as GalleryRouteImport } from './routes/gallery'
-import { Route as FaqRouteImport } from './routes/faq'
-import { Route as CreditsRouteImport } from './routes/credits'
-import { Route as CreateRouteImport } from './routes/create'
-import { Route as BrowseRouteImport } from './routes/browse'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AffiliateRouteImport } from './routes/affiliate'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as LegalIndexRouteImport } from './routes/legal.index'
-import { Route as CamsIndexRouteImport } from './routes/cams.index'
-import { Route as LegalSlugRouteImport } from './routes/legal.$slug'
-import { Route as CompanionIdRouteImport } from './routes/companion.$id'
-import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
-import { Route as CamsIdRouteImport } from './routes/cams.$id'
-import { Route as AuthenticatedStudioRouteImport } from './routes/_authenticated/studio'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AffiliateRouteImport } from './routes/affiliate'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BrowseRouteImport } from './routes/browse'
+import { Route as CreateRouteImport } from './routes/create'
+import { Route as CreditsRouteImport } from './routes/credits'
+import { Route as FaqRouteImport } from './routes/faq'
+import { Route as GalleryRouteImport } from './routes/gallery'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as MeRouteImport } from './routes/me'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as ApiPublicRunpodWebhookRouteImport } from './routes/api/public/runpod-webhook'
-import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
+import { Route as AuthenticatedStudioRouteImport } from './routes/_authenticated/studio'
+import { Route as CamsIndexRouteImport } from './routes/cams.index'
+import { Route as CamsIdRouteImport } from './routes/cams.$id'
+import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
+import { Route as CompanionIdRouteImport } from './routes/companion.$id'
+import { Route as LegalIndexRouteImport } from './routes/legal.index'
+import { Route as LegalSlugRouteImport } from './routes/legal.$slug'
 import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
+import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
+import { Route as ApiPublicRunpodWebhookRouteImport } from './routes/api/public/runpod-webhook'
 
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MeRoute = MeRouteImport.update({
-  id: '/me',
-  path: '/me',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GalleryRoute = GalleryRouteImport.update({
-  id: '/gallery',
-  path: '/gallery',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FaqRoute = FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CreditsRoute = CreditsRouteImport.update({
-  id: '/credits',
-  path: '/credits',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CreateRoute = CreateRouteImport.update({
-  id: '/create',
-  path: '/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BrowseRoute = BrowseRouteImport.update({
-  id: '/browse',
-  path: '/browse',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AffiliateRoute = AffiliateRouteImport.update({
@@ -83,38 +47,64 @@ const AffiliateRoute = AffiliateRouteImport.update({
   path: '/affiliate',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BrowseRoute = BrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LegalIndexRoute = LegalIndexRouteImport.update({
-  id: '/legal/',
-  path: '/legal/',
+const CreateRoute = CreateRouteImport.update({
+  id: '/create',
+  path: '/create',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CreditsRoute = CreditsRouteImport.update({
+  id: '/credits',
+  path: '/credits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeRoute = MeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStudioRoute = AuthenticatedStudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const CamsIndexRoute = CamsIndexRouteImport.update({
   id: '/cams/',
   path: '/cams/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LegalSlugRoute = LegalSlugRouteImport.update({
-  id: '/legal/$slug',
-  path: '/legal/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompanionIdRoute = CompanionIdRouteImport.update({
-  id: '/companion/$id',
-  path: '/companion/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
-  id: '/chat/$conversationId',
-  path: '/chat/$conversationId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CamsIdRoute = CamsIdRouteImport.update({
@@ -122,19 +112,29 @@ const CamsIdRoute = CamsIdRouteImport.update({
   path: '/cams/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedStudioRoute = AuthenticatedStudioRouteImport.update({
-  id: '/studio',
-  path: '/studio',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
+  id: '/chat/$conversationId',
+  path: '/chat/$conversationId',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const CompanionIdRoute = CompanionIdRouteImport.update({
+  id: '/companion/$id',
+  path: '/companion/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicRunpodWebhookRoute = ApiPublicRunpodWebhookRouteImport.update({
-  id: '/api/public/runpod-webhook',
-  path: '/api/public/runpod-webhook',
+const LegalIndexRoute = LegalIndexRouteImport.update({
+  id: '/legal/',
+  path: '/legal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalSlugRoute = LegalSlugRouteImport.update({
+  id: '/legal/$slug',
+  path: '/legal/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronReengageRoute = ApiCronReengageRouteImport.update({
+  id: '/api/cron/reengage',
+  path: '/api/cron/reengage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAuthnetWebhookRoute = ApiPublicAuthnetWebhookRouteImport.update({
@@ -142,9 +142,9 @@ const ApiPublicAuthnetWebhookRoute = ApiPublicAuthnetWebhookRouteImport.update({
   path: '/api/public/authnet-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCronReengageRoute = ApiCronReengageRouteImport.update({
-  id: '/api/cron/reengage',
-  path: '/api/cron/reengage',
+const ApiPublicRunpodWebhookRoute = ApiPublicRunpodWebhookRouteImport.update({
+  id: '/api/public/runpod-webhook',
+  path: '/api/public/runpod-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -324,74 +324,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/me': {
-      id: '/me'
-      path: '/me'
-      fullPath: '/me'
-      preLoaderRoute: typeof MeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gallery': {
-      id: '/gallery'
-      path: '/gallery'
-      fullPath: '/gallery'
-      preLoaderRoute: typeof GalleryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/faq': {
-      id: '/faq'
-      path: '/faq'
-      fullPath: '/faq'
-      preLoaderRoute: typeof FaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/credits': {
-      id: '/credits'
-      path: '/credits'
-      fullPath: '/credits'
-      preLoaderRoute: typeof CreditsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/create': {
-      id: '/create'
-      path: '/create'
-      fullPath: '/create'
-      preLoaderRoute: typeof CreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/browse': {
-      id: '/browse'
-      path: '/browse'
-      fullPath: '/browse'
-      preLoaderRoute: typeof BrowseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/affiliate': {
-      id: '/affiliate'
-      path: '/affiliate'
-      fullPath: '/affiliate'
-      preLoaderRoute: typeof AffiliateRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -401,46 +338,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/affiliate': {
+      id: '/affiliate'
+      path: '/affiliate'
+      fullPath: '/affiliate'
+      preLoaderRoute: typeof AffiliateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/legal/': {
-      id: '/legal/'
-      path: '/legal'
-      fullPath: '/legal/'
-      preLoaderRoute: typeof LegalIndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/browse': {
+      id: '/browse'
+      path: '/browse'
+      fullPath: '/browse'
+      preLoaderRoute: typeof BrowseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create': {
+      id: '/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/credits': {
+      id: '/credits'
+      path: '/credits'
+      fullPath: '/credits'
+      preLoaderRoute: typeof CreditsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/studio': {
+      id: '/_authenticated/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof AuthenticatedStudioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/cams/': {
       id: '/cams/'
       path: '/cams'
       fullPath: '/cams/'
       preLoaderRoute: typeof CamsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/legal/$slug': {
-      id: '/legal/$slug'
-      path: '/legal/$slug'
-      fullPath: '/legal/$slug'
-      preLoaderRoute: typeof LegalSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/companion/$id': {
-      id: '/companion/$id'
-      path: '/companion/$id'
-      fullPath: '/companion/$id'
-      preLoaderRoute: typeof CompanionIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chat/$conversationId': {
-      id: '/chat/$conversationId'
-      path: '/chat/$conversationId'
-      fullPath: '/chat/$conversationId'
-      preLoaderRoute: typeof ChatConversationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cams/$id': {
@@ -450,25 +436,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CamsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/studio': {
-      id: '/_authenticated/studio'
-      path: '/studio'
-      fullPath: '/studio'
-      preLoaderRoute: typeof AuthenticatedStudioRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/chat/$conversationId': {
+      id: '/chat/$conversationId'
+      path: '/chat/$conversationId'
+      fullPath: '/chat/$conversationId'
+      preLoaderRoute: typeof ChatConversationIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/companion/$id': {
+      id: '/companion/$id'
+      path: '/companion/$id'
+      fullPath: '/companion/$id'
+      preLoaderRoute: typeof CompanionIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/api/public/runpod-webhook': {
-      id: '/api/public/runpod-webhook'
-      path: '/api/public/runpod-webhook'
-      fullPath: '/api/public/runpod-webhook'
-      preLoaderRoute: typeof ApiPublicRunpodWebhookRouteImport
+    '/legal/': {
+      id: '/legal/'
+      path: '/legal'
+      fullPath: '/legal/'
+      preLoaderRoute: typeof LegalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/$slug': {
+      id: '/legal/$slug'
+      path: '/legal/$slug'
+      fullPath: '/legal/$slug'
+      preLoaderRoute: typeof LegalSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/reengage': {
+      id: '/api/cron/reengage'
+      path: '/api/cron/reengage'
+      fullPath: '/api/cron/reengage'
+      preLoaderRoute: typeof ApiCronReengageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/authnet-webhook': {
@@ -478,11 +478,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAuthnetWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cron/reengage': {
-      id: '/api/cron/reengage'
-      path: '/api/cron/reengage'
-      fullPath: '/api/cron/reengage'
-      preLoaderRoute: typeof ApiCronReengageRouteImport
+    '/api/public/runpod-webhook': {
+      id: '/api/public/runpod-webhook'
+      path: '/api/public/runpod-webhook'
+      fullPath: '/api/public/runpod-webhook'
+      preLoaderRoute: typeof ApiPublicRunpodWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

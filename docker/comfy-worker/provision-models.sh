@@ -48,7 +48,7 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 trap 'rm -rf "$LOCK"' EXIT
 
-mkdir -p "$MODELS"/{ipadapter,loras,clip_vision,ultralytics/bbox,insightface/models}
+mkdir -p "$MODELS"/{ipadapter,loras,clip_vision,ultralytics/bbox,ultralytics/segm,insightface/models}
 
 # A model that arrives as a 4KB HTML error page is worse than one that is
 # missing: the loader fails with a parse error rather than "not found", and the

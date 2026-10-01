@@ -121,16 +121,32 @@ RUN . /etc/hc-build.env \
 # because ComfyUI-Impact-Subpack failed to load inside ComfyUI. ComfyUI only
 # logs that and carries on, so it is checked here, where the traceback lands in
 # the build log instead of a refunded chat photo.
-RUN . /etc/hc-build.env \
+#
+# It runs AFTER link-models.sh, against a fake volume shaped like production's
+# (ultralytics/bbox only, no segm). The check without that step passed on an
+# image that then failed on the live worker, because the linking is what broke
+# the pack.
+COPY link-models.sh /hc-link-models.sh
+RUN chmod +x /hc-link-models.sh \
+ && . /etc/hc-build.env \
  && set -ux \
+ && mkdir -p /tmp/fakevol/models/ipadapter /tmp/fakevol/models/insightface/models /tmp/fakevol/models/ultralytics/bbox \
+ && VOL=/tmp/fakevol bash /hc-link-models.sh \
  && cd "$COMFY_DIR" \
  && ("$PY" main.py --cpu --quick-test-for-ci > /tmp/node-load.log 2>&1; true) \
  && cat /tmp/node-load.log | tail -150 \
+ && for d in ipadapter insightface ultralytics; do \
+      if [ -L "models/$d" ]; then rm "models/$d"; fi; \
+      mkdir -p "models/$d"; \
+    done \
+ && mkdir -p models/ultralytics/bbox models/ultralytics/segm \
+ && rm -rf /tmp/fakevol \
  && if grep -qE "IMPORT FAILED|Cannot import" /tmp/node-load.log; then \
       echo "=== custom node import failures ==="; \
       grep -nE -B2 -A25 "Cannot import" /tmp/node-load.log; \
       exit 1; \
-    fi
+    fi \
+ && grep -q "ComfyUI-Impact-Subpack" /tmp/node-load.log
 
 # Three node packs, not two. UltralyticsDetectorProvider — the face detector
 # FaceDetailer takes its bbox from — lives in Impact SUBPACK. It was split out of

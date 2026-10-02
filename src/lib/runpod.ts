@@ -217,7 +217,17 @@ function isMediaUrl(s: string): boolean {
 // RunPod reports a worker-level failure in `error`, but an endpoint can also
 // finish COMPLETED while its own payload reports trouble — surface both.
 export function runpodOutputError(output: any, error: any): string | null {
-  if (error) return typeof error === "string" ? error : JSON.stringify(error).slice(0, 300);
+  // The worker's top-level error is generic ("Job processing failed"); the
+  // ComfyUI exception that says WHY is in output.details. Returning only the
+  // string left a failed FaceID render with nothing to diagnose it from.
+  const details =
+    output && typeof output === "object" && !Array.isArray(output) && output.details
+      ? ` — ${typeof output.details === "string" ? output.details : JSON.stringify(output.details)}`
+      : "";
+  if (error) {
+    const head = typeof error === "string" ? error : JSON.stringify(error);
+    return `${head}${details}`.slice(0, 2000);
+  }
   if (output && typeof output === "object" && !Array.isArray(output)) {
     if (typeof output.error === "string") return output.error;
     if (typeof output.status === "string" && output.status.toLowerCase() === "error") {

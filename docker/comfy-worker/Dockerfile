@@ -32,8 +32,15 @@ RUN apt-get update \
 # Discover where ComfyUI and its interpreter actually are, once, and record it.
 #
 # Everything after this sources /etc/hc-build.env rather than guessing again.
-# Confirmed from a build log rather than assumed: COMFY_DIR=/comfyui,
-# PY=/comfyui/.venv/bin/python, and that venv already carries pip 24.0.
+#
+# PY is the interpreter ComfyUI RUNS under, found by asking which one has
+# ComfyUI's own frontend package — not the first python on a list. The base
+# image carries two venvs. This used to pick /comfyui/.venv because it was
+# listed first, but /start.sh runs ComfyUI from /opt/venv (the worker log says
+# "web root: /opt/venv/..."). Every package went into the venv nobody runs:
+# the live worker had no cv2, so Impact Pack and Subpack failed to import and
+# every faceid render died on "UltralyticsDetectorProvider not found", while
+# the build check — run with the same wrong python — passed.
 RUN set -eux; \
     COMFY_DIR=""; \
     for d in /comfyui/ComfyUI /comfyui /opt/ComfyUI /ComfyUI /workspace/ComfyUI; do \
@@ -45,10 +52,16 @@ RUN set -eux; \
       exit 1; \
     fi; \
     PY=""; \
-    for p in /comfyui/.venv/bin/python /opt/venv/bin/python /usr/local/bin/python3 /usr/bin/python3; do \
-      if [ -x "$p" ]; then PY="$p"; break; fi; \
+    for p in /opt/venv/bin/python /comfyui/.venv/bin/python /usr/local/bin/python3 /usr/bin/python3; do \
+      if [ -x "$p" ] && "$p" -c "import comfyui_frontend_package" 2>/dev/null; then PY="$p"; break; fi; \
     done; \
-    if [ -z "$PY" ]; then echo "FATAL: no python interpreter found." >&2; exit 1; fi; \
+    if [ -z "$PY" ]; then \
+      echo "FATAL: no python has comfyui_frontend_package — cannot tell which one runs ComfyUI." >&2; \
+      grep -n "python" /start.sh >&2 || true; \
+      exit 1; \
+    fi; \
+    echo "ComfyUI runs under: $PY"; \
+    grep -n "python" /start.sh || true; \
     if ! "$PY" -m pip --version; then \
       "$PY" -m ensurepip --upgrade || { \
         curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py; \

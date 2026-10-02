@@ -567,3 +567,29 @@ describe("a second photo in the same chat", () => {
     if (prev !== undefined) process.env.COMFY_SEED = prev;
   });
 });
+
+describe("FACEID_LITE_WORKFLOW", () => {
+  it("keeps the IPAdapter FaceID lock and drops the Impact nodes", async () => {
+    const { FACEID_LITE_WORKFLOW, comfyWorkflow, wantsReference } = await import("../comfy");
+    expect(wantsReference(FACEID_LITE_WORKFLOW)).toBe(true);
+    expect(FACEID_LITE_WORKFLOW).not.toMatch(/UltralyticsDetectorProvider|FaceDetailer/);
+    const g = comfyWorkflow(
+      { ...VARS, checkpoint: "c.safetensors", referenceImage: "reference.png" },
+      FACEID_LITE_WORKFLOW,
+    ) as any;
+    expect(g["12"].class_type).toBe("IPAdapterFaceID");
+    expect(g["3"].inputs.model).toEqual(["12", 0]);
+    expect(g["9"].inputs.images).toEqual(["8", 0]);
+    expect(JSON.stringify(g)).not.toContain("{{");
+  });
+
+  it("is selected by name", async () => {
+    const { comfyTemplate, FACEID_LITE_WORKFLOW } = await import("../comfy");
+    const prev = process.env.COMFY_GRAPH;
+    delete process.env.COMFY_WORKFLOW_JSON;
+    process.env.COMFY_GRAPH = "faceid-lite";
+    expect(comfyTemplate()).toBe(FACEID_LITE_WORKFLOW);
+    if (prev === undefined) delete process.env.COMFY_GRAPH;
+    else process.env.COMFY_GRAPH = prev;
+  });
+});

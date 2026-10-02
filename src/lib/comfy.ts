@@ -249,6 +249,22 @@ export const FACEID_WORKFLOW = `{
   }
 }`;
 
+// FACEID_WORKFLOW without the FaceDetailer pass: the same IPAdapter FaceID
+// identity lock, and only ComfyUI_IPAdapter_plus needed on the worker.
+//
+// On the live worker the Impact Subpack does not register (every render died on
+// "Node 'UltralyticsDetectorProvider' not found" while the IPAdapter nodes ahead
+// of it validated), although it loads in the image's own build check. The face
+// identity comes from nodes 11-12; 13-14 only re-render the face for detail, so
+// this keeps the face lock and drops the dependency. COMFY_GRAPH=faceid-lite.
+export const FACEID_LITE_WORKFLOW = (() => {
+  const g = JSON.parse(FACEID_WORKFLOW) as Record<string, any>;
+  delete g["13"];
+  delete g["14"];
+  g["9"].inputs.images = ["8", 0];
+  return JSON.stringify(g, null, 2);
+})();
+
 // The identity graph that needs NOTHING installed.
 //
 // Reported as "no model generates the same character in the chat" — every
@@ -510,6 +526,7 @@ export function comfyTemplate(): string {
   if (override) return override;
   const named = (process.env.COMFY_GRAPH ?? "").trim().toLowerCase();
   if (named === "faceid") return FACEID_WORKFLOW;
+  if (named === "faceid-lite") return FACEID_LITE_WORKFLOW;
   // Explicit stock txt2img only when asked. Identity is the product default —
   // a stranger every render is the worst failure mode.
   if (named === "default" || named === "txt2img") return DEFAULT_WORKFLOW;

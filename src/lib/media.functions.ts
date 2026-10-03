@@ -1106,6 +1106,62 @@ export async function startVideoJob(
 
   // Same centre-crop problem as photos: hand the endpoint a square that keeps
   // her whole body rather than letting it slice the frame down to a torso.
+  const fpsSetting = Number(process.env.RUNPOD_VIDEO_FPS || "16");
+  const videoInput = {
+    fps: fpsSetting,
+    frames_per_scene: Math.round((totalSeconds * fpsSetting) / scenePrompts.length),
+    num_scenes: scenePrompts.length,
+    sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
+    prompts: scenePrompts,
+    negative_prompt: negativeFor(userReq, companion.gender, { moving: true }),
+    lora_strengths: VIDEO_LORA_STRENGTHS,
+  };
+
+  // Same face as her photos: render the opening frame on the photo graph first
+  // (FaceID / img2img from her portrait, already in the requested scene), and
+  // animate THAT. The webhook or the status poll picks it up when the still is
+  // done — see advanceVideoFromStill. Starting straight from the shrunken
+  // portrait left the video model to redraw her face, and it drifted.
+  const comfyEndpoint = runpodEndpoint("comfy");
+  if (imageProvider() === "comfy" && comfyEndpoint) {
+    try {
+      const { comfyTemplate, wantsReference } = await import("./comfy");
+      if (wantsReference(comfyTemplate())) {
+        const stillPrompt = await photoPrompt(
+          {
+            name: companion.name,
+            age: companion.age ?? 18,
+            ethnicity: companion.ethnicity ?? "",
+            gender: companion.gender,
+          },
+          userReq,
+          null,
+          "comfy",
+        );
+        const stillInput = await comfyJobInput(
+          stillPrompt,
+          negativeFor(userReq, companion.gender, { moving: false }),
+          startImage,
+          userReq,
+          `video-${job.id}`,
+        );
+        const still = await runpodRun(comfyEndpoint, stillInput, webhookFor("runpod"));
+        await supabaseAdmin
+          .from("media_jobs")
+          .update({
+            replicate_id: still.id,
+            provider: "runpod-still",
+            status: "processing",
+            prompt: JSON.stringify({ stage: "still", videoInput, videoPrompt }),
+          })
+          .eq("id", job.id);
+        return job.id;
+      }
+    } catch (e: any) {
+      console.warn(`[media] face-locked start frame failed, using her portrait: ${e?.message ?? e}`);
+    }
+  }
+
   let startFrame = startImage;
   try {
     const { squareStartFrame } = await import("./start-frame.server");
@@ -1114,26 +1170,13 @@ export async function startVideoJob(
     /* fall back to the raw portrait rather than failing the whole request */
   }
 
-  // fps * frames is the clip length: 82 frames @ 16fps ≈ 5s, the endpoint's
-  // tuned default. num_scenes stays 1 — one prompt, one continuous shot.
-  const fps = Number(process.env.RUNPOD_VIDEO_FPS || "16");
+  // videoInput (above) carries the clip length: length is frames / fps on this
+  // endpoint, and total length is frames_per_scene * num_scenes, so the
+  // requested duration is divided across the scenes there.
   try {
     const result = await runpodRun(
       runpodVideo,
-      {
-        image_url: startFrame,
-        fps,
-        // Length is frames / fps on this endpoint, so the requested duration is
-        // converted here rather than sent as seconds.
-        // Total length is frames_per_scene * num_scenes, so the per-scene frame
-        // count is the requested duration divided across the scenes.
-        frames_per_scene: Math.round((totalSeconds * fps) / scenePrompts.length),
-        num_scenes: scenePrompts.length,
-        sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
-        prompts: scenePrompts,
-        negative_prompt: negativeFor(userReq, companion.gender, { moving: true }),
-        lora_strengths: VIDEO_LORA_STRENGTHS,
-      },
+      { image_url: startFrame, ...videoInput },
       webhookFor("runpod"),
     );
     await supabaseAdmin
@@ -1195,6 +1238,35 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     // Written but not yet launched, and not old enough to give up on. The
     // caller keeps polling.
     if (!(job as any).replicate_id) return { status: job.status };
+
+    // A video still rendering its face-locked opening frame on the ComfyUI
+    // endpoint (see startVideoJob). Poll THAT endpoint, and when the still is
+    // done start the video — the same step the webhook takes, claimed
+    // atomically so only one of them submits it.
+    if ((job as any).provider === "runpod-advancing") return { status: "processing" };
+    if ((job as any).provider === "runpod-still") {
+      const endpoint = runpodEndpoint("comfy");
+      if (!endpoint) return { status: "processing" };
+      const { runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } =
+        await import("./runpod");
+      let res: { status: string; output?: any; error?: any };
+      try {
+        res = await runpodGet(endpoint, (job as any).replicate_id);
+      } catch {
+        return { status: "processing" };
+      }
+      const state = runpodStatusOf(res.status);
+      if (state === "processing") return { status: "processing" };
+      const err = runpodOutputError(res.output, res.error);
+      const url = runpodOutputUrl(res.output);
+      if (state === "failed" || err || !url) {
+        await fail(job as any, err || `Her opening frame did not render (${res.status})`);
+        return { status: "failed" };
+      }
+      const { advanceVideoFromStill } = await import("./media-finalize.server");
+      await advanceVideoFromStill(job as any, url);
+      return { status: "processing" };
+    }
 
     // RunPod jobs need no face-swap chaining: the image path edits her real
     // photo and the video path animates it, so identity is already hers.

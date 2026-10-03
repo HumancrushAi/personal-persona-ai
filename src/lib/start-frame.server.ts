@@ -70,3 +70,33 @@ export async function squareStartFrame(portraitUrl: string, key: string): Promis
 
   return supabaseAdmin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
 }
+
+/**
+ * The start frame for a video rendered from her face-locked still.
+ *
+ * squareStartFrame shrinks the subject to 62% of the square, which is right for
+ * a full-length portrait but leaves a still's face small — and a small face is
+ * the part the video model redraws, which is how a clip drifted to a different
+ * woman. The still is already composed (pose, framing, nudity), so here it
+ * fills the square's full height on the same blurred backdrop.
+ */
+export async function squareStillFrame(still: Buffer, key: string): Promise<string> {
+  const wash = await sharp(still).resize(12, 12, { fit: "cover" }).toBuffer();
+  const backdrop = await sharp(wash)
+    .resize(SIDE, SIDE, { fit: "fill", kernel: "cubic" })
+    .blur(40)
+    .modulate({ brightness: 0.75 })
+    .toBuffer();
+  const subject = await sharp(still).resize(SIDE, SIDE, { fit: "inside" }).toBuffer();
+  const squared = await sharp(backdrop)
+    .composite([{ input: subject, gravity: "center" }])
+    .png()
+    .toBuffer();
+
+  const path = `startframes/${key}.png`;
+  const { error } = await supabaseAdmin.storage
+    .from("avatars")
+    .upload(path, squared, { contentType: "image/png", upsert: true });
+  if (error) throw error;
+  return supabaseAdmin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+}

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/runpod-webhook")({
 
         const { data: job } = await supabaseAdmin
           .from("media_jobs")
-          .select("id, user_id, conversation_id, kind, cost, status")
+          .select("id, user_id, conversation_id, kind, cost, status, provider")
           .eq("replicate_id", jobId)
           .maybeSingle();
 
@@ -57,6 +57,14 @@ export const Route = createFileRoute("/api/public/runpod-webhook")({
         if (!url) {
           await failMediaJob(job, "No output URL received from generation model");
           return new Response("Failed status processed", { status: 200 });
+        }
+
+        // A video's face-locked opening frame is done: animate it rather than
+        // finishing the job. The video's own webhook completes it later.
+        if (job.kind === "video" && (job as any).provider === "runpod-still") {
+          const { advanceVideoFromStill } = await import("@/lib/media-finalize.server");
+          await advanceVideoFromStill(job, url);
+          return new Response("Still done, video started", { status: 200 });
         }
 
         try {

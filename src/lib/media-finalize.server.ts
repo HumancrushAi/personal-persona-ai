@@ -640,3 +640,65 @@ export async function failMediaJob(job: Job, errorMsg: string): Promise<void> {
     console.error("Refund failed in media finalize", e);
   }
 }
+
+/**
+ * Second step of a video: her face-locked still is done, so animate it.
+ *
+ * A video used to start from her portrait, shrunk into a padded square, and the
+ * video model redrew the face as it moved — the clip drifted to a different
+ * woman, and an explicit request had to undress a clothed portrait mid-motion.
+ * startVideoJob now renders the opening frame first on the same FaceID graph as
+ * a chat photo (same face, already in the requested scene) and parks the video
+ * request in media_jobs.prompt. This picks that up.
+ *
+ * Called from both the webhook and the status poll, so it claims the job
+ * atomically: only the caller that flips provider runpod-still -> runpod-
+ * advancing submits a video.
+ */
+export async function advanceVideoFromStill(job: Job, stillUrl: string): Promise<void> {
+  const { data: claimed } = await supabaseAdmin
+    .from("media_jobs")
+    .update({ provider: "runpod-advancing", updated_at: new Date().toISOString() })
+    .eq("id", job.id)
+    .eq("provider", "runpod-still")
+    .select("id, prompt");
+  const row = claimed?.[0] as { id: string; prompt: string } | undefined;
+  if (!row) return;
+
+  try {
+    const parked = JSON.parse(row.prompt) as {
+      stage: "still";
+      videoInput: Record<string, unknown>;
+      videoPrompt: string;
+    };
+    const res = await fetch(stillUrl);
+    if (!res.ok) throw new Error(`could not read her still (${res.status})`);
+    const still = Buffer.from(await res.arrayBuffer());
+
+    const { squareStillFrame } = await import("./start-frame.server");
+    const frameUrl = await squareStillFrame(still, `vidstill-${job.id}`);
+
+    const { runpodRun, runpodEndpoint } = await import("./runpod");
+    const endpoint = runpodEndpoint("video");
+    if (!endpoint) throw new Error("RUNPOD_VIDEO_ENDPOINT is not configured");
+    const site = (process.env.PUBLIC_SITE_URL || "https://www.humancrush.com").replace(/\/$/, "");
+    const result = await runpodRun(
+      endpoint,
+      { ...parked.videoInput, image_url: frameUrl },
+      `${site}/api/public/runpod-webhook`,
+    );
+
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({
+        replicate_id: result.id,
+        provider: "runpod",
+        status: "processing",
+        prompt: parked.videoPrompt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.id);
+  } catch (e: any) {
+    await failMediaJob(job, `Could not start the video from her still: ${e?.message ?? e}`);
+  }
+}

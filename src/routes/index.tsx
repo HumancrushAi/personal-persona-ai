@@ -157,6 +157,7 @@ type Companion = {
 const CATEGORIES = [
   "For you",
   "Goth",
+  "MILF",
   "New",
   "Trending",
   "Women",
@@ -186,6 +187,9 @@ function matchesCategory(c: Companion, cat: Cat): boolean {
         /\b(goth|alt|dark|punk)\b/i.test(c.ethnicity) ||
         ["raven", "vesper", "jade", "nyx", "lilith", "morticia"].includes(c.name.toLowerCase())
       );
+    // Mature women: the roster was 18-27 until the 30/40/50-somethings were added.
+    case "MILF":
+      return c.gender === "female" && c.art_style !== "anime" && c.age >= 30;
     case "Women":
       return (c.gender === "female" || c.gender === "trans-female") && c.art_style !== "anime";
     case "Men":

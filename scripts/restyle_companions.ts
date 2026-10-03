@@ -51,6 +51,8 @@ const PHOTO =
 // One outfit each, all revealing and none nude. Several phrasings per woman:
 // grok's moderation rejects some wordings outright, so a refusal falls through
 // to the next, tamer one rather than failing the whole run.
+const MEN = new Set(["Akira", "Kaito", "Lucas", "Ren", "Ethan"]);
+
 const RESTYLE: Record<string, string[]> = {
   Morticia: [
     "wearing a short black satin mini dress with a plunging neckline and thin spaghetti straps, showing cleavage and long bare legs, sitting on the edge of a bed in a dark gothic bedroom with candles",
@@ -84,6 +86,29 @@ const RESTYLE: Record<string, string[]> = {
     "wearing a short black bodycon mini dress with a deep plunging neckline and thin straps, showing cleavage and long bare legs, kneeling on a bed with white sheets in a softly lit bedroom",
     "wearing a short fitted black mini dress with a low neckline and thin straps, bare legs, kneeling on a bed in a softly lit bedroom",
   ],
+
+  // The men: five were in shirts, a tank top or a hoodie while Leo and Dante
+  // are shirtless, so they match those two — bare chest, fitted shorts.
+  Akira: [
+    "with his silver-white hair exactly as in the reference, shirtless with a lean toned bare chest and abs, wearing fitted black boxer briefs, sitting on the edge of a bed in a bright bedroom",
+    "with his silver-white hair exactly as in the reference, shirtless with a lean toned chest, wearing black athletic shorts, sitting on a bed in a bright bedroom",
+  ],
+  Kaito: [
+    "shirtless with a lean toned bare chest and abs, wearing low-slung grey sweatpants, leaning against a doorway in a dim apartment",
+    "shirtless with a toned chest, wearing grey sweatpants, standing in a dim apartment doorway",
+  ],
+  Lucas: [
+    "shirtless with a toned bare chest and abs, wearing fitted navy boxer briefs, sitting on the edge of a bed in a warm bedroom",
+    "shirtless with a toned chest, wearing navy athletic shorts, sitting on a bed in a warm bedroom",
+  ],
+  Ren: [
+    "shirtless with a lean toned bare chest and abs, wearing fitted black shorts, sitting on a grey sofa in a cosy living room",
+    "shirtless with a toned chest, wearing black shorts, sitting on a sofa in a cosy living room",
+  ],
+  Ethan: [
+    "shirtless with a toned bare chest and abs, wearing fitted grey boxer briefs, sitting on a grey sofa in a warmly lit living room",
+    "shirtless with a toned chest, wearing grey athletic shorts, sitting on a sofa in a warmly lit living room",
+  ],
 };
 
 async function main() {
@@ -113,8 +138,8 @@ async function main() {
       for (let attempt = 0; attempt < 2 && !dataUrl; attempt++) {
         try {
           dataUrl = await generateCompanionPortrait(
-            `Candid photo of a real attractive ${c.age}-year-old ${c.ethnicity} woman named ${name}, ${outfit}. ${PHOTO}`,
-            { gender: "female", noNudity: true, referenceUrl: c.image_url },
+            `Candid photo of a real attractive ${c.age}-year-old ${c.ethnicity} ${MEN.has(name) ? "man" : "woman"} named ${name}, ${outfit}. ${PHOTO}`,
+            { gender: MEN.has(name) ? "male" : "female", noNudity: true, referenceUrl: c.image_url },
           );
         } catch (e: any) {
           lastErr = e?.message ?? String(e);

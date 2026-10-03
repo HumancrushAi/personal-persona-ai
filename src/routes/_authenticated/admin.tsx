@@ -760,8 +760,12 @@ function PersonasPanel() {
   async function regenerate(id: string) {
     setRegenId(id);
     try {
-      await regenPhoto({ data: { companionId: id } });
-      toast.success("New photo generated");
+      const res = await regenPhoto({ data: { companionId: id } });
+      toast.success(
+        res.reel === "started"
+          ? "New photo generated — her live reel is being remade from it (a few minutes)"
+          : "New photo generated",
+      );
       await load();
     } catch (e: any) {
       toast.error(e.message ?? "Regenerate failed");
@@ -840,7 +844,7 @@ function PersonasPanel() {
     e.preventDefault();
     setSaving(true);
     try {
-      await upsert({
+      const saved = await upsert({
         data: {
           id: form.id,
           name: form.name,
@@ -864,7 +868,14 @@ function PersonasPanel() {
           voice_id: form.voice_id,
         },
       });
-      toast.success(form.id ? "Persona updated" : "Persona created");
+      toast.success(
+        (form.id ? "Persona updated" : "Persona created") +
+          (saved.reel === "started"
+            ? " — her live reel is being made from this photo (a few minutes)"
+            : saved.reel === "failed"
+              ? " — but her live reel could not be started; regenerate the photo to retry"
+              : ""),
+      );
       setForm({ ...EMPTY_FORM });
       await load();
     } catch (e: any) {

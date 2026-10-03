@@ -16,7 +16,7 @@ type Job = {
 // the bundleFfmpeg plugin in vite.config.ts (Nitro's tracer only carries the JS
 // shim, so relying on ffmpeg-static's own path 404s in production). Locally that
 // copy doesn't exist and ffmpeg-static resolves to node_modules.
-async function ffmpegBin(): Promise<string> {
+export async function ffmpegBin(): Promise<string> {
   const { join } = await import("node:path");
   const { existsSync } = await import("node:fs");
   const bundled = join(process.cwd(), "bin", "ffmpeg");

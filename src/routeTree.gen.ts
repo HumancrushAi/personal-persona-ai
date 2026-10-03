@@ -31,6 +31,7 @@ import { Route as LegalIndexRouteImport } from './routes/legal.index'
 import { Route as LegalSlugRouteImport } from './routes/legal.$slug'
 import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
+import { Route as ApiPublicReelWebhookRouteImport } from './routes/api/public/reel-webhook'
 import { Route as ApiPublicRunpodWebhookRouteImport } from './routes/api/public/runpod-webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -142,6 +143,11 @@ const ApiPublicAuthnetWebhookRoute = ApiPublicAuthnetWebhookRouteImport.update({
   path: '/api/public/authnet-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicReelWebhookRoute = ApiPublicReelWebhookRouteImport.update({
+  id: '/api/public/reel-webhook',
+  path: '/api/public/reel-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicRunpodWebhookRoute = ApiPublicRunpodWebhookRouteImport.update({
   id: '/api/public/runpod-webhook',
   path: '/api/public/runpod-webhook',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/legal/': typeof LegalIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
 }
 export interface FileRoutesById {
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/legal/': typeof LegalIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
+  '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
 }
 export interface FileRouteTypes {
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
+    | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
+    | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
   id:
     | '__root__'
@@ -295,6 +306,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
+    | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -319,6 +331,7 @@ export interface RootRouteChildren {
   LegalIndexRoute: typeof LegalIndexRoute
   ApiCronReengageRoute: typeof ApiCronReengageRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
+  ApiPublicReelWebhookRoute: typeof ApiPublicReelWebhookRoute
   ApiPublicRunpodWebhookRoute: typeof ApiPublicRunpodWebhookRoute
 }
 
@@ -478,6 +491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAuthnetWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/reel-webhook': {
+      id: '/api/public/reel-webhook'
+      path: '/api/public/reel-webhook'
+      fullPath: '/api/public/reel-webhook'
+      preLoaderRoute: typeof ApiPublicReelWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/runpod-webhook': {
       id: '/api/public/runpod-webhook'
       path: '/api/public/runpod-webhook'
@@ -522,6 +542,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalIndexRoute: LegalIndexRoute,
   ApiCronReengageRoute: ApiCronReengageRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
+  ApiPublicReelWebhookRoute: ApiPublicReelWebhookRoute,
   ApiPublicRunpodWebhookRoute: ApiPublicRunpodWebhookRoute,
 }
 export const routeTree = rootRouteImport

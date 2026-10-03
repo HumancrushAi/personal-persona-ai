@@ -282,8 +282,17 @@ export const adminUpsertPersona = createServerFn({ method: "POST" })
 
     let targetId: string;
     let actionType: string;
+    // Her live reel must always be her portrait, moving. A new companion, or a
+    // new photo on an existing one, gets a fresh reel rendered from it.
+    let photoChanged = !data.id;
 
     if (data.id) {
+      const { data: before } = await supabaseAdmin
+        .from("companions")
+        .select("image_url")
+        .eq("id", data.id)
+        .maybeSingle();
+      photoChanged = (before?.image_url ?? "") !== data.image_url;
       const { error } = await supabaseAdmin.from("companions").update(row).eq("id", data.id);
       if (error) throw new Error(error.message);
       targetId = data.id;
@@ -309,7 +318,13 @@ export const adminUpsertPersona = createServerFn({ method: "POST" })
       },
     });
 
-    return { ok: true, id: targetId };
+    let reel: "started" | "skipped" | "failed" | "unchanged" = "unchanged";
+    if (photoChanged) {
+      const { refreshCompanionReel } = await import("./reels.server");
+      reel = await refreshCompanionReel(targetId);
+    }
+
+    return { ok: true, id: targetId, reel };
   });
 
 // Regenerate a persona's photo with Replicate and store it in Supabase Storage
@@ -363,7 +378,11 @@ export const adminRegeneratePersonaPhoto = createServerFn({ method: "POST" })
       .eq("id", c.id);
     if (updErr) throw new Error(updErr.message);
 
-    return { ok: true, imageUrl };
+    // New photo, so her old reel no longer matches it: replace it.
+    const { refreshCompanionReel } = await import("./reels.server");
+    const reel = await refreshCompanionReel(c.id);
+
+    return { ok: true, imageUrl, reel };
   });
 
 // Send a push and/or email notification to all users.

@@ -350,3 +350,30 @@ describe("age", () => {
     }
   });
 });
+
+describe("trans companions have one genital type", () => {
+  it("pushes a vulva out of a trans woman's render, even on a plain request", async () => {
+    const { negativeFor } = await import("../media.functions");
+    for (const req of ["send me a picture", "send me a nude with your legs spread"]) {
+      const n = negativeFor(req, "trans-female");
+      expect(n, req).toMatch(/\bpussy\b/);
+      expect(n, req).toMatch(/\bvulva\b/);
+      expect(n, req).toMatch(/hermaphrodite/);
+      expect(n, req).not.toMatch(/\bpenis\b|\bcock\b/);
+    }
+  });
+
+  it("pushes a penis out of a trans man's render, and keeps his own", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("send me a picture", "trans-male");
+    expect(n).toMatch(/\bpenis\b/);
+    expect(n).not.toMatch(/\bpussy\b|\bvulva\b/);
+  });
+
+  it("says in the positive prompt that hers is the only genital", async () => {
+    const { nudeAnatomy } = await import("../anatomy");
+    expect(nudeAnatomy("trans-female")).toMatch(/penis and testicles her only genitals/);
+    expect(nudeAnatomy("trans-male")).toMatch(/his pussy his only genital/);
+    expect(nudeAnatomy("trans-female")).not.toMatch(/\b(?:no|not|never|without)\b/);
+  });
+});

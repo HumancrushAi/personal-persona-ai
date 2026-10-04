@@ -119,10 +119,10 @@ const NUDE_ANATOMY: Record<GenderKind, string> = {
     "exact same body proportions as the reference image, lean athletic muscular chest and defined abs, thick erect penis standing out from the body and angled slightly upward about as long as the hand from wrist to fingertip, clearly defined shaft with soft realistic veining, distinct coronal ridge meeting the smooth rounded glans, natural firm testicles in a separate lightly textured scrotum",
 
   "trans-female":
-    "exact same body proportions as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, thick erect penis standing out and angled slightly upward about as long as the hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans, natural testicles in a separate sac, firm high perfectly round ass matching the reference",
+    "exact same body proportions as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, thick erect penis standing out and angled slightly upward about as long as the hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans, natural testicles in a separate sac, her penis and testicles her only genitals with smooth unbroken skin behind the scrotum, firm high perfectly round ass matching the reference",
 
   "trans-male":
-    "exact same body proportions as the reference image, flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, firm high perfectly round ass matching the reference",
+    "exact same body proportions as the reference image, flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, his pussy his only genital with a smooth flat pubic mound above it, firm high perfectly round ass matching the reference",
 
   nb: "exact same body proportions as the reference image, lean androgynous body, flat soft chest, narrow hips, smooth groin, firm high perfectly round ass matching the reference",
 };
@@ -135,10 +135,13 @@ const CROSS_SEX_NEGATIVE: Record<GenderKind, string> = {
   female:
     "penis, cock, erect cock, testicles, scrotum, male genitalia, bulge, male chest, muscular male torso, male arms, hairy legs, beard, mustache, male body, male pelvis, masculine groin, masculine thighs",
   male: "vulva, vagina, labia, female genitalia, breasts, cleavage, feminine bust, feminine hips",
+  // One genital type each. Trans renders came back with a penis AND a vulva:
+  // the checkpoint defaults to female genitals on a feminine body, and these
+  // lists did not even name the word it reaches for (pussy).
   "trans-female":
-    "vulva, vagina, labia, female genitalia, beard, mustache, stubble, male chest, muscular male torso, masculine jaw, male body",
+    "pussy, vulva, vagina, labia, clitoris, vaginal opening, female genitalia, camel toe, intersex, hermaphrodite, two sets of genitals, beard, mustache, stubble, male chest, muscular male torso, masculine jaw, male body",
   "trans-male":
-    "penis, cock, erect cock, testicles, scrotum, bulge, breasts, cleavage, feminine bust",
+    "penis, cock, erect cock, shaft, glans, testicles, scrotum, bulge, intersex, hermaphrodite, two sets of genitals, breasts, cleavage, feminine bust",
   nb: "",
 };
 

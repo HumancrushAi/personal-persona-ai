@@ -207,11 +207,13 @@ export function negativeFor(
   // the positive anatomy clause is built from, so the two halves cannot
   // disagree about which body this is.
   const a = anatomyOf(gender);
-  if (isNude) {
-    const cross = crossSexNegative(gender);
-    if (cross) base = `${base}, ${cross}`;
-    if (a.hasVulva) base = `${base}, ${VULVA_NEGATIVE}`;
-  }
+  // The opposite body's parts go into EVERY negative, not only a nude one.
+  // A plain "send me a picture" of a trans woman still rendered nude often
+  // enough, and with nothing pushing back the checkpoint gave her a vulva as
+  // well as her penis. On a clothed render it changes nothing.
+  const cross = crossSexNegative(gender);
+  if (cross) base = `${base}, ${cross}`;
+  if (isNude && a.hasVulva) base = `${base}, ${VULVA_NEGATIVE}`;
   if (a.hasBreasts) base = `${base}, ${SAG_NEGATIVE}`;
   // Every render. See BUILD_NEGATIVE: the reported failure came back on a
   // clothed request, so gating this on nudity would miss it.

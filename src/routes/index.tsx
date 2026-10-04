@@ -175,6 +175,18 @@ const CATEGORIES = [
 
 type Cat = (typeof CATEGORIES)[number];
 
+// Trans companions stay in the lists; the badge is how a user tells them apart.
+const isTrans = (c: { gender?: string | null }) =>
+  c.gender === "trans-female" || c.gender === "trans-male";
+
+function TsBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-indigo-500/25 bg-indigo-500/80 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-md">
+      TS
+    </span>
+  );
+}
+
 function matchesCategory(c: Companion, cat: Cat): boolean {
   switch (cat) {
     case "For you":
@@ -744,6 +756,7 @@ function Landing() {
                     <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur shadow-sm">
                       <Circle className="h-1.5 w-1.5 fill-white text-white animate-pulse" /> LIVE
                     </span>
+                    {isTrans(c) && <TsBadge />}
                   </div>
                   <div className="absolute inset-x-0 bottom-0 p-3.5 text-left">
                     <p className="font-display text-base font-semibold text-white drop-shadow">
@@ -845,6 +858,7 @@ function Landing() {
 
                     {/* Quick action buttons / icons overlay (lock, video) */}
                     <div className="absolute right-3 top-10 flex flex-col gap-1.5">
+                      {isTrans(c) && <TsBadge />}
                       {reel && (
                         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/80 shadow-md">
                           <Video className="h-3 w-3 text-red-400" />
@@ -921,6 +935,7 @@ function Landing() {
 
                         {/* Quick action buttons / icons overlay (lock, video) */}
                         <div className="absolute right-3 top-3 flex flex-col gap-1.5">
+                          {isTrans(c) && <TsBadge />}
                           {reel && (
                             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/80 shadow-md">
                               <Video className="h-3 w-3 text-red-400" />
@@ -1677,7 +1692,7 @@ function BannerSlider({
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
                   <Circle className="h-1.5 w-1.5 fill-white text-white animate-pulse" /> Live
                 </span>
-                {s.companion?.gender === "trans-female" && (
+                {s.companion && isTrans(s.companion) && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300 border border-indigo-500/25">
                     TS
                   </span>

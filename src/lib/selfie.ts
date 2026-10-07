@@ -1139,7 +1139,7 @@ export function finishMediaPrompt(
   const DEFAULT_BUILD =
     a.kind === "male" || a.kind === "trans-male"
       ? "natural athletic adult man's build with a broad chest and shoulders"
-      : "natural healthy adult woman's figure with soft feminine curves, full hips and natural weight";
+      : "natural healthy adult woman's figure with soft feminine curves, full hips, a natural waist and a soft natural stomach";
 
   // Her build, when nothing else carries it.
   //

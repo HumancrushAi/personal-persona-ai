@@ -251,14 +251,14 @@ describe("finishMediaPrompt appendAppearance", () => {
     const { finishMediaPrompt } = await import("../selfie");
     delete process.env.COMFY_BUILD;
     const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
-    expect(out).toMatch(/slim toned adult figure/i);
+    expect(out).toMatch(/natural healthy adult woman's figure/i);
   });
 
   it("says nothing about build when her portrait IS the input", async () => {
     const { finishMediaPrompt } = await import("../selfie");
     delete process.env.COMFY_BUILD;
     const out = finishMediaPrompt(base, "get naked", { appendAppearance: false });
-    expect(out).not.toMatch(/slim toned adult figure/i);
+    expect(out).not.toMatch(/natural healthy adult woman's figure/i);
     // The adult clause is unconditional, so the prompt is not byte-identical;
     // what must be absent is the BUILD, which would fight the photo.
     expect(out).toMatch(/Adult 18-year-old woman/);
@@ -276,7 +276,7 @@ describe("finishMediaPrompt appendAppearance", () => {
     const { finishMediaPrompt } = await import("../selfie");
     process.env.COMFY_BUILD = "";
     const out = finishMediaPrompt(base, "get naked", { appendAppearance: true });
-    expect(out).not.toMatch(/slim toned adult figure/i);
+    expect(out).not.toMatch(/natural healthy adult woman's figure/i);
     // The adult clause is not a style setting and has no off switch.
     expect(out).toMatch(/Adult \d+-year-old/);
   });
@@ -424,7 +424,7 @@ describe("who she is, on a graph that has no picture of her", () => {
       appendAppearance: true,
       appearance: { age: 24, ethnicity: "Japanese" },
     });
-    expect(out).toMatch(/Japanese woman, slim toned adult figure/);
+    expect(out).toMatch(/Japanese woman, natural healthy adult woman's figure/);
   });
 
   it("degrades cleanly when the row is missing either field", async () => {
@@ -437,7 +437,7 @@ describe("who she is, on a graph that has no picture of her", () => {
     });
     // No bare "Woman," — the noun is already in the framing sentence, so with
     // neither field set the clause is the build alone.
-    expect(out).toMatch(/slim toned adult figure/);
+    expect(out).toMatch(/natural healthy adult woman's figure/);
     expect(out).not.toMatch(/null|undefined/);
   });
 

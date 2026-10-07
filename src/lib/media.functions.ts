@@ -169,8 +169,12 @@ const AGE_NEGATIVE_BREASTS =
 // Applies to every render, clothed or nude, for every gender: the reported
 // failure arrived on a lingerie request, where the anatomy clause is not even
 // appended.
+// Extremes both ways. Belly fat and a pregnant look were reported once, so
+// those stay; "chubby, plus size, thick waist, wide waist, heavyset, love
+// handles" are gone - suppressing them on every render slimmed every woman,
+// the curvy ones included, into the "very skinny" bodies reported next.
 const BUILD_NEGATIVE =
-  "overweight, obese, fat, chubby, heavyset, plus size, thick waist, wide waist, belly fat, belly rolls, love handles, bloated, distended stomach, swollen abdomen, pregnant";
+  "overweight, obese, belly fat, belly rolls, bloated, distended stomach, swollen abdomen, pregnant, skinny, underweight, emaciated, bony, visible ribs, jutting hip bones, anorexic, sickly thin";
 
 // Applied only when the request implies nudity. Without it nothing pushes back
 // on the clothes already in the start frame, so explicit acts were performed

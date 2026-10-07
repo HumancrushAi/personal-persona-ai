@@ -1134,8 +1134,12 @@ export function finishMediaPrompt(
   // term in it is a smallness term, and nothing in it said adult. Slim is still
   // what was asked for, so the shape words stay — with a grown woman's frame
   // named alongside them, which is the part that was missing.
+  // Natural, not slim: "slim ... narrow waist, flat toned stomach" plus a
+  // negative that suppressed every curve gave everyone the same thin body.
   const DEFAULT_BUILD =
-    "slim toned adult figure with a grown woman's frame, narrow waist, flat toned stomach";
+    a.kind === "male" || a.kind === "trans-male"
+      ? "natural athletic adult man's build with a broad chest and shoulders"
+      : "natural healthy adult woman's figure with soft feminine curves, full hips and natural weight";
 
   // Her build, when nothing else carries it.
   //

@@ -377,3 +377,25 @@ describe("trans companions have one genital type", () => {
     expect(nudeAnatomy("trans-female")).not.toMatch(/\b(?:no|not|never|without)\b/);
   });
 });
+
+describe("bodies are natural, not skinny", () => {
+  it("pushes back on skinny and leaves curves alone", async () => {
+    const n = negativeFor("send me a pic", "female", { moving: false });
+    expect(n).toMatch(/\bskinny\b/);
+    expect(n).toMatch(/\bunderweight\b/);
+    for (const curve of ["chubby", "plus size", "thick waist", "wide waist", "heavyset", "love handles"]) {
+      expect(n, curve).not.toContain(curve);
+    }
+  });
+
+  it("describes a man's build for a man", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const he = finishMediaPrompt("Photograph of a man indoors.", "send me a pic", {
+      anatomy: anatomyOf("male"),
+      appendAppearance: true,
+      appearance: { age: 30 },
+    });
+    expect(he).toMatch(/man's build/);
+    expect(he).not.toMatch(/woman's/);
+  });
+});

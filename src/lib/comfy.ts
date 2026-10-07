@@ -44,6 +44,8 @@ export type ComfyVars = {
    * is a suggestion rather than an identity.
    */
   ipaWeight: number;
+  /** FaceID v2 likeness strength; falls back to ipaWeight when unset. */
+  ipaV2Weight?: number;
   /** Strength of the FaceID LoRA that ships with the adapter. */
   ipaLora: number;
   /** The adapter preset, e.g. "FACEID PLUS V2". */
@@ -195,7 +197,7 @@ export const FACEID_WORKFLOW = `{
       "ipadapter": ["11", 1],
       "image": ["10", 0],
       "weight": "{{IPA_WEIGHT}}",
-      "weight_faceidv2": "{{IPA_WEIGHT}}",
+      "weight_faceidv2": "{{IPA_FACEID_WEIGHT}}",
       "weight_type": "linear",
       "combine_embeds": "concat",
       "start_at": 0,
@@ -365,6 +367,7 @@ function tokenValues(vars: ComfyVars): Record<string, string | number> {
     DENOISE: vars.denoise,
     REFERENCE_IMAGE: vars.referenceImage ?? "",
     IPA_WEIGHT: vars.ipaWeight,
+    IPA_FACEID_WEIGHT: vars.ipaV2Weight ?? vars.ipaWeight,
     IPA_LORA: vars.ipaLora,
     FACEID_PRESET: vars.faceidPreset,
     FACE_DENOISE: vars.faceDenoise,
@@ -613,11 +616,10 @@ export function comfySettings(
   return {
     seed: seedFor(opts.seedSalt ? `${prompt}#${opts.seedSalt}` : prompt),
     steps: numberSetting("COMFY_STEPS", 30),
-    // 7, up from 5. Five is loose for SDXL and the reported failure was the
-    // render ignoring what the prompt asked for; 6.5-7.5 is the band where an
-    // SDXL photoreal checkpoint follows the text without going contrasty and
-    // over-baked, which is what happens past about 8.
-    cfg: numberSetting("COMFY_CFG", 7),
+    // 5.5, down from 7. At 7 the FaceID renders read as plastic — waxy skin,
+    // over-rendered faces — which is what users reported. 5.5 still follows
+    // the prompt on this checkpoint; COMFY_CFG overrides.
+    cfg: numberSetting("COMFY_CFG", 5.5),
     width: numberSetting("COMFY_WIDTH", 832),
     height: numberSetting("COMFY_HEIGHT", 1216),
     sampler: process.env.COMFY_SAMPLER || "dpmpp_2m_sde",
@@ -668,6 +670,9 @@ export function comfySettings(
     })(),
     // FaceID path: pull harder toward the reference face (site portrait).
     ipaWeight: numberSetting("COMFY_IPA_WEIGHT", 0.9),
+    // The FaceID v2 embedding is what carries likeness; it shared the 0.9 above
+    // and faces came back "not exactly like the models". 1.0-2.0 is its range.
+    ipaV2Weight: numberSetting("COMFY_IPA_V2_WEIGHT", 1.5),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
     // Keep FaceDetailer from inventing a new face on the refine pass.

@@ -468,7 +468,13 @@ export async function enhanceStill(png: Buffer): Promise<Encoded> {
 // Moaning belongs on a chat clip of a female companion, not on a promo clip
 // bound for a public page and not on a male companion. Studio jobs carry no
 // conversation, which is also how they are excluded.
+// Off. The stock moaning track played behind every clip and read as fake
+// background music rather than her voice, so clips ship silent until there is a
+// voice that is actually hers. Set true to bring the track back.
+const ADD_VIDEO_AUDIO = false;
+
 async function shouldAddAudio(job: Job): Promise<boolean> {
+  if (!ADD_VIDEO_AUDIO) return false;
   if (job.kind !== "video" || !job.conversation_id) return false;
   const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
   const { data } = await db

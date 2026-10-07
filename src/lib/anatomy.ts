@@ -113,7 +113,7 @@ export function anatomyOf(gender?: string | null): Anatomy {
  */
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "exact same body proportions and breast size as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, taut smooth skin, nipples level with the middle of the upper arms pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, firm high perfectly round ass with smooth even skin texture matching the reference",
+    "exact same body proportions and breast size as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, natural soft skin with real texture, nipples level with the middle of the upper arms pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, firm high perfectly round ass with natural skin texture matching the reference",
 
   male:
     "exact same body proportions as the reference image, lean athletic muscular chest and defined abs, thick erect penis standing out from the body and angled slightly upward about as long as the hand from wrist to fingertip, clearly defined shaft with soft realistic veining, distinct coronal ridge meeting the smooth rounded glans, natural firm testicles in a separate lightly textured scrotum",

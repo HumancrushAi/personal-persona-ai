@@ -593,3 +593,30 @@ describe("FACEID_LITE_WORKFLOW", () => {
     else process.env.COMFY_GRAPH = prev;
   });
 });
+
+describe("realism settings", () => {
+  it("gives the FaceID v2 embedding its own likeness weight", async () => {
+    const { comfySettings, comfyWorkflow, FACEID_WORKFLOW } = await import("../comfy");
+    const prev = process.env.COMFY_IPA_V2_WEIGHT;
+    delete process.env.COMFY_IPA_V2_WEIGHT;
+    const s = comfySettings("p");
+    expect(s.ipaV2Weight).toBe(1.5);
+    const g = comfyWorkflow(
+      { ...s, prompt: "p", negative: "n", checkpoint: "c.safetensors", referenceImage: "r.png" },
+      FACEID_WORKFLOW,
+    ) as any;
+    expect(g["12"].inputs.weight_faceidv2).toBe(1.5);
+    // A caller that never sets it falls back to the shared weight, never null.
+    const old = comfyWorkflow({ ...VARS, ipaV2Weight: undefined, referenceImage: "r.png" }, FACEID_WORKFLOW) as any;
+    expect(old["12"].inputs.weight_faceidv2).toBe(VARS.ipaWeight);
+    if (prev !== undefined) process.env.COMFY_IPA_V2_WEIGHT = prev;
+  });
+
+  it("does not over-drive CFG into plastic skin", async () => {
+    const { comfySettings } = await import("../comfy");
+    const prev = process.env.COMFY_CFG;
+    delete process.env.COMFY_CFG;
+    expect(comfySettings("p").cfg).toBe(5.5);
+    if (prev !== undefined) process.env.COMFY_CFG = prev;
+  });
+});

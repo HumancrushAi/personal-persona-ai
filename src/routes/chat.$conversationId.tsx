@@ -780,44 +780,58 @@ function ChatPage() {
       </aside>
 
       {/* Chat column */}
-      <div className="flex h-dvh flex-1 flex-col min-w-0">
-        <header className="glass flex items-center gap-2 sm:gap-3 px-3 py-2.5 sm:px-4 sm:py-3 shrink-0 border-b border-white/5 z-20">
-          <Button asChild size="icon" variant="ghost" className="rounded-full shrink-0 h-9 w-9 text-muted-foreground hover:bg-white/10 hover:text-white">
+      <div className="flex h-dvh flex-1 flex-col min-w-0 bg-[#0d0a12] relative overflow-hidden">
+        {/* Subtle Ambient Background Glows */}
+        <div className="absolute -top-24 right-0 w-96 h-96 rounded-full bg-pink-500/5 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-12 -left-24 w-96 h-96 rounded-full bg-purple-500/5 blur-[120px] pointer-events-none" />
+
+        {/* Header */}
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-white/10 bg-[#0d0a12]/90 px-3 py-2.5 sm:px-5 sm:py-3 backdrop-blur-xl shrink-0 min-w-0">
+          <Button
+            asChild
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9 rounded-full shrink-0 text-white/80 hover:bg-white/10 hover:text-white"
+          >
             <Link to="/me">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          
+
           {p?.companions?.image_url && (
-            <div className="relative md:hidden shrink-0">
+            <div className="relative md:hidden shrink-0 flex items-center">
               <img
                 src={companionImage(p.companions.image_url)}
-                alt=""
-                className="h-10 w-10 sm:h-11 sm:w-11 rounded-full object-cover object-top ring-2 ring-primary/40 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+                alt={p?.nickname ?? ""}
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover object-top ring-2 ring-primary/40 shadow-sm"
               />
               <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0d0a12]" />
             </div>
           )}
-          
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-2">
-              <h2 className="truncate font-display text-base sm:text-lg font-bold text-white">
+
+          <div className="flex-1 min-w-0 flex flex-col justify-center px-1">
+            <div className="flex items-center gap-1.5">
+              <h2 className="truncate font-display text-base sm:text-lg font-bold text-white tracking-tight">
                 {p?.nickname ?? "…"}
               </h2>
-              {p?.companions?.age && <span className="text-[10px] sm:text-xs font-medium text-white/50">{p.companions.age}</span>}
+              {p?.companions?.age && (
+                <span className="text-xs font-normal text-white/50 shrink-0">
+                  {p.companions.age}
+                </span>
+              )}
             </div>
-            
-            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-white/60">
-              <span className="hidden min-[360px]:inline-flex items-center gap-1">
-                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online
+
+            <div className="flex items-center gap-2 text-[11px] text-white/60 truncate">
+              <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Online
               </span>
               <span className="inline-flex items-center gap-1 font-semibold text-primary/90">
                 <Heart className="h-3 w-3 fill-primary/80" /> Lv {level}
               </span>
             </div>
           </div>
-          
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {!showMobileLive && (
               <Button
                 type="button"
@@ -825,11 +839,12 @@ function ChatPage() {
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 text-primary md:hidden shrink-0"
+                title="Show Live Video"
               >
                 <VideoIcon className="h-4 w-4" />
               </Button>
             )}
-            
+
             {p?.companion_id && (
               <Button
                 asChild
@@ -843,19 +858,19 @@ function ChatPage() {
                 </Link>
               </Button>
             )}
-            
+
             <Link
               to="/credits"
-              className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-2.5 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold text-amber-400 ring-1 ring-amber-500/30 transition hover:bg-amber-500/20 hover:ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.15)] shrink-0"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-amber-400 border border-amber-500/30 transition hover:bg-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.15)] shrink-0"
             >
-              <Gem className="h-3 sm:h-3.5 w-3 sm:w-3.5 fill-amber-400/20" /> {total}
+              <Gem className="h-3.5 w-3.5 fill-amber-400/20 text-amber-400" /> {total}
             </Link>
           </div>
         </header>
 
-        {/* Mobile Live Face & Reaction Stage (Candy.ai style) - Collapsible */}
+        {/* Mobile Live Face Stage */}
         {showMobileLive && (
-          <div className="relative mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-md md:hidden shrink-0 transition-all">
+          <div className="relative mx-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-black shadow-lg md:hidden shrink-0 transition-all">
             <div className="relative h-44 sm:h-56 w-full overflow-hidden">
               {p?.companions?.image_url && (
                 <img
@@ -888,28 +903,27 @@ function ChatPage() {
                   />
                 ) : null;
               })()}
-              <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/25" />
-              <div className="absolute inset-x-0 bottom-2 z-[3] px-3 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-white font-medium bg-black/65 px-3 py-1 rounded-full backdrop-blur border border-white/15 shadow-sm">
+              <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-transparent to-black/30" />
+              <div className="absolute inset-x-0 bottom-2.5 z-[3] px-3 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-white font-medium bg-black/70 px-3 py-1 rounded-full backdrop-blur border border-white/15 shadow-sm">
                   {isBusy ? (
-                    <span className="text-primary flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 animate-spin" /> Typing…
+                    <span className="text-primary flex items-center gap-1.5 font-semibold">
+                      <Sparkles className="h-3.5 w-3.5 animate-spin" /> Typing…
                     </span>
                   ) : (
-                    <span className="text-emerald-400 flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling
-                      at you 💋
+                    <span className="text-emerald-400 flex items-center gap-1.5 font-semibold">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> Smiling at you 💋
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-white/80 font-medium bg-black/50 px-2.5 py-1 rounded-full backdrop-blur border border-white/10">
+                  <span className="text-[10px] text-white/80 font-bold bg-black/60 px-2.5 py-1 rounded-full backdrop-blur border border-white/10 uppercase tracking-wider">
                     <Circle className="inline h-1.5 w-1.5 fill-red-500 text-red-500 mr-1" /> Live
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowMobileLive(false)}
-                    className="text-[10px] text-white/80 hover:text-white font-medium bg-black/60 px-2 py-1 rounded-full backdrop-blur border border-white/15 transition-colors"
+                    className="text-[11px] text-white/80 hover:text-white font-medium bg-black/60 px-2.5 py-1 rounded-full backdrop-blur border border-white/15 transition-colors"
                   >
                     Hide
                   </button>
@@ -919,28 +933,30 @@ function ChatPage() {
           </div>
         )}
 
-        <div className="h-1 w-full bg-white/5 mt-2 shrink-0">
+        {/* XP Level Bar */}
+        <div className="h-1 w-full bg-white/5 shrink-0">
           <div
-            className="h-full bg-grad-primary transition-all"
+            className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-rose-500 transition-all duration-300"
             style={{ width: `${(xpInLevel / 15) * 100}%` }}
           />
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="mx-auto max-w-2xl space-y-3">
+        {/* Message scroll area */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-3 z-10">
+          <div className="mx-auto max-w-2xl space-y-3.5">
             {showOpener && (
               <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-4 py-2.5 text-sm">
-                  <div className="mb-1 text-[10px] uppercase tracking-wide text-primary">
-                    {scenario!.emoji} {scenario!.title}
+                <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tl-xs border border-white/10 bg-white/[0.07] backdrop-blur-md px-4 py-3 text-sm text-white/95 shadow-md">
+                  <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-primary flex items-center gap-1">
+                    <span>{scenario!.emoji}</span> {scenario!.title}
                   </div>
                   {scenario!.opener}
                 </div>
               </div>
             )}
             {allMessages.length === 0 && !scenario && (
-              <div className="glass rounded-2xl p-4 text-center text-sm text-muted-foreground">
-                Say hi to {p?.nickname ?? "them"} 💋
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-sm text-muted-foreground shadow-sm">
+                Say hi to <span className="font-semibold text-white">{p?.nickname ?? "them"}</span> 💋
               </div>
             )}
             {allMessages.map((m) => (
@@ -949,27 +965,19 @@ function ChatPage() {
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] sm:max-w-[75%] overflow-hidden rounded-[1.25rem] text-[15px] leading-relaxed shadow-sm ${
+                  className={`max-w-[85%] sm:max-w-[75%] overflow-hidden text-[14px] sm:text-[15px] leading-relaxed shadow-sm ${
                     m.role === "user"
-                      ? "rounded-br-sm bg-gradient-to-br from-pink-600 to-rose-500 text-white"
-                      : "rounded-bl-sm bg-white/10 text-white/95 backdrop-blur-md border border-white/5"
+                      ? "rounded-2xl rounded-tr-xs bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 px-4 py-2.5 text-white shadow-pink-500/15"
+                      : "rounded-2xl rounded-tl-xs bg-white/[0.08] backdrop-blur-md border border-white/10 px-4 py-2.5 text-white/95"
                   }`}
                 >
                   {m.kind === "image" && m.media_url && (
-                    <div className="relative">
+                    <div className="relative -mx-4 -mt-2.5 mb-2 overflow-hidden rounded-t-2xl">
                       <img
                         src={m.media_url}
                         alt=""
                         onClick={() => setActiveImageUrl(m.media_url ?? null)}
-                        // Her own shape, not a forced square. A chat photo is
-                        // trimmed to the person now (trimBackdrop), which makes
-                        // it a portrait — and aspect-square + object-cover would
-                        // crop a portrait's head and feet off to fill a square,
-                        // turning "partial pic" into a worse one. Capped, and
-                        // anchored to the top if it ever is cropped, so the
-                        // face is the part that always shows. Older square
-                        // photos render exactly as they did.
-                        className="block h-auto max-h-[36rem] w-72 cursor-pointer object-cover object-top transition-opacity hover:opacity-90"
+                        className="block h-auto max-h-[32rem] w-full cursor-pointer object-cover object-top transition-opacity hover:opacity-90"
                       />
                       <DownloadButton
                         url={m.media_url}
@@ -978,17 +986,7 @@ function ChatPage() {
                     </div>
                   )}
                   {m.kind === "video" && m.media_url && (
-                    <div className="relative">
-                      {/* Reported as "it shows a small picture instead of the
-                          video". It was: no autoPlay, no muted, no loop, no
-                          preload and no poster, so every browser paints the
-                          first decoded frame with a play button over it — a
-                          still image until you tap it. And the first frame of
-                          these clips is the padded start frame, which is
-                          literally a small portrait in a blurred square.
-
-                          The live-loop stage in this same file has autoplayed
-                          for a long time; chat clips just never used it. */}
+                    <div className="relative -mx-4 -mt-2.5 mb-2 overflow-hidden rounded-t-2xl">
                       <video
                         controls
                         autoPlay
@@ -997,7 +995,7 @@ function ChatPage() {
                         playsInline
                         preload="auto"
                         src={m.media_url}
-                        className="block w-72 rounded-2xl"
+                        className="block w-full max-h-[32rem] rounded-2xl object-cover"
                         onError={() => toast.error("That clip didn't load — tap to retry")}
                       />
                       <DownloadButton
@@ -1007,23 +1005,20 @@ function ChatPage() {
                     </div>
                   )}
                   {m.kind === "voice" && m.media_url && (
-                    <div className="p-2">
-                      <audio controls src={m.media_url} className="w-64" />
+                    <div className="py-1">
+                      <audio controls src={m.media_url} className="w-full max-w-xs" />
                     </div>
                   )}
                   {m.kind === "image_pending" && (
-                    <div className="relative flex aspect-[3/4] w-72 flex-col items-center justify-center bg-black/40 p-4">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 animate-pulse" />
-                      <div className="flex flex-col items-center gap-3 text-center">
-                        <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
-                          <ImageIcon className="h-6 w-6 text-primary animate-pulse" />
-                          <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
+                    <div className="relative flex aspect-[3/4] w-64 sm:w-72 flex-col items-center justify-center bg-black/50 p-4 rounded-xl border border-white/10">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/15 via-transparent to-primary/5 animate-pulse rounded-xl" />
+                      <div className="flex flex-col items-center gap-3 text-center z-10">
+                        <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+                          <ImageIcon className="h-5 w-5 text-primary animate-pulse" />
+                          <div className="absolute inset-0 rounded-full border border-primary/40 border-t-primary animate-spin" />
                         </div>
                         <div className="space-y-1">
-                          {/* In her voice, not the machine's — "Generating
-                              Photo…" reads as software and breaks the illusion
-                              the rest of the chat works to keep. */}
-                          <div className="font-semibold text-white/90">
+                          <div className="font-semibold text-white/95 text-sm">
                             {p?.nickname ? `${p.nickname} is taking it…` : "Taking it for you…"}
                           </div>
                           <div className="text-xs text-muted-foreground">
@@ -1042,15 +1037,15 @@ function ChatPage() {
                     </div>
                   )}
                   {m.kind === "video_pending" && (
-                    <div className="relative flex aspect-square w-72 flex-col items-center justify-center bg-black/40 p-4 md:aspect-[9/16]">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 animate-pulse" />
-                      <div className="flex flex-col items-center gap-3 text-center">
-                        <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
-                          <VideoIcon className="h-6 w-6 text-primary animate-pulse" />
-                          <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
+                    <div className="relative flex aspect-square w-64 sm:w-72 flex-col items-center justify-center bg-black/50 p-4 rounded-xl border border-white/10">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/15 via-transparent to-primary/5 animate-pulse rounded-xl" />
+                      <div className="flex flex-col items-center gap-3 text-center z-10">
+                        <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+                          <VideoIcon className="h-5 w-5 text-primary animate-pulse" />
+                          <div className="absolute inset-0 rounded-full border border-primary/40 border-t-primary animate-spin" />
                         </div>
                         <div className="space-y-1">
-                          <div className="font-semibold text-white/90">
+                          <div className="font-semibold text-white/95 text-sm">
                             {p?.nickname ? `${p.nickname} is filming…` : "Filming it for you…"}
                           </div>
                           <div className="text-xs text-muted-foreground">
@@ -1069,15 +1064,15 @@ function ChatPage() {
                     </div>
                   )}
                   {m.kind === "voice_pending" && (
-                    <div className="relative flex w-64 flex-col items-center justify-center bg-black/40 p-4">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 animate-pulse" />
-                      <div className="flex items-center gap-3">
+                    <div className="relative flex w-60 sm:w-64 flex-col items-center justify-center bg-black/50 p-4 rounded-xl border border-white/10">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/15 via-transparent to-primary/5 animate-pulse rounded-xl" />
+                      <div className="flex items-center gap-3 z-10">
                         <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
                           <Mic className="h-4 w-4 text-primary animate-pulse" />
-                          <div className="absolute inset-0 rounded-full border border-primary/30 border-t-primary animate-spin" />
+                          <div className="absolute inset-0 rounded-full border border-primary/40 border-t-primary animate-spin" />
                         </div>
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <div className="font-semibold text-sm text-white/90">
+                          <div className="font-semibold text-sm text-white/95">
                             {p?.nickname ? `${p.nickname} is recording…` : "Recording one for you…"}
                           </div>
                           <div className="text-[11px] text-muted-foreground">
@@ -1106,7 +1101,7 @@ function ChatPage() {
                 (m) => m.role === "user" && m.content.trim() === pendingUser.trim(),
               ) && (
                 <div className="flex justify-end">
-                  <div className="max-w-[80%] rounded-[1.25rem] rounded-br-sm bg-gradient-to-br from-pink-600 to-rose-500 px-4 py-3 text-[15px] leading-relaxed text-white shadow-sm">
+                  <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-xs bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 px-4 py-2.5 text-[14px] sm:text-[15px] leading-relaxed text-white shadow-md shadow-pink-500/15">
                     {pendingUser}
                   </div>
                 </div>
@@ -1117,7 +1112,7 @@ function ChatPage() {
                   ["image_pending", "video_pending", "voice_pending"].includes(m.kind),
                 ))) && (
               <div className="flex justify-start">
-                <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 rounded-2xl rounded-tl-xs border border-white/10 bg-white/[0.08] backdrop-blur-md px-4 py-2.5 text-sm text-white/80 shadow-sm">
                   {mediaBusy === "selfie" ? (
                     `taking a pic for you… ${waited}s`
                   ) : mediaBusy === "voice" ? (
@@ -1125,11 +1120,11 @@ function ChatPage() {
                   ) : mediaBusy === "video" ? (
                     `filming a video for you… ${waited}s`
                   ) : (
-                    <>
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60" />
-                    </>
+                    <div className="flex items-center gap-1 py-1">
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-primary" />
+                    </div>
                   )}
                 </div>
               </div>
@@ -1137,20 +1132,19 @@ function ChatPage() {
           </div>
         </div>
 
-        {/* pb-[env(safe-area-inset-bottom)] keeps the composer clear of the iPhone
-            home indicator, which otherwise sits on top of the buttons. */}
+        {/* Input Composer Form */}
         <form
           onSubmit={handleSend}
-          className="glass px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shrink-0 z-10"
+          className="border-t border-white/10 bg-[#0d0a12]/95 px-3 py-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shrink-0 z-20 backdrop-blur-xl"
         >
-          <div className="mx-auto flex max-w-2xl items-center gap-2">
+          <div className="mx-auto flex max-w-2xl items-center gap-1.5 sm:gap-2">
             <Button
               type="button"
               size="icon"
               variant="ghost"
               onClick={() => !isBusy && setAsking("photo")}
               disabled={isBusy}
-              className="rounded-full"
+              className="h-9 w-9 rounded-full shrink-0 text-white/80 hover:bg-white/10 hover:text-primary transition"
               title="Ask for a selfie (8 credits)"
             >
               <ImageIcon className="h-5 w-5 text-primary" />
@@ -1161,7 +1155,7 @@ function ChatPage() {
               variant="ghost"
               onClick={handleVoice}
               disabled={isBusy}
-              className="rounded-full"
+              className="h-9 w-9 rounded-full shrink-0 text-white/80 hover:bg-white/10 hover:text-primary transition"
               title="Get her voice note of last reply (3 credits)"
             >
               <Mic className="h-5 w-5 text-primary" />
@@ -1172,28 +1166,31 @@ function ChatPage() {
               variant="ghost"
               onClick={() => !isBusy && setAsking("video")}
               disabled={isBusy}
-              className="rounded-full"
+              className="h-9 w-9 rounded-full shrink-0 text-white/80 hover:bg-white/10 hover:text-primary transition"
               title="Ask her for a video (15 credits)"
             >
               <VideoIcon className="h-5 w-5 text-primary" />
             </Button>
+
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={`Message ${p?.nickname ?? ""}…`}
               disabled={sending}
-              className="rounded-full border-white/10 bg-white/5"
+              className="rounded-full border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 h-10 text-sm px-4"
             />
+
             <Button
               type="submit"
               size="icon"
-              className="rounded-full bg-grad-primary text-primary-foreground shadow-glow"
+              className="h-10 w-10 shrink-0 rounded-full bg-grad-primary text-primary-foreground shadow-glow hover:scale-105 transition-transform"
               disabled={sending || !input.trim()}
             >
               <Send className="h-4 w-4" />
             </Button>
           </div>
-          <div className="mx-auto mt-1.5 flex max-w-2xl items-center justify-center gap-3 text-[10px] text-muted-foreground">
+
+          <div className="mx-auto mt-1.5 flex max-w-2xl items-center justify-center gap-2 text-[10px] text-white/50">
             <span className="inline-flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-primary" />
               Selfie 8 · Voice 3 · Video 15 · Text 1 credit

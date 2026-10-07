@@ -688,7 +688,7 @@ export const NUDE_FORCE =
   "Completely nude, fully undressed, bare skin everywhere, bare breasts and bare groin, wardrobe fully removed.";
 
 const QUALITY =
-  "Candid photograph, 50mm lens, natural available light, true-to-life colour, real untouched skin with visible pores and fine natural texture, matte natural skin finish, subtle skin imperfections, natural asymmetry, soft natural shadows. Looks like a real photo taken on a real camera.";
+  "Candid photograph on a phone, amateur and unretouched, natural available light, true-to-life colour, real untouched skin with visible pores, small moles, freckles and fine natural texture, matte natural skin finish, natural asymmetry, slight film grain, soft natural shadows. Looks like a real photo taken on a real phone.";
 
 /**
  * The same photograph, for a renderer that draws a still directly.
@@ -916,7 +916,7 @@ export function kontextSelfiePrompt(
 const PROMPT_WORD_BUDGET = 300;
 
 const REALISM_TAIL =
-  "Candid raw photograph on a real camera, authentic skin texture with visible pores, matte natural skin finish, natural asymmetry, natural available light.";
+  "Candid raw photograph on a real camera, amateur and unretouched, authentic skin texture with visible pores and small moles, natural asymmetry, slight film grain.";
 
 const STILL_CUE = "The pose is held completely still and the camera is locked off.";
 const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;
@@ -1139,7 +1139,7 @@ export function finishMediaPrompt(
   const DEFAULT_BUILD =
     a.kind === "male" || a.kind === "trans-male"
       ? "natural athletic adult man's build with a broad chest and shoulders"
-      : "natural healthy adult woman's figure with soft feminine curves, full hips, a natural waist and a soft natural stomach";
+      : "natural curvy woman's body, full hips, thick thighs, natural waist, soft natural stomach";
 
   // Her build, when nothing else carries it.
   //
@@ -1178,9 +1178,13 @@ export function finishMediaPrompt(
   if (opts.appendAppearance) {
     const ethnicity = (opts.appearance?.ethnicity ?? "").trim();
     if (ethnicity) describes.push(`${ethnicity} ${a.noun}`);
-    const build = (process.env.COMFY_BUILD ?? DEFAULT_BUILD).trim();
-    if (build) describes.push(build);
   }
+  // Her build on EVERY render, portrait or not. With the FaceID graph her
+  // portrait supplies her face and nothing below it, so the body came from the
+  // checkpoint's default - thin and airbrushed - and users called the models
+  // "too skinny, like plastic". COMFY_BUILD overrides the wording.
+  const build = (process.env.COMFY_BUILD ?? DEFAULT_BUILD).trim();
+  if (build) describes.push(build);
   {
     const clause = describes.join(", ");
     const [first, ...rest] = out.split(/(?<=\.)\s+/);

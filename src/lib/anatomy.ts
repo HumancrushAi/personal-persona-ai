@@ -113,18 +113,18 @@ export function anatomyOf(gender?: string | null): Anatomy {
  */
 const NUDE_ANATOMY: Record<GenderKind, string> = {
   female:
-    "exact same body proportions and breast size as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, natural soft skin with real texture, nipples level with the middle of the upper arms pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, firm high perfectly round ass with natural skin texture matching the reference",
+    "exact same body proportions and breast size as the reference image, full natural breasts matching her frame with a soft natural shape and real weight, natural soft skin with real texture, nipples level with the middle of the upper arms pointing straight forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, full natural round ass with natural skin texture matching the reference",
 
   male:
     "exact same body proportions as the reference image, lean athletic muscular chest and defined abs, thick erect penis standing out from the body and angled slightly upward about as long as the hand from wrist to fingertip, clearly defined shaft with soft realistic veining, distinct coronal ridge meeting the smooth rounded glans, natural firm testicles in a separate lightly textured scrotum",
 
   "trans-female":
-    "exact same body proportions as the reference image, natural firm high-set breasts matching her frame, projected forward and holding a tight round shape, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, thick erect penis standing out and angled slightly upward about as long as the hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans, natural testicles in a separate sac, her penis and testicles her only genitals with smooth unbroken skin behind the scrotum, firm high perfectly round ass matching the reference",
+    "exact same body proportions as the reference image, full natural breasts matching her frame with a soft natural shape and real weight, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, thick erect penis standing out and angled slightly upward about as long as the hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans, natural testicles in a separate sac, her penis and testicles her only genitals with smooth unbroken skin behind the scrotum, full natural round ass matching the reference",
 
   "trans-male":
-    "exact same body proportions as the reference image, flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, his pussy his only genital with a smooth flat pubic mound above it, firm high perfectly round ass matching the reference",
+    "exact same body proportions as the reference image, flat masculine chest with flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, his pussy his only genital with a smooth flat pubic mound above it, full natural round ass matching the reference",
 
-  nb: "exact same body proportions as the reference image, lean androgynous body, flat soft chest, narrow hips, smooth groin, firm high perfectly round ass matching the reference",
+  nb: "exact same body proportions as the reference image, lean androgynous body, flat soft chest, narrow hips, smooth groin, full natural round ass matching the reference",
 };
 
 export function nudeAnatomy(gender?: string | null): string {

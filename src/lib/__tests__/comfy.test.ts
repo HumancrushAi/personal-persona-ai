@@ -600,12 +600,12 @@ describe("realism settings", () => {
     const prev = process.env.COMFY_IPA_V2_WEIGHT;
     delete process.env.COMFY_IPA_V2_WEIGHT;
     const s = comfySettings("p");
-    expect(s.ipaV2Weight).toBe(1.5);
+    expect(s.ipaV2Weight).toBe(1.2);
     const g = comfyWorkflow(
       { ...s, prompt: "p", negative: "n", checkpoint: "c.safetensors", referenceImage: "r.png" },
       FACEID_WORKFLOW,
     ) as any;
-    expect(g["12"].inputs.weight_faceidv2).toBe(1.5);
+    expect(g["12"].inputs.weight_faceidv2).toBe(1.2);
     // A caller that never sets it falls back to the shared weight, never null.
     const old = comfyWorkflow({ ...VARS, ipaV2Weight: undefined, referenceImage: "r.png" }, FACEID_WORKFLOW) as any;
     expect(old["12"].inputs.weight_faceidv2).toBe(VARS.ipaWeight);

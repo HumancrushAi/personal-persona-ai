@@ -672,7 +672,7 @@ export function comfySettings(
     ipaWeight: numberSetting("COMFY_IPA_WEIGHT", 0.9),
     // The FaceID v2 embedding is what carries likeness; it shared the 0.9 above
     // and faces came back "not exactly like the models". 1.0-2.0 is its range.
-    ipaV2Weight: numberSetting("COMFY_IPA_V2_WEIGHT", 1.5),
+    ipaV2Weight: numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
     // Keep FaceDetailer from inventing a new face on the refine pass.

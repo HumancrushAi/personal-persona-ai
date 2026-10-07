@@ -781,64 +781,76 @@ function ChatPage() {
 
       {/* Chat column */}
       <div className="flex h-dvh flex-1 flex-col min-w-0">
-        <header className="glass flex items-center gap-3 px-4 py-3 shrink-0">
-          <Button asChild size="icon" variant="ghost" className="rounded-full">
+        <header className="glass flex items-center gap-2 sm:gap-3 px-3 py-2.5 sm:px-4 sm:py-3 shrink-0 border-b border-white/5 z-20">
+          <Button asChild size="icon" variant="ghost" className="rounded-full shrink-0 h-9 w-9 text-muted-foreground hover:bg-white/10 hover:text-white">
             <Link to="/me">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
+          
           {p?.companions?.image_url && (
-            <img
-              src={companionImage(p.companions.image_url)}
-              alt=""
-              width={52}
-              height={52}
-              className="h-11 w-11 shrink-0 rounded-full object-cover object-top ring-2 ring-primary/80 shadow-md md:hidden"
-            />
+            <div className="relative md:hidden shrink-0">
+              <img
+                src={companionImage(p.companions.image_url)}
+                alt=""
+                className="h-10 w-10 sm:h-11 sm:w-11 rounded-full object-cover object-top ring-2 ring-primary/40 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+              />
+              <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0d0a12]" />
+            </div>
           )}
-          <div className="flex-1 min-w-0">
-            <div className="truncate font-display text-lg font-semibold">{p?.nickname ?? "…"}</div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" /> online
-              {/* Her age, next to her name, where the question actually gets
-                  asked. The listings have shown it for a while; the one screen
-                  where someone types "how old are you?" did not. */}
-              {p?.companions?.age ? <span>{p.companions.age}</span> : null}
-              <span className="inline-flex items-center gap-1">
-                <Heart className="h-3 w-3 fill-primary text-primary" /> Lv {level}
+          
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <div className="flex items-center gap-2">
+              <h2 className="truncate font-display text-base sm:text-lg font-bold text-white">
+                {p?.nickname ?? "…"}
+              </h2>
+              {p?.companions?.age && <span className="text-[10px] sm:text-xs font-medium text-white/50">{p.companions.age}</span>}
+            </div>
+            
+            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-white/60">
+              <span className="hidden min-[360px]:inline-flex items-center gap-1">
+                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online
+              </span>
+              <span className="inline-flex items-center gap-1 font-semibold text-primary/90">
+                <Heart className="h-3 w-3 fill-primary/80" /> Lv {level}
               </span>
             </div>
           </div>
-          {!showMobileLive && (
-            <Button
-              type="button"
-              onClick={() => setShowMobileLive(true)}
-              variant="ghost"
-              size="sm"
-              className="h-8 rounded-full border border-primary/30 px-2.5 text-xs text-primary md:hidden"
+          
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {!showMobileLive && (
+              <Button
+                type="button"
+                onClick={() => setShowMobileLive(true)}
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 text-primary md:hidden shrink-0"
+              >
+                <VideoIcon className="h-4 w-4" />
+              </Button>
+            )}
+            
+            {p?.companion_id && (
+              <Button
+                asChild
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 shrink-0 hidden sm:flex"
+                title="Edit personality"
+              >
+                <Link to="/companion/$id" params={{ id: p.companion_id }} search={{ edit: true }}>
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </Link>
+              </Button>
+            )}
+            
+            <Link
+              to="/credits"
+              className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-2.5 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold text-amber-400 ring-1 ring-amber-500/30 transition hover:bg-amber-500/20 hover:ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.15)] shrink-0"
             >
-              <VideoIcon className="mr-1 h-3.5 w-3.5" /> Video
-            </Button>
-          )}
-          {p?.companion_id && (
-            <Button
-              asChild
-              size="icon"
-              variant="ghost"
-              className="rounded-full"
-              title="Edit personality"
-            >
-              <Link to="/companion/$id" params={{ id: p.companion_id }} search={{ edit: true }}>
-                <Sparkles className="h-4 w-4 text-primary" />
-              </Link>
-            </Button>
-          )}
-          <Link
-            to="/credits"
-            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-3 py-1.5 text-[11px] sm:text-xs font-bold text-amber-400 ring-1 ring-amber-500/30 transition hover:bg-amber-500/20 hover:ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
-          >
-            <Gem className="h-3.5 w-3.5 fill-amber-400/20" /> {total}
-          </Link>
+              <Gem className="h-3 sm:h-3.5 w-3 sm:w-3.5 fill-amber-400/20" /> {total}
+            </Link>
+          </div>
         </header>
 
         {/* Mobile Live Face & Reaction Stage (Candy.ai style) - Collapsible */}
@@ -937,10 +949,10 @@ function ChatPage() {
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] overflow-hidden rounded-2xl text-sm ${
+                  className={`max-w-[85%] sm:max-w-[75%] overflow-hidden rounded-[1.25rem] text-[15px] leading-relaxed shadow-sm ${
                     m.role === "user"
-                      ? "bg-grad-primary text-primary-foreground rounded-br-md shadow-glow"
-                      : "border border-white/10 bg-white/5 rounded-bl-md"
+                      ? "rounded-br-sm bg-gradient-to-br from-pink-600 to-rose-500 text-white"
+                      : "rounded-bl-sm bg-white/10 text-white/95 backdrop-blur-md border border-white/5"
                   }`}
                 >
                   {m.kind === "image" && m.media_url && (
@@ -1084,7 +1096,7 @@ function ChatPage() {
                     </div>
                   )}
                   {(m.content || m.kind === "text") && (
-                    <div className="whitespace-pre-wrap px-4 py-2.5">{m.content}</div>
+                    <div className="whitespace-pre-wrap">{m.content}</div>
                   )}
                 </div>
               </div>
@@ -1094,7 +1106,7 @@ function ChatPage() {
                 (m) => m.role === "user" && m.content.trim() === pendingUser.trim(),
               ) && (
                 <div className="flex justify-end">
-                  <div className="max-w-[80%] rounded-2xl rounded-br-md bg-grad-primary px-4 py-2.5 text-sm text-primary-foreground shadow-glow">
+                  <div className="max-w-[80%] rounded-[1.25rem] rounded-br-sm bg-gradient-to-br from-pink-600 to-rose-500 px-4 py-3 text-[15px] leading-relaxed text-white shadow-sm">
                     {pendingUser}
                   </div>
                 </div>

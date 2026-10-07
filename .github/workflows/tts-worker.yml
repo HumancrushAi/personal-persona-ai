@@ -1,0 +1,104 @@
+# Builds the Orpheus TTS voice worker (docker/tts-worker) and pushes it to GHCR.
+# Same shape as comfy-worker.yml: a large CUDA base image, so Docker's data root
+# is moved onto /mnt before the build.
+
+name: tts-worker
+
+on:
+  # The normal way to run it: Actions tab, "Run workflow".
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Extra tag to publish alongside latest (e.g. faceid-v2)"
+        required: false
+        default: ""
+  # Rebuild when the worker definition itself changes, so the image and the repo
+  # cannot drift apart unnoticed.
+  push:
+    branches: [main]
+    paths:
+      - "docker/tts-worker/**"
+      - ".github/workflows/tts-worker.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The base image is the problem, not the build.
+      #
+      # runpod/worker-comfyui:5.10.0-base ships CUDA, torch and the whole ComfyUI
+      # stack: 6.66GB + 4.69GB + 2.06GB of compressed layers, well over 30GB once
+      # extracted. A GitHub-hosted runner has about 29GB free on / — so the first
+      # attempt died inside "[1/7] FROM ... extracting", before reaching a single
+      # build step, with no error of its own to report.
+      #
+      # /mnt is a separate 65GB+ temp disk that is otherwise unused, so Docker's
+      # data root is moved onto it. Deleting the preinstalled toolchains helps and
+      # is kept, but on its own it does not buy enough for an image this size.
+      - name: Make room for a very large base image
+        run: |
+          echo "--- before ---"; df -h / /mnt
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /usr/local/share/boost \
+            /opt/hostedtoolcache \
+            /usr/local/graalvm \
+            /usr/local/share/powershell \
+            /usr/share/swift || true
+          sudo systemctl stop docker
+          sudo mkdir -p /mnt/docker /etc/docker
+          echo '{"data-root": "/mnt/docker"}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker
+          sudo docker info | grep -i "docker root dir" || true
+          echo "--- after ---"; df -h / /mnt
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Lowercased because GHCR rejects an image path with capitals in it and
+      # GitHub org names are free to have them.
+      - name: Work out the image name
+        id: name
+        run: |
+          echo "image=ghcr.io/$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')/hc-tts-worker" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/tts-worker
+          file: docker/tts-worker/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.name.outputs.image }}:latest
+            ${{ steps.name.outputs.image }}:${{ github.sha }}
+            ${{ inputs.tag != '' && format('{0}:{1}', steps.name.outputs.image, inputs.tag) || '' }}
+          # Layer cache in the registry, so a rebuild that only changes
+          # provision-models.sh does not recompile insightface.
+          cache-from: type=registry,ref=${{ steps.name.outputs.image }}:buildcache
+          cache-to: type=registry,ref=${{ steps.name.outputs.image }}:buildcache,mode=max
+
+      - name: What to do with it
+        run: |
+          echo "### Worker image pushed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.name.outputs.image }}:latest" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Create a RunPod serverless endpoint with that Container Image (24GB GPU), then set RUNPOD_TTS_ENDPOINT in Vercel." >> "$GITHUB_STEP_SUMMARY"
+          echo "The model is baked in: no network volume needed." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "If RunPod cannot pull it, the GHCR package is still private: GitHub → Packages → hc-tts-worker → Package settings → Change visibility → Public." >> "$GITHUB_STEP_SUMMARY"

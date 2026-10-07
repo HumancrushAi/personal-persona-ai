@@ -1315,7 +1315,7 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
 
     const { data: conv } = await supabase
       .from("conversations")
-      .select("user_personalities(companions(sort_order, voice_id, gender))")
+      .select("user_personalities(companions(name, sort_order, voice_id, gender))")
       .eq("id", data.conversationId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -1325,9 +1325,26 @@ export const generateVoiceNote = createServerFn({ method: "POST" })
 
     const comp = (conv as any).user_personalities?.companions;
     const voice = voiceFor(comp ?? {});
+    // What the user last said, so "moan for me" gets moans in her voice note.
+    const { data: lastUser } = await supabase
+      .from("messages")
+      .select("content")
+      .eq("conversation_id", data.conversationId)
+      .eq("role", "user")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    // Generate first; only charge if it actually succeeds.
-    const buf = await textToSpeech(data.text, voice);
+    // Generate first; only charge if it actually succeeds. Orpheus (her own
+    // voice, with sighs and moans) when RUNPOD_TTS_ENDPOINT is set, the OpenAI
+    // voice otherwise or on any failure — see voice.server.ts.
+    const { companionVoiceNote } = await import("./voice.server");
+    const buf = await companionVoiceNote({
+      reply: data.text,
+      userAsk: (lastUser as any)?.content ?? "",
+      companion: comp ?? {},
+      openaiVoice: voice,
+    });
     const dataUrl = `data:audio/mpeg;base64,${buf.toString("base64")}`;
     const balance = await deductCredits(supabase, userId, VOICE_COST, "voice_note", free, paid);
 

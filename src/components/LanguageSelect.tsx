@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
-import { Languages } from "lucide-react";
+import { Globe, ChevronDown } from "lucide-react";
 import {
   SUPPORTED_LANGUAGES,
   readPreferredLanguage,
   storePreferredLanguage,
 } from "@/lib/languages";
 
-// The language picker, used in the desktop sidebar and the phone menu.
-//
-// A native <select>: it opens the platform's own picker on a phone, which is
-// the one control that never needs a tap-target fix. The label under it says
-// what the choice actually changes, so nobody expects the menus to translate.
 export function LanguageSelect({ compact = false }: { compact?: boolean }) {
   const [lang, setLang] = useState("en");
 
@@ -23,29 +18,60 @@ export function LanguageSelect({ compact = false }: { compact?: boolean }) {
 
   const current = SUPPORTED_LANGUAGES.find((l) => l.code === lang) ?? SUPPORTED_LANGUAGES[0];
 
+  if (compact) {
+    return (
+      <div className="relative inline-flex items-center">
+        <label className="flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 px-2.5 py-1 text-xs text-white/90 cursor-pointer transition shadow-sm">
+          <span className="text-xs leading-none" aria-hidden>
+            {current.flag}
+          </span>
+          <span className="font-semibold text-[11px] uppercase tracking-wider text-white/90">
+            {current.short}
+          </span>
+          <ChevronDown className="h-3 w-3 text-white/50 shrink-0" />
+          <select
+            value={lang}
+            onChange={(e) => setLang(storePreferredLanguage(e.target.value))}
+            aria-label="Select Language"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
+          >
+            {SUPPORTED_LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code} className="bg-neutral-900 text-white">
+                {l.flag} {l.native} ({l.short})
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    );
+  }
+
   return (
-    <div className={compact ? "" : "px-1"}>
-      <label className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs text-white/80 ring-1 ring-white/10 focus-within:ring-primary/50">
-        <span className="text-base leading-none" aria-hidden>
-          {current.flag}
-        </span>
+    <div className="px-1">
+      <label className="relative flex items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs text-white/80 ring-1 ring-white/10 hover:ring-primary/40 focus-within:ring-primary/50 cursor-pointer transition">
+        <div className="flex items-center gap-2">
+          <span className="text-sm leading-none" aria-hidden>
+            {current.flag}
+          </span>
+          <span className="font-medium text-white text-xs">
+            {current.native} ({current.label})
+          </span>
+        </div>
+        <Globe className="h-3.5 w-3.5 shrink-0 text-primary" />
         <select
           value={lang}
           onChange={(e) => setLang(storePreferredLanguage(e.target.value))}
           aria-label="Language"
-          className="tap-exempt min-h-0 flex-1 cursor-pointer appearance-none bg-transparent text-xs text-white outline-none"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
         >
           {SUPPORTED_LANGUAGES.map((l) => (
-            <option key={l.code} value={l.code} className="bg-background text-foreground">
-              {l.native} — {l.label}
+            <option key={l.code} value={l.code} className="bg-neutral-900 text-white">
+              {l.flag} {l.native} — {l.label}
             </option>
           ))}
         </select>
-        <Languages className="h-3.5 w-3.5 shrink-0 text-white/40" />
       </label>
-      <p className="mt-1 px-1 text-[10px] leading-snug text-white/40">
-        She replies in this language. Menus stay in English for now.
-      </p>
     </div>
   );
 }
+

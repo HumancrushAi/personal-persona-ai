@@ -14,6 +14,7 @@ import {
   checkMediaJob,
 } from "@/lib/media.functions";
 import { MediaRequestModal, type MediaKind } from "@/components/MediaRequestModal";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -832,6 +833,7 @@ function ChatPage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <LanguageSelect compact />
             {!showMobileLive && (
               <Button
                 type="button"

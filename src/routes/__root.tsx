@@ -145,27 +145,11 @@ import { SiteFooter } from "../components/SiteFooter";
 import { SupportWidget } from "../components/SupportWidget";
 import { PushNotificationPrompt } from "../components/PushNotificationPrompt";
 import { autoSubscribePushIfGranted } from "../lib/push-client";
+import { initGoogleTranslate } from "../lib/languages";
 import { Analytics } from "@vercel/analytics/react";
 
-// The support widget's floating button sits on the landing page and the sign-up
-// page only.
-//
-// It is a button in the bottom-right, which is where the chat composer, the
-// send control and the media buttons also live — on a conversation it covers
-// the app rather than helping. It also reads as a support desk hovering over an
-// intimate conversation, which is the wrong note in the wrong place.
-//
-// The widget itself is mounted everywhere except a conversation, the admin
-// console and the studio, invisible until "Help & support" in the menu opens
-// it. Support used to be reachable from exactly two pages; the account page,
-// where billing questions actually arise, was not one of them.
 const SUPPORT_BUBBLE_PATHS = ["/", "/auth"];
 const NO_SUPPORT_PREFIXES = ["/chat/", "/admin", "/studio"];
-
-// The footer carries the policies, support and the 18+ notice on every page
-// and every screen size. Not on a conversation (a full-height app screen with
-// its own composer at the bottom) or the admin console and studio, which are
-// tools rather than pages.
 const NO_FOOTER_PREFIXES = ["/chat/", "/admin", "/studio"];
 
 function RootComponent() {
@@ -177,12 +161,43 @@ function RootComponent() {
   const supportMounted = !NO_SUPPORT_PREFIXES.some((p) => path.startsWith(p));
   const showFooter = !NO_FOOTER_PREFIXES.some((p) => path.startsWith(p));
 
+  // Initialize translation and push on mount
   useEffect(() => {
     autoSubscribePushIfGranted();
+    initGoogleTranslate();
   }, []);
+
+  // Ensure every route load/navigation starts from the top of the site
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
+      {/* Hide native Google Translate banner frame cleanly */}
+      <style>{`
+        .goog-te-banner-frame, .goog-te-balloon-frame, #goog-gt-tt, .goog-te-spinner-pos {
+          display: none !important;
+        }
+        body {
+          top: 0px !important;
+          position: static !important;
+        }
+        .goog-tooltip, .goog-tooltip:hover {
+          display: none !important;
+        }
+        .goog-text-highlight {
+          background-color: transparent !important;
+          box-shadow: none !important;
+        }
+        #google_translate_element {
+          display: none !important;
+        }
+      `}</style>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       {/* The home page has a fixed 256px sidebar on large screens, and the
@@ -197,11 +212,9 @@ function RootComponent() {
       <PushNotificationPrompt />
       {supportMounted && <SupportWidget floating={supportBubble} />}
       <Toaster richColors position="top-center" />
-      {/* Page views and referrers, so "where does the traffic come from" has
-          an answer. Vercel's own analytics: no cross-site profile, no cookie,
-          and it only records once Web Analytics is switched on for the project
-          in the Vercel dashboard. */}
+      {/* Page views and referrers */}
       <Analytics />
     </QueryClientProvider>
   );
 }
+

@@ -128,11 +128,15 @@ export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRi
               </Link>
             </Button>
           )}
+          <div className="ml-1 shrink-0">
+            <LanguageSelect compact />
+          </div>
           {right}
         </nav>
 
         {/* Mobile Navigation Controls */}
         <div className="flex items-center gap-1.5 md:hidden shrink-0">
+          <LanguageSelect compact />
           {mobileRight}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>

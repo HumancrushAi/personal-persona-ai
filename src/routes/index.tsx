@@ -538,6 +538,7 @@ function Landing() {
 
             {/* Right side buttons */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <LanguageSelect compact />
               {authed ? (
                 <>
                   <Button

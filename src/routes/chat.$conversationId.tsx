@@ -19,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   Send,
-  Coins,
   Image as ImageIcon,
   Mic,
   Video as VideoIcon,
@@ -27,6 +26,7 @@ import {
   Sparkles,
   Circle,
   Download,
+  Gem,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getScenario } from "@/lib/scenarios";
@@ -835,9 +835,9 @@ function ChatPage() {
           )}
           <Link
             to="/credits"
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium ring-1 ring-white/10"
+            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-3 py-1.5 text-[11px] sm:text-xs font-bold text-amber-400 ring-1 ring-amber-500/30 transition hover:bg-amber-500/20 hover:ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
           >
-            <Coins className="h-3.5 w-3.5 text-primary" /> {total}
+            <Gem className="h-3.5 w-3.5 fill-amber-400/20" /> {total}
           </Link>
         </header>
 

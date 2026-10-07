@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { Heart, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { LEGAL_DOCS } from "@/lib/legal-docs";
 import { SUPPORT_EMAIL, supportMailto } from "@/lib/support-contact";
 import { useSystemStatus } from "@/hooks/use-app-setting";
+import { LogoLink } from "@/components/Logo";
 
 // The site footer: the policies, support and the 18+ notice, on every page and
 // every screen size.
@@ -24,12 +25,7 @@ export function SiteFooter({ className = "" }: { className?: string }) {
       <div className="mx-auto max-w-7xl px-5 pb-28 pt-10 md:px-8 md:pb-10">
         <div className="flex flex-col gap-8 md:flex-row md:justify-between">
           <div className="max-w-xs">
-            <Link to="/" className="flex items-center gap-2">
-              <Heart className="h-5 w-5 fill-primary text-primary" />
-              <span className="font-display text-lg font-bold tracking-tight">
-                HumanCrush<span className="text-primary">.com</span>
-              </span>
-            </Link>
+            <LogoLink className="h-5" />
             <p className="mt-3 text-xs leading-relaxed text-white/45">
               Adults only, 18+. Every companion is a fictional, AI-generated character. No companion
               is, depicts or is based on a real person.

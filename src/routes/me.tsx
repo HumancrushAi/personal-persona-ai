@@ -6,7 +6,7 @@ import { companionImage } from "@/lib/companion-images";
 import { enablePush } from "@/lib/push-client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Plus, Coins, Shield, Bell, LifeBuoy } from "lucide-react";
+import { Heart, MessageCircle, Plus, Shield, Bell, LifeBuoy, Gem } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { mySupportTickets } from "@/lib/support.functions";
 import { refreshTesterCredits } from "@/lib/tester.functions";
@@ -99,9 +99,9 @@ function MePage() {
         mobileRight={
           <Link
             to="/credits"
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1.5 text-xs font-medium ring-1 ring-white/10"
+            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 ring-1 ring-amber-500/30 transition hover:bg-amber-500/20 hover:ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
           >
-            <Coins className="h-3.5 w-3.5 text-primary" />{" "}
+            <Gem className="h-3.5 w-3.5 fill-amber-400/20" />{" "}
             {(balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0)}
           </Link>
         }
@@ -109,9 +109,9 @@ function MePage() {
           <>
             <Link
               to="/credits"
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1.5 text-xs font-medium ring-1 ring-white/10"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 ring-1 ring-amber-500/30 transition hover:bg-amber-500/20 hover:ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
             >
-              <Coins className="h-3.5 w-3.5 text-primary" />{" "}
+              <Gem className="h-3.5 w-3.5 fill-amber-400/20" />{" "}
               {(balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0)}
             </Link>
             <Button

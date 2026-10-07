@@ -8,7 +8,7 @@ import { companionImage } from "@/lib/companion-images";
 import { sendTip, startPrivateShow, TIP_AMOUNTS, PRIVATE_ENTRY_COST } from "@/lib/cams.functions";
 import { startChat } from "@/lib/chat.functions";
 import { Button } from "@/components/ui/button";
-import { X, Circle, Coins, Gift, Lock, Heart, MessageCircle, Send } from "lucide-react";
+import { X, Circle, Gift, Lock, Heart, MessageCircle, Send, Gem } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/cams/$id")({
@@ -229,9 +229,9 @@ function CamView() {
         {/* Credits pill */}
         <Link
           to="/credits"
-          className="absolute right-3 top-16 inline-flex items-center gap-1 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur"
+          className="absolute right-3 top-16 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3 py-1.5 text-xs font-bold text-amber-400 ring-1 ring-amber-500/40 backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:bg-amber-500/30 transition-all"
         >
-          <Coins className="h-3.5 w-3.5 text-primary" /> {credits}
+          <Gem className="h-3.5 w-3.5 fill-amber-400/20" /> {credits}
         </Link>
 
         {/* Ambient live chat */}

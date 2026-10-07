@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { LogoLink } from "@/components/Logo";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startChat } from "@/lib/chat.functions";
@@ -439,12 +440,7 @@ function Landing() {
       <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-white/10 bg-[#0f0d15] p-5 z-30 justify-between">
         <div className="flex flex-col gap-8">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 px-2">
-            <Heart className="h-6 w-6 fill-primary text-primary" />
-            <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-r from-pink-500 to-rose-400 bg-clip-text text-transparent">
-              HumanCrush<span className="text-white">.com</span>
-            </span>
-          </Link>
+          <LogoLink className="h-6" />
 
           {/* Navigation Items */}
           <nav className="flex flex-col gap-1.5">
@@ -515,12 +511,7 @@ function Landing() {
         <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/85 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-1.5 px-2.5 py-2.5 sm:px-6 md:px-8">
             {/* Mobile Logo */}
-            <Link to="/" className="flex items-center gap-1 sm:gap-1.5 shrink min-w-0">
-              <Heart className="h-5 w-5 fill-primary text-primary animate-pulse shrink-0" />
-              <span className="font-display text-xs sm:text-base font-bold tracking-tight bg-gradient-to-r from-pink-500 to-rose-400 bg-clip-text text-transparent truncate">
-                HumanCrush<span className="hidden sm:inline text-white">.com</span>
-              </span>
-            </Link>
+            <LogoLink className="h-5 lg:hidden" />
 
             {/* Top Tabs (Girls, Guys) */}
             <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-full border border-white/10 shrink-0">
@@ -600,21 +591,21 @@ function Landing() {
         <section className="mx-auto mt-4 max-w-7xl px-4 md:px-6">
           <Link
             to="/auth"
-            className="group relative flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden rounded-3xl border border-pink-500/20 bg-gradient-to-r from-[#170a25] via-[#2f0f35] to-[#120822] px-6 py-4 text-white shadow-glow transition hover:border-pink-500/40 hover:shadow-[0_0_25px_rgba(244,63,94,0.15)]"
+            className="group relative flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden rounded-3xl border border-white/10 bg-cover bg-center bg-no-repeat px-6 py-6 md:py-8 text-white shadow-[0_0_40px_rgba(244,63,94,0.15)] transition hover:border-pink-500/40 hover:shadow-[0_0_60px_rgba(244,63,94,0.3)]"
+            style={{ backgroundImage: `url('/hero-banner.png')` }}
           >
-            {/* Background glowing blobs */}
-            <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-pink-500/10 blur-3xl group-hover:bg-pink-500/20 transition-all duration-700" />
-            <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl group-hover:bg-purple-500/20 transition-all duration-700" />
+            {/* Dark overlay for text readability */}
+            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition duration-500"></div>
 
             <div className="flex items-center gap-4 z-10">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-2xl shadow-glow">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-3xl shadow-glow">
                 ✨
               </span>
               <div>
-                <p className="font-display text-base font-extrabold tracking-wide uppercase text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-purple-400 drop-shadow">
+                <p className="font-display text-lg md:text-xl font-extrabold tracking-wide uppercase text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-rose-200 to-white drop-shadow-md">
                   EXCLUSIVE SPECIAL OFFER
                 </p>
-                <p className="text-xs text-white/70 mt-0.5 font-light">
+                <p className="text-sm md:text-base text-white/90 mt-1 font-light max-w-md">
                   Get <strong className="text-white font-semibold">25 Free Messages</strong>{" "}
                   instantly on registration · No credit card required.
                 </p>
@@ -622,7 +613,7 @@ function Landing() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0 z-10">
-              <span className="rounded-full bg-white text-black px-5 py-2 text-xs font-extrabold tracking-wider uppercase shadow-lg group-hover:bg-pink-500 group-hover:text-white transition-all duration-300">
+              <span className="rounded-full bg-white text-black px-6 py-3 text-sm font-extrabold tracking-wider uppercase shadow-xl group-hover:bg-pink-500 group-hover:text-white transition-all duration-300">
                 Claim Free Chats
               </span>
             </div>

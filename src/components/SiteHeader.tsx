@@ -29,6 +29,7 @@ import { LanguageSelect } from "@/components/LanguageSelect";
 import { openSupport } from "@/components/SupportWidget";
 import { SUPPORT_EMAIL, supportMailto } from "@/lib/support-contact";
 import { useSystemStatus } from "@/hooks/use-app-setting";
+import { LogoLink } from "@/components/Logo";
 
 // Whether this session's user is an admin, asked once per page load rather than
 // on every header mount. The header is on every page, and the role check is a
@@ -92,12 +93,7 @@ export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRi
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-2 py-2.5 sm:px-4 md:px-6 md:py-3.5">
-        <Link to="/" className="flex shrink items-center gap-1.5 min-w-0 sm:gap-2">
-          <Heart className="h-5 w-5 shrink-0 fill-primary text-primary md:h-6 md:w-6" />
-          <span className="font-display text-[11px] sm:text-lg md:text-xl text-foreground truncate">
-            HumanCrush<span className="hidden sm:inline">.com</span>
-          </span>
-        </Link>
+        <LogoLink className="h-5 md:h-6" />
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex shrink items-center gap-1">

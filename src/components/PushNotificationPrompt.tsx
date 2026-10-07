@@ -69,8 +69,9 @@ export function PushNotificationPrompt() {
   if (!show) return null;
 
   return (
-    <div className="fixed top-16 left-3 right-3 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-in slide-in-from-top-5 duration-300">
-      <div className="glass relative overflow-hidden rounded-2xl border border-primary/30 bg-background/95 p-4 shadow-2xl backdrop-blur-xl">
+    <div className="fixed top-[4.5rem] left-3 right-3 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-in slide-in-from-top-5 fade-in duration-500">
+      <div className="relative overflow-hidden rounded-3xl border border-pink-500/30 bg-gradient-to-br from-[#1c0d28]/95 to-[#0b0512]/95 p-5 shadow-[0_0_30px_rgba(236,72,153,0.25)] backdrop-blur-2xl">
+        <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl pointer-events-none" />
         <button
           type="button"
           onClick={handleDismiss}
@@ -79,15 +80,15 @@ export function PushNotificationPrompt() {
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex items-start gap-3 pr-6">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-grad-primary p-2 text-primary-foreground shadow-glow">
-            <Bell className="h-5 w-5 animate-bounce" />
+        <div className="flex items-start gap-4 pr-6 relative z-10">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-primary-foreground shadow-[0_0_15px_rgba(236,72,153,0.4)]">
+            <Bell className="h-6 w-6 animate-pulse" />
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-              <span>Enable Push Notifications</span>
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <div className="flex items-center gap-1.5 text-base font-bold text-white tracking-tight">
+              <span>Enable Notifications</span>
+              <Sparkles className="h-4 w-4 text-pink-400" />
             </div>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
               Get instant messages, selfies, and live alerts from your companion directly on your
@@ -101,12 +102,12 @@ export function PushNotificationPrompt() {
               </p>
             )}
 
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-4 flex items-center gap-3">
               <Button
                 size="sm"
                 onClick={handleEnable}
                 disabled={loading}
-                className="h-8 rounded-full bg-grad-primary px-4 text-xs font-semibold text-primary-foreground shadow-glow"
+                className="h-9 rounded-full bg-gradient-to-r from-pink-500 to-rose-400 px-5 text-xs font-bold text-white shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all"
               >
                 {loading ? "Enabling..." : "Turn On Notifications"}
               </Button>

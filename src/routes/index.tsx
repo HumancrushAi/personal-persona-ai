@@ -1668,7 +1668,7 @@ function BannerSlider({
           go(-1);
         }}
         aria-label="Previous"
-        className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-3 text-white backdrop-blur hover:bg-black/75 md:left-4"
+        className="absolute right-[3.75rem] top-3 z-10 rounded-full bg-black/55 p-3 text-white backdrop-blur hover:bg-black/75 md:right-[4.75rem] md:top-4"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
@@ -1678,7 +1678,7 @@ function BannerSlider({
           go(1);
         }}
         aria-label="Next"
-        className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-3 text-white backdrop-blur hover:bg-black/75 md:right-4"
+        className="absolute right-3 top-3 z-10 rounded-full bg-black/55 p-3 text-white backdrop-blur hover:bg-black/75 md:right-4 md:top-4"
       >
         <ChevronRight className="h-5 w-5" />
       </button>

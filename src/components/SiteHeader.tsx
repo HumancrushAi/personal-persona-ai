@@ -135,9 +135,20 @@ export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRi
         </nav>
 
         {/* Mobile Navigation Controls */}
-        {/* Language lives in the menu below on phones; here it crowded the
-            logo off the row. */}
-        <div className="flex items-center gap-1.5 md:hidden shrink-0">
+        {/* Phones: language, Login / Sign Up when signed out, the page's own
+            button and the menu, sized to fit a 360px screen. */}
+        <div className="flex min-w-0 items-center gap-1 md:hidden shrink-0">
+          <LanguageSelect compact />
+          {authed === false && (
+            <>
+              <Button asChild variant="ghost" size="sm" className="tap-exempt h-8 rounded-full px-2 text-[11px] text-white/80 min-w-0">
+                <Link to="/auth" search={{ mode: "signin" } as any}>Login</Link>
+              </Button>
+              <Button asChild size="sm" className="tap-exempt h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground shadow-glow min-w-0">
+                <Link to="/auth">Sign Up</Link>
+              </Button>
+            </>
+          )}
           {mobileRight}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>

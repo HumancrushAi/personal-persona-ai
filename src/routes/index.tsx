@@ -440,7 +440,7 @@ function Landing() {
       <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-white/10 bg-[#0f0d15] p-5 z-30 justify-between">
         <div className="flex flex-col gap-8">
           {/* Logo */}
-          <LogoLink className="h-6" />
+          <LogoLink className="h-8" />
 
           {/* Navigation Items */}
           <nav className="flex flex-col gap-1.5">
@@ -512,7 +512,7 @@ function Landing() {
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:px-6 md:px-8">
             {/* Mobile Logo */}
             <div className="flex shrink-0 items-center min-w-0 lg:hidden">
-              <LogoLink className="h-6" />
+              <LogoLink className="h-8" />
             </div>
 
             {/* Top Tabs (Girls, Guys) */}

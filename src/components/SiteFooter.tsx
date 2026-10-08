@@ -25,10 +25,10 @@ export function SiteFooter({ className = "" }: { className?: string }) {
       <div className="mx-auto max-w-7xl px-5 pb-28 pt-10 md:px-8 md:pb-10">
         <div className="flex flex-col gap-8 md:flex-row md:justify-between">
           <div className="max-w-xs">
-            <LogoLink className="h-5" />
+            <LogoLink className="h-8" />
             <p className="mt-3 text-xs leading-relaxed text-white/45">
-              Adults only, 18+. Every companion is a fictional, AI-generated character. No companion
-              is, depicts or is based on a real person.
+              Every companion is a fictional, AI-generated character. No companion is, depicts or is
+              based on a real person.
             </p>
           </div>
 

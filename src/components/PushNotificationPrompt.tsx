@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { enablePush, type PushResult } from "@/lib/push-client";
-import { Button } from "@/components/ui/button";
 import { Bell, X, Sparkles, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -68,57 +67,62 @@ export function PushNotificationPrompt() {
 
   if (!show) return null;
 
+  // Styled after the homepage's "Claim Free Chats" offer banner: the same hero
+  // image under a dark overlay, gradient icon tile, gradient uppercase headline
+  // and white pill button, so the two read as one family.
   return (
     <div className="fixed top-[4.5rem] left-3 right-3 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-in slide-in-from-top-5 fade-in duration-500">
-      <div className="relative overflow-hidden rounded-3xl border border-pink-500/30 bg-gradient-to-br from-[#1c0d28]/95 to-[#0b0512]/95 p-5 shadow-[0_0_30px_rgba(236,72,153,0.25)] backdrop-blur-2xl">
-        <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl pointer-events-none" />
+      <div
+        className="group relative overflow-hidden rounded-3xl border border-white/10 bg-cover bg-center bg-no-repeat p-5 text-white shadow-[0_0_40px_rgba(244,63,94,0.25)]"
+        style={{ backgroundImage: "url('/hero-banner.png')" }}
+      >
+        <div className="absolute inset-0 bg-black/55 pointer-events-none" />
         <button
           type="button"
           onClick={handleDismiss}
-          className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-white/10 transition-colors"
+          aria-label="Close"
+          className="absolute top-3 right-3 z-20 rounded-full p-1 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
         >
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex items-start gap-4 pr-6 relative z-10">
-          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-primary-foreground shadow-[0_0_15px_rgba(236,72,153,0.4)]">
-            <Bell className="h-6 w-6 animate-pulse" />
-          </div>
+        <div className="relative z-10 flex items-start gap-4 pr-6">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 shadow-glow">
+            <Bell className="h-7 w-7 text-white" />
+          </span>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 text-base font-bold text-white tracking-tight">
-              <span>Enable Notifications</span>
-              <Sparkles className="h-4 w-4 text-pink-400" />
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-              Get instant messages, selfies, and live alerts from your companion directly on your
-              phone!
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-lg font-extrabold uppercase tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-rose-200 to-white drop-shadow-md">
+              Don&apos;t miss her messages
+            </p>
+            <p className="mt-1 text-sm font-light leading-relaxed text-white/90">
+              Get <strong className="font-semibold text-white">instant messages, selfies</strong> and
+              live alerts from your companion, right on your phone.
             </p>
 
             {isIos && (
-              <p className="mt-1.5 text-[10px] text-amber-400/90 flex items-center gap-1">
+              <p className="mt-1.5 flex items-center gap-1 text-[10px] text-amber-300">
                 <Smartphone className="h-3 w-3" /> iPhone tip: Tap Share → Add to Home Screen for
                 best push performance.
               </p>
             )}
 
             <div className="mt-4 flex items-center gap-3">
-              <Button
-                size="sm"
+              <button
+                type="button"
                 onClick={handleEnable}
                 disabled={loading}
-                className="h-9 rounded-full bg-gradient-to-r from-pink-500 to-rose-400 px-5 text-xs font-bold text-white shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all"
+                className="rounded-full bg-white px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-black shadow-xl transition-all duration-300 hover:bg-pink-500 hover:text-white disabled:opacity-70"
               >
-                {loading ? "Enabling..." : "Turn On Notifications"}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
+                {loading ? "Enabling..." : "Turn On Alerts"}
+              </button>
+              <button
+                type="button"
                 onClick={handleDismiss}
-                className="h-8 rounded-full px-3 text-xs text-muted-foreground"
+                className="rounded-full px-3 py-2 text-xs text-white/70 hover:text-white"
               >
-                Maybe Later
-              </Button>
+                Maybe later
+              </button>
             </div>
           </div>
         </div>

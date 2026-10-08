@@ -498,7 +498,7 @@ function Landing() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 lg:pl-64 min-h-screen pb-24 overflow-x-hidden relative">
+      <div className="flex-1 lg:pl-64 min-h-screen overflow-x-hidden relative">
         <SiteHeader home gender={topTab} onGender={setTopTab} />
 
         {bannerText ? (
@@ -911,21 +911,6 @@ function Landing() {
         </section>
 
         <FAQSection />
-
-        <footer className="mt-4 border-t border-white/10 py-8 text-center text-xs text-muted-foreground">
-          <div className="mb-2 flex items-center justify-center gap-4">
-            <Link to="/faq" className="hover:text-foreground">
-              FAQ
-            </Link>
-            <Link to="/gallery" className="hover:text-foreground">
-              Gallery
-            </Link>
-            <Link to="/create" className="hover:text-foreground">
-              Create AI
-            </Link>
-          </div>
-          © {new Date().getFullYear()} HumanCrush.com · AI characters are fictional.
-        </footer>
 
         {tease && <TeaseChat companion={tease} onClose={() => setTease(null)} />}
       </div>

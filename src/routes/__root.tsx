@@ -97,16 +97,45 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Build the AI girlfriend you've always imagined — 25 stunning companions, fully customizable personality.",
+          "Chat with realistic AI girlfriends and AI boyfriends — selfies, voice notes and live video, or design your own companion. 25 free messages, no card.",
       },
       { property: "og:title", content: "HumanCrush.com — Your AI Companion, Designed by You" },
       {
         property: "og:description",
         content:
-          "Build the AI girlfriend you've always imagined — 25 stunning companions, fully customizable personality.",
+          "Chat with realistic AI girlfriends and AI boyfriends — selfies, voice notes and live video, or design your own companion. 25 free messages, no card.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "HumanCrush" },
+      { property: "og:image", content: "https://www.humancrush.com/hero-banner.png" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://www.humancrush.com/hero-banner.png" },
+      { name: "rating", content: "adult" },
+    ],
+    // Who the site is, for search and AI answer engines, on every page.
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://www.humancrush.com/#org",
+              name: "HumanCrush",
+              url: "https://www.humancrush.com",
+              logo: "https://www.humancrush.com/logo.png",
+            },
+            {
+              "@type": "WebSite",
+              "@id": "https://www.humancrush.com/#site",
+              name: "HumanCrush",
+              url: "https://www.humancrush.com",
+              publisher: { "@id": "https://www.humancrush.com/#org" },
+            },
+          ],
+        }),
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

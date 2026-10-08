@@ -132,12 +132,14 @@ export const Route = createFileRoute("/")({
           "Stunning AI companions — women and men. Stories, real reels, voice notes, selfies. 25 free messages, no card. 18+ only.",
       },
       { property: "og:title", content: "HumanCrush.com — Your AI Crush" },
+      { property: "og:url", content: "https://www.humancrush.com/" },
       {
         property: "og:description",
         content:
           "Talk, flirt, and connect with the AI companion of your choice. Custom selfies, voice notes, and roleplay. 25 free messages.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://www.humancrush.com/" }],
   }),
   component: Landing,
 });

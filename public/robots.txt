@@ -1,0 +1,17 @@
+# HumanCrush — https://www.humancrush.com
+# Public pages are open to every crawler, including AI answer engines.
+# Signed-in and account pages are kept out of search results.
+
+User-agent: *
+Allow: /
+Disallow: /chat/
+Disallow: /admin
+Disallow: /me
+Disallow: /history
+Disallow: /studio
+Disallow: /reset-password
+Disallow: /api/
+Disallow: /_serverFn/
+Disallow: /companion/
+
+Sitemap: https://www.humancrush.com/sitemap.xml

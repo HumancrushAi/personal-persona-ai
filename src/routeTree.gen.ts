@@ -19,8 +19,10 @@ import { Route as CreditsRouteImport } from './routes/credits'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedStudioRouteImport } from './routes/_authenticated/studio'
 import { Route as CamsIndexRouteImport } from './routes/cams.index'
@@ -29,6 +31,8 @@ import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversat
 import { Route as CompanionIdRouteImport } from './routes/companion.$id'
 import { Route as LegalIndexRouteImport } from './routes/legal.index'
 import { Route as LegalSlugRouteImport } from './routes/legal.$slug'
+import { Route as ModelsIndexRouteImport } from './routes/models.index'
+import { Route as ModelsSlugRouteImport } from './routes/models.$slug'
 import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
 import { Route as ApiPublicReelWebhookRouteImport } from './routes/api/public/reel-webhook'
@@ -83,6 +87,11 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MeRoute = MeRouteImport.update({
   id: '/me',
   path: '/me',
@@ -91,6 +100,11 @@ const MeRoute = MeRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -133,6 +147,16 @@ const LegalSlugRoute = LegalSlugRouteImport.update({
   path: '/legal/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModelsIndexRoute = ModelsIndexRouteImport.update({
+  id: '/models/',
+  path: '/models/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModelsSlugRoute = ModelsSlugRouteImport.update({
+  id: '/models/$slug',
+  path: '/models/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronReengageRoute = ApiCronReengageRouteImport.update({
   id: '/api/cron/reengage',
   path: '/api/cron/reengage',
@@ -164,16 +188,20 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
   '/legal/$slug': typeof LegalSlugRoute
+  '/models/$slug': typeof ModelsSlugRoute
   '/cams/': typeof CamsIndexRoute
   '/legal/': typeof LegalIndexRoute
+  '/models/': typeof ModelsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
@@ -189,16 +217,20 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
   '/legal/$slug': typeof LegalSlugRoute
+  '/models/$slug': typeof ModelsSlugRoute
   '/cams': typeof CamsIndexRoute
   '/legal': typeof LegalIndexRoute
+  '/models': typeof ModelsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
@@ -216,16 +248,20 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/companion/$id': typeof CompanionIdRoute
   '/legal/$slug': typeof LegalSlugRoute
+  '/models/$slug': typeof ModelsSlugRoute
   '/cams/': typeof CamsIndexRoute
   '/legal/': typeof LegalIndexRoute
+  '/models/': typeof ModelsIndexRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
@@ -243,16 +279,20 @@ export interface FileRouteTypes {
     | '/faq'
     | '/gallery'
     | '/history'
+    | '/llms.txt'
     | '/me'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/admin'
     | '/studio'
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
     | '/legal/$slug'
+    | '/models/$slug'
     | '/cams/'
     | '/legal/'
+    | '/models/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
@@ -268,16 +308,20 @@ export interface FileRouteTypes {
     | '/faq'
     | '/gallery'
     | '/history'
+    | '/llms.txt'
     | '/me'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/admin'
     | '/studio'
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
     | '/legal/$slug'
+    | '/models/$slug'
     | '/cams'
     | '/legal'
+    | '/models'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
@@ -294,16 +338,20 @@ export interface FileRouteTypes {
     | '/faq'
     | '/gallery'
     | '/history'
+    | '/llms.txt'
     | '/me'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/_authenticated/admin'
     | '/_authenticated/studio'
     | '/cams/$id'
     | '/chat/$conversationId'
     | '/companion/$id'
     | '/legal/$slug'
+    | '/models/$slug'
     | '/cams/'
     | '/legal/'
+    | '/models/'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
@@ -321,14 +369,18 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   GalleryRoute: typeof GalleryRoute
   HistoryRoute: typeof HistoryRoute
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
   MeRoute: typeof MeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CamsIdRoute: typeof CamsIdRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
   LegalSlugRoute: typeof LegalSlugRoute
+  ModelsSlugRoute: typeof ModelsSlugRoute
   CamsIndexRoute: typeof CamsIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
+  ModelsIndexRoute: typeof ModelsIndexRoute
   ApiCronReengageRoute: typeof ApiCronReengageRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
   ApiPublicReelWebhookRoute: typeof ApiPublicReelWebhookRoute
@@ -407,6 +459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/me': {
       id: '/me'
       path: '/me'
@@ -419,6 +478,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -477,6 +543,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/models/': {
+      id: '/models/'
+      path: '/models'
+      fullPath: '/models/'
+      preLoaderRoute: typeof ModelsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/models/$slug': {
+      id: '/models/$slug'
+      path: '/models/$slug'
+      fullPath: '/models/$slug'
+      preLoaderRoute: typeof ModelsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/reengage': {
       id: '/api/cron/reengage'
       path: '/api/cron/reengage'
@@ -532,14 +612,18 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   GalleryRoute: GalleryRoute,
   HistoryRoute: HistoryRoute,
+  LlmsDottxtRoute: LlmsDottxtRoute,
   MeRoute: MeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   CamsIdRoute: CamsIdRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,
   LegalSlugRoute: LegalSlugRoute,
+  ModelsSlugRoute: ModelsSlugRoute,
   CamsIndexRoute: CamsIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
+  ModelsIndexRoute: ModelsIndexRoute,
   ApiCronReengageRoute: ApiCronReengageRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
   ApiPublicReelWebhookRoute: ApiPublicReelWebhookRoute,

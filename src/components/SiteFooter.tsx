@@ -38,6 +38,13 @@ export function SiteFooter({ className = "" }: { className?: string }) {
                 Explore
               </p>
               <ul className="space-y-1.5 text-xs text-white/50">
+                {/* The footer is server-rendered on every page, so this link is
+                    how crawlers reach every companion's public profile. */}
+                <li>
+                  <Link to="/models" className="transition hover:text-white">
+                    AI girlfriends &amp; boyfriends
+                  </Link>
+                </li>
                 <li>
                   <Link to="/browse" className="transition hover:text-white">
                     Browse companions

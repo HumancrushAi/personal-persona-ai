@@ -4,23 +4,28 @@ import { useState } from "react";
 import { ChevronDown, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SupportContact } from "@/components/SupportContact";
+import { jsonLd, pageMeta } from "@/lib/seo";
 
+// Server-rendered: this page is static text, and with ssr: false Google saw
+// only the site chrome. The FAQPage data is what answer engines quote.
 export const Route = createFileRoute("/faq")({
-  ssr: false,
   head: () => ({
-    meta: [
-      { title: "FAQ — HumanCrush.com" },
-      {
-        name: "description",
-        content:
-          "Answers about HumanCrush.com — pricing, credits, subscriptions, custom AI companions, privacy, and more.",
-      },
-      { property: "og:title", content: "FAQ — HumanCrush.com" },
-      {
-        property: "og:description",
-        content:
-          "Everything you need to know about HumanCrush.com: credits, plans, custom AI companions, privacy and more.",
-      },
+    ...pageMeta({
+      title: "FAQ — HumanCrush.com",
+      description:
+        "Answers about HumanCrush.com — pricing, credits, subscriptions, custom AI companions, privacy, and more.",
+      path: "/faq",
+    }),
+    scripts: [
+      jsonLd({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: FAQS.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      }),
     ],
   }),
   component: FAQPage,

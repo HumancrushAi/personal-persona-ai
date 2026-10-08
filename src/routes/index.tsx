@@ -351,7 +351,29 @@ function Landing() {
     [topTab],
   );
 
+  // Each visit opens the slider one model further on (Aria, then Sofia, then
+  // Raven…) so a returning visitor isn't greeted by the same face every time.
+  // Counted per browser; read on mount, before the companions arrive, so the
+  // slider never visibly jumps.
+  const [heroVisit, setHeroVisit] = useState(0);
+  useEffect(() => {
+    try {
+      const n = Number(localStorage.getItem("hc:heroVisit")) || 0;
+      setHeroVisit(n);
+      localStorage.setItem("hc:heroVisit", String(n + 1));
+    } catch {
+      /* private mode: always starts at the first model */
+    }
+  }, []);
+
   const bannerSlides = useMemo(() => {
+    const slides = buildBannerSlides();
+    if (slides.length < 2) return slides;
+    const k = heroVisit % slides.length;
+    return [...slides.slice(k), ...slides.slice(0, k)];
+  }, [companions, topTab, inTab, heroVisit]);
+
+  function buildBannerSlides() {
     if (!companions || companions.length === 0) return [];
     const wantGender = topTab === "guys" ? "m" : "f";
     const toSlide = (comp: Companion, sub: string) => ({
@@ -376,7 +398,7 @@ function Landing() {
       .filter(inTab)
       .slice(0, 5)
       .map((c) => toSlide(c, c.ethnicity));
-  }, [companions, topTab, inTab]);
+  }
 
   const liveNow = useMemo(() => (companions ?? []).filter(inTab).slice(0, 14), [companions, inTab]);
 

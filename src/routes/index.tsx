@@ -1582,7 +1582,7 @@ function BannerSlider({
             ) : null}
 
             {/* Content panel */}
-            <div className="relative z-10 flex flex-col justify-end md:justify-center w-full md:w-1/2 h-full p-6 sm:p-8 md:p-12 md:pr-4 bg-gradient-to-t from-black via-black/40 to-transparent md:from-transparent md:to-transparent">
+            <div className="relative z-10 flex flex-col justify-end md:justify-center w-full md:w-1/2 h-full p-6 pb-12 sm:p-8 sm:pb-14 md:p-12 md:pr-4 bg-gradient-to-t from-black via-black/40 to-transparent md:from-transparent md:to-transparent">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
                   <Circle className="h-1.5 w-1.5 fill-white text-white animate-pulse" /> Live
@@ -1684,7 +1684,7 @@ function BannerSlider({
       </button>
 
       {/* dots */}
-      <div className="absolute inset-x-0 bottom-2 z-10 flex justify-center gap-1.5">
+      <div className="absolute inset-x-0 bottom-4 z-10 flex justify-center gap-1.5 md:bottom-3">
         {slides.map((_, i) => (
           <button
             key={i}

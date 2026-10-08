@@ -60,3 +60,23 @@ describe("her voice note", () => {
     expect(ai.textToSpeech).toHaveBeenCalledWith("Hi there", "coral");
   });
 });
+
+describe("the fallback voice matches her gender", () => {
+  it("never gives a woman alloy or ballad", async () => {
+    const { voiceFor, FEMALE_VOICES } = await import("../voices");
+    for (const v of ["alloy", "ballad", "onyx", ""]) {
+      for (let order = 0; order < 6; order++) {
+        const got = voiceFor({ gender: "female", voice_id: v, sort_order: order });
+        expect(FEMALE_VOICES, `${v}/${order}`).toContain(got);
+      }
+    }
+    expect(voiceFor({ gender: "female", voice_id: "Nova" })).toBe("nova");
+    expect(voiceFor({ gender: "trans-female", voice_id: "ballad" })).not.toBe("ballad");
+  });
+
+  it("keeps a man on a male voice", async () => {
+    const { voiceFor, MALE_VOICES } = await import("../voices");
+    expect(MALE_VOICES).toContain(voiceFor({ gender: "male", voice_id: "shimmer", sort_order: 3 }));
+    expect(voiceFor({ gender: "male", voice_id: "onyx" })).toBe("onyx");
+  });
+});

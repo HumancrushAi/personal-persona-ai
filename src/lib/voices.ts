@@ -11,7 +11,9 @@ import { genderKind } from "./anatomy";
 // shimmer, coral or sage. Ten of them.
 //
 // A companion's own voice_id still wins over any of this — see voiceFor.
-export const FEMALE_VOICES = ["shimmer", "coral", "nova", "sage", "ballad", "alloy"];
+// alloy and ballad are gone from the women's list: both read as a male or
+// neutral voice, and 37 women had one of them stored, so women sounded like men.
+export const FEMALE_VOICES = ["shimmer", "coral", "nova", "sage"];
 export const MALE_VOICES = ["onyx", "ash", "echo", "verse", "fable"];
 
 /**
@@ -30,9 +32,11 @@ export function voiceFor(companion: {
   gender?: string | null;
   sort_order?: number | null;
 }): string {
-  const assigned = (companion.voice_id ?? "").trim();
-  if (assigned) return assigned;
   const kind = genderKind(companion.gender);
   const roster = kind === "male" || kind === "trans-male" ? MALE_VOICES : FEMALE_VOICES;
+  // Her own voice only when it belongs to her gender's list: a stored "alloy"
+  // on a woman is a data default, not a choice, and it made her sound like a man.
+  const assigned = (companion.voice_id ?? "").trim().toLowerCase();
+  if (roster.includes(assigned)) return assigned;
   return roster[Math.abs(companion.sort_order ?? 0) % roster.length];
 }

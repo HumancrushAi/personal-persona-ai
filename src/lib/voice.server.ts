@@ -121,7 +121,9 @@ async function moanClip(dir: string, n: number): Promise<string | null> {
 
 async function orpheusSpeech(endpoint: string, text: string, voice: string, dir: string, n: number): Promise<string> {
   const { runpodRunSync } = await import("./runpod");
-  const res = await runpodRunSync(endpoint, { text, voice }, 120_000);
+  // 60s, not longer: on a cold or broken worker the note falls back to the
+  // OpenAI voice rather than leaving the user waiting.
+  const res = await runpodRunSync(endpoint, { text, voice }, 60_000);
   const b64 = res.output?.audio_base64;
   if (!b64) throw new Error(res.output?.error || res.error || "no audio from the voice worker");
   const { writeFile } = await import("node:fs/promises");

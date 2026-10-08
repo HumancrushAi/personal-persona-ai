@@ -126,10 +126,10 @@ export async function textToSpeech(text: string, voice: string): Promise<Buffer>
       voice,
       response_format: "mp3",
       instructions:
-        "You are a real girlfriend recording a private voice note just for the person you adore. " +
-        "Sound human and natural — warm, soft, affectionate, and a little playful. Vary your pace and " +
-        "intonation like real speech, add gentle breathiness and a smile in your voice. Never sound " +
-        "robotic, flat, or like a narrator reading text. Speak intimately, as if leaning close to their ear.",
+        "You are a real lover recording a private, intimate voice note for the one person you want. " +
+        "Sultry, seductive and breathy: speak slowly and softly, close to the microphone, with a smile " +
+        "in your voice and little breaths between phrases. Let your voice dip low and teasing on the " +
+        "flirty lines. Real, relaxed speech with natural pauses, like whispering in their ear in bed.",
     }),
   });
   if (!res.ok) {

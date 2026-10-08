@@ -96,7 +96,7 @@ export function SupportWidget({ floating = true }: { floating?: boolean }) {
   if (!isOpen && !floating) return null;
 
   return (
-    <div className="fixed bottom-24 lg:bottom-6 right-4 lg:right-6 z-50">
+    <div className="fixed bottom-[120px] lg:bottom-10 right-4 lg:right-6 z-50">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}

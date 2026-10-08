@@ -307,10 +307,7 @@ function CreatePage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#07050a] text-white">
-      {/* Ambient glows — decorative only, kept behind everything and untappable. */}
-      <div className="pointer-events-none absolute right-0 top-0 z-0 h-[500px] w-[500px] rounded-full bg-pink-500/5 blur-[120px]" />
-      <div className="pointer-events-none absolute left-0 top-1/3 z-0 h-[600px] w-[600px] rounded-full bg-purple-500/5 blur-[150px]" />
+    <div className="relative min-h-screen overflow-x-hidden bg-[#141414] text-white">
 
       {/* SiteHeader is sticky on its own; wrapping both keeps the progress rail
           pinned directly beneath it without hard-coding the header's height. */}
@@ -320,11 +317,11 @@ function CreatePage() {
       </div>
 
       {/* Bottom padding clears the fixed action bar and, on mobile, BottomNav. */}
-      <main className="relative z-10 mx-auto max-w-5xl px-4 pb-56 pt-6 md:px-6 lg:pb-32">
+      <main className="relative z-10 mx-auto max-w-5xl px-4 pb-56 pt-4 md:px-6 md:pt-8 lg:pb-32">
         {step === 0 && (
           <Step
-            title="Who are you into?"
-            sub="Pick a gender and an art style. Everything after this is her look."
+            title={gender === "male" || gender === "trans-male" ? "Create my AI Guy" : gender === "non-binary" ? "Create my AI Crush" : "Create my AI Girl"}
+            sub="Pick who and a style. Everything after this is the look."
           >
             <GenderPicker gender={gender} onChange={setGender} />
 
@@ -502,7 +499,7 @@ function CreatePage() {
 
       {/* Fixed so the way forward is always on screen. Sits above BottomNav on
           mobile, which is itself fixed at the bottom below the lg breakpoint. */}
-      <div className="fixed inset-x-0 bottom-[68px] z-40 border-t border-white/10 bg-[#07050a]/90 backdrop-blur-xl lg:bottom-0">
+      <div className="fixed inset-x-0 bottom-[68px] z-40 border-t border-white/10 bg-[#141414]/90 backdrop-blur-xl lg:bottom-0">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 md:px-6">
           <Button
             type="button"
@@ -522,7 +519,7 @@ function CreatePage() {
             <Button
               type="button"
               onClick={() => setStep((s) => Math.min(LAST_STEP, s + 1))}
-              className="h-12 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-8 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(244,63,94,0.3)] transition duration-200 hover:brightness-110 active:scale-95 motion-reduce:transition-none"
+              className="h-12 rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground transition duration-200 hover:bg-primary/90 active:scale-95 motion-reduce:transition-none"
             >
               Next <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
@@ -531,7 +528,7 @@ function CreatePage() {
               type="button"
               onClick={submit}
               disabled={loading}
-              className="h-12 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-6 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_25px_rgba(244,63,94,0.35)] transition duration-200 hover:brightness-110 active:scale-95 motion-reduce:transition-none"
+              className="h-12 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition duration-200 hover:bg-primary/90 active:scale-95 motion-reduce:transition-none"
             >
               {loading ? (
                 <>
@@ -554,7 +551,7 @@ function CreatePage() {
 
 function StepRail({ step, onJump }: { step: number; onJump: (n: number) => void }) {
   return (
-    <div className="border-b border-white/5 bg-[#07050a]/90 backdrop-blur-xl">
+    <div className="border-b border-white/5 bg-[#141414]/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center gap-1.5 px-4 py-2.5 md:gap-2 md:px-6">
         {STEPS.map((label, i) => {
           const done = i < step;
@@ -574,15 +571,15 @@ function StepRail({ step, onJump }: { step: number; onJump: (n: number) => void 
               <span
                 className={`h-1 w-full rounded-full transition-colors duration-200 motion-reduce:transition-none ${
                   current
-                    ? "bg-gradient-to-r from-pink-500 to-rose-500"
+                    ? "bg-primary"
                     : done
-                      ? "bg-pink-500/50"
+                      ? "bg-primary/50"
                       : "bg-white/10"
                 }`}
               />
               <span
                 className={`truncate text-[10px] font-semibold uppercase tracking-wider ${
-                  current ? "text-pink-400" : done ? "text-white/50" : "text-white/25"
+                  current ? "text-white" : done ? "text-white/50" : "text-white/25"
                 }`}
               >
                 {label}
@@ -597,15 +594,17 @@ function StepRail({ step, onJump }: { step: number; onJump: (n: number) => void 
 
 function Step({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 md:space-y-7">
+      {/* Compact on a phone, so the first choice and its two style cards fit
+          above the fold without scrolling. */}
       <header>
-        <p className="inline-flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-[11px] font-medium text-pink-400">
-          <Sparkles className="h-3.5 w-3.5" /> 1 portrait credit
-        </p>
-        <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight md:text-5xl">
-          {title}
-        </h1>
-        <p className="mt-2 max-w-lg text-sm font-light text-white/60 md:text-base">{sub}</p>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-display text-2xl font-bold tracking-tight md:text-4xl">{title}</h1>
+          <p className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/60">
+            <Sparkles className="h-3 w-3 text-primary" /> 1 credit
+          </p>
+        </div>
+        <p className="mt-1 hidden max-w-lg text-sm text-white/55 sm:block">{sub}</p>
       </header>
       {children}
     </div>
@@ -614,8 +613,8 @@ function Step({ title, sub, children }: { title: string; sub: string; children: 
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-3">
-      <h2 className="text-[11px] font-extrabold uppercase tracking-widest text-pink-400/80">
+    <section className="space-y-2 md:space-y-3">
+      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/45">
         {label}
       </h2>
       {children}
@@ -650,7 +649,7 @@ function PhotoGrid({
             aria-pressed={selected}
             className={`group relative overflow-hidden rounded-2xl border text-left transition duration-200 motion-reduce:transition-none ${
               selected
-                ? "border-pink-500 shadow-[0_0_25px_rgba(244,63,94,0.25)] ring-2 ring-pink-500"
+                ? "border-primary ring-2 ring-primary"
                 : "border-white/10 hover:border-white/25"
             }`}
           >
@@ -667,7 +666,7 @@ function PhotoGrid({
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
 
             {selected && (
-              <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-md">
+              <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-primary shadow-md">
                 <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
               </span>
             )}
@@ -704,9 +703,9 @@ function StyleCard({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`group relative aspect-[3/4] overflow-hidden rounded-3xl border transition duration-200 motion-reduce:transition-none ${
+      className={`group relative aspect-[3/4] overflow-hidden rounded-2xl border transition duration-200 motion-reduce:transition-none ${
         selected
-          ? "border-pink-500 shadow-[0_0_30px_rgba(244,63,94,0.3)] ring-2 ring-pink-500"
+          ? "border-primary ring-2 ring-primary"
           : "border-white/10 hover:border-white/25"
       }`}
     >
@@ -717,12 +716,12 @@ function StyleCard({
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
       {selected && (
-        <span className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-md">
+        <span className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-primary shadow-md">
           <Check className="h-4 w-4 text-white" strokeWidth={3} />
         </span>
       )}
-      <div className="absolute inset-x-0 bottom-5 text-center">
-        <span className="font-display text-lg font-bold uppercase tracking-wide text-white drop-shadow-md sm:text-2xl">
+      <div className="absolute inset-x-0 bottom-3 text-center sm:bottom-5">
+        <span className="font-display text-lg font-semibold text-white drop-shadow-md sm:text-2xl">
           {title}
         </span>
         <p className="mt-1 text-[10px] text-white/70 sm:text-xs">{sub}</p>
@@ -736,16 +735,16 @@ function GenderPicker({ gender, onChange }: { gender: Gender; onChange: (g: Gend
   const isGuy = gender === "male" || gender === "trans-male";
 
   return (
-    <Section label="Gender">
-      <div className="flex justify-center">
-        <div className="flex rounded-full border border-white/10 bg-neutral-900 p-1.5">
+    <div className="space-y-2">
+      <div className="flex">
+        <div className="flex w-full rounded-full bg-white/5 p-1 sm:w-auto">
           <button
             type="button"
             onClick={() => onChange("female")}
             aria-pressed={isGirl}
-            className={`h-11 rounded-full px-7 text-sm font-bold uppercase transition duration-200 motion-reduce:transition-none ${
+            className={`tap-exempt h-10 flex-1 rounded-full px-7 text-sm font-semibold transition duration-200 motion-reduce:transition-none ${
               isGirl
-                ? "bg-grad-primary text-primary-foreground shadow-glow"
+                ? "bg-primary text-primary-foreground"
                 : "text-white/60 hover:text-white"
             }`}
           >
@@ -755,9 +754,9 @@ function GenderPicker({ gender, onChange }: { gender: Gender; onChange: (g: Gend
             type="button"
             onClick={() => onChange("male")}
             aria-pressed={isGuy}
-            className={`h-11 rounded-full px-7 text-sm font-bold uppercase transition duration-200 motion-reduce:transition-none ${
+            className={`tap-exempt h-10 flex-1 rounded-full px-7 text-sm font-semibold transition duration-200 motion-reduce:transition-none ${
               isGuy
-                ? "bg-grad-primary text-primary-foreground shadow-glow"
+                ? "bg-primary text-primary-foreground"
                 : "text-white/60 hover:text-white"
             }`}
           >
@@ -766,7 +765,7 @@ function GenderPicker({ gender, onChange }: { gender: Gender; onChange: (g: Gend
         </div>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-2">
+      <div className="flex flex-wrap gap-2">
         {isGirl && (
           <>
             <GenderChip current={gender} id="female" label="♀ Girls" onChange={onChange} />
@@ -781,7 +780,7 @@ function GenderPicker({ gender, onChange }: { gender: Gender; onChange: (g: Gend
         )}
         <GenderChip current={gender} id="non-binary" label="✦ Non-binary" onChange={onChange} />
       </div>
-    </Section>
+    </div>
   );
 }
 
@@ -802,7 +801,7 @@ function GenderChip({
       type="button"
       onClick={() => onChange(id)}
       aria-pressed={selected}
-      className={`h-11 rounded-full border px-5 text-xs font-semibold transition duration-200 motion-reduce:transition-none ${
+      className={`tap-exempt h-9 rounded-full border px-4 text-xs font-semibold transition duration-200 motion-reduce:transition-none ${
         selected
           ? "border-primary bg-primary/10 text-primary"
           : "border-white/10 bg-white/5 text-white/60 hover:text-white"
@@ -832,9 +831,9 @@ function ChipRow({
             type="button"
             onClick={() => onChange(o.id)}
             aria-pressed={selected}
-            className={`h-11 rounded-full border px-5 text-xs font-semibold transition duration-200 motion-reduce:transition-none ${
+            className={`tap-exempt h-9 rounded-full border px-4 text-xs font-semibold transition duration-200 motion-reduce:transition-none ${
               selected
-                ? "border-transparent bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.25)]"
+                ? "border-transparent bg-primary text-primary-foreground"
                 : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
             }`}
           >

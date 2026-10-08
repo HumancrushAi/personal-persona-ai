@@ -6,7 +6,7 @@ export function Logo({ className = "h-6 md:h-8 text-foreground" }: { className?:
       <img
         src="/logo.png"
         alt="HumanCrush Logo"
-        className="h-full w-auto rounded-lg shadow-[0_0_15px_rgba(236,72,153,0.35)] shrink-0 object-cover"
+        className="h-full w-auto rounded-lg shrink-0 object-cover"
       />
       {/* Phones are mostly under 420px wide, where the full name used to be
           hidden and the logo read as a tiny icon on its own. They get "HC"

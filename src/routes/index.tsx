@@ -29,11 +29,10 @@ import {
   MessageSquare,
   FolderHeart,
   UserPlus,
-  Menu,
 } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { companionImage } from "@/lib/companion-images";
 import { LanguageSelect } from "@/components/LanguageSelect";
+import { SiteHeader, readGender, type Gender } from "@/components/SiteHeader";
 import { openSupport } from "@/components/SupportWidget";
 import { SupportContact } from "@/components/SupportContact";
 import { useSystemStatus } from "@/hooks/use-app-setting";
@@ -287,7 +286,11 @@ function Landing() {
   });
 
   const [activeCat, setActiveCat] = useState<Cat>("For you");
-  const [topTab, setTopTab] = useState<"girls" | "guys">("girls");
+  const [topTab, setTopTab] = useState<Gender>("girls");
+  // The last choice, from the header menu on any page.
+  useEffect(() => {
+    setTopTab(readGender());
+  }, []);
   const [tease, setTease] = useState<Companion | null>(null);
   const [storyView, setStoryView] = useState<Companion | null>(null);
   const [query, setQuery] = useState("");
@@ -439,9 +442,9 @@ function Landing() {
   }, [companions, query]);
 
   return (
-    <div className="min-h-screen bg-[#07050a] text-white flex flex-col lg:flex-row relative">
+    <div className="min-h-screen bg-[#141414] text-white flex flex-col lg:flex-row relative">
       {/* LEFT SIDEBAR (desktop only) */}
-      <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-white/10 bg-[#0f0d15] p-5 z-30 justify-between">
+      <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-white/10 bg-[#1a1a1a] p-5 z-30 justify-between">
         <div className="flex flex-col gap-8">
           {/* Logo */}
           <LogoLink className="h-8" />
@@ -496,119 +499,7 @@ function Landing() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 lg:pl-64 min-h-screen pb-24 overflow-x-hidden relative">
-        {/* Background Ambient Glows */}
-        {/* Desktop only. Three screen-sized Gaussian blurs re-composited on
-            every scroll frame is most of what made the page feel slow on a
-            phone, for a glow nobody can see behind the content there. */}
-        <div className="hidden lg:block absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none z-0" />
-        <div className="hidden lg:block absolute top-1/3 left-0 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0" />
-        <div className="hidden lg:block absolute bottom-0 right-1/4 w-[700px] h-[700px] rounded-full bg-indigo-500/5 blur-[180px] pointer-events-none z-0" />
-        {/* TOP HEADER */}
-        <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0d0a12]/90 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2.5 sm:px-6 md:px-8 lg:flex-nowrap">
-            {/* Mobile Logo */}
-            <div className="flex shrink-0 items-center min-w-0 lg:hidden">
-              <LogoLink className="h-8" />
-            </div>
-
-            {/* Top Tabs (Girls, Guys). On phones and tablets they take their own
-                centred row under the bar, so language, Login and Sign Up fit
-                beside the logo without the row overflowing. */}
-            <div className="order-last flex w-full justify-center lg:order-none lg:w-auto">
-            <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-full border border-white/10 shrink-0">
-              {[
-                { id: "girls", label: "♀ Girls" },
-                { id: "guys", label: "♂ Guys" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setTopTab(tab.id as any)}
-                  className={`tap-exempt px-2 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold tracking-wide uppercase transition ${
-                    topTab === tab.id
-                      ? "bg-grad-primary text-primary-foreground shadow-glow"
-                      : "text-white/60 hover:text-white"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            </div>
-
-            {/* Phones and tablets: language, Login / Sign Up (or Chats / Enter)
-                and the menu, sized to fit a 360px screen. */}
-            <div className="flex min-w-0 items-center gap-1 shrink-0 lg:hidden">
-              <LanguageSelect compact />
-              {authed ? (
-                <>
-                  <Button asChild variant="ghost" size="sm" className="tap-exempt h-8 rounded-full px-2 text-[11px] min-w-0">
-                    <Link to="/me">Chats</Link>
-                  </Button>
-                  <Button asChild size="sm" className="tap-exempt h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground shadow-glow min-w-0">
-                    <Link to="/browse">Enter</Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button asChild variant="ghost" size="sm" className="tap-exempt h-8 rounded-full px-2 text-[11px] text-white/80 min-w-0">
-                    <Link to="/auth" search={{ mode: "signin" } as any}>Login</Link>
-                  </Button>
-                  <Button asChild size="sm" className="tap-exempt h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground shadow-glow min-w-0">
-                    <Link to="/auth">Sign Up</Link>
-                  </Button>
-                </>
-              )}
-              <HomeMobileMenu authed={Boolean(authed)} />
-            </div>
-
-            {/* Right side buttons (desktop) */}
-            <div className="hidden lg:flex items-center gap-1 sm:gap-2 shrink-0">
-              <LanguageSelect compact />
-              {authed ? (
-                <>
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="tap-exempt h-8 rounded-full px-2 text-[11px] sm:text-sm sm:h-9 sm:px-3 min-w-0"
-                  >
-                    <Link to="/me">Chats</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    className="tap-exempt h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow min-w-0"
-                  >
-                    <Link to="/browse">
-                      <Sparkles className="mr-1 h-3 w-3 sm:mr-1.5 sm:h-3.5 sm:w-3.5" /> Enter
-                    </Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="tap-exempt h-8 rounded-full px-2 text-[11px] sm:text-sm text-white/80 sm:h-9 sm:px-3 min-w-0"
-                  >
-                    <Link to="/auth" search={{ mode: "signin" } as any}>
-                      Login
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    className="tap-exempt hidden min-[360px]:inline-flex h-8 rounded-full bg-grad-primary px-2.5 text-[11px] text-primary-foreground sm:text-sm sm:h-9 sm:px-4 shadow-glow min-w-0"
-                  >
-                    <Link to="/auth">Sign Up</Link>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </header>
+        <SiteHeader home gender={topTab} onGender={setTopTab} />
 
         {bannerText ? (
           <div className="bg-primary/15 px-4 py-2 text-center text-sm font-medium text-primary">
@@ -616,129 +507,103 @@ function Landing() {
           </div>
         ) : null}
 
-        {/* TOP PROMOTIONAL BANNER — Premium, Modern, Custom Glassmorphic design */}
-        <section className="mx-auto mt-4 max-w-7xl px-4 md:px-6">
-          <Link
-            to="/auth"
-            className="group relative flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden rounded-3xl border border-white/10 bg-cover bg-center bg-no-repeat px-6 py-6 md:py-8 text-white shadow-[0_0_40px_rgba(244,63,94,0.15)] transition hover:border-pink-500/40 hover:shadow-[0_0_60px_rgba(244,63,94,0.3)]"
-            style={{ backgroundImage: `url('/hero-banner.png')` }}
-          >
-            {/* Dark overlay for text readability */}
-            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition duration-500"></div>
-
-            <div className="flex items-center gap-4 z-10">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-3xl shadow-glow">
-                ✨
-              </span>
-              <div>
-                <p className="font-display text-lg md:text-xl font-extrabold tracking-wide uppercase text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-rose-200 to-white drop-shadow-md">
-                  EXCLUSIVE SPECIAL OFFER
-                </p>
-                <p className="text-sm md:text-base text-white/90 mt-1 font-light max-w-md">
-                  Get <strong className="text-white font-semibold">25 Free Messages</strong>{" "}
-                  instantly on registration · No credit card required.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 z-10">
-              <span className="rounded-full bg-white text-black px-6 py-3 text-sm font-extrabold tracking-wider uppercase shadow-xl group-hover:bg-pink-500 group-hover:text-white transition-all duration-300">
-                Claim Free Chats
-              </span>
-            </div>
-          </Link>
-        </section>
-
-        {/* BANNER SLIDER */}
-        <section className="mx-auto mt-3 max-w-7xl px-4 md:px-6">
+        {/* FEATURED SLIDER — model photos first, like any big site in this space. */}
+        <section className="mx-auto mt-3 max-w-7xl px-3 md:px-6">
           <BannerSlider slides={bannerSlides} onPick={(c) => setTease(c)} />
         </section>
 
-        {/* NEW EXPERIENCES — Candy.ai Style Cards */}
-        <section className="mx-auto mt-6 max-w-7xl px-4 md:px-6">
-          <SectionTitle
-            title="🔥 New Experiences"
-            subtitle="explore exclusive features & create your companion"
-          />
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {/* Card 1: Create Your Own Character */}
+        {/* OFFER STRIP — three real companions and one line of copy, instead of
+            the neon "special offer" poster. Signed-in visitors have had it. */}
+        {authed === false && (
+          <section className="mx-auto mt-3 max-w-7xl px-3 md:px-6">
             <Link
-              to="/create"
-              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-pink-500/20 bg-gradient-to-br from-[#240b36] via-[#c31432]/10 to-[#050308] p-5 text-white shadow-lg transition duration-300 hover:scale-[1.02] hover:border-pink-500/60 hover:shadow-[0_0_25px_rgba(236,72,153,0.15)]"
+              to="/auth"
+              className="flex items-center gap-3 rounded-2xl bg-[#1f1f1f] px-3 py-2.5 transition hover:bg-[#262626] sm:px-4 sm:py-3"
             >
-              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-pink-500/10 blur-2xl group-hover:bg-pink-500/20 transition duration-500" />
-              <div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 border border-pink-500/30">
-                  <Sparkles className="h-3 w-3" /> Custom AI
-                </span>
-                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">
-                  CREATE YOUR OWN MODEL
-                </h3>
-                <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
-                  Build your dream AI companion. Pick face, body type, personality & style.
-                </p>
-              </div>
-              <div className="flex items-center justify-between pt-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-1.5 text-xs font-bold text-white shadow-glow group-hover:brightness-110 transition">
-                  <Wand2 className="h-3.5 w-3.5" /> Create Model
-                </span>
-              </div>
+              <span className="flex shrink-0 -space-x-3">
+                {liveNow.slice(0, 3).map((c) => (
+                  <img
+                    key={c.id}
+                    src={companionImage(c.image_url)}
+                    alt=""
+                    loading="lazy"
+                    className="h-9 w-9 rounded-full border-2 border-[#1f1f1f] object-cover object-top sm:h-11 sm:w-11"
+                  />
+                ))}
+              </span>
+              <span className="min-w-0 flex-1 text-[13px] leading-snug text-white/80 sm:text-sm">
+                <strong className="font-semibold text-white">25 free messages</strong> when you sign
+                up. No card needed.
+              </span>
+              <span className="shrink-0 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground sm:px-5 sm:py-2 sm:text-sm">
+                Claim
+              </span>
             </Link>
+          </section>
+        )}
 
-            {/* Card 2: Build Your Video */}
-            <Link
-              to="/cams"
-              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-rose-500/20 bg-gradient-to-br from-[#3a0d18] via-[#e52d27]/10 to-[#050308] p-5 text-white shadow-lg transition duration-300 hover:scale-[1.02] hover:border-rose-500/60 hover:shadow-[0_0_25px_rgba(244,63,94,0.15)]"
-            >
-              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition duration-500" />
-              <div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 border border-rose-500/30">
-                  <Circle className="h-2 w-2 fill-rose-500 animate-pulse" /> Live Cams
-                </span>
-                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">
-                  BUILD YOUR VIDEO
-                </h3>
-                <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
-                  Super hot models in motion. Real video loops, live interaction & camera scenes.
-                </p>
-              </div>
-              <div className="flex items-center justify-between pt-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-4 py-1.5 text-xs font-bold text-white border border-white/10 backdrop-blur group-hover:bg-white/10 group-hover:border-white/20 transition">
-                  <Video className="h-3.5 w-3.5 text-rose-400" /> Watch Live Loops
-                </span>
-              </div>
-            </Link>
-
-            {/* Card 3: Private Content */}
-            <Link
-              to="/gallery"
-              className="group relative flex h-44 flex-col justify-between overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-[#0f172a] via-[#1e1b4b]/20 to-[#050308] p-5 text-white shadow-lg transition duration-300 hover:scale-[1.02] hover:border-indigo-500/60 hover:shadow-[0_0_25px_rgba(99,102,241,0.15)]"
-            >
-              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-indigo-500/10 blur-2xl group-hover:bg-indigo-500/20 transition duration-500" />
-              <div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400 border border-indigo-500/30">
-                  <Lock className="h-3 w-3" /> Exclusive
-                </span>
-                <h3 className="mt-2.5 font-display text-lg font-extrabold text-white tracking-wide">
-                  PRIVATE CONTENT
-                </h3>
-                <p className="mt-1 text-xs text-white/70 line-clamp-2 font-light">
-                  Unlock exclusive secret photos, voice notes, and private album collections.
-                </p>
-              </div>
-              <div className="flex items-center justify-between pt-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-4 py-1.5 text-xs font-bold text-white border border-white/10 backdrop-blur group-hover:bg-white/10 group-hover:border-white/20 transition">
-                  <Lock className="h-3.5 w-3.5 text-indigo-400" /> Unlock Gallery
-                </span>
-              </div>
-            </Link>
+        {/* NEW EXPERIENCES — one swipeable row of photo cards rather than a
+            stack of three tall gradient panels. */}
+        <section className="mx-auto mt-6 max-w-7xl md:px-6">
+          <h2 className="px-3 font-display text-base font-semibold text-white md:px-0 md:text-lg">
+            New experiences
+          </h2>
+          <div className="mt-2.5 flex [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 md:px-0">
+            {[
+              {
+                to: "/create",
+                title: "Create your own",
+                text: "Pick her face, body and personality.",
+                cta: "Create",
+                pic: liveNow[3] ?? liveNow[0],
+              },
+              {
+                to: "/cams",
+                title: "Live video",
+                text: "Watch her move, then talk to her.",
+                cta: "Watch",
+                pic: liveNow[4] ?? liveNow[1],
+              },
+              {
+                to: "/gallery",
+                title: "Private photos",
+                text: "Selfies and albums she only sends you.",
+                cta: "Open",
+                pic: liveNow[5] ?? liveNow[2],
+              },
+            ].map((x) => (
+              <Link
+                key={x.to}
+                to={x.to}
+                className="group relative h-36 w-[72%] shrink-0 snap-start overflow-hidden rounded-2xl bg-[#1f1f1f] sm:h-40 sm:w-[300px] lg:w-[calc((100%-1.5rem)/3)]"
+              >
+                {x.pic && (
+                  <img
+                    src={companionImage(x.pic.image_url)}
+                    alt=""
+                    loading="lazy"
+                    className="absolute inset-y-0 right-0 h-full w-3/5 object-cover object-top transition duration-500 group-hover:scale-105"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#1f1f1f] via-[#1f1f1f]/90 to-transparent" />
+                <div className="relative flex h-full max-w-[62%] flex-col justify-between p-4">
+                  <div>
+                    <h3 className="font-display text-base font-semibold text-white">{x.title}</h3>
+                    <p className="mt-1 text-xs leading-snug text-white/65">{x.text}</p>
+                  </div>
+                  <span className="w-fit rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white transition group-hover:bg-primary">
+                    {x.cta}
+                  </span>
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
 
         {/* LIVE NOW */}
         <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
           <SectionTitle
-            title="🔴 Live now"
+            title="Live now"
             subtitle="tap to chat"
             cta={
               <Link to="/cams" className="text-xs text-primary hover:underline">
@@ -824,7 +689,7 @@ function Landing() {
                     onClick={() => setActiveCat(cat)}
                     className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold border transition duration-300 ${
                       activeCat === cat
-                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-transparent shadow-[0_0_15px_rgba(244,63,94,0.25)]"
+                        ? "bg-white text-black border-transparent"
                         : "border-white/10 bg-white/5 text-white/50 hover:text-white hover:border-white/20"
                     }`}
                   >
@@ -844,7 +709,7 @@ function Landing() {
                 <button
                   key={c.id}
                   onClick={() => setTease(c)}
-                  className="group relative overflow-hidden rounded-3xl border border-white/5 bg-[#0a070e]/80 text-left shadow-lg transition duration-300 hover:shadow-[0_0_25px_rgba(244,63,94,0.15)] hover:border-pink-500/30"
+                  className="group relative overflow-hidden rounded-3xl border border-white/5 bg-[#141414]/80 text-left shadow-lg transition duration-300 hover:border-pink-500/30"
                 >
                   <div className="relative w-full aspect-[2/3] overflow-hidden">
                     {reel ? (
@@ -889,7 +754,7 @@ function Landing() {
                       </div>
                     </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a070e] via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent pointer-events-none" />
 
                     <div className="absolute inset-x-0 bottom-0 p-3.5 pt-6 z-10">
                       <div className="flex items-baseline justify-between">
@@ -904,7 +769,7 @@ function Landing() {
                         {c.short_bio}
                       </p>
 
-                      <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 px-3.5 py-1.5 text-[10px] font-bold text-white shadow-md transition-all duration-300 group-hover:scale-105 group-hover:brightness-110">
+                      <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-[10px] font-semibold text-primary-foreground transition-all duration-300 group-hover:scale-105 group-hover:brightness-110">
                         <MessageCircle className="h-3.5 w-3.5" /> Chat now
                       </span>
                     </div>
@@ -934,7 +799,7 @@ function Landing() {
                     <button
                       key={c.id}
                       onClick={() => setTease(c)}
-                      className="group relative overflow-hidden rounded-3xl border border-purple-500/20 bg-[#0a070e]/80 text-left shadow-lg transition duration-300 hover:shadow-[0_0_25px_rgba(168,85,247,0.2)] hover:border-purple-500/50"
+                      className="group relative overflow-hidden rounded-3xl border border-purple-500/20 bg-[#141414]/80 text-left shadow-lg transition duration-300 hover:border-purple-500/50"
                     >
                       <div className="relative w-full aspect-[2/3] overflow-hidden">
                         {reel ? (
@@ -966,7 +831,7 @@ function Landing() {
                           </div>
                         </div>
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a070e] via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent pointer-events-none" />
 
                         <div className="absolute inset-x-0 bottom-0 p-3.5 pt-6 z-10">
                           <h3 className="font-display text-sm font-bold text-white drop-shadow">
@@ -979,7 +844,7 @@ function Landing() {
                             {c.short_bio}
                           </p>
 
-                          <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 text-[9px] font-bold text-white shadow-md transition-all duration-300 group-hover:scale-105 group-hover:brightness-110">
+                          <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-[9px] font-semibold text-primary-foreground transition-all duration-300 group-hover:scale-105 group-hover:brightness-110">
                             <MessageCircle className="h-3 w-3" /> Chat now
                           </span>
                         </div>
@@ -1078,13 +943,13 @@ function SectionTitle({
   cta?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-end justify-between gap-3 border-l-4 border-pink-500 pl-3 py-0.5">
+    <div className="flex items-end justify-between gap-3">
       <div>
-        <h2 className="font-display text-base font-extrabold tracking-wider uppercase text-white md:text-lg drop-shadow-sm">
+        <h2 className="font-display text-base font-semibold text-white md:text-lg">
           {title}
         </h2>
         {subtitle && (
-          <p className="text-[11px] text-white/50 mt-0.5 font-light tracking-wide">{subtitle}</p>
+          <p className="text-xs text-white/50 mt-0.5">{subtitle}</p>
         )}
       </div>
       {cta}
@@ -1551,59 +1416,6 @@ const HOME_NAV = [
   { label: "My AI", icon: <Heart className="h-5 w-5" />, to: "/me" },
 ];
 
-// The homepage menu on phones and tablets: the desktop sidebar's navigation,
-// sign-in, language and help, in one place.
-function HomeMobileMenu({ authed }: { authed: boolean }) {
-  const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
-  const item = "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/80 transition hover:bg-white/5 hover:text-white";
-  return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="tap-exempt h-9 w-9 min-w-0 rounded-full">
-          <Menu className="h-5 w-5" />
-          <span className="sr-only">Open menu</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent
-        side="right"
-        className="flex w-[85vw] max-w-xs flex-col gap-0 overflow-hidden border-white/10 bg-[#0f0d15]/95 p-0 backdrop-blur-2xl"
-      >
-        <SheetHeader className="shrink-0 border-b border-white/10 px-6 pb-4 pt-6 text-left">
-          <SheetTitle className="text-white">
-            <LogoLink className="h-8" onClick={close} />
-          </SheetTitle>
-        </SheetHeader>
-        <div className="flex flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
-          {authed ? (
-            <Link to="/browse" onClick={close} className="mb-2 flex items-center justify-center gap-1.5 rounded-full bg-grad-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-glow">
-              <Sparkles className="h-4 w-4" /> Enter
-            </Link>
-          ) : (
-            <Link to="/auth" search={{ mode: "signin" } as any} onClick={close} className="mb-2 rounded-full border border-white/15 px-4 py-2.5 text-center text-sm font-semibold text-white">
-              Login
-            </Link>
-          )}
-          {HOME_NAV.map((n) => (
-            <Link key={n.label} to={n.to} onClick={close} className={item}>
-              <span className="text-primary">{n.icon}</span>
-              {n.label}
-            </Link>
-          ))}
-          <div className="my-3 border-t border-white/10" />
-          <Link to="/models" onClick={close} className={item}>All AI companions</Link>
-          <Link to="/faq" onClick={close} className={item}>Help Center</Link>
-          <button type="button" onClick={() => { close(); openSupport(); }} className={`tap-exempt min-h-0 text-left ${item}`}>Contact</button>
-          <Link to="/affiliate" onClick={close} className={item}>Earn / Affiliate</Link>
-          <div className="mt-4 px-3">
-            <LanguageSelect />
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 // The admin's "System status" line (Platform Content tab), under the sidebar
 // links. It was saved and shown nowhere.
 function SystemStatusNote() {
@@ -1710,13 +1522,13 @@ function BannerSlider({
 
   if (n === 0) {
     return (
-      <div className="h-[380px] animate-pulse rounded-3xl border border-white/10 bg-white/5 md:h-[560px]" />
+      <div className="h-[440px] animate-pulse rounded-2xl bg-white/5 md:h-[440px] lg:h-[480px]" />
     );
   }
 
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border border-white/10 shadow-[0_0_35px_rgba(168,85,247,0.1)] select-none bg-[#0a0710]"
+      className="relative overflow-hidden rounded-2xl select-none bg-[#1a1a1a]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}
@@ -1724,7 +1536,7 @@ function BannerSlider({
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="flex w-full h-[520px] sm:h-[600px] md:h-[650px] transition-transform duration-700 ease-out"
+        className="flex w-full h-[440px] sm:h-[500px] md:h-[440px] lg:h-[480px] transition-transform duration-700 ease-out"
         style={{ transform: `translateX(-${idx * 100}%)` }}
       >
         {slides.map((s, i) => (
@@ -1759,13 +1571,13 @@ function BannerSlider({
                 playsInline
                 preload="auto"
                 poster={s.companion ? companionImage(s.companion.image_url) : undefined}
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover md:hidden z-0 opacity-60"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top md:hidden z-0"
               />
             ) : s.companion ? (
               <img
                 src={companionImage(s.companion.image_url)}
                 alt=""
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover md:hidden z-0 opacity-60"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top md:hidden z-0"
               />
             ) : null}
 
@@ -1787,14 +1599,14 @@ function BannerSlider({
                   <img
                     src={companionImage(s.companion.image_url)}
                     alt={s.companion.name}
-                    className="h-12 w-12 shrink-0 rounded-full object-cover object-top ring-2 ring-primary/80 shadow-lg md:h-16 md:w-16"
+                    className="h-12 w-12 shrink-0 rounded-full object-cover object-top ring-2 ring-white/80 shadow-lg md:h-16 md:w-16"
                   />
                 )}
                 <div>
                   <h2 className="font-display text-2xl font-bold text-white drop-shadow md:text-4xl">
                     {s.companion ? `${s.companion.name}, ${s.companion.age}` : s.title}
                   </h2>
-                  <p className="text-[10px] md:text-xs uppercase tracking-widest text-primary font-bold mt-0.5">
+                  <p className="text-[10px] md:text-xs uppercase tracking-widest text-white/70 font-semibold mt-0.5">
                     {s.companion?.ethnicity || "Companion"}
                   </p>
                 </div>
@@ -1806,7 +1618,7 @@ function BannerSlider({
 
               {s.companion && (
                 <div className="mt-6">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-grad-primary px-6 py-2.5 text-xs md:text-sm font-bold text-primary-foreground shadow-glow group-hover:scale-[1.03] transition-transform duration-300">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs md:text-sm font-semibold text-primary-foreground group-hover:scale-[1.03] transition-transform duration-300">
                     Chat with {s.companion.name} <MessageCircle className="h-4 w-4" />
                   </span>
                 </div>
@@ -1815,7 +1627,7 @@ function BannerSlider({
 
             {/* Desktop-only Video player panel */}
             <div className="relative z-10 hidden md:flex w-1/2 h-full items-center justify-center p-3 lg:p-4">
-              <div className="relative h-[94%] w-auto aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition duration-500 group-hover:border-primary/30 group-hover:shadow-glow">
+              <div className="relative h-[94%] w-auto aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition duration-500 ">
                 {s.reel && i === idx ? (
                   <video
                     key={s.reel + "-desktop"}

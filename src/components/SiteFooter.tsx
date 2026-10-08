@@ -21,7 +21,7 @@ export function SiteFooter({ className = "" }: { className?: string }) {
   const year = 2026;
 
   return (
-    <footer className={`mt-16 border-t border-white/10 bg-[#0b0810] ${className}`}>
+    <footer className={`mt-16 border-t border-white/10 bg-[#111111] ${className}`}>
       <div className="mx-auto max-w-7xl px-5 pb-28 pt-10 md:px-8 md:pb-10">
         <div className="flex flex-col gap-8 md:flex-row md:justify-between">
           <div className="max-w-xs">

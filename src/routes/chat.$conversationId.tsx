@@ -781,13 +781,11 @@ function ChatPage() {
       </aside>
 
       {/* Chat column */}
-      <div className="flex h-dvh flex-1 flex-col min-w-0 bg-[#0d0a12] relative overflow-hidden">
+      <div className="flex h-dvh flex-1 flex-col min-w-0 bg-[#141414] relative overflow-hidden">
         {/* Subtle Ambient Background Glows */}
-        <div className="absolute -top-24 right-0 w-96 h-96 rounded-full bg-pink-500/5 blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-12 -left-24 w-96 h-96 rounded-full bg-purple-500/5 blur-[120px] pointer-events-none" />
 
         {/* Header */}
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-white/10 bg-[#0d0a12]/90 px-3 py-2.5 sm:px-5 sm:py-3 backdrop-blur-xl shrink-0 min-w-0">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-white/10 bg-[#141414]/90 px-3 py-2.5 sm:px-5 sm:py-3 backdrop-blur-xl shrink-0 min-w-0">
           <Button
             asChild
             size="icon"
@@ -806,7 +804,7 @@ function ChatPage() {
                 alt={p?.nickname ?? ""}
                 className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover object-top ring-2 ring-primary/40 shadow-sm"
               />
-              <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0d0a12]" />
+              <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#141414]" />
             </div>
           )}
 
@@ -938,7 +936,7 @@ function ChatPage() {
         {/* XP Level Bar */}
         <div className="h-1 w-full bg-white/5 shrink-0">
           <div
-            className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-rose-500 transition-all duration-300"
+            className="h-full bg-primary transition-all duration-300"
             style={{ width: `${(xpInLevel / 15) * 100}%` }}
           />
         </div>
@@ -969,7 +967,7 @@ function ChatPage() {
                 <div
                   className={`max-w-[85%] sm:max-w-[75%] overflow-hidden text-[14px] sm:text-[15px] leading-relaxed shadow-sm ${
                     m.role === "user"
-                      ? "rounded-2xl rounded-tr-xs bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 px-4 py-2.5 text-white shadow-pink-500/15"
+                      ? "rounded-2xl rounded-tr-xs bg-primary px-4 py-2.5 text-primary-foreground"
                       : "rounded-2xl rounded-tl-xs bg-white/[0.08] backdrop-blur-md border border-white/10 px-4 py-2.5 text-white/95"
                   }`}
                 >
@@ -1103,7 +1101,7 @@ function ChatPage() {
                 (m) => m.role === "user" && m.content.trim() === pendingUser.trim(),
               ) && (
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-xs bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 px-4 py-2.5 text-[14px] sm:text-[15px] leading-relaxed text-white shadow-md shadow-pink-500/15">
+                  <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-xs bg-primary px-4 py-2.5 text-[14px] sm:text-[15px] leading-relaxed text-white">
                     {pendingUser}
                   </div>
                 </div>
@@ -1137,7 +1135,7 @@ function ChatPage() {
         {/* Input Composer Form */}
         <form
           onSubmit={handleSend}
-          className="border-t border-white/10 bg-[#0d0a12]/95 px-3 py-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shrink-0 z-20 backdrop-blur-xl"
+          className="border-t border-white/10 bg-[#141414]/95 px-3 py-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shrink-0 z-20 backdrop-blur-xl"
         >
           <div className="mx-auto flex max-w-2xl items-center gap-1.5 sm:gap-2">
             <Button

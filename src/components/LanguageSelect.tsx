@@ -6,7 +6,15 @@ import {
   storePreferredLanguage,
 } from "@/lib/languages";
 
-export function LanguageSelect({ compact = false }: { compact?: boolean }) {
+export function LanguageSelect({
+  compact = false,
+  flagOnly = false,
+}: {
+  compact?: boolean;
+  // Just the flag in a small circle, for the one-line phone header where the
+  // "EN ⌄" pill doesn't fit next to Login and Join Free. Same native picker.
+  flagOnly?: boolean;
+}) {
   const [lang, setLang] = useState("en");
 
   useEffect(() => {
@@ -17,6 +25,26 @@ export function LanguageSelect({ compact = false }: { compact?: boolean }) {
   }, []);
 
   const current = SUPPORTED_LANGUAGES.find((l) => l.code === lang) ?? SUPPORTED_LANGUAGES[0];
+
+  if (flagOnly) {
+    return (
+      <label className="relative flex h-8 w-8 shrink-0 overflow-hidden items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm leading-none cursor-pointer transition hover:bg-white/10">
+        <span aria-hidden>{current.flag}</span>
+        <select
+          value={lang}
+          onChange={(e) => setLang(storePreferredLanguage(e.target.value))}
+          aria-label="Select Language"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        >
+          {SUPPORTED_LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code} className="bg-neutral-900 text-white">
+              {l.flag} {l.native} ({l.short})
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
 
   if (compact) {
     return (

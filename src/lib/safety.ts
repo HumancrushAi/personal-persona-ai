@@ -82,8 +82,11 @@ const MINOR_TERMS = [
 // single most common way anyone writes it.
 const AGE_SUFFIX = /\b(?:0?[0-9]|1[0-7])[\s-]*(?:years?[\s-]*old|yrs?[\s-]*old|y[\s/.]?o\b|yo\b)/i;
 const AGE_PREFIX = /\b(?:aged?|age)\s*[:=]?\s*(?:0?[0-9]|1[0-7])\b/i;
+// Numbers that are not an age are let through: a height (5'7), a score
+// (10/10), a time (2am, 1:30), "3 times", "1 more", "2 of", units. Each of
+// those blocked a perfectly normal reply and replaced it with the 18+ refusal.
 const AGE_COPULA =
-  /\b(?:is|was|am|are|'m|'s|turns?|turning|just)\s+(?:0?[0-9]|1[0-7])\b(?!\s*(?:%|percent|inch|cm|kg|lb|minute|second|hour|day|week|month|credit|dollar))/i;
+  /\b(?:is|was|am|are|'m|'s|turns?|turned|turning|just)\s+(?:0?[0-9]|1[0-7])(?![0-9'’"\/:.,]?[0-9])(?![0-9]|['’"\/:]|\s*(?:%|percent|inch\w*|cm|mm|kg|lbs?|pounds?|ft|feet|foot|minutes?|mins?|seconds?|secs?|hours?|hrs?|days?|weeks?|months?|credits?|dollars?|bucks|times?|x\b|more|of\b|out\b|am\b|pm\b|a\.m|p\.m|o'?clock|th\b|st\b|nd\b|rd\b|k\b|stars?|points?|messages?|pics?|photos?|shots?|drinks?|glasses?|miles?|km|steps?))/i;
 
 function hasUnderageAge(text: string): boolean {
   return AGE_SUFFIX.test(text) || AGE_PREFIX.test(text) || AGE_COPULA.test(text);

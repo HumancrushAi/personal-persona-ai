@@ -828,13 +828,30 @@ Answer the message actually in front of you. Never reuse a line from these instr
     // The refusal is what the user sees AND what is stored, so the phrase never
     // reaches the transcript — and therefore never comes back as history for
     // her to build on next turn, which is how this file has been bitten before.
-    const outbound = screenAssistantReply(drafted);
-    const reply = outbound.allowed
-      ? drafted
-      : "Sorry — I can't do that. This site is 18+ only and everyone here is an adult.";
+    //
+    // A blocked draft is regenerated once rather than replaced with a refusal.
+    // The canned "Sorry — I can't do that. This site is 18+ only" went to users
+    // who had said nothing wrong ("I love your hair"), three turns running: the
+    // model's own reply tripped the screen, and after one refusal in history it
+    // kept steering toward age. The blocked text still never reaches the user
+    // or the transcript.
+    let outbound = screenAssistantReply(drafted);
     if (!outbound.allowed) {
-      console.warn("[safety] assistant reply blocked on the way out:", outbound.category);
+      console.warn("[safety] assistant reply blocked on the way out, regenerating:", outbound.category);
+      const redo = {
+        role: "system",
+        content:
+          "Reply to the user's last message in character, warmly, in one or two sentences. Do not mention ages, numbers about yourself, school or children.",
+      };
+      drafted = withoutFalseMediaPromise(await chatComplete([...messages, redo], { temperature }));
+      outbound = screenAssistantReply(drafted);
+      if (!outbound.allowed || unusable(drafted)) {
+        console.warn("[safety] regenerated reply also blocked; sending the open invitation");
+        drafted = OPEN_INVITATION;
+        outbound = { allowed: true } as typeof outbound;
+      }
     }
+    const reply = drafted;
 
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,

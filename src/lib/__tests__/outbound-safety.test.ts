@@ -51,3 +51,28 @@ describe("what the companion says is screened too", () => {
     expect(screenAssistantReply(undefined as any).allowed).toBe(true);
   });
 });
+
+describe("normal replies with small numbers are not read as an age", () => {
+  it("lets heights, scores, times and counts through", async () => {
+    const { screenAssistantReply } = await import("../safety");
+    for (const t of [
+      "I'm 5'7 with long red hair",
+      "it's 3 times better with you",
+      "just 1 more kiss",
+      "that's 10/10 babe",
+      "it's 2am and I'm still up",
+      "it's 1:30 here",
+      "I'm 6 feet tall in heels",
+      "that's 2 of my favorite things",
+    ]) {
+      expect(screenAssistantReply(t).allowed, t).toBe(true);
+    }
+  });
+
+  it("still blocks a stated under-18 age", async () => {
+    const { screenAssistantReply } = await import("../safety");
+    for (const t of ["she is 15", "I am 16", "I'm 17 and new here", "just turned 16", "she's 14."]) {
+      expect(screenAssistantReply(t).allowed, t).toBe(false);
+    }
+  });
+});

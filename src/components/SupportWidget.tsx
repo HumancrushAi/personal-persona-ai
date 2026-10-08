@@ -97,10 +97,13 @@ export function SupportWidget({ floating = true }: { floating?: boolean }) {
 
   return (
     <div className="fixed bottom-[120px] lg:bottom-10 right-4 lg:right-6 z-50">
+      {/* Desktop only. On a phone any fixed spot ends up over a card's Chat now
+          button as the page scrolls; there support is in the header menu and
+          the footer, which open this same panel. */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-grad-primary text-primary-foreground shadow-glow transition hover:scale-105"
+          className="hidden h-12 w-12 items-center justify-center rounded-full bg-grad-primary text-primary-foreground shadow-glow transition hover:scale-105 lg:flex"
           aria-label="Contact Support"
         >
           <MessageSquare className="h-6 w-6" />

@@ -55,8 +55,12 @@ import vibeBrat from "@/assets/create/vibe-brat.jpg";
 import vibeRomantic from "@/assets/create/vibe-romantic.jpg";
 import vibeMysterious from "@/assets/create/vibe-mysterious.jpg";
 import vibeGoth from "@/assets/create/vibe-goth.jpg";
-import imgRealistic from "@/assets/companions/01-aria.jpg";
-import imgAnime from "@/assets/companions/anime1.jpg";
+// One person per gender, drawn both ways, so Realistic vs Anime reads as a
+// style choice. Clothed headshots: paid search ads land on this page.
+import imgRealisticGirl from "@/assets/create/style-realistic-girl.jpg";
+import imgAnimeGirl from "@/assets/create/style-anime-girl.jpg";
+import imgRealisticGuy from "@/assets/create/style-realistic-guy.jpg";
+import imgAnimeGuy from "@/assets/create/style-anime-guy.jpg";
 
 export const Route = createFileRoute("/create")({
   ssr: false,
@@ -328,14 +332,14 @@ function CreatePage() {
             <Section label="Art style">
               <div className="grid grid-cols-2 gap-3 md:gap-5">
                 <StyleCard
-                  img={imgRealistic}
+                  img={gender === "male" || gender === "trans-male" ? imgRealisticGuy : imgRealisticGirl}
                   title="Realistic"
                   sub="Photographic"
                   selected={artStyle === "realistic"}
                   onClick={() => setArtStyle("realistic")}
                 />
                 <StyleCard
-                  img={imgAnime}
+                  img={gender === "male" || gender === "trans-male" ? imgAnimeGuy : imgAnimeGirl}
                   title="Anime"
                   sub="Manga-inspired"
                   selected={artStyle === "anime"}

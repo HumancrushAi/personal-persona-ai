@@ -189,6 +189,9 @@ function RootComponent() {
   const supportBubble = SUPPORT_BUBBLE_PATHS.includes(path);
   const supportMounted = !NO_SUPPORT_PREFIXES.some((p) => path.startsWith(p));
   const showFooter = !NO_FOOTER_PREFIXES.some((p) => path.startsWith(p));
+  // True while a link's page is still loading its data. Without a sign of it
+  // the old page just sat there and a click looked dead.
+  const navigating = useRouterState({ select: (s) => s.isLoading || s.status === "pending" });
 
   // Initialize translation and push on mount
   useEffect(() => {
@@ -227,6 +230,11 @@ function RootComponent() {
           display: none !important;
         }
       `}</style>
+      {navigating && (
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden bg-primary/20">
+          <div className="h-full w-1/3 animate-[navbar_1s_ease-in-out_infinite] bg-primary" />
+        </div>
+      )}
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       {/* The home page has a fixed 256px sidebar on large screens, and the

@@ -41,27 +41,27 @@ export function SiteFooter({ className = "" }: { className?: string }) {
                 {/* The footer is server-rendered on every page, so this link is
                     how crawlers reach every companion's public profile. */}
                 <li>
-                  <Link to="/models" className="transition hover:text-white">
+                  <Link reloadDocument to="/models" className="transition hover:text-white">
                     AI girlfriends &amp; boyfriends
                   </Link>
                 </li>
                 <li>
-                  <Link to="/browse" className="transition hover:text-white">
+                  <Link reloadDocument to="/browse" className="transition hover:text-white">
                     Browse companions
                   </Link>
                 </li>
                 <li>
-                  <Link to="/create" className="transition hover:text-white">
+                  <Link reloadDocument to="/create" className="transition hover:text-white">
                     Create a companion
                   </Link>
                 </li>
                 <li>
-                  <Link to="/cams" className="transition hover:text-white">
+                  <Link reloadDocument to="/cams" className="transition hover:text-white">
                     Live
                   </Link>
                 </li>
                 <li>
-                  <Link to="/credits" className="transition hover:text-white">
+                  <Link reloadDocument to="/credits" className="transition hover:text-white">
                     Credits &amp; Premium
                   </Link>
                 </li>
@@ -74,12 +74,12 @@ export function SiteFooter({ className = "" }: { className?: string }) {
               </p>
               <ul className="space-y-1.5 text-xs text-white/50">
                 <li>
-                  <Link to="/faq" className="transition hover:text-white">
+                  <Link reloadDocument to="/faq" className="transition hover:text-white">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link to="/affiliate" className="transition hover:text-white">
+                  <Link reloadDocument to="/affiliate" className="transition hover:text-white">
                     Earn / Affiliate
                   </Link>
                 </li>
@@ -104,6 +104,7 @@ export function SiteFooter({ className = "" }: { className?: string }) {
                 {LEGAL_DOCS.map((d) => (
                   <li key={d.slug}>
                     <Link
+                      reloadDocument
                       to="/legal/$slug"
                       params={{ slug: d.slug }}
                       className="transition hover:text-white"

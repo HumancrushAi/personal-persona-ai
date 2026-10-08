@@ -10,6 +10,9 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Start loading a page when the finger lands or the mouse hovers, so the
+    // data-backed pages (models, legal) are usually ready by the click.
+    defaultPreload: "intent",
   });
 
   return router;

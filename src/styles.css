@@ -129,3 +129,9 @@
     min-width: 44px;
   }
 }
+
+/* The top loading bar while a link's page loads (routes/__root.tsx). */
+@keyframes navbar {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}

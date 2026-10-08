@@ -119,7 +119,7 @@ export function SiteFooter({ className = "" }: { className?: string }) {
 
         <div className="mt-8 flex flex-col gap-2 border-t border-white/10 pt-5 text-[11px] text-white/35 sm:flex-row sm:items-center sm:justify-between">
           <p>
-            © {year} Next Level Rec. · HumanCrush.com — 18+ only. All characters are fictional and
+            © {year} Next Level Rec. · HumanCrush.com — All characters are fictional and
             AI-generated.
           </p>
           {systemStatus && (

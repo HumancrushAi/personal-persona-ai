@@ -29,7 +29,9 @@ import {
   MessageSquare,
   FolderHeart,
   UserPlus,
+  Menu,
 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { companionImage } from "@/lib/companion-images";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { openSupport } from "@/components/SupportWidget";
@@ -446,15 +448,7 @@ function Landing() {
 
           {/* Navigation Items */}
           <nav className="flex flex-col gap-1.5">
-            {[
-              { label: "Home", icon: <Home className="h-5 w-5" />, to: "/" },
-              { label: "Discover", icon: <Compass className="h-5 w-5" />, to: "/cams" },
-              { label: "Shorts", icon: <Film className="h-5 w-5" />, to: "/gallery" },
-              { label: "Chat", icon: <MessageSquare className="h-5 w-5" />, to: "/me" },
-              { label: "Collection", icon: <FolderHeart className="h-5 w-5" />, to: "/gallery" },
-              { label: "Create Character", icon: <UserPlus className="h-5 w-5" />, to: "/create" },
-              { label: "My AI", icon: <Heart className="h-5 w-5" />, to: "/me" },
-            ].map((item, idx) => {
+            {HOME_NAV.map((item, idx) => {
               const active = item.to === "/";
               return (
                 <Link
@@ -538,8 +532,24 @@ function Landing() {
               ))}
             </div>
 
-            {/* Right side buttons */}
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Phones and tablets: Sign Up stays in view, everything else is in
+                the menu. Squeezing language, Login and Sign Up next to the
+                logo and the Girls/Guys toggle left no room on a phone. */}
+            <div className="flex items-center gap-1 shrink-0 lg:hidden">
+              {!authed && (
+                <Button
+                  asChild
+                  size="sm"
+                  className="tap-exempt h-8 rounded-full bg-grad-primary px-3 text-[11px] text-primary-foreground shadow-glow min-w-0"
+                >
+                  <Link to="/auth">Sign Up</Link>
+                </Button>
+              )}
+              <HomeMobileMenu authed={Boolean(authed)} />
+            </div>
+
+            {/* Right side buttons (desktop) */}
+            <div className="hidden lg:flex items-center gap-1 sm:gap-2 shrink-0">
               <LanguageSelect compact />
               {authed ? (
                 <>
@@ -1009,7 +1019,7 @@ function Landing() {
               Your <span className="text-primary">crush</span> is online.
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
-              25 free messages on the house. No card. 18+ only.
+              25 free messages on the house. No card.
             </p>
             <Button
               asChild
@@ -1035,7 +1045,7 @@ function Landing() {
               Create AI
             </Link>
           </div>
-          © {new Date().getFullYear()} HumanCrush.com · 18+ only · AI characters are fictional.
+          © {new Date().getFullYear()} HumanCrush.com · AI characters are fictional.
         </footer>
 
         {tease && <TeaseChat companion={tease} onClose={() => setTease(null)} />}
@@ -1514,6 +1524,69 @@ function AutoPlayVideo({
       onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
       className={className}
     />
+  );
+}
+
+const HOME_NAV = [
+  { label: "Home", icon: <Home className="h-5 w-5" />, to: "/" },
+  { label: "Discover", icon: <Compass className="h-5 w-5" />, to: "/cams" },
+  { label: "Shorts", icon: <Film className="h-5 w-5" />, to: "/gallery" },
+  { label: "Chat", icon: <MessageSquare className="h-5 w-5" />, to: "/me" },
+  { label: "Collection", icon: <FolderHeart className="h-5 w-5" />, to: "/gallery" },
+  { label: "Create Character", icon: <UserPlus className="h-5 w-5" />, to: "/create" },
+  { label: "My AI", icon: <Heart className="h-5 w-5" />, to: "/me" },
+];
+
+// The homepage menu on phones and tablets: the desktop sidebar's navigation,
+// sign-in, language and help, in one place.
+function HomeMobileMenu({ authed }: { authed: boolean }) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const item = "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/80 transition hover:bg-white/5 hover:text-white";
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="tap-exempt h-9 w-9 min-w-0 rounded-full">
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Open menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="flex w-[85vw] max-w-xs flex-col gap-0 overflow-hidden border-white/10 bg-[#0f0d15]/95 p-0 backdrop-blur-2xl"
+      >
+        <SheetHeader className="shrink-0 border-b border-white/10 px-6 pb-4 pt-6 text-left">
+          <SheetTitle className="text-white">
+            <LogoLink className="h-8" onClick={close} />
+          </SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
+          {authed ? (
+            <Link to="/browse" onClick={close} className="mb-2 flex items-center justify-center gap-1.5 rounded-full bg-grad-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-glow">
+              <Sparkles className="h-4 w-4" /> Enter
+            </Link>
+          ) : (
+            <Link to="/auth" search={{ mode: "signin" } as any} onClick={close} className="mb-2 rounded-full border border-white/15 px-4 py-2.5 text-center text-sm font-semibold text-white">
+              Login
+            </Link>
+          )}
+          {HOME_NAV.map((n) => (
+            <Link key={n.label} to={n.to} onClick={close} className={item}>
+              <span className="text-primary">{n.icon}</span>
+              {n.label}
+            </Link>
+          ))}
+          <div className="my-3 border-t border-white/10" />
+          <Link to="/models" onClick={close} className={item}>All AI companions</Link>
+          <Link to="/faq" onClick={close} className={item}>Help Center</Link>
+          <button type="button" onClick={() => { close(); openSupport(); }} className={`tap-exempt min-h-0 text-left ${item}`}>Contact</button>
+          <Link to="/affiliate" onClick={close} className={item}>Earn / Affiliate</Link>
+          <div className="mt-4 px-3">
+            <LanguageSelect />
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -135,8 +135,9 @@ export function SiteHeader({ right, mobileRight }: { right?: ReactNode; mobileRi
         </nav>
 
         {/* Mobile Navigation Controls */}
+        {/* Language lives in the menu below on phones; here it crowded the
+            logo off the row. */}
         <div className="flex items-center gap-1.5 md:hidden shrink-0">
-          <LanguageSelect compact />
           {mobileRight}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>

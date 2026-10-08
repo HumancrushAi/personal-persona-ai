@@ -9,10 +9,10 @@ export function Logo({ className = "h-6 md:h-8 text-foreground" }: { className?:
         className="h-full w-auto rounded-lg shadow-[0_0_15px_rgba(236,72,153,0.35)] shrink-0 object-cover"
       />
       {/* Phones are mostly under 420px wide, where the full name used to be
-          hidden and the logo read as a tiny icon on its own. They get "H.C."
+          hidden and the logo read as a tiny icon on its own. They get "HC"
           instead; wider screens get the full name. */}
       <span className="font-display text-lg font-extrabold tracking-tight text-white/95 drop-shadow-sm min-[420px]:hidden">
-        H.C.
+        HC
       </span>
       <span className="font-display text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-white/95 truncate drop-shadow-sm hidden min-[420px]:inline-block">
         HumanCrush

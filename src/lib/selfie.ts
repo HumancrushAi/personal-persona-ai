@@ -403,6 +403,11 @@ const SELF_FINGER_MOUTH_RE =
   /\b(?:suck\w*|lick\w*)\s+(?:on\s+)?(?:her|his|their|your)\s+(?:own\s+)?fingers?\b|\bfingers?\s+in\s+(?:her|his|their|your)\s+mouth\b/i;
 const SELF_LIPS_RE = /\b(?:bit\w*|lick\w*)\s+(?:her|his|their|your)\s+(?:own\s+)?lips?\b/i;
 
+/** Licking or sucking her own breast — the one self-act with a pose the checkpoint fights. */
+export function isBreastSelfAct(req: string): boolean {
+  return SELF_BREAST_ORAL_RE.test(req ?? "");
+}
+
 export function isSelfAct(req: string): boolean {
   const t = req ?? "";
   return (
@@ -438,7 +443,12 @@ export function mouthActTags(req: string): string {
     // No "tongue out" here: on its own that tag reads as a face tilted BACK
     // with the tongue out at the camera, which is what came back. Everything
     // here says down.
-    return "licking own nipple, tongue on own nipple, nipple at her lips, both hands cupping breast from underneath pushing it up to her mouth, hands below the nipple, head bent down to own breast, chin tucked to chest";
+    // The word "tongue" is kept OUT of these tags on purpose. The one render
+    // with her head down was the one without it; every render with it came
+    // back face-up, tongue at the camera — that is what the checkpoint has
+    // learned "tongue" means. The prose sentence still says where the tongue
+    // is; the tags say where the HEAD is.
+    return "licking own nipple, mouth on own nipple, nipple between her lips, face turned down to her own chest, looking down at own nipple, chin tucked to chest, both hands cupping breast from underneath pushing it up to her mouth, hands below the nipple";
   if (SELF_FINGER_MOUTH_RE.test(t))
     return "sucking own finger, finger in mouth, lips closed around finger";
   if (SELF_TONGUE_OUT_RE.test(t)) return "tongue out, mouth open, tongue sticking out";

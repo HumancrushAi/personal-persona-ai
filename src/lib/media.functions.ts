@@ -23,6 +23,7 @@ import {
   requestKeepsGarment,
   checkCrossGenderRequest,
   finishMediaPrompt,
+  isBreastSelfAct,
 } from "./selfie";
 
 // Negative prompt for the RunPod WAN endpoint, in two halves.
@@ -216,6 +217,11 @@ const ORAL_SOLO_RE = /\b(?:lick\w*|suck\w*|tongue|mouth|lips?|kiss\w*|oral|bit(?
 const ORAL_SOLO_NEGATIVE =
   "dildo, sex toy, vibrator, object in mouth, object in hand, holding an object, bottle, lollipop, popsicle, banana, microphone, fellatio, blowjob, oral sex, semen, second person, another person's hand, man's hand";
 const ORAL_SOLO_NEGATIVE_NO_PENIS = "phallus, phallic object, cylinder, rod, pole, stick";
+// The pose this act keeps collapsing into: face up, tongue at the camera,
+// back arched. Directions and postures only — no head, face, chin or arms,
+// which a negative would push out of the picture.
+const BREAST_SELF_NEGATIVE =
+  "looking up, facing upward, tilted back, arching backwards, leaning back, ahegao, tongue at the camera";
 
 export function negativeFor(
   userReq: string | undefined,
@@ -260,6 +266,7 @@ export function negativeFor(
   if (ORAL_SOLO_RE.test(req) && !hasProp(req) && !mentionsPart(req, "penis")) {
     base = `${base}, ${ORAL_SOLO_NEGATIVE}`;
     if (!a.hasPenis) base = `${base}, ${ORAL_SOLO_NEGATIVE_NO_PENIS}`;
+    if (a.hasBreasts && isBreastSelfAct(req)) base = `${base}, ${BREAST_SELF_NEGATIVE}`;
   }
 
   const props = propNegative(req);

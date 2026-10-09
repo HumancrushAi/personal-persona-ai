@@ -491,7 +491,7 @@ async function shouldAddAudio(job: Job): Promise<boolean> {
 // Download a finished Replicate output, store it in the avatars bucket, mark the
 // job completed, and post the media message. Throws on storage failure so the
 // caller can mark the job failed + refund.
-export async function completeMediaJob(job: Job, outputUrl: string): Promise<string> {
+export async function completeMediaJob(job: Job, outputUrl: string): Promise<string | null> {
   const response = await fetch(outputUrl);
   if (!response.ok) throw new Error("Could not fetch generation output");
   let buf: Buffer = Buffer.from(await response.arrayBuffer());
@@ -529,7 +529,16 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
     : job.kind === "voice"
       ? "audio/mpeg"
       : (still?.mime ?? "image/png");
-  const path = `generated/${job.user_id}/${job.id}.${fileExt}`;
+  // A retake must not overwrite the candidate it is being compared with.
+  const { data: rowNow } = await supabaseAdmin
+    .from("media_jobs")
+    .select("error, status")
+    .eq("id", job.id)
+    .maybeSingle();
+  if (rowNow?.status === "completed") return null;
+  const { attemptsSoFar } = await import("./photo-check");
+  const attempt = attemptsSoFar(rowNow?.error);
+  const path = `generated/${job.user_id}/${job.id}${attempt ? `-r${attempt}` : ""}.${fileExt}`;
 
   try {
     await supabaseAdmin.storage.createBucket("avatars", { public: true });
@@ -543,7 +552,14 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
   if (upErr) throw upErr;
 
   const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
-  const mediaUrl = pub.publicUrl;
+  let mediaUrl = pub.publicUrl;
+
+  // A hard act is checked before she sends it — see photo-check.ts.
+  if (job.kind === "image" && job.provider === "runpod" && job.conversation_id) {
+    const verdict = await verifiedOrRetake(job, rowNow?.error ?? null, attempt, mediaUrl);
+    if (verdict === null) return null;
+    mediaUrl = verdict;
+  }
 
   // Only flip processing -> completed once; if another path already completed
   // it, skip the duplicate chat message.
@@ -628,6 +644,152 @@ const RETRY_DELAY_MS = Number(process.env.MEDIA_RETRY_DELAY_MS || 45_000);
 // Both the webhook and the status poll can see the same failure, so the retry
 // is claimed atomically: the first caller to write the marker into `error`
 // resubmits, the other sees the row already claimed and leaves it alone.
+// What a job needs to be rendered again: its prompt, the message that asked
+// for it, and the companion. Shared by the memory retry and the retake.
+type JobContext = {
+  row: { id: string; prompt: string; created_at: string; conversation_id: string };
+  companion: { gender?: string | null; image_url?: string | null };
+  userRequest: string;
+};
+
+async function jobContext(jobId: string): Promise<JobContext | null> {
+  const { data: row } = await supabaseAdmin
+    .from("media_jobs")
+    .select("id, prompt, created_at, conversation_id")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (!row?.prompt || !row.conversation_id) return null;
+  const { data: conv } = await supabaseAdmin
+    .from("conversations")
+    .select("user_personalities(companions(name, age, ethnicity, gender, image_url))")
+    .eq("id", row.conversation_id)
+    .maybeSingle();
+  const companion: any = (conv as any)?.user_personalities?.companions ?? {};
+  // The message that asked for this photo: the user's last one before the
+  // job was written.
+  const { data: asked } = await supabaseAdmin
+    .from("messages")
+    .select("content")
+    .eq("conversation_id", row.conversation_id)
+    .eq("role", "user")
+    .lte("created_at", row.created_at)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return {
+    row: row as JobContext["row"],
+    companion,
+    userRequest: asked?.[0]?.content ?? "",
+  };
+}
+
+// Render the same job again with a fresh seed; returns the new RunPod id.
+async function resubmitImageJob(ctx: JobContext, seedSalt: string): Promise<string> {
+  const { comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
+    await import("./media.functions");
+  const { runpodEndpoint, runpodRun } = await import("./runpod");
+  const endpoint = runpodEndpoint("image");
+  if (!endpoint) throw new Error("no image endpoint");
+  const negative = negativeFor(ctx.userRequest, ctx.companion.gender, { moving: false });
+  const input = await comfyJobInput(
+    ctx.row.prompt,
+    negative,
+    resolveHostedImage(ctx.companion.image_url),
+    ctx.userRequest,
+    seedSalt,
+  );
+  const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));
+  await supabaseAdmin
+    .from("media_jobs")
+    .update({ replicate_id: id, status: "processing", updated_at: new Date().toISOString() })
+    .eq("id", ctx.row.id);
+  return id;
+}
+
+// The vision check: 0-10 for how clearly the picture shows the act, null
+// when it cannot be scored (no key, refusal, timeout). OpenRouter, because
+// the chat already runs there and its vision models answer about adult
+// images. VISION_VERIFY_MODEL overrides the model.
+async function scorePhoto(url: string, question: string): Promise<number | null> {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return null;
+  const { verifyPrompt, parseScore } = await import("./photo-check");
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(25_000),
+      body: JSON.stringify({
+        model: process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct",
+        temperature: 0,
+        max_tokens: 8,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: verifyPrompt(question) },
+              { type: "image_url", image_url: { url } },
+            ],
+          },
+        ],
+      }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return parseScore(json.choices?.[0]?.message?.content);
+  } catch {
+    return null;
+  }
+}
+
+// For a checked act: the URL she should send (this candidate or a better
+// earlier one), or null when the job has been sent back for another render.
+// Candidates and their scores live in the row's error column as lines; the
+// retake is claimed with a compare-and-set on that column, so the webhook and
+// the status poll cannot both resubmit.
+async function verifiedOrRetake(
+  job: Job,
+  errorNow: string | null,
+  attempt: number,
+  mediaUrl: string,
+): Promise<string | null> {
+  const ctx = await jobContext(job.id);
+  if (!ctx) return mediaUrl;
+  const { anatomyOf } = await import("./anatomy");
+  const { verifyQuestion, parseCandidates, candidateLine, bestCandidate, shouldRetake, DEFAULT_RETAKES } =
+    await import("./photo-check");
+  const question = verifyQuestion(ctx.userRequest, anatomyOf(ctx.companion.gender).hasBreasts);
+  if (!question) return mediaUrl;
+
+  const score = await scorePhoto(mediaUrl, question);
+  const all = [...parseCandidates(errorNow), { url: mediaUrl, score }];
+  const maxRetakes = Number(process.env.MEDIA_RETAKES || DEFAULT_RETAKES);
+  if (!shouldRetake(score, attempt, maxRetakes)) {
+    const best = bestCandidate(all);
+    if (best.url !== mediaUrl)
+      console.warn(`media job ${job.id}: sending retake candidate scored ${best.score} over latest ${score}`);
+    return best.url;
+  }
+
+  const nextError = [errorNow, candidateLine(attempt + 1, score, mediaUrl)].filter(Boolean).join("\n");
+  let claim = supabaseAdmin
+    .from("media_jobs")
+    .update({ error: nextError, updated_at: new Date().toISOString() })
+    .eq("id", job.id)
+    .neq("status", "completed");
+  claim = errorNow === null ? claim.is("error", null) : claim.eq("error", errorNow);
+  const { data: claimed } = await claim.select("id");
+  if (!claimed?.length) return null; // the other caller is already retaking it
+  try {
+    const id = await resubmitImageJob(ctx, `retake-${attempt + 1}-${job.id}`);
+    console.warn(`media job ${job.id}: scored ${score} for "${question}", retaking as ${id}`);
+    return null;
+  } catch (e: any) {
+    // Could not render again: send the best we have rather than nothing.
+    console.error("retake failed", job.id, e?.message ?? e);
+    return bestCandidate(all).url;
+  }
+}
+
 // Returns true when the job is running again and must NOT be failed.
 //
 // `failedRunpodId` is the RunPod id the caller saw fail. The status poll runs
@@ -680,39 +842,10 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
   if (!row) return true;
 
   try {
-    if (!row.prompt || !row.conversation_id) throw new Error("nothing to resubmit");
-    const { data: conv } = await supabaseAdmin
-      .from("conversations")
-      .select("user_personalities(companions(name, age, ethnicity, gender, image_url))")
-      .eq("id", row.conversation_id)
-      .maybeSingle();
-    const c: any = (conv as any)?.user_personalities?.companions ?? {};
-    // The message that asked for this photo: the user's last one before the
-    // job was written.
-    const { data: asked } = await supabaseAdmin
-      .from("messages")
-      .select("content")
-      .eq("conversation_id", row.conversation_id)
-      .eq("role", "user")
-      .lte("created_at", row.created_at)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const userRequest: string = asked?.[0]?.content ?? "";
-
-    const negative = negativeFor(userRequest, c.gender, { moving: false });
+    const ctx = await jobContext(job.id);
+    if (!ctx) throw new Error("nothing to resubmit");
     await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-    const input = await comfyJobInput(
-      row.prompt,
-      negative,
-      resolveHostedImage(c.image_url),
-      userRequest,
-      `retry-${job.id}`,
-    );
-    const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));
-    await supabaseAdmin
-      .from("media_jobs")
-      .update({ replicate_id: id, updated_at: new Date().toISOString() })
-      .eq("id", job.id);
+    const id = await resubmitImageJob(ctx, `retry-${job.id}`);
     console.warn(`media job ${job.id} resubmitted as ${id} after worker error: ${errorMsg.slice(0, 120)}`);
     return true;
   } catch (e: any) {

@@ -1397,6 +1397,8 @@ export const checkMediaJob = createServerFn({ method: "POST" })
       }
       try {
         const mediaUrl = await complete(job as any, url);
+        // null: the picture failed its check and is being rendered again.
+        if (!mediaUrl) return { status: "processing" };
         return { status: "completed", mediaUrl };
       } catch (e: any) {
         await fail(job as any, `Storage failed: ${e.message}`);

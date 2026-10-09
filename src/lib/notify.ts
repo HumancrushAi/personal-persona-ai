@@ -109,6 +109,9 @@ export function notificationEmailHtml(
   body: string,
   url?: string,
   imageUrl?: string,
+  // A re-engagement mail carries an unsubscribe link (lib/lifecycle.ts); a
+  // transactional one ("she sent you a photo") does not need one.
+  unsubscribeUrl?: string,
 ): string {
   // Her photo is the thing people tap — it is the biggest, most personal element
   // in the mail, and it used to be inert, so the tap did nothing and the CTA
@@ -140,5 +143,10 @@ export function notificationEmailHtml(
       <p style="color:#b3aac2;font-size:15px;line-height:1.6;margin:0 0 20px;font-weight:400;">${body}</p>
       ${cta}
     </div>
+    ${
+      unsubscribeUrl
+        ? `<p style="max-width:440px;margin:18px auto 0;text-align:center;font-size:11px;line-height:1.6;color:#6b6b6b;">You're getting this because you have a HumanCrush account. <a href="${attr(unsubscribeUrl)}" style="color:#8a8a8a;">Unsubscribe</a> from these emails.</p>`
+        : ""
+    }
   </div>`;
 }

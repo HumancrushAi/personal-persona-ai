@@ -38,6 +38,7 @@ import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
 import { Route as ApiPublicReelWebhookRouteImport } from './routes/api/public/reel-webhook'
 import { Route as ApiPublicRunpodWebhookRouteImport } from './routes/api/public/runpod-webhook'
+import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -183,6 +184,11 @@ const ApiPublicRunpodWebhookRoute = ApiPublicRunpodWebhookRouteImport.update({
   path: '/api/public/runpod-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicUnsubscribeRoute = ApiPublicUnsubscribeRouteImport.update({
+  id: '/api/public/unsubscribe',
+  path: '/api/public/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -275,6 +283,7 @@ export interface FileRoutesById {
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -307,6 +316,7 @@ export interface FileRouteTypes {
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
+    | '/api/public/unsubscribe'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
+    | '/api/public/unsubscribe'
   id:
     | '__root__'
     | '/'
@@ -368,6 +379,7 @@ export interface FileRouteTypes {
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
+    | '/api/public/unsubscribe'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -398,6 +410,7 @@ export interface RootRouteChildren {
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
   ApiPublicReelWebhookRoute: typeof ApiPublicReelWebhookRoute
   ApiPublicRunpodWebhookRoute: typeof ApiPublicRunpodWebhookRoute
+  ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -605,6 +618,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRunpodWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/unsubscribe': {
+      id: '/api/public/unsubscribe'
+      path: '/api/public/unsubscribe'
+      fullPath: '/api/public/unsubscribe'
+      preLoaderRoute: typeof ApiPublicUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -649,6 +669,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
   ApiPublicReelWebhookRoute: ApiPublicReelWebhookRoute,
   ApiPublicRunpodWebhookRoute: ApiPublicRunpodWebhookRoute,
+  ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

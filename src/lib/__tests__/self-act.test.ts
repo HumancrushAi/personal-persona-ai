@@ -13,7 +13,7 @@ import { negativeFor } from "../media.functions";
 import { anatomyOf } from "../anatomy";
 import { filterAvoid, splitAvoid } from "../prompt-refiner.server";
 import { propClause, propIsOral } from "../props";
-import { FACEID_LITE_WORKFLOW, FACEID_WORKFLOW, comfySettings, templateForMouthAct } from "../comfy";
+import { FACEID_WORKFLOW, comfySettings } from "../comfy";
 
 // "sucking on a dildo" came back as the toy held beside a closed-lip smile and
 // "sucking on your tit" as a plain frontal: the prompts were right, the face
@@ -68,12 +68,12 @@ describe("the renderer is allowed to change her mouth", () => {
   it("starts the face lock a quarter of the way in on a mouth act", () => {
     delete process.env.COMFY_IPA_START_AT_MOUTH;
     delete process.env.COMFY_IPA_START_AT;
-    expect(comfySettings("x", { mouthAct: true }).ipaStartAt).toBe(0.25);
+    expect(comfySettings("x", { mouthAct: true }).ipaStartAt).toBe(0.3);
     expect(comfySettings("x").ipaStartAt).toBe(0);
     expect(FACEID_WORKFLOW).toContain("{{IPA_START_AT}}");
   });
 
-  it("lightens the face lock and drops the detailer pass only for those", () => {
+  it("lightens the face lock and the detail pass only for those", () => {
     for (const k of ["COMFY_IPA_WEIGHT_MOUTH", "COMFY_IPA_V2_WEIGHT_MOUTH", "COMFY_FACE_DENOISE_MOUTH", "COMFY_IPA_WEIGHT", "COMFY_FACE_DENOISE"])
       delete process.env[k];
     const mouth = comfySettings("x", { mouthAct: true });
@@ -82,8 +82,8 @@ describe("the renderer is allowed to change her mouth", () => {
     const plain = comfySettings("x");
     expect(plain.ipaWeight).toBe(0.9);
     expect(plain.faceDenoise).toBe(0.35);
-    expect(templateForMouthAct(FACEID_WORKFLOW)).toBe(FACEID_LITE_WORKFLOW);
-    expect(templateForMouthAct("other")).toBe("other");
+    expect(mouth.cfg).toBe(5.0);
+    expect(plain.cfg).toBe(5.5);
   });
 });
 
@@ -92,6 +92,7 @@ describe("faces are not pushed toward old", () => {
     const n = negativeFor("send me a selfie", "female");
     expect(n).toContain("wrinkles");
     expect(n).toContain("chapped lips");
+    expect(n).toContain("plastic face");
     expect(n).not.toContain("youthful face");
     expect(n).not.toContain("flawless skin");
     expect(n).not.toContain("poreless");

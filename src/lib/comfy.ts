@@ -267,13 +267,10 @@ export const FACEID_WORKFLOW = `{
 // of it validated), although it loads in the image's own build check. The face
 // identity comes from nodes 11-12; 13-14 only re-render the face for detail, so
 // this keeps the face lock and drops the dependency. COMFY_GRAPH=faceid-lite.
-// For a mouth act the FaceDetailer pass is dropped altogether: it re-renders
-// the face crop through the same FaceID-conditioned model, and a toy in her
-// mouth or her tongue on her nipple is exactly the part of the crop it
-// "repairs" back to the portrait. The sampler's own face stands.
-export function templateForMouthAct(template: string): string {
-  return template === FACEID_WORKFLOW ? FACEID_LITE_WORKFLOW : template;
-}
+// The FaceDetailer pass stays on for a mouth act, at a light denoise (see
+// comfySettings). Dropping it entirely was tried: the act survived, but the
+// face lost the texture the pass supplies and came back plastic. At 0.2 it
+// cannot restructure a mouth — it only refines skin.
 
 export const FACEID_LITE_WORKFLOW = (() => {
   const g = JSON.parse(FACEID_WORKFLOW) as Record<string, any>;
@@ -645,7 +642,9 @@ export function comfySettings(
     // 5.5, down from 7. At 7 the FaceID renders read as plastic — waxy skin,
     // over-rendered faces — which is what users reported. 5.5 still follows
     // the prompt on this checkpoint; COMFY_CFG overrides.
-    cfg: numberSetting("COMFY_CFG", 5.5),
+    // A notch lower on a mouth act: the act tags are already emphasised, and
+    // a high guidance on an emphasised prompt is what over-renders a face.
+    cfg: opts.mouthAct ? numberSetting("COMFY_CFG_MOUTH", 5.0) : numberSetting("COMFY_CFG", 5.5),
     width: numberSetting("COMFY_WIDTH", 832),
     height: numberSetting("COMFY_HEIGHT", 1216),
     sampler: process.env.COMFY_SAMPLER || "dpmpp_2m_sde",
@@ -709,7 +708,7 @@ export function comfySettings(
       : numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     ipaStartAt: opts.mouthAct
-      ? numberSetting("COMFY_IPA_START_AT_MOUTH", 0.25)
+      ? numberSetting("COMFY_IPA_START_AT_MOUTH", 0.3)
       : numberSetting("COMFY_IPA_START_AT", 0),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
     // Keep FaceDetailer from inventing a new face on the refine pass.

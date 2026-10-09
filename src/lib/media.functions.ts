@@ -156,6 +156,13 @@ const AGE_NEGATIVE_BREASTS =
 // Those two terms are gone from the list above (the minor terms stay, every
 // one), and this pushes the other way. Conditions and adjectives, never a
 // part; "old" itself is not here because "24-year-old" is in every prompt.
+// The other failure mode, and it showed up the moment the ageing terms went:
+// a face rendered as a product shot — glossy, airbrushed, brows like they
+// were drawn with a ruler. Finish and rendering words only; "eyebrows" is
+// named with its fault attached, never bare, so the brows themselves stay.
+const PLASTIC_NEGATIVE =
+  "glossy skin, over-rendered, overprocessed, cgi face, 3d render face, uncanny, too perfect, microbladed eyebrows, drawn-on eyebrows, overdrawn eyebrows, razor-sharp eyebrows, stencilled eyebrows, plastic face";
+
 const AGED_NEGATIVE =
   "wrinkles, wrinkled, deep lines, crow's feet, nasolabial folds, sagging skin, leathery skin, weathered skin, haggard, gaunt, elderly, middle-aged, aged face, chapped lips, cracked lips, dry lips, tired eyes, dark circles, eye bags, grey hair, gray hair";
 
@@ -247,7 +254,7 @@ export function negativeFor(
   // Unconditional, and first among equals. See AGE_NEGATIVE.
   base = `${base}, ${AGE_NEGATIVE}`;
   if (a.hasBreasts) base = `${base}, ${AGE_NEGATIVE_BREASTS}`;
-  base = `${base}, ${AGED_NEGATIVE}`;
+  base = `${base}, ${AGED_NEGATIVE}, ${PLASTIC_NEGATIVE}`;
 
   // Her mouth on her own body, with no toy and no penis in the request.
   if (ORAL_SOLO_RE.test(req) && !hasProp(req) && !mentionsPart(req, "penis")) {
@@ -657,7 +664,6 @@ export async function comfyJobInput(
     comfySettings,
     comfyTemplate,
     wantsReference,
-    templateForMouthAct,
     DEFAULT_WORKFLOW,
   } = await import("./comfy");
   let template = comfyTemplate();
@@ -711,7 +717,6 @@ export async function comfyJobInput(
   // Her mouth has to be free to change: a lighter face lock and no detailer
   // pass, on these requests only. See isMouthAct and templateForMouthAct.
   const mouthAct = isMouthAct(req);
-  if (mouthAct) template = templateForMouthAct(template);
   // The act first, weighted. ComfyUI's text encoder reads "(…:1.3)" as
   // emphasis, and the first tokens of an SDXL prompt carry the most weight —
   // which is exactly where the act was not.

@@ -435,7 +435,10 @@ export function isMouthAct(req: string): boolean {
 export function mouthActTags(req: string): string {
   const t = req ?? "";
   if (SELF_BREAST_ORAL_RE.test(t))
-    return "licking own nipple, tongue out touching own nipple, breast lifted up to mouth, head tilted down looking at own breast, mouth open";
+    // No "tongue out" here: on its own that tag reads as a face tilted BACK
+    // with the tongue out at the camera, which is what came back. Everything
+    // here says down.
+    return "licking own nipple, tongue touching own nipple, head bent down to own breast, chin tucked to chest, eyes looking down at own nipple, breast pushed up to mouth";
   if (SELF_FINGER_MOUTH_RE.test(t))
     return "sucking own finger, finger in mouth, lips closed around finger";
   if (SELF_TONGUE_OUT_RE.test(t)) return "tongue out, mouth open, tongue sticking out";
@@ -773,7 +776,7 @@ export const NUDE_FORCE =
   "Completely nude, fully undressed, bare skin everywhere, bare breasts and bare groin, wardrobe fully removed.";
 
 const QUALITY =
-  "Candid photograph on a phone, amateur and unretouched, natural available light, true-to-life colour, natural healthy skin with fine texture and a soft glow, light natural makeup, slight film grain, soft natural shadows. Looks like a real photo taken on a real phone.";
+  "Candid photograph on a phone, amateur and unretouched, natural available light, true-to-life colour, natural healthy skin with fine pores and fine texture, matte natural finish, light natural makeup, slight film grain, soft natural shadows. Looks like a real photo taken on a real phone.";
 
 /**
  * The same photograph, for a renderer that draws a still directly.
@@ -1001,7 +1004,7 @@ export function kontextSelfiePrompt(
 const PROMPT_WORD_BUDGET = 300;
 
 const REALISM_TAIL =
-  "Candid raw photograph on a real camera, amateur and unretouched, natural healthy skin with fine texture and a soft glow, slight film grain.";
+  "Candid raw photograph on a real camera, amateur and unretouched, natural healthy skin with fine pores and fine texture, matte natural finish, slight film grain.";
 
 const STILL_CUE = "The pose is held completely still and the camera is locked off.";
 const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;
@@ -1277,7 +1280,10 @@ export function finishMediaPrompt(
   // the "flawless/perfect/youthful" negatives had between them pushed the
   // FaceDetailer pass toward age. Said positively here, on every render.
   const describes = [
-    `adult ${statedAge}-year-old ${a.noun}, fully grown adult body, fresh healthy youthful adult face with smooth clear skin, soft full lips and bright clear eyes`,
+    // "smooth clear skin" and "soft glow" swung the other way — faces came
+    // back plastic with razor-edged brows. Real skin has pores; it is just
+    // not lined. Matte, fine pores, soft natural brows.
+    `adult ${statedAge}-year-old ${a.noun}, fully grown adult body, fresh healthy youthful adult face, clear skin with natural fine pores and a matte natural finish, soft natural eyebrows, soft full lips, bright clear eyes`,
   ];
   if (opts.appendAppearance) {
     const ethnicity = (opts.appearance?.ethnicity ?? "").trim();

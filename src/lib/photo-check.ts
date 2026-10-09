@@ -24,7 +24,9 @@ export function verifyQuestion(userRequest: string, hasBreasts: boolean): string
   const breastOral =
     /\b(?:lick\w*|suck\w*|kiss\w*|bit(?:e|es|ing)|nibbl\w*|tongu\w*)\b[^.?!]{0,30}\b(?:her|his|their|own|your)\s+(?:own\s+)?(?:tits?|titties|boobs?|boobies|breasts?|nipples?|chest)\b/i;
   if (hasBreasts && breastOral.test(req))
-    return "Is the woman's tongue or lips touching her OWN nipple, with her head bent down toward her breast?";
+    // The hands are part of the question: a render with her head down and her
+    // tongue out but licking her own fingers scored as a pass.
+    return "Is the woman's tongue touching her OWN nipple, with her head bent down to her breast and her hands holding that breast from UNDERNEATH (her hands are not at her mouth and she is not licking her fingers)?";
   if (hasProp(req) && /\b(?:suck\w*|lick\w*|blow\w*|deep\s*throat\w*|mouth|tongue|lips)\b/i.test(req))
     return "Is the tip of the sex toy inside her mouth or between her lips?";
   if (/\b(?:suck\w*|lick\w*)\s+(?:on\s+)?(?:her|his|their|your)\s+(?:own\s+)?fingers?\b|\bfingers?\s+in\s+(?:her|his|their|your)\s+mouth\b/i.test(req))

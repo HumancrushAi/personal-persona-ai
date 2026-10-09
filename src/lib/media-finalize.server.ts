@@ -709,9 +709,12 @@ async function resubmitImageJob(ctx: JobContext, seedSalt: string): Promise<stri
 // when it cannot be scored (no key, refusal, timeout). OpenRouter, because
 // the chat already runs there and its vision models answer about adult
 // images. VISION_VERIFY_MODEL overrides the model.
-async function scorePhoto(url: string, question: string): Promise<number | null> {
+async function scorePhoto(url: string, question: string, jobId = ""): Promise<number | null> {
   const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return null;
+  if (!key) {
+    console.warn(`photo check ${jobId}: no OPENROUTER_API_KEY, not scored`);
+    return null;
+  }
   const { verifyPrompt, parseScore } = await import("./photo-check");
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -733,10 +736,17 @@ async function scorePhoto(url: string, question: string): Promise<number | null>
         ],
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`photo check ${jobId}: HTTP ${res.status} ${(await res.text()).slice(0, 160)}`);
+      return null;
+    }
     const json = await res.json();
-    return parseScore(json.choices?.[0]?.message?.content);
-  } catch {
+    const reply = json.choices?.[0]?.message?.content;
+    const score = parseScore(reply);
+    console.warn(`photo check ${jobId}: score ${score} reply ${JSON.stringify(String(reply ?? "")).slice(0, 120)}`);
+    return score;
+  } catch (e: any) {
+    console.warn(`photo check ${jobId}: ${e?.message ?? e}`);
     return null;
   }
 }
@@ -760,13 +770,23 @@ async function verifiedOrRetake(
   const question = verifyQuestion(ctx.userRequest, anatomyOf(ctx.companion.gender).hasBreasts);
   if (!question) return mediaUrl;
 
-  const score = await scorePhoto(mediaUrl, question);
+  const score = await scorePhoto(mediaUrl, question, job.id);
   const all = [...parseCandidates(errorNow), { url: mediaUrl, score }];
   const maxRetakes = Number(process.env.MEDIA_RETAKES || DEFAULT_RETAKES);
   if (!shouldRetake(score, attempt, maxRetakes)) {
     const best = bestCandidate(all);
     if (best.url !== mediaUrl)
       console.warn(`media job ${job.id}: sending retake candidate scored ${best.score} over latest ${score}`);
+    // The verdict goes in the record too, so a sent picture shows what the
+    // checker made of it. "scored" lines are not retake candidates.
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({
+        error: [errorNow, `scored [score ${score === null ? "null" : score}] ${mediaUrl}`]
+          .filter(Boolean)
+          .join("\n"),
+      })
+      .eq("id", job.id);
     return best.url;
   }
 

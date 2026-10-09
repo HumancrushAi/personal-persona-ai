@@ -186,7 +186,8 @@ ${toyAsked
     : `- what each of her two hands is doing, named plainly (one hand lifting her breast, the other flat on her stomach). A hand with no stated job gets drawn holding something`
   }
 ${selfAct
-    ? `- the act is on HER OWN body. Say the part is her own and exactly where the contact is — "the tip of her tongue touching her own left nipple", "her own finger between her lips" — with her head angled toward it. Her hands hold nothing. She is the only person in the picture; nothing and nobody else is in it`
+    ? `- the act is on HER OWN body. Say the part is her own and exactly where the contact is — "the tip of her tongue touching her own left nipple", "her own finger between her lips" — with her head angled toward it. Her hands hold nothing. She is the only person in the picture; nothing and nobody else is in it
+- when she licks or sucks her own breast: BOTH hands cup that breast from underneath and push it up so the nipple sits at her lips; her hands stay below the nipple. Write the hands exactly that way — a hand "lifting the breast toward her mouth" ends up at her mouth, and she licks the hand`
     : ``
   }
 - natural healthy skin with fine texture, candid raw photography, real lighting and shadows

@@ -42,7 +42,7 @@ describe("the renderer is allowed to change her mouth", () => {
   });
 
   it("leads with the act as tags, and leaves the whole-body anatomy out", () => {
-    expect(mouthActTags(LICK)).toContain("sucking own nipple");
+    expect(mouthActTags(LICK)).toContain("hands below the nipple");
     expect(mouthActTags(LICK)).not.toContain("tongue out");
     expect(mouthActTags("suck on your dildo")).toContain("dildo in mouth");
     expect(mouthActTags("show me your tits")).toBe("");
@@ -134,15 +134,16 @@ describe("an act on her own body is spelled out", () => {
 
   it("says whose nipple, which hand, and that she holds nothing", () => {
     const p = stillImagePrompt(nova, LICK);
-    expect(p).toContain("touches the tip of her tongue to her own nipple");
-    expect(p).toContain("her left hand");
+    expect(p).toContain("the tip of her tongue touches her own nipple");
+    expect(p).toContain("both her hands cup the underside");
+    expect(p).toContain("hands stay below the nipple");
     expect(p).toContain("her hands hold nothing");
     expect(p).toContain("alone in the frame");
     expect(p).not.toContain("She is licking her tits.");
   });
 
   it("does the same in a clip", () => {
-    expect(videoActionPrompt(nova, LICK)).toContain("tip of her tongue to her own nipple");
+    expect(videoActionPrompt(nova, LICK)).toContain("tip of her tongue touches her own nipple");
   });
 
   it("frees the hand the builder had parked on her thigh", () => {

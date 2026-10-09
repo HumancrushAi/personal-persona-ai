@@ -438,7 +438,7 @@ export function mouthActTags(req: string): string {
     // No "tongue out" here: on its own that tag reads as a face tilted BACK
     // with the tongue out at the camera, which is what came back. Everything
     // here says down.
-    return "sucking own nipple, licking own nipple, mouth on own nipple, head bent down to own breast, chin tucked to chest, eyes on own nipple, breast pushed up into mouth";
+    return "licking own nipple, tongue on own nipple, nipple at her lips, both hands cupping breast from underneath pushing it up to her mouth, hands below the nipple, head bent down to own breast, chin tucked to chest";
   if (SELF_FINGER_MOUTH_RE.test(t))
     return "sucking own finger, finger in mouth, lips closed around finger";
   if (SELF_TONGUE_OUT_RE.test(t)) return "tongue out, mouth open, tongue sticking out";
@@ -462,7 +462,10 @@ export function selfActSentence(req: string, a: Anatomy): string {
   const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
   const alone = `${S} ${is} alone in the frame and ${poss} hands hold nothing.`;
   if (a.hasBreasts && SELF_BREAST_ORAL_RE.test(t)) {
-    return `${S} lifts ${poss} own left breast with ${poss} left hand and touches the tip of ${poss} tongue to ${poss} own nipple, ${poss} head tilted down toward it, ${poss} right hand resting flat on ${poss} stomach. ${alone}`;
+    // Both hands UNDER the breast. "one hand lifting her breast toward her
+    // mouth" put the hand at her mouth and she licked the hand; with the
+    // hands cupping from underneath, the only thing at her lips is the nipple.
+    return `${S} bends ${poss} head down to ${poss} own breast; both ${poss} hands cup the underside of ${poss} left breast and push it up so the nipple sits at ${poss} lips, and the tip of ${poss} tongue touches ${poss} own nipple. ${poss[0].toUpperCase()}${poss.slice(1)} hands stay below the nipple, cupping the breast from underneath. ${alone}`;
   }
   if (SELF_FINGER_MOUTH_RE.test(t)) {
     return `${S} rests ${poss} own index finger between ${poss} lips, looking into the lens, ${poss} other hand resting on ${poss} thigh. ${alone}`;

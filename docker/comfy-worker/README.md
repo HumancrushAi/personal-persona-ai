@@ -115,3 +115,13 @@ rather than a version conflict.
 packs into `geoffmccabe/runpod-api1` instead. Use it only if you want one image
 serving both images and video. It means rebuilding the whole WAN stack on every
 change, which is why this standalone image exists.
+
+## Pose guides (ControlNet)
+
+`provision-models.sh` also downloads `OpenPoseXL2.safetensors` (SDXL OpenPose
+ControlNet, native ComfyUI format) into `models/controlnet/` on the volume —
+a stock folder, so ComfyUI finds it without a link. The app uses it through
+`FACEID_POSE_WORKFLOW` (src/lib/comfy.ts) for the acts the checkpoint will not
+pose from words; it is switched on by `COMFY_CONTROLNET=OpenPoseXL2.safetensors`
+in the app's environment. A worker without the file fails that job fast and
+the app renders it again without the guide.

@@ -77,7 +77,7 @@ import {
 // head and face out of the picture. That is the headless torso a user was
 // actually sent. Framing is stated positively now (framingFor in selfie.ts).
 const QUALITY_NEGATIVE =
-  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, flawless skin, perfect skin, porcelain skin, retouched, glamour retouch, magazine photoshoot, supermodel, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, poreless, poreless skin, featureless, smooth blank skin where detail belongs, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, third hand, extra hand, disembodied hand, floating hand, three arms, two people, second person, extra person, crowd, group of people, bystander, someone else's hand, someone else's arm, melting object, deformed object, object merging into hand, morphing, flickering";
+  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, magazine photoshoot, supermodel, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, third hand, extra hand, disembodied hand, floating hand, three arms, two people, second person, extra person, crowd, group of people, bystander, someone else's hand, someone else's arm, melting object, deformed object, object merging into hand, morphing, flickering";
 
 // Motion terms. These stop the endpoint returning a near-still clip, and they
 // belong ONLY on a video.
@@ -129,7 +129,7 @@ const VULVA_NEGATIVE =
 // condition and no env switch. Nothing here is a style choice that a caller
 // gets to opt out of.
 const AGE_NEGATIVE =
-  "child, children, kid, kids, toddler, infant, baby, teen, teenager, teenage, adolescent, minor, underage, preteen, pre-teen, pubescent, prepubescent, loli, lolita, shota, young girl, young boy, little girl, little boy, schoolgirl, schoolboy, school uniform, childlike, childish, childish proportions, baby face, babyface, youthful face, juvenile, immature body, undeveloped, barely legal, jailbait, petite child, small child, shrunken body, doll-like proportions";
+  "child, children, kid, kids, toddler, infant, baby, teen, teenager, teenage, adolescent, minor, underage, preteen, pre-teen, pubescent, prepubescent, loli, lolita, shota, young girl, young boy, little girl, little boy, schoolgirl, schoolboy, school uniform, childlike, childish, childish proportions, juvenile, immature body, undeveloped, barely legal, jailbait, petite child, small child, shrunken body, doll-like proportions";
 
 // The part of the above that only applies to a body that has breasts.
 //
@@ -148,6 +148,16 @@ const AGE_NEGATIVE =
 // companion and "adolescent frame" is already covered there for everyone.
 const AGE_NEGATIVE_BREASTS =
   "prepubescent proportions, adolescent frame, girlish figure, unfinished growth, small immature body";
+
+// Age, from the other side. "youthful face" and "baby face" used to sit in
+// AGE_NEGATIVE, and a negative pushes on the tokens it contains: every render
+// was being pushed AWAY from a youthful face, and the realism wording asked
+// for pores and moles on top — faces came back lined, tired and chapped.
+// Those two terms are gone from the list above (the minor terms stay, every
+// one), and this pushes the other way. Conditions and adjectives, never a
+// part; "old" itself is not here because "24-year-old" is in every prompt.
+const AGED_NEGATIVE =
+  "wrinkles, wrinkled, deep lines, crow's feet, nasolabial folds, sagging skin, leathery skin, weathered skin, haggard, gaunt, elderly, middle-aged, aged face, chapped lips, cracked lips, dry lips, tired eyes, dark circles, eye bags, grey hair, gray hair";
 
 // Body mass, suppressed where suppression actually works.
 //
@@ -237,6 +247,7 @@ export function negativeFor(
   // Unconditional, and first among equals. See AGE_NEGATIVE.
   base = `${base}, ${AGE_NEGATIVE}`;
   if (a.hasBreasts) base = `${base}, ${AGE_NEGATIVE_BREASTS}`;
+  base = `${base}, ${AGED_NEGATIVE}`;
 
   // Her mouth on her own body, with no toy and no penis in the request.
   if (ORAL_SOLO_RE.test(req) && !hasProp(req) && !mentionsPart(req, "penis")) {
@@ -641,8 +652,14 @@ export async function comfyJobInput(
   request?: string,
   seedSalt?: string,
 ): Promise<Record<string, unknown>> {
-  const { comfyInput, comfySettings, comfyTemplate, wantsReference, DEFAULT_WORKFLOW } =
-    await import("./comfy");
+  const {
+    comfyInput,
+    comfySettings,
+    comfyTemplate,
+    wantsReference,
+    templateForMouthAct,
+    DEFAULT_WORKFLOW,
+  } = await import("./comfy");
   let template = comfyTemplate();
 
   let referenceBase64: string | undefined;
@@ -680,16 +697,30 @@ export async function comfyJobInput(
   // picture looks like, and the starting latent must not overrule them. Anything
   // else — "send me a selfie", "send me a nude" — says nothing about
   // composition, so her portrait should supply it and identity holds.
-  const { requestComposesShot: composes, requestIsNude, requestKeepsGarment } =
-    await import("./selfie");
+  const {
+    requestComposesShot: composes,
+    requestIsNude,
+    requestKeepsGarment,
+    isMouthAct,
+  } = await import("./selfie");
   const req = request ?? "";
   const promptSetsComposition = composes(req);
   // Nude without a hard pose still needs medium denoise or the clothed portrait wins.
   const needsUndress = requestIsNude(req) && !requestKeepsGarment(req);
+  // Her mouth has to be free to change: a lighter face lock and no detailer
+  // pass, on these requests only. See isMouthAct and templateForMouthAct.
+  const mouthAct = isMouthAct(req);
+  if (mouthAct) template = templateForMouthAct(template);
 
   return comfyInput(
     {
-      ...comfySettings(prompt, { promptSetsComposition, needsUndress, template, seedSalt }),
+      ...comfySettings(prompt, {
+        promptSetsComposition,
+        needsUndress,
+        template,
+        seedSalt,
+        mouthAct,
+      }),
       prompt,
       negative,
     },

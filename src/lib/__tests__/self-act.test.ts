@@ -1,8 +1,81 @@
 import { describe, expect, it } from "vitest";
-import { finishMediaPrompt, isSelfAct, selfActSentence, stillImagePrompt, videoActionPrompt } from "../selfie";
+import {
+  finishMediaPrompt,
+  isMouthAct,
+  isSelfAct,
+  requestComposesShot,
+  selfActSentence,
+  stillImagePrompt,
+  videoActionPrompt,
+} from "../selfie";
 import { negativeFor } from "../media.functions";
 import { anatomyOf } from "../anatomy";
 import { filterAvoid, splitAvoid } from "../prompt-refiner.server";
+import { propClause, propIsOral } from "../props";
+import { FACEID_LITE_WORKFLOW, FACEID_WORKFLOW, comfySettings, templateForMouthAct } from "../comfy";
+
+// "sucking on a dildo" came back as the toy held beside a closed-lip smile and
+// "sucking on your tit" as a plain frontal: the prompts were right, the face
+// lock and the low "plain nude" denoise were what kept the act out.
+describe("the renderer is allowed to change her mouth", () => {
+  it("treats an act on her own body as composing the shot", () => {
+    expect(requestComposesShot(LICK)).toBe(true);
+    expect(requestComposesShot("send me a nude")).toBe(false);
+  });
+
+  it("knows which requests touch her mouth", () => {
+    expect(isMouthAct("suck on your dildo")).toBe(true);
+    expect(isMouthAct("lick your lips")).toBe(true);
+    expect(isMouthAct(LICK)).toBe(true);
+    expect(isMouthAct("show me your tits")).toBe(false);
+    expect(isMouthAct("dildo in pussy")).toBe(false);
+  });
+
+  it("puts the toy's tip in her mouth, not beside her face", () => {
+    const c = propClause("sucking on a dildo", { anatomy: anatomyOf("female") });
+    expect(c).toContain("inside her open mouth");
+    expect(c).toContain("flared base in her hand");
+    expect(c).not.toContain("natural soft vulva");
+    expect(propIsOral("sucking on a dildo")).toBe(true);
+    expect(propIsOral("dildo in pussy")).toBe(false);
+  });
+
+  it("lightens the face lock and drops the detailer pass only for those", () => {
+    for (const k of ["COMFY_IPA_WEIGHT_MOUTH", "COMFY_IPA_V2_WEIGHT_MOUTH", "COMFY_FACE_DENOISE_MOUTH", "COMFY_IPA_WEIGHT", "COMFY_FACE_DENOISE"])
+      delete process.env[k];
+    const mouth = comfySettings("x", { mouthAct: true });
+    expect(mouth.ipaWeight).toBe(0.6);
+    expect(mouth.faceDenoise).toBe(0.2);
+    const plain = comfySettings("x");
+    expect(plain.ipaWeight).toBe(0.9);
+    expect(plain.faceDenoise).toBe(0.35);
+    expect(templateForMouthAct(FACEID_WORKFLOW)).toBe(FACEID_LITE_WORKFLOW);
+    expect(templateForMouthAct("other")).toBe("other");
+  });
+});
+
+describe("faces are not pushed toward old", () => {
+  it("pushes away wrinkles and chapped lips, and no longer away from a youthful face", () => {
+    const n = negativeFor("send me a selfie", "female");
+    expect(n).toContain("wrinkles");
+    expect(n).toContain("chapped lips");
+    expect(n).not.toContain("youthful face");
+    expect(n).not.toContain("flawless skin");
+    expect(n).not.toContain("poreless");
+    // The minor guard is untouched.
+    expect(n).toContain("underage");
+    expect(n).toContain("teen");
+  });
+
+  it("states a fresh adult face on every render", () => {
+    const out = finishMediaPrompt(stillImagePrompt(nova, "send me a selfie"), "send me a selfie", {
+      anatomy: anatomyOf("female"),
+      still: true,
+    });
+    expect(out).toContain("fresh healthy youthful adult face");
+    expect(out).not.toContain("visible pores");
+  });
+});
 
 // "Send me a picture you licking your tits" came back as her holding a toy up
 // to her mouth. The sentence said "licking" and nothing about her hands, and

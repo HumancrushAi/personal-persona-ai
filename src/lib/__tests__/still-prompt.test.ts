@@ -136,12 +136,15 @@ describe("realism tail", () => {
   it("asks for camera and real skin, not render vocabulary", () => {
     const p = videoStillPrompt({ gender: "female" }, "");
     expect(p).toMatch(/candid photograph/i);
-    expect(p).toMatch(/pores/i);
+    // "visible pores, small moles" is gone: at the FaceDetailer's scale it
+    // rendered as lines and blemishes, and faces came back haggard. Texture
+    // is still asked for, as fine texture on healthy skin.
+    expect(p).toMatch(/fine texture/i);
     // It used to close "no airbrushing or smoothing… not a render", which is
     // how `airbrushing`, `smoothing` and `render` got into every prompt. The
     // realism ask is now entirely positive; the artefacts are negated in
     // QUALITY_NEGATIVE, in media.functions.ts.
-    expect(p).toMatch(/real untouched skin/i);
+    expect(p).toMatch(/natural healthy skin/i);
     expect(p).not.toMatch(/no airbrushing|not a render/i);
   });
 

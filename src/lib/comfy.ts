@@ -259,6 +259,14 @@ export const FACEID_WORKFLOW = `{
 // of it validated), although it loads in the image's own build check. The face
 // identity comes from nodes 11-12; 13-14 only re-render the face for detail, so
 // this keeps the face lock and drops the dependency. COMFY_GRAPH=faceid-lite.
+// For a mouth act the FaceDetailer pass is dropped altogether: it re-renders
+// the face crop through the same FaceID-conditioned model, and a toy in her
+// mouth or her tongue on her nipple is exactly the part of the crop it
+// "repairs" back to the portrait. The sampler's own face stands.
+export function templateForMouthAct(template: string): string {
+  return template === FACEID_WORKFLOW ? FACEID_LITE_WORKFLOW : template;
+}
+
 export const FACEID_LITE_WORKFLOW = (() => {
   const g = JSON.parse(FACEID_WORKFLOW) as Record<string, any>;
   delete g["13"];
@@ -604,6 +612,15 @@ export function comfySettings(
     promptSetsComposition?: boolean;
     /** True when user asked for nude — medium denoise to remove clothes without wiping face. */
     needsUndress?: boolean;
+    /**
+     * The request changes her mouth (tongue out, toy at her lips, licking her
+     * own nipple). The face lock is what stops that: FaceID PLUS V2 carries
+     * the portrait's expression along with its identity, and at 0.9 / 1.2 the
+     * closed-lip smile wins over any mouth the prompt describes. Lighter on
+     * these requests only, env-tunable; identity still comes from the same
+     * reference.
+     */
+    mouthAct?: boolean;
     template?: string;
     /**
      * Mixed into the seed so a second photo in the same chat is a new picture.
@@ -669,13 +686,19 @@ export function comfySettings(
       return numberSetting("COMFY_DENOISE", 0.62);
     })(),
     // FaceID path: pull harder toward the reference face (site portrait).
-    ipaWeight: numberSetting("COMFY_IPA_WEIGHT", 0.9),
+    ipaWeight: opts.mouthAct
+      ? numberSetting("COMFY_IPA_WEIGHT_MOUTH", 0.6)
+      : numberSetting("COMFY_IPA_WEIGHT", 0.9),
     // The FaceID v2 embedding is what carries likeness; it shared the 0.9 above
     // and faces came back "not exactly like the models". 1.0-2.0 is its range.
-    ipaV2Weight: numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
+    ipaV2Weight: opts.mouthAct
+      ? numberSetting("COMFY_IPA_V2_WEIGHT_MOUTH", 0.8)
+      : numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
     // Keep FaceDetailer from inventing a new face on the refine pass.
-    faceDenoise: numberSetting("COMFY_FACE_DENOISE", 0.35),
+    faceDenoise: opts.mouthAct
+      ? numberSetting("COMFY_FACE_DENOISE_MOUTH", 0.2)
+      : numberSetting("COMFY_FACE_DENOISE", 0.35),
   };
 }

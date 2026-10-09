@@ -413,6 +413,19 @@ export function isSelfAct(req: string): boolean {
   );
 }
 
+// Anything that changes her MOUTH: a self-act (all of them involve it) or a
+// toy with an oral verb. The FaceID lock and the FaceDetailer both pull the
+// face back toward her portrait — a closed-lip smile — so on these the
+// renderer gets a lighter face lock and no detailer pass (see comfySettings),
+// or the act never shows: "sucking on a dildo" came back as the toy held
+// beside a smiling closed mouth.
+const MOUTH_VERB_RE =
+  /\b(?:suck\w*|lick\w*|blow\w*|deep\s*throat\w*|gag\w*|mouth|tongue|lips|kiss\w*)\b/i;
+export function isMouthAct(req: string): boolean {
+  const t = req ?? "";
+  return isSelfAct(t) || (hasProp(t) && MOUTH_VERB_RE.test(t));
+}
+
 /** The self-act puts at least one of her hands to work, so a posture line that parks both hands elsewhere must give way. */
 export function selfActUsesHands(req: string): boolean {
   const t = req ?? "";
@@ -741,7 +754,7 @@ export const NUDE_FORCE =
   "Completely nude, fully undressed, bare skin everywhere, bare breasts and bare groin, wardrobe fully removed.";
 
 const QUALITY =
-  "Candid photograph on a phone, amateur and unretouched, natural available light, true-to-life colour, real untouched skin with visible pores, small moles, freckles and fine natural texture, matte natural skin finish, natural asymmetry, slight film grain, soft natural shadows. Looks like a real photo taken on a real phone.";
+  "Candid photograph on a phone, amateur and unretouched, natural available light, true-to-life colour, natural healthy skin with fine texture and a soft glow, light natural makeup, slight film grain, soft natural shadows. Looks like a real photo taken on a real phone.";
 
 /**
  * The same photograph, for a renderer that draws a still directly.
@@ -969,7 +982,7 @@ export function kontextSelfiePrompt(
 const PROMPT_WORD_BUDGET = 300;
 
 const REALISM_TAIL =
-  "Candid raw photograph on a real camera, amateur and unretouched, authentic skin texture with visible pores and small moles, natural asymmetry, slight film grain.";
+  "Candid raw photograph on a real camera, amateur and unretouched, natural healthy skin with fine texture and a soft glow, slight film grain.";
 
 const STILL_CUE = "The pose is held completely still and the camera is locked off.";
 const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;
@@ -1103,7 +1116,11 @@ export function requestComposesShot(req: string): boolean {
     hasProp(text) ||
     STATED_POSTURE_RE.test(text) ||
     requestSetsViewpoint(text) ||
-    PARTIAL_UNDRESS_RE.test(text)
+    PARTIAL_UNDRESS_RE.test(text) ||
+    // An act on her own body is a composition too. At the low "plain nude"
+    // denoise her portrait's framing wins and the act never appears — "sucking
+    // on your tit" came back as a plain frontal.
+    isSelfAct(text)
   );
 }
 
@@ -1227,7 +1244,12 @@ export function finishMediaPrompt(
 
   // Everything about her that the renderer cannot see for itself. The adult
   // clause is always here; the rest only when no picture of her arrives.
-  const describes = [`adult ${statedAge}-year-old ${a.noun}, fully grown adult body`];
+  // Faces came back haggard — lined, chapped, tired. The realism wording and
+  // the "flawless/perfect/youthful" negatives had between them pushed the
+  // FaceDetailer pass toward age. Said positively here, on every render.
+  const describes = [
+    `adult ${statedAge}-year-old ${a.noun}, fully grown adult body, fresh healthy youthful adult face with smooth clear skin, soft full lips and bright clear eyes`,
+  ];
   if (opts.appendAppearance) {
     const ethnicity = (opts.appearance?.ethnicity ?? "").trim();
     if (ethnicity) describes.push(`${ethnicity} ${a.noun}`);

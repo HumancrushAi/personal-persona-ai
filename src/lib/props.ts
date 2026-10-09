@@ -86,6 +86,19 @@ const INSERTED_CLAUSE =
   "Her open thighs frame the entry. Her pussy lips stretch around the shaft (the narrow mid-section), not around the wide base. Clear wetness at the rim of entry, sharp focus on the insertion point. " +
   "The toy angles down between her thighs. This is real penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
 
+// A toy at her mouth. "sucking on a dildo" rendered the toy held up beside her
+// cheek with her lips closed: the spec said what the toy IS and the hand
+// clause where the base is, and nothing said where the tip was. Stated the
+// same way the insertion clause states penetration — which end, where, and
+// what the mouth is doing around it.
+const ORAL_RE =
+  /\b(?:suck\w*|lick\w*|blow\w*|deep\s*throat\w*|gag\w*|mouth|tongue|lips|kiss\w*)\b/i;
+
+const oralClause = (a: Anatomy) => {
+  const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
+  return `The narrow rounded tip of the toy is inside ${a.poss} open mouth, ${a.poss} lips closed around the shaft just below the tip, ${a.poss} cheeks drawn in and ${a.poss} eyes raised to the lens. The toy points straight into ${a.poss} mouth with its wide flared base in ${a.poss} hand. Exactly one toy and exactly two hands; ${S} ${a.is} alone in the frame.`;
+};
+
 const INSERTED_RE =
   /\b(?:insert\w*|in|into|inside|up|deep|penetrat\w*|stuff\w*|slid\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b[^.?!]{0,25}\b(?:pussy|pussies|vagina|vulvas?|cunt|slit|clit\w*|labia|snatch|coochie|cooch|vag|hole|rear|booty|cheeks|ass|asshole|anus|butt)\b/i;
 
@@ -102,6 +115,11 @@ export function propIsInserted(req: string): boolean {
   return propFor(text) !== null && INSERTED_RE.test(text);
 }
 
+export function propIsOral(req: string): boolean {
+  const text = (req ?? "").trim();
+  return propFor(text) !== null && !INSERTED_RE.test(text) && ORAL_RE.test(text);
+}
+
 export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): string {
   const text = (req ?? "").trim();
   const prop = propFor(text);
@@ -109,10 +127,17 @@ export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): strin
 
   const a = opts.anatomy ?? anatomyOf("female");
   const inserted = INSERTED_RE.test(text);
-  const parts = inserted ? [INSERTED_CLAUSE, prop.spec, TWO_HANDS] : [prop.spec];
+  const oral = !inserted && ORAL_RE.test(text);
+  const parts = inserted
+    ? [INSERTED_CLAUSE, prop.spec, TWO_HANDS]
+    : oral
+      ? [oralClause(a), prop.spec]
+      : [prop.spec];
   if (BIG_RE.test(text)) parts.push(BIG_CLAUSE);
   parts.push(HAND_CLAUSE);
-  if (a.hasVulva) parts.push(vulvaAnatomy(a));
+  // The vulva sentence places the toy "against her skin"; at her mouth that is
+  // the wrong place, and the word pulls the camera to her groin.
+  if (a.hasVulva && !oral) parts.push(vulvaAnatomy(a));
   return parts.join(" ");
 }
 

@@ -74,13 +74,13 @@ export function filterAvoid(
 }
 
 // Clean examples — strictly positive, consistent with the anatomy clause
-const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, full natural breasts matching her frame with a soft natural shape and real weight, natural soft skin with real texture, nipples level with the middle of the upper arms pointing forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, full natural round ass matching the reference, reclining back against pillows, legs open, soft natural lighting, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
+const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, full natural breasts matching her frame with a soft natural shape and real weight, natural soft skin with real texture, nipples level with the middle of the upper arms pointing forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, full natural round ass matching the reference, reclining back against pillows, legs open, soft natural lighting, natural healthy skin with fine texture, candid DSLR photograph, raw photography
 
-exact same woman as the reference image, identical face, hair and skin, completely nude, sitting upright on the edge of the bed with her knees apart, framed from the top of her head down to her knees, full natural breasts matching her frame with a soft natural shape and real weight, erect nipples pointing forward, smoothly shaved plump closed pussy with a single neat vertical crease, soft natural lighting, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+exact same woman as the reference image, identical face, hair and skin, completely nude, sitting upright on the edge of the bed with her knees apart, framed from the top of her head down to her knees, full natural breasts matching her frame with a soft natural shape and real weight, erect nipples pointing forward, smoothly shaved plump closed pussy with a single neat vertical crease, soft natural lighting, natural healthy skin with fine texture, candid DSLR photograph, raw photography`;
 
-const TOY_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, reclining back against pillows with her knees up and thighs open, full natural breasts matching her frame with a soft natural shape and real weight, smooth matte silicone dildo inserted into her pussy, most of the shaft hidden inside her with only the flared base showing, her fingers closed on the base, her pussy pressing snugly around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees, soft natural lighting, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+const TOY_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, reclining back against pillows with her knees up and thighs open, full natural breasts matching her frame with a soft natural shape and real weight, smooth matte silicone dildo inserted into her pussy, most of the shaft hidden inside her with only the flared base showing, her fingers closed on the base, her pussy pressing snugly around the silicone, glistening wetness at the point of entry, framed from the top of her head to her knees, soft natural lighting, natural healthy skin with fine texture, candid DSLR photograph, raw photography`;
 
-const POV_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, close-up point-of-view photograph taken from between her open thighs, her pussy filling the centre foreground in sharp focus, a smooth plump closed mound with a single neat vertical crease, only the crease showing, soft natural lighting, candid raw photograph, real pores and fine skin detail`;
+const POV_EXAMPLE = `exact same woman as the reference image, identical face, hair and skin, completely nude, close-up point-of-view photograph taken from between her open thighs, her pussy filling the centre foreground in sharp focus, a smooth plump closed mound with a single neat vertical crease, only the crease showing, soft natural lighting, candid raw photograph, fine natural skin detail`;
 
 const MALE_EXAMPLES = `exact same man as the reference image, identical face, hair and skin, completely nude, athletic muscular build, thick erect penis standing out from his body and angled slightly upward, about as long as his hand from wrist to fingertip, clearly defined shaft with soft realistic veining, distinct coronal ridge where the shaft meets the smooth rounded glans, natural firm testicles hanging in a separate lightly textured scrotum, framed from his head to his knees, warm light, authentic skin texture, candid DSLR photograph, raw photography
 
@@ -88,13 +88,13 @@ exact same man as the reference image, identical face, hair and skin, completely
 
 const TRANS_FEMALE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, feminine body with full natural breasts matching her frame with a soft natural shape and real weight, defined areolae and naturally erect nipples with clean realistic texture, feminine hips and waist, and at her groin a thick erect penis standing out and angled slightly upward, about as long as her hand from wrist to fingertip, defined shaft with soft veining, distinct ridge below the smooth rounded glans and natural testicles in a separate sac, both breasts and cock in frame and in focus, candid raw photo, real skin texture`;
 
-const TRANS_MALE_EXAMPLES = `exact same man as the reference image, identical face, hair and skin, completely nude, lean masculine build with a flat chest, flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, and between his open thighs a smoothly shaved plump closed pussy with a single neat vertical crease, framed from his head to his knees, warm bedside lamplight, authentic skin texture with visible pores, candid DSLR photograph, raw photography`;
+const TRANS_MALE_EXAMPLES = `exact same man as the reference image, identical face, hair and skin, completely nude, lean masculine build with a flat chest, flat dark nipples and faint pale scars beneath each pectoral, broad ribcage and lean stomach, and between his open thighs a smoothly shaved plump closed pussy with a single neat vertical crease, framed from his head to his knees, warm bedside lamplight, natural healthy skin with fine texture, candid DSLR photograph, raw photography`;
 
-const CLOTHED_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, wearing a black lace bra and matching high-waisted briefs, full natural bust neatly filling the lace cups, kneeling on the end of an unmade bed, looking straight at the camera, low warm bedside lamplight, candid raw photograph, authentic skin texture with visible pores, real untouched skin
+const CLOTHED_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, wearing a black lace bra and matching high-waisted briefs, full natural bust neatly filling the lace cups, kneeling on the end of an unmade bed, looking straight at the camera, low warm bedside lamplight, candid raw photograph, natural healthy skin with fine texture, natural healthy skin
 
-exact same woman as the reference image, identical face, hair and skin, wearing a sheer white satin slip with thin straps, full natural breasts subtle under fabric, standing at a window with morning light coming through the fabric, soft direct eye contact, candid raw photograph, natural asymmetry, fine skin detail, real untouched skin
+exact same woman as the reference image, identical face, hair and skin, wearing a sheer white satin slip with thin straps, full natural breasts subtle under fabric, standing at a window with morning light coming through the fabric, soft direct eye contact, candid raw photograph, natural asymmetry, fine skin detail, natural healthy skin
 
-exact same woman as the reference image, identical face, hair and skin, wearing a cropped tank top and low-rise denim shorts, full natural bust filling the cotton tank top, sitting on a kitchen counter, warm afternoon light, easy natural smile, candid full-frame photograph, real skin texture, soft natural shadows, real untouched skin`;
+exact same woman as the reference image, identical face, hair and skin, wearing a cropped tank top and low-rise denim shorts, full natural bust filling the cotton tank top, sitting on a kitchen counter, warm afternoon light, easy natural smile, candid full-frame photograph, real skin texture, soft natural shadows, natural healthy skin`;
 
 const POSITIVE_ONLY = `WRITE ONLY WHAT IS IN THE PICTURE. This is the hardest rule here and it overrides every other instruction below.
 
@@ -189,7 +189,7 @@ ${selfAct
     ? `- the act is on HER OWN body. Say the part is her own and exactly where the contact is — "the tip of her tongue touching her own left nipple", "her own finger between her lips" — with her head angled toward it. Her hands hold nothing. She is the only person in the picture; nothing and nobody else is in it`
     : ``
   }
-- authentic human skin texture with visible natural pores, candid raw photography, real lighting and shadows
+- natural healthy skin with fine texture, candid raw photography, real lighting and shadows
 
 Never invent hair colour, skin tone, eye colour or body type. The reference image supplies all of that.`;
 
@@ -490,7 +490,7 @@ Include, in this order:
 - pose and expression, natural and candid rather than posed for a camera
 - setting with real detail, and the specific light in it
 - camera language: shot on a full-frame DSLR, 50mm or 85mm lens, shallow depth of field, natural bokeh
-- realism markers: real skin texture with visible pores and fine lines, natural asymmetry, flyaway hairs, subtle skin tone variation, clothing with real creases
+- realism markers: natural healthy skin with fine texture, natural asymmetry, flyaway hairs, subtle skin tone variation, clothing with real creases
 
 Never write "8k", "masterpiece", "ultra HD" or similar render tags.
 Never describe the subject as young, teen, schoolgirl, or a minor — she is an adult in her twenties or older.

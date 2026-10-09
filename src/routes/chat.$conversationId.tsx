@@ -346,11 +346,11 @@ function ChatPage() {
       qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
       await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
       setPendingUser(null); // real messages are loaded now — drop the optimistic bubble
-      // She just said she cannot afford the photo; the next step is one tap.
+      // Not enough credits for the photo or clip they asked for: the same
+      // thing the text gate does at zero — say so and open the payment page.
       if ((res as any)?.needsCredits) {
-        toast("Not enough credits for that", {
-          action: { label: "Get credits", onClick: () => navigate({ to: "/credits" }) },
-        });
+        toast.error("Oops, you ran out of credits — add more to get that");
+        navigate({ to: "/credits" });
       }
       if (res?.relationship?.leveledUp) {
         toast.success(`💖 Relationship level up — now level ${res.relationship.level}`);

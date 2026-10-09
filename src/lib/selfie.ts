@@ -1005,6 +1005,7 @@ export function kontextSelfiePrompt(
 // render: real skin has pores; it is not lined, and it is not glossy.
 const FACE_CLAUSE =
   "Fresh youthful adult face, clear skin with fine pores, matte finish, soft natural eyebrows, soft full lips, bright eyes.";
+const FACE_WORDS = FACE_CLAUSE.split(/\s+/).length;
 
 // 340, up from 300: the adult/face clause added to every render pushed a
 // plain nude builder prompt past 300, and the cap — which cuts from the end —
@@ -1310,11 +1311,6 @@ export function finishMediaPrompt(
     out = rest.length ? `${first} ${sentence} ${rest.join(" ")}` : `${sentence} ${out}`;
   }
 
-  // Her face, at the END of the body rather than in the sentence above: it
-  // only has to be present, and up front it pushed the prop specification
-  // past the midpoint of the prompt, where the encoder weighs it less.
-  out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${FACE_CLAUSE}`;
-
 
   // A toy the user asked to have inserted, described as being held, is the
   // single failure this whole path exists to prevent — and "holding a dildo" in
@@ -1411,10 +1407,14 @@ export function finishMediaPrompt(
   // otherwise they pushed a capped prompt 57 words past the budget.
   const tailWords =
     (forceNude ? NUDE_FORCE.split(/\s+/).length : 0) +
-    (lockIdentity ? IDENTITY_LOCK.split(/\s+/).length : 0);
+    (lockIdentity ? IDENTITY_LOCK.split(/\s+/).length : 0) +
+    FACE_WORDS;
 
   body = capPromptWords(body, PROMPT_WORD_BUDGET - reserve - cueWords - tailWords);
   let capped = wantProp ? withClauseUpFront(body, propText) : body;
+  // Her face, after the cut and after the prop spec: reserved above, so it
+  // never costs the scene a word, and never pushes the spec down the prompt.
+  capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${FACE_CLAUSE}`;
   if (forceNude) {
     capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${NUDE_FORCE}`;
   }

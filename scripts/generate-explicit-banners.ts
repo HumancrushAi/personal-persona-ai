@@ -343,7 +343,7 @@ async function renderPlate(concept: Concept): Promise<Buffer> {
     ethnicity: "",
     age: 24,
   });
-  const prompt = refined?.[0] ?? concept.request;
+  const prompt = refined?.prompts[0] ?? concept.request;
   console.log(`   prompt: ${prompt.slice(0, 110)}…`);
 
   const srcMeta = await sharp(readFileSync(concept.source)).metadata();

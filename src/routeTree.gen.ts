@@ -33,6 +33,7 @@ import { Route as LegalIndexRouteImport } from './routes/legal.index'
 import { Route as LegalSlugRouteImport } from './routes/legal.$slug'
 import { Route as ModelsIndexRouteImport } from './routes/models.index'
 import { Route as ModelsSlugRouteImport } from './routes/models.$slug'
+import { Route as ApiCronIdleNudgeRouteImport } from './routes/api/cron/idle-nudge'
 import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
 import { Route as ApiPublicReelWebhookRouteImport } from './routes/api/public/reel-webhook'
@@ -157,6 +158,11 @@ const ModelsSlugRoute = ModelsSlugRouteImport.update({
   path: '/models/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronIdleNudgeRoute = ApiCronIdleNudgeRouteImport.update({
+  id: '/api/cron/idle-nudge',
+  path: '/api/cron/idle-nudge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronReengageRoute = ApiCronReengageRouteImport.update({
   id: '/api/cron/reengage',
   path: '/api/cron/reengage',
@@ -202,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/cams/': typeof CamsIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/models/': typeof ModelsIndexRoute
+  '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
@@ -231,6 +238,7 @@ export interface FileRoutesByTo {
   '/cams': typeof CamsIndexRoute
   '/legal': typeof LegalIndexRoute
   '/models': typeof ModelsIndexRoute
+  '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
@@ -262,6 +270,7 @@ export interface FileRoutesById {
   '/cams/': typeof CamsIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/models/': typeof ModelsIndexRoute
+  '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
@@ -293,6 +302,7 @@ export interface FileRouteTypes {
     | '/cams/'
     | '/legal/'
     | '/models/'
+    | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/cams'
     | '/legal'
     | '/models'
+    | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/cams/'
     | '/legal/'
     | '/models/'
+    | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
@@ -381,6 +393,7 @@ export interface RootRouteChildren {
   CamsIndexRoute: typeof CamsIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
   ModelsIndexRoute: typeof ModelsIndexRoute
+  ApiCronIdleNudgeRoute: typeof ApiCronIdleNudgeRoute
   ApiCronReengageRoute: typeof ApiCronReengageRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
   ApiPublicReelWebhookRoute: typeof ApiPublicReelWebhookRoute
@@ -557,6 +570,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModelsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/idle-nudge': {
+      id: '/api/cron/idle-nudge'
+      path: '/api/cron/idle-nudge'
+      fullPath: '/api/cron/idle-nudge'
+      preLoaderRoute: typeof ApiCronIdleNudgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/reengage': {
       id: '/api/cron/reengage'
       path: '/api/cron/reengage'
@@ -624,6 +644,7 @@ const rootRouteChildren: RootRouteChildren = {
   CamsIndexRoute: CamsIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
   ModelsIndexRoute: ModelsIndexRoute,
+  ApiCronIdleNudgeRoute: ApiCronIdleNudgeRoute,
   ApiCronReengageRoute: ApiCronReengageRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
   ApiPublicReelWebhookRoute: ApiPublicReelWebhookRoute,

@@ -1,0 +1,26 @@
+# Fires the "where did you go?" sweep (src/routes/api/cron/idle-nudge.ts).
+#
+# Here and not in vercel.json because Vercel's Hobby plan runs a cron once a
+# day, and this one has to look every ten minutes. GitHub may run a schedule a
+# few minutes late under load; the sweep's 30-minute threshold absorbs that.
+#
+# CRON_SECRET is optional: with it the sweep runs on every call, without it the
+# endpoint still runs but rate-limits itself to once per five minutes.
+
+name: idle-nudge
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Call the sweep
+        run: |
+          curl -fsS --max-time 290 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://www.humancrush.com/api/cron/idle-nudge"

@@ -11,6 +11,68 @@ import { TOY_VOCAB } from "./props";
 const TOY_RE = new RegExp(String.raw`\b(?:${TOY_VOCAB})\b`, "i");
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 
+// A non-reasoning model, on purpose. grok-4.6 took 44 seconds on a one-line
+// request and longer still with this system prompt, which is past the 60s this
+// call used to allow — so in production EVERY photo request was timing out
+// here and rendering the keyword builder's prompt instead. The fast model
+// answers in two or three seconds and writes the same house style.
+const DEFAULT_XAI_MODEL = "grok-4-fast-non-reasoning";
+const REFINE_TIMEOUT_MS = 30_000;
+
+// The things the renderer is most likely to draw by mistake for THIS request,
+// named by the model that just wrote the prompt. The hand-written negative
+// lists in media.functions cover the failures that have already been reported;
+// this covers the next one. "licking your tits" came back with a toy in her
+// hand because nothing in any list said "no object": the model writing the
+// prompt knows that is the obvious mistake, and now says so.
+export const AVOID_MARKER = /^\s*AVOID\s*:/im;
+
+export function splitAvoid(raw: string): { text: string; avoid: string[] } {
+  const m = AVOID_MARKER.exec(raw);
+  if (!m) return { text: raw.trim(), avoid: [] };
+  const text = raw.slice(0, m.index).trim();
+  const avoid = raw
+    .slice(m.index + m[0].length)
+    .split(/[,;\n]+/)
+    .map((t) => t.trim().replace(/^[-*\s]+|[.\s]+$/g, "").toLowerCase())
+    .filter((t) => t.length >= 2 && t.length <= 40);
+  return { text, avoid };
+}
+
+// Never let the avoid list push away a part this body has, or anything the
+// user actually asked for: a negative prompt pushes on the tokens it contains
+// (see the header of media.functions), and "breasts" in the negative of a
+// request for her breasts is how a chest comes back flat.
+export function filterAvoid(
+  terms: string[],
+  userRequest: string,
+  anatomy: { hasBreasts: boolean; hasVulva: boolean; hasPenis: boolean },
+): string[] {
+  const req = userRequest.toLowerCase();
+  const reqWords = new Set(req.split(/[^a-z]+/).filter((w) => w.length > 2));
+  const owned = [
+    anatomy.hasBreasts && /\b(breasts?|tits?|boobs?|nipples?|chest|cleavage|bust)\b/,
+    anatomy.hasVulva && /\b(pussy|vulva|vagina|labia|clit\w*|cunt)\b/,
+    anatomy.hasPenis && /\b(penis|cock|dick|testicles?|balls|shaft|erection)\b/,
+    // Parts every body has: a negative must never push a part away, however
+    // the model phrased it ("tongue" on a licking request would fight the act).
+    /\b(face|head|eyes?|hair|skin|hands?|fingers?|arms?|legs?|thighs?|feet|body|woman|man|ass|butt|tongue|mouth|lips|teeth|neck|shoulders?|stomach|belly|hips?|waist|back)\b/,
+  ].filter(Boolean) as RegExp[];
+  const out: string[] = [];
+  for (const t of terms) {
+    if (/\b(not|no|never|without)\b/.test(t)) continue;
+    // Camera talk is not a thing in the picture; in a negative it only pushes
+    // on "angle" and "framing", which the positive prompt also uses.
+    if (/\b(angle|framing|framed|crop\w*|view|viewpoint|distance|distant|close-?up|zoom\w*|lighting|background)\b/.test(t))
+      continue;
+    if (owned.some((re) => re.test(t))) continue;
+    if (t.split(/[^a-z]+/).some((w) => w.length > 2 && reqWords.has(w))) continue;
+    if (!out.includes(t)) out.push(t);
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
 // Clean examples — strictly positive, consistent with the anatomy clause
 const NUDE_EXAMPLES = `exact same woman as the reference image, identical face, hair and skin, completely nude, full natural breasts matching her frame with a soft natural shape and real weight, natural soft skin with real texture, nipples level with the middle of the upper arms pointing forward, small smooth defined areolae and naturally erect nipples with clean realistic texture, smoothly shaved plump closed pussy as a soft rounded mound with a single neat vertical crease, everything fully closed and tucked so only the clean crease shows, full natural round ass matching the reference, reclining back against pillows, legs open, soft natural lighting, authentic human skin texture with visible natural pores, candid DSLR photograph, raw photography
 
@@ -60,6 +122,8 @@ type Shape = {
   groinFocus: boolean;
   toyAsked: boolean;
   shot: "face" | "back" | null;
+  /** The act is something she does to her OWN body (licking her nipple, sucking her finger). */
+  selfAct: boolean;
 };
 
 const rules = ({
@@ -70,6 +134,7 @@ const rules = ({
   groinFocus,
   toyAsked,
   shot,
+  selfAct,
 }: Shape) => `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
 
 ${POSITIVE_ONLY}
@@ -118,6 +183,10 @@ ${rearView
   }
 ${toyAsked
     ? `- the toy exactly as the user described it, already in the position they named, with material, size and how it interacts with her body stated clearly`
+    : `- what each of her two hands is doing, named plainly (one hand lifting her breast, the other flat on her stomach). A hand with no stated job gets drawn holding something`
+  }
+${selfAct
+    ? `- the act is on HER OWN body. Say the part is her own and exactly where the contact is — "the tip of her tongue touching her own left nipple", "her own finger between her lips" — with her head angled toward it. Her hands hold nothing. She is the only person in the picture; nothing and nobody else is in it`
     : ``
   }
 - authentic human skin texture with visible natural pores, candid raw photography, real lighting and shadows
@@ -151,7 +220,7 @@ ${rules(shape)}
 
 This is a STILL photograph: end with the pose held and the camera locked off.
 
-Output ONE prompt, 90-120 words. Nothing else.${formatOnly}
+Output ONE prompt, 90-120 words. ${AVOID_RULE}${formatOnly}
 
 Examples of the required style:
 ${examples}`;
@@ -164,11 +233,13 @@ The clip has ${scenes} scenes that play back to back. Break the requested action
 
 THIS IS A MOVING CLIP, NOT A PHOTOGRAPH. The rules above were written for a still and the worked examples below are stills, so take the DENSITY and the ORDER from them and nothing else: every one of them ends in photograph language, and a clip prompt must not. Instead, say what MOVES — which part of her body, in which direction, how fast, and what stays where it is — and end each scene with smooth natural lifelike motion, her face and body consistent throughout, and where the camera is holding or travelling. A clip prompt that describes a locked-off photograph is the single reason these come back churning: the negative prompt simultaneously forbids the clip from holding still, so the two halves fight and the render resolves it as morphing.
 
-Output exactly ${scenes} prompts, one per line, each 60-120 words, numbered "1." to "${scenes}.". Nothing else.${formatOnly}
+Output exactly ${scenes} prompts, one per line, each 60-120 words, numbered "1." to "${scenes}.". ${AVOID_RULE}${formatOnly}
 
 Examples of the required style:
 ${examples}`;
 }
+
+const AVOID_RULE = `Then, on the very last line and nowhere else, write "AVOID:" followed by 5 to 12 comma-separated things an image model is likely to add to THIS picture by mistake and that must be absent — wrong objects (a toy, a bottle, a phone), extra people or hands, a different act, parts of the wrong sex. The AVOID line is the only place such things may be named. Never put anything the user asked for on it. Nothing after it.`;
 
 const NEGATION_FRAGMENT =
   /(?:^|,)\s*[^,]*\b(?:not|no|never|without|avoid(?:ing)?|away from|instead of|rather than)\b[^,]*/gi;
@@ -212,7 +283,7 @@ async function refineMediaWithOpenRouter(
   subject: string,
   scenes: number,
   shape: Shape,
-): Promise<string[] | null> {
+): Promise<Refined | null> {
   const nude = shape.undress !== "clothed";
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return null;
@@ -244,24 +315,9 @@ async function refineMediaWithOpenRouter(
     if (!res.ok) return null;
 
     const json = await res.json();
-    const raw = (json.choices?.[0]?.message?.content ?? "").trim();
-    if (!raw) return null;
-
-    if (kind === "photo")
-      return usableRefinement(raw, nude, 60)
-        ? [stripUnrequestedProps(stripNegations(raw), userRequest)]
-        : null;
-
-    if (!usableRefinement(raw, nude, 40)) return null;
-    const parts = raw
-      .split(/\n+/)
-      .map((l: string) =>
-        stripUnrequestedProps(stripNegations(l.replace(/^\s*\d+[.)]\s*/, "").trim()), userRequest),
-      )
-      .filter((l: string) => l.length > 40);
-
-    if (!parts.length) return null;
-    return parts.slice(0, scenes);
+    const full = (json.choices?.[0]?.message?.content ?? "").trim();
+    if (!full) return null;
+    return parseRefined(kind, full, userRequest, nude, scenes, shape);
   } catch {
     return null;
   } finally {
@@ -269,12 +325,52 @@ async function refineMediaWithOpenRouter(
   }
 }
 
+export type Refined = {
+  /** One prompt for a photo; one per scene for a clip. */
+  prompts: string[];
+  /** Extra negative-prompt terms for this request, already filtered. */
+  avoid: string[];
+};
+
+// The model's answer, turned into prompts and an avoid list — or null when it
+// is not usable, which sends the caller to the next fallback.
+function parseRefined(
+  kind: "photo" | "video",
+  full: string,
+  userRequest: string,
+  nude: boolean,
+  scenes: number,
+  shape: Shape,
+): Refined | null {
+  const { text: raw, avoid: rawAvoid } = splitAvoid(full);
+  const anatomy = {
+    hasBreasts: shape.kind === "female" || shape.kind === "trans-female" || shape.kind === "nb",
+    hasVulva: shape.kind === "female" || shape.kind === "trans-male",
+    hasPenis: shape.kind === "male" || shape.kind === "trans-female",
+  };
+  const avoid = filterAvoid(rawAvoid, userRequest, anatomy);
+
+  if (kind === "photo") {
+    if (!usableRefinement(raw, nude, 60)) return null;
+    return { prompts: [stripUnrequestedProps(stripNegations(raw), userRequest)], avoid };
+  }
+  if (!usableRefinement(raw, nude, 40)) return null;
+  const parts = raw
+    .split(/\n+/)
+    .map((l: string) =>
+      stripUnrequestedProps(stripNegations(l.replace(/^\s*\d+[.)]\s*/, "").trim()), userRequest),
+    )
+    .filter((l: string) => l.length > 40);
+  if (!parts.length) return null;
+  return { prompts: parts.slice(0, scenes), avoid };
+}
+
 export async function refineMediaPrompt(
   kind: "photo" | "video",
   userRequest: string,
   companion: { gender?: string | null; ethnicity?: string; age?: number },
   scenes = 1,
-): Promise<string[] | null> {
+): Promise<Refined | null> {
   const key = process.env.XAI_API_KEY;
   const req = (userRequest ?? "").trim();
   if (!req) return null;
@@ -287,6 +383,7 @@ export async function refineMediaPrompt(
     STATED_POSTURE_RE,
     requestKeepsGarment,
     requestedShot,
+    isSelfAct,
   } = await import("./selfie");
 
   const undress: Shape["undress"] =
@@ -337,11 +434,12 @@ export async function refineMediaPrompt(
     groinFocus,
     toyAsked,
     shot: requestedShot(req),
+    selfAct: isSelfAct(req),
   };
 
   if (key) {
     const abort = new AbortController();
-    const timer = setTimeout(() => abort.abort(), 60_000);
+    const timer = setTimeout(() => abort.abort(), REFINE_TIMEOUT_MS);
 
     try {
       const res = await fetch(XAI_URL, {
@@ -349,7 +447,7 @@ export async function refineMediaPrompt(
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         signal: abort.signal,
         body: JSON.stringify({
-          model: process.env.XAI_MODEL || "grok-4.6",
+          model: process.env.XAI_MODEL || DEFAULT_XAI_MODEL,
           temperature: 0.6,
           max_tokens: kind === "video" ? 2000 : 500,
           messages: [
@@ -364,24 +462,11 @@ export async function refineMediaPrompt(
 
       if (res.ok) {
         const json = await res.json();
-        const raw = (json.choices?.[0]?.message?.content ?? "").trim();
-        if (kind === "photo") {
-          if (usableRefinement(raw, nude, 60)) {
-            clearTimeout(timer);
-            return [stripUnrequestedProps(stripNegations(raw), req)];
-          }
-        } else if (usableRefinement(raw, nude, 40)) {
-          const parts = raw
-            .split(/\n+/)
-            .map((l: string) =>
-              stripUnrequestedProps(stripNegations(l.replace(/^\s*\d+[.)]\s*/, "").trim()), req),
-            )
-            .filter((l: string) => l.length > 40);
-
-          if (parts.length > 0) {
-            clearTimeout(timer);
-            return parts.slice(0, scenes);
-          }
+        const full = (json.choices?.[0]?.message?.content ?? "").trim();
+        const parsed = parseRefined(kind, full, req, nude, scenes, shape);
+        if (parsed) {
+          clearTimeout(timer);
+          return parsed;
         }
       }
     } catch {

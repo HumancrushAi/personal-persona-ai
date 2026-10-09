@@ -346,7 +346,7 @@ export const studioGenerateExplicit = createServerFn({ method: "POST" })
     }
 
     const refined = await refineMediaPrompt("photo", data.prompt, companion);
-    const imagePrompt = refined?.[0] ?? data.prompt;
+    const imagePrompt = refined?.prompts[0] ?? data.prompt;
 
     // Which renderer this request goes to is decided by the request itself, not
     // by configuration. requestIsNude is the same test refineMediaPrompt just

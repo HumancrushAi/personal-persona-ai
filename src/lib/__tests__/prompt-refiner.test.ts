@@ -63,7 +63,7 @@ describe("refineMediaPrompt", () => {
           status: 200,
         }),
     );
-    expect(await refineMediaPrompt("photo", "naked on the bed", subject)).toEqual([good]);
+    expect(await refineMediaPrompt("photo", "naked on the bed", subject)).toEqual({ prompts: [good], avoid: [] });
   });
 
   it("falls back when the API errors", async () => {
@@ -120,16 +120,16 @@ describe("a toy nobody asked for", () => {
     process.env.XAI_API_KEY = "test";
     captureSystemPrompt();
     const out = await refineMediaPrompt("photo", "send me a picture of your pussy", subject);
-    expect(out?.[0]).not.toMatch(/dildo|silicone/i);
-    expect(out?.[0]).toMatch(/bare breasts/);
-    expect(out?.[0]).toMatch(/window daylight/);
+    expect(out?.prompts[0]).not.toMatch(/dildo|silicone/i);
+    expect(out?.prompts[0]).toMatch(/bare breasts/);
+    expect(out?.prompts[0]).toMatch(/window daylight/);
   });
 
   it("is kept when the request asked for it", async () => {
     process.env.XAI_API_KEY = "test";
     captureSystemPrompt();
     const out = await refineMediaPrompt("photo", "a dildo in your pussy", subject);
-    expect(out?.[0]).toMatch(/dildo inserted/);
+    expect(out?.prompts[0]).toMatch(/dildo inserted/);
   });
 
   it("strips by fragment, on its own", () => {
@@ -166,9 +166,9 @@ describe("refineMediaPrompt video scenes", () => {
         }),
     );
     const out = await refineMediaPrompt("video", "shower scene", subject, 2);
-    expect(out).toHaveLength(2);
-    expect(out?.[0]).toMatch(/^exact same woman/);
-    expect(out?.[1]).toMatch(/kneeling/);
+    expect(out?.prompts).toHaveLength(2);
+    expect(out?.prompts[0]).toMatch(/^exact same woman/);
+    expect(out?.prompts[1]).toMatch(/kneeling/);
   });
 
   it("never returns more scenes than were asked for", async () => {
@@ -186,7 +186,7 @@ describe("refineMediaPrompt video scenes", () => {
           status: 200,
         }),
     );
-    expect(await refineMediaPrompt("video", "strip", subject, 2)).toHaveLength(2);
+    expect((await refineMediaPrompt("video", "strip", subject, 2))?.prompts).toHaveLength(2);
   });
 });
 
@@ -338,11 +338,11 @@ describe("the refiner never lets a negation reach the renderer", () => {
         ),
     );
     const out = await refineMediaPrompt("photo", "stick a dildo in your pussy", subject);
-    expect(out?.[0]).not.toMatch(/away from her face/i);
-    expect(out?.[0]).not.toMatch(/not cropped/i);
+    expect(out?.prompts[0]).not.toMatch(/away from her face/i);
+    expect(out?.prompts[0]).not.toMatch(/not cropped/i);
     // and the rest of the prompt survives intact
-    expect(out?.[0]).toMatch(/dildo inserted between her thighs/);
-    expect(out?.[0]).toMatch(/warm bedside lamplight/);
+    expect(out?.prompts[0]).toMatch(/dildo inserted between her thighs/);
+    expect(out?.prompts[0]).toMatch(/warm bedside lamplight/);
   });
 
   // A sanitised prompt passes the "I'm sorry" check and then silently replaces
@@ -380,9 +380,10 @@ describe("the refiner never lets a negation reach the renderer", () => {
           status: 200,
         }),
     );
-    expect(await refineMediaPrompt("photo", "wearing your red dress at dinner", subject)).toEqual([
-      dressed,
-    ]);
+    expect(await refineMediaPrompt("photo", "wearing your red dress at dinner", subject)).toEqual({
+      prompts: [dressed],
+      avoid: [],
+    });
   });
 });
 

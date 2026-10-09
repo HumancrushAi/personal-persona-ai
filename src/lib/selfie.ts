@@ -388,6 +388,59 @@ export function actionSentence(subject: "she" | "he" | "they", action: string): 
   return `${Subject} ${verb} ${needsVerb ? "showing " : ""}${a}.`;
 }
 
+// Acts she does to HER OWN body with her mouth or hands, after normalizeRequest
+// has turned "your" into "her". Written out in full because the one-word
+// version fails: "licking her tits" rendered as her holding a toy up to her
+// mouth. "Licking" is a word the checkpoint has mostly seen next to a penis,
+// and nothing in the sentence said what was in her hands — so it drew the
+// thing it expected. Each clause here says whose part it is, where the contact
+// is, what BOTH hands are doing, and that she is alone.
+const SELF_BREAST_ORAL_RE =
+  /\b(?:lick\w*|suck\w*|kiss\w*|bit(?:e|es|ing)|nibbl\w*|tongu\w*)\b[^.?!]{0,30}\b(?:her|his|their|own|your)\s+(?:own\s+)?(?:tits?|titties|boobs?|boobies|breasts?|nipples?|chest)\b/i;
+const SELF_TONGUE_OUT_RE =
+  /\b(?:stick\w*|put\w*|poke\w*|hang\w*)\s+(?:out\s+)?(?:her|his|their|your)\s+tongue\b|\btongue\s+(?:sticking|stuck|hanging)?\s*out\b/i;
+const SELF_FINGER_MOUTH_RE =
+  /\b(?:suck\w*|lick\w*)\s+(?:on\s+)?(?:her|his|their|your)\s+(?:own\s+)?fingers?\b|\bfingers?\s+in\s+(?:her|his|their|your)\s+mouth\b/i;
+const SELF_LIPS_RE = /\b(?:bit\w*|lick\w*)\s+(?:her|his|their|your)\s+(?:own\s+)?lips?\b/i;
+
+export function isSelfAct(req: string): boolean {
+  const t = req ?? "";
+  return (
+    SELF_BREAST_ORAL_RE.test(t) ||
+    SELF_TONGUE_OUT_RE.test(t) ||
+    SELF_FINGER_MOUTH_RE.test(t) ||
+    SELF_LIPS_RE.test(t)
+  );
+}
+
+/** The self-act puts at least one of her hands to work, so a posture line that parks both hands elsewhere must give way. */
+export function selfActUsesHands(req: string): boolean {
+  const t = req ?? "";
+  return SELF_BREAST_ORAL_RE.test(t) || SELF_FINGER_MOUTH_RE.test(t);
+}
+
+// Replaces the plain action sentence for a self-act. Returns "" when the
+// request is not one, so callers fall back to actionSentence.
+export function selfActSentence(req: string, a: Anatomy): string {
+  const t = req ?? "";
+  const { poss, is } = a;
+  const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
+  const alone = `${S} ${is} alone in the frame and ${poss} hands hold nothing.`;
+  if (a.hasBreasts && SELF_BREAST_ORAL_RE.test(t)) {
+    return `${S} lifts ${poss} own left breast with ${poss} left hand and touches the tip of ${poss} tongue to ${poss} own nipple, ${poss} head tilted down toward it, ${poss} right hand resting flat on ${poss} stomach. ${alone}`;
+  }
+  if (SELF_FINGER_MOUTH_RE.test(t)) {
+    return `${S} rests ${poss} own index finger between ${poss} lips, looking into the lens, ${poss} other hand resting on ${poss} thigh. ${alone}`;
+  }
+  if (SELF_TONGUE_OUT_RE.test(t)) {
+    return `${S} sticks ${poss} tongue out between ${poss} lips, looking into the lens, both hands resting on ${poss} own body. ${alone}`;
+  }
+  if (SELF_LIPS_RE.test(t)) {
+    return `${S} bites ${poss} own lower lip, looking into the lens, both hands resting on ${poss} own body. ${alone}`;
+  }
+  return "";
+}
+
 // Detects close-up / POV / close proximity requests so framing doesn't force a wide camera shot.
 export const CLOSE_UP_RE =
   /\b(close[- ]?ups?|close to|in my face|to my face|in front of my face|against the camera|near camera|close to camera|pov|point of view|macro|tight shot|intimate view|front of camera|up close|zoom\w*|zoomed|right up|face in your)\b/i;
@@ -802,7 +855,7 @@ function buildStillPrompt(
       a.hasVulva && mentionsPart(req, "vulva") && !rendersAtStillResolution(),
       requestedShot(req),
     ),
-    actionSentence(subject, action),
+    selfActSentence(action, a) || actionSentence(subject, action),
     posture,
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a }),
@@ -856,7 +909,7 @@ export function videoActionPrompt(
       false,
       requestedShot(req),
     ),
-    actionSentence(subject, action),
+    selfActSentence(action, a) || actionSentence(subject, action),
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a }),
     QUALITY,
@@ -1198,6 +1251,17 @@ export function finishMediaPrompt(
   // front of her is one short step from the vertical crotch-to-chin cylinder a
   // user was actually sent. Rewritten positively: where it is, and what her
   // hand is doing there.
+  // A self-act that needs a hand gets the same treatment as a toy: the
+  // reclining builder scene parks both hands on her thighs, and a hand that is
+  // on her thigh cannot also be lifting her breast — a render with three hands
+  // is how that contradiction resolves.
+  if (selfActUsesHands(request) && !propIsInserted(request)) {
+    out = out.replace(
+      /\b(?:her|his|their)\s+hands\s+(?:resting|rest|placed|lying|laid|folded)?\s*(?:on|at|by|against|in)\s+(?:her|his|their)\s+(?:thighs|sides|hips|lap|stomach|belly|chest|waist)\b/gi,
+      `${a.poss} free hand relaxed`,
+    );
+  }
+
   if (propIsInserted(request)) {
     const poss = a.poss;
     // Both hands cannot be on her thighs while one of them is on the toy.

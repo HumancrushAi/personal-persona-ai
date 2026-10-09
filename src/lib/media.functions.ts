@@ -188,10 +188,22 @@ const CLOTHING_NEGATIVE =
 // Exported for the test. This is the half of the prompt nobody looks at, and it
 // is where two of the reported failures were actually coming from, so it gets
 // the same regression cover as the positive half.
+// A mouth with nothing in it. "licking your tits" came back as her holding a
+// toy to her mouth: the request named no object, so no list suppressed one,
+// and the checkpoint's own idea of what "licking" means filled the gap.
+// Objects and acts only, never the part — she still has a mouth and a tongue.
+// The phallic terms are added only for a body that has no penis; a trans
+// woman's own cock must not be pushed out of her picture by her licking her
+// nipple.
+const ORAL_SOLO_RE = /\b(?:lick\w*|suck\w*|tongue|mouth|lips?|kiss\w*|oral|bit(?:e|es|ing))\b/i;
+const ORAL_SOLO_NEGATIVE =
+  "dildo, sex toy, vibrator, object in mouth, object in hand, holding an object, bottle, lollipop, popsicle, banana, microphone, fellatio, blowjob, oral sex, semen, second person, another person's hand, man's hand";
+const ORAL_SOLO_NEGATIVE_NO_PENIS = "phallus, phallic object, cylinder, rod, pole, stick";
+
 export function negativeFor(
   userReq: string | undefined,
   gender?: string | null,
-  opts: { moving?: boolean } = {},
+  opts: { moving?: boolean; extra?: string[] } = {},
 ): string {
   const req = userReq ?? "";
   const isNude = requestIsNude(req);
@@ -226,11 +238,23 @@ export function negativeFor(
   base = `${base}, ${AGE_NEGATIVE}`;
   if (a.hasBreasts) base = `${base}, ${AGE_NEGATIVE_BREASTS}`;
 
+  // Her mouth on her own body, with no toy and no penis in the request.
+  if (ORAL_SOLO_RE.test(req) && !hasProp(req) && !mentionsPart(req, "penis")) {
+    base = `${base}, ${ORAL_SOLO_NEGATIVE}`;
+    if (!a.hasPenis) base = `${base}, ${ORAL_SOLO_NEGATIVE_NO_PENIS}`;
+  }
+
   const props = propNegative(req);
-  return props ? `${base}, ${props}` : base;
+  if (props) base = `${base}, ${props}`;
+
+  // What the refiner said would go wrong for this request (see filterAvoid):
+  // terms already in the list are not pushed twice.
+  const have = new Set(base.toLowerCase().split(/\s*,\s*/));
+  const extra = (opts.extra ?? []).filter((t) => t && !have.has(t.toLowerCase()));
+  return extra.length ? `${base}, ${extra.join(", ")}` : base;
 }
-import { propClause, propNegative } from "./props";
-import { anatomyOf, crossSexNegative, genderKind } from "./anatomy";
+import { propClause, propNegative, hasProp } from "./props";
+import { anatomyOf, crossSexNegative, genderKind, mentionsPart } from "./anatomy";
 import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
 import { companionImage } from "./companion-images";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
@@ -464,7 +488,12 @@ export async function startImageJob(
     );
   }
 
-  const imagePrompt = await photoPrompt(companion, userRequest, styleBackstory, provider);
+  const { prompt: imagePrompt, avoid } = await photoPromptWithAvoid(
+    companion,
+    userRequest,
+    styleBackstory,
+    provider,
+  );
 
   // The WAN endpoint centre-crops to a square, which decapitated the result.
   // Square it ourselves, keeping the whole figure, before handing it over. An
@@ -516,7 +545,7 @@ export async function startImageJob(
     // mid-movement. And the companion's own gender is passed, without which
     // negativeFor defaulted to female and a male companion's nude photo was
     // rendered with "penis, cock, male genitalia" in its negative prompt.
-    const negative = negativeFor(userRequest, companion.gender, { moving: false });
+    const negative = negativeFor(userRequest, companion.gender, { moving: false, extra: avoid });
     // How many photos this chat already has: the Nth photo of a request always
     // renders the same way, but the next one is a new picture, not a copy.
     const { count: photosSoFar } = await supabase
@@ -713,10 +742,29 @@ export async function photoPrompt(
   styleBackstory: string | null | undefined,
   provider: ImageProvider,
 ): Promise<string> {
+  return (await photoPromptWithAvoid(companion, userRequest, styleBackstory, provider)).prompt;
+}
+
+// The prompt and, from the same refiner call, the request-specific terms for
+// the negative prompt. One call: the refiner is the slow part of a photo.
+export async function photoPromptWithAvoid(
+  companion: {
+    name: string;
+    age: number;
+    ethnicity: string;
+    gender?: string | null;
+    short_bio?: string | null;
+  },
+  userRequest: string | undefined,
+  styleBackstory: string | null | undefined,
+  provider: ImageProvider,
+): Promise<{ prompt: string; avoid: string[] }> {
   // Grok rewrites the user's line into a full prompt in the house style; the
   // keyword builder is the fallback when no key is set or the call fails.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
-  const refined = await refineMediaPrompt("photo", userRequest ?? "", companion);
+  const refinedResult = await refineMediaPrompt("photo", userRequest ?? "", companion);
+  const refined = refinedResult?.prompts;
+  const avoid = refinedResult?.avoid ?? [];
 
   // The prop specification is appended to whatever prompt we end up with, and
   // that includes the refined one — see finishMediaPrompt.
@@ -764,7 +812,7 @@ export async function photoPrompt(
   const { requestComposesShot } = await import("./selfie");
   const promptLedShot = requestComposesShot(userRequest ?? "");
 
-  return finishMediaPrompt(refined?.[0] ?? builder, userRequest ?? "", {
+  const prompt = finishMediaPrompt(refined?.[0] ?? builder, userRequest ?? "", {
     anatomy: anatomyOf(companion.gender),
     appendProps: Boolean(refined?.[0]),
     // Appended for BOTH the refined prompt and the builder: neither of them
@@ -782,6 +830,7 @@ export async function photoPrompt(
     // renders a still by definition and does not need telling.
     still: provider === "wan",
   });
+  return { prompt, avoid };
 }
 
 // An env knob that can also be switched off entirely, so the worker falls back
@@ -1054,11 +1103,12 @@ export async function startVideoJob(
   // Now the slow part, with a job row already standing behind it.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
   const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount);
+  const videoAvoid = refinedVideo?.avoid ?? [];
   // Same reason as the photo path: a successful refine replaces the builder, so
   // the prop spec is re-appended to every scene rather than lost.
   const rawReq = userReq ?? "";
   const anatomy = anatomyOf(companion.gender);
-  const refinedScenes = refinedVideo?.length ? refinedVideo : null;
+  const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
   const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq)]).map((p) =>
     finishMediaPrompt(p, rawReq, {
       anatomy,
@@ -1089,7 +1139,7 @@ export async function startVideoJob(
     num_scenes: scenePrompts.length,
     sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
     prompts: scenePrompts,
-    negative_prompt: negativeFor(userReq, companion.gender, { moving: true }),
+    negative_prompt: negativeFor(userReq, companion.gender, { moving: true, extra: videoAvoid }),
     lora_strengths: VIDEO_LORA_STRENGTHS,
   };
 
@@ -1103,7 +1153,7 @@ export async function startVideoJob(
     try {
       const { comfyTemplate, wantsReference } = await import("./comfy");
       if (wantsReference(comfyTemplate())) {
-        const stillPrompt = await photoPrompt(
+        const { prompt: stillPrompt, avoid: stillAvoid } = await photoPromptWithAvoid(
           {
             name: companion.name,
             age: companion.age ?? 18,
@@ -1116,7 +1166,7 @@ export async function startVideoJob(
         );
         const stillInput = await comfyJobInput(
           stillPrompt,
-          negativeFor(userReq, companion.gender, { moving: false }),
+          negativeFor(userReq, companion.gender, { moving: false, extra: stillAvoid }),
           startImage,
           userReq,
           `video-${job.id}`,

@@ -42,11 +42,9 @@ describe("the renderer is allowed to change her mouth", () => {
   });
 
   it("leads with the act as tags, and leaves the whole-body anatomy out", () => {
-    expect(mouthActTags(LICK)).toContain("hands below the nipple");
-    expect(mouthActTags(LICK)).toContain("face turned down");
-    expect(mouthActTags(LICK)).not.toMatch(/tongue/);
-    expect(negativeFor(LICK, "female")).toContain("arching backwards");
-    expect(negativeFor("show me your tits", "female")).not.toContain("arching backwards");
+    expect(mouthActTags(LICK)).toContain("hands under the breast");
+    expect(mouthActTags(LICK)).toContain("head bent down to own breast");
+    expect(mouthActTags(LICK)).not.toMatch(/tongue|looking down|face turned/);
     expect(mouthActTags(LICK)).not.toContain("tongue out");
     expect(mouthActTags("suck on your dildo")).toContain("dildo in mouth");
     expect(mouthActTags("show me your tits")).toBe("");

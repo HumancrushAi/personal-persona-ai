@@ -448,7 +448,12 @@ export function mouthActTags(req: string): string {
     // back face-up, tongue at the camera — that is what the checkpoint has
     // learned "tongue" means. The prose sentence still says where the tongue
     // is; the tags say where the HEAD is.
-    return "licking own nipple, mouth on own nipple, nipple between her lips, face turned down to her own chest, looking down at own nipple, chin tucked to chest, both hands cupping breast from underneath pushing it up to her mouth, hands below the nipple";
+    // The set that produced a head-down render, plus where the hands go and
+    // nothing else. "looking down" and "face turned down" were tried and the
+    // model answered them with a camera placed BELOW her, looking down at the
+    // lens; a pose negative added at the same time coincided with every
+    // render coming back face-up. Both are gone.
+    return "sucking own nipple, licking own nipple, mouth on own nipple, head bent down to own breast, chin tucked to chest, eyes on own nipple, breast pushed up into mouth, hands under the breast";
   if (SELF_FINGER_MOUTH_RE.test(t))
     return "sucking own finger, finger in mouth, lips closed around finger";
   if (SELF_TONGUE_OUT_RE.test(t)) return "tongue out, mouth open, tongue sticking out";

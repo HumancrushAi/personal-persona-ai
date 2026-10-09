@@ -970,7 +970,7 @@ export const requestVideo = createServerFn({ method: "POST" })
  * Prefer public https (Supabase avatars after regen). Filenames fall through
  * companionImage() → site-relative assets — never invent a different photo.
  */
-function resolveHostedImage(imageUrl?: string | null): string | null {
+export function resolveHostedImage(imageUrl?: string | null): string | null {
   const u = (imageUrl ?? "").trim();
   if (!u) return null;
 
@@ -998,7 +998,7 @@ function resolveHostedImage(imageUrl?: string | null): string | null {
 }
 
 // Each provider posts completions to its own receiver route.
-function webhookFor(provider: "runpod"): string {
+export function webhookFor(provider: "runpod"): string {
   const base = process.env.PUBLIC_SITE_URL || "https://humancrush.com";
   return `${base}/api/public/${provider}-webhook`;
 }

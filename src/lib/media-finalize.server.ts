@@ -597,10 +597,109 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
   return mediaUrl;
 }
 
+// A worker that ran out of GPU memory, as opposed to a request that cannot
+// render. "FaceDetailer: VRAM grow failed: 295936 bytes" — a worker that
+// could not find 289 KB was already full before this job arrived, and the
+// next worker RunPod hands the job to almost certainly is not.
+const WORKER_MEMORY_ERROR = /VRAM|out of memory|\bOOM\b|CUDA (?:error|out)|cudaMalloc|failed to allocat/i;
+const RETRY_MARK = "retry 1 after: ";
+
+// One more go, on the same prompt with a fresh seed, before the user is told
+// it failed. Only for a ComfyUI photo, only for a memory error, only once.
+//
+// The job row does not keep the request body, so it is rebuilt from what the
+// row does keep: the finished prompt, the user message that asked for the
+// photo, and the companion's portrait — the same three inputs startImageJob
+// used, minus the refiner's avoid list, which a retry can live without.
+//
+// Both the webhook and the status poll can see the same failure, so the retry
+// is claimed atomically: the first caller to write the marker into `error`
+// resubmits, the other sees the row already claimed and leaves it alone.
+// Returns true when the job is running again and must NOT be failed.
+async function retryImageJob(job: Job, errorMsg: string): Promise<boolean> {
+  if (job.kind !== "image" || job.provider !== "runpod") return false;
+  if (!WORKER_MEMORY_ERROR.test(errorMsg)) return false;
+
+  const { imageProvider, comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
+    await import("./media.functions");
+  if (imageProvider() !== "comfy") return false;
+  const { runpodEndpoint, runpodRun } = await import("./runpod");
+  const endpoint = runpodEndpoint("image");
+  if (!endpoint) return false;
+
+  const { data: fresh } = await supabaseAdmin
+    .from("media_jobs")
+    .select("error, status")
+    .eq("id", job.id)
+    .maybeSingle();
+  if (!fresh || fresh.status === "failed" || fresh.status === "completed") return false;
+  // This failure IS the retry's — it gets no second one.
+  if (String(fresh.error ?? "").startsWith(RETRY_MARK)) return false;
+
+  const { data: claimed } = await supabaseAdmin
+    .from("media_jobs")
+    .update({
+      error: `${RETRY_MARK}${errorMsg.slice(0, 300)}`,
+      status: "processing",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", job.id)
+    .is("error", null)
+    .select("id, prompt, created_at, conversation_id");
+  const row = claimed?.[0] as
+    | { id: string; prompt: string | null; created_at: string; conversation_id: string | null }
+    | undefined;
+  // Someone else claimed it between the read and the update: it is being
+  // retried, so this caller must not fail it either.
+  if (!row) return true;
+
+  try {
+    if (!row.prompt || !row.conversation_id) throw new Error("nothing to resubmit");
+    const { data: conv } = await supabaseAdmin
+      .from("conversations")
+      .select("user_personalities(companions(name, age, ethnicity, gender, image_url))")
+      .eq("id", row.conversation_id)
+      .maybeSingle();
+    const c: any = (conv as any)?.user_personalities?.companions ?? {};
+    // The message that asked for this photo: the user's last one before the
+    // job was written.
+    const { data: asked } = await supabaseAdmin
+      .from("messages")
+      .select("content")
+      .eq("conversation_id", row.conversation_id)
+      .eq("role", "user")
+      .lte("created_at", row.created_at)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const userRequest: string = asked?.[0]?.content ?? "";
+
+    const negative = negativeFor(userRequest, c.gender, { moving: false });
+    const input = await comfyJobInput(
+      row.prompt,
+      negative,
+      resolveHostedImage(c.image_url),
+      userRequest,
+      `retry-${job.id}`,
+    );
+    const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));
+    await supabaseAdmin
+      .from("media_jobs")
+      .update({ replicate_id: id, updated_at: new Date().toISOString() })
+      .eq("id", job.id);
+    console.warn(`media job ${job.id} resubmitted as ${id} after worker error: ${errorMsg.slice(0, 120)}`);
+    return true;
+  } catch (e: any) {
+    // Could not resubmit: the caller fails and refunds it as before.
+    console.error("media job retry failed", job.id, e?.message ?? e);
+    return false;
+  }
+}
+
 // Mark a job failed and refund its cost. Idempotent: the ledger's unique
 // idempotency_key guards against a double refund if both the webhook and the
 // poll try to fail the same job.
 export async function failMediaJob(job: Job, errorMsg: string): Promise<void> {
+  if (await retryImageJob(job, errorMsg)) return;
   await supabaseAdmin
     .from("media_jobs")
     .update({ status: "failed", error: errorMsg, updated_at: new Date().toISOString() })

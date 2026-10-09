@@ -233,8 +233,14 @@ async function checkInLine(
       .replace(/^["'“”\s]+|["'“”\s]+$/g, "")
       .replace(/\*[^*]*\*/g, "")
       .trim();
-    if (out.length < 4 || out.length > 220 || /\bAI\b|language model/i.test(out)) return fallback;
-    return out;
+    if (out.length < 4 || /\bAI\b|language model/i.test(out)) return fallback;
+    // The model was told two sentences and still wrote four. A check-in is a
+    // text, not a letter: keep the first two when it runs long.
+    const sentences = out.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [out];
+    const short =
+      out.length > 160 && sentences.length > 2 ? sentences.slice(0, 2).join("").trim() : out;
+    if (short.length > 220) return fallback;
+    return short;
   } catch {
     return fallback;
   }

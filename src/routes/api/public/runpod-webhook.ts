@@ -49,13 +49,13 @@ export const Route = createFileRoute("/api/public/runpod-webhook")({
 
         const err = runpodOutputError(body.output, body.error);
         if (state === "failed" || err) {
-          await failMediaJob(job, err || `Job ended with status: ${body.status}`);
+          await failMediaJob(job, err || `Job ended with status: ${body.status}`, jobId);
           return new Response("Failed status processed", { status: 200 });
         }
 
         const url = runpodOutputUrl(body.output);
         if (!url) {
-          await failMediaJob(job, "No output URL received from generation model");
+          await failMediaJob(job, "No output URL received from generation model", jobId);
           return new Response("Failed status processed", { status: 200 });
         }
 

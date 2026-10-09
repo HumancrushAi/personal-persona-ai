@@ -605,6 +605,17 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
 // next worker RunPod hands the job to almost certainly is not.
 const WORKER_MEMORY_ERROR = /VRAM|out of memory|\bOOM\b|CUDA (?:error|out)|cudaMalloc|failed to allocat/i;
 const RETRY_MARK = "retry 1 after: ";
+// While the retry is being prepared the row carries this instead of a RunPod
+// id, so a status poll that still holds the OLD id cannot mistake the old
+// failure for the retry's (see retryImageJob) — and polls on this id simply
+// keep polling.
+const RETRYING_ID = "retrying";
+// RunPod hands a job to the warm worker first. The worker that just ran out
+// of memory IS the warm worker, and an immediate resubmit went straight back
+// to it and failed the same way (seen twice). Waiting past the endpoint's
+// idle timeout lets that worker be torn down, so the retry starts on a clean
+// one. MEDIA_RETRY_DELAY_MS overrides.
+const RETRY_DELAY_MS = Number(process.env.MEDIA_RETRY_DELAY_MS || 45_000);
 
 // One more go, on the same prompt with a fresh seed, before the user is told
 // it failed. Only for a ComfyUI photo, only for a memory error, only once.
@@ -618,7 +629,12 @@ const RETRY_MARK = "retry 1 after: ";
 // is claimed atomically: the first caller to write the marker into `error`
 // resubmits, the other sees the row already claimed and leaves it alone.
 // Returns true when the job is running again and must NOT be failed.
-async function retryImageJob(job: Job, errorMsg: string): Promise<boolean> {
+//
+// `failedRunpodId` is the RunPod id the caller saw fail. The status poll runs
+// every few seconds from the browser, so while one call is sleeping through
+// the retry delay another can report the same old failure; comparing the id
+// against the row is what tells a stale report from the retry's own failure.
+async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string): Promise<boolean> {
   if (job.kind !== "image" || job.provider !== "runpod") return false;
   if (!WORKER_MEMORY_ERROR.test(errorMsg)) return false;
 
@@ -631,18 +647,26 @@ async function retryImageJob(job: Job, errorMsg: string): Promise<boolean> {
 
   const { data: fresh } = await supabaseAdmin
     .from("media_jobs")
-    .select("error, status")
+    .select("error, status, replicate_id")
     .eq("id", job.id)
     .maybeSingle();
   if (!fresh || fresh.status === "failed" || fresh.status === "completed") return false;
-  // This failure IS the retry's — it gets no second one.
-  if (String(fresh.error ?? "").startsWith(RETRY_MARK)) return false;
+  if (failedRunpodId === RETRYING_ID) return true;
+  if (String(fresh.error ?? "").startsWith(RETRY_MARK)) {
+    // Already retried. A report about the id the row currently carries is the
+    // retry's own failure, and it gets no second one. A report about any other
+    // id — the first attempt's — is stale and must not fail the job.
+    return Boolean(failedRunpodId) && fresh.replicate_id !== failedRunpodId;
+  }
+  // A report about an id that is not the row's is stale too.
+  if (failedRunpodId && fresh.replicate_id && fresh.replicate_id !== failedRunpodId) return true;
 
   const { data: claimed } = await supabaseAdmin
     .from("media_jobs")
     .update({
       error: `${RETRY_MARK}${errorMsg.slice(0, 300)}`,
       status: "processing",
+      replicate_id: RETRYING_ID,
       updated_at: new Date().toISOString(),
     })
     .eq("id", job.id)
@@ -676,6 +700,7 @@ async function retryImageJob(job: Job, errorMsg: string): Promise<boolean> {
     const userRequest: string = asked?.[0]?.content ?? "";
 
     const negative = negativeFor(userRequest, c.gender, { moving: false });
+    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
     const input = await comfyJobInput(
       row.prompt,
       negative,
@@ -700,8 +725,12 @@ async function retryImageJob(job: Job, errorMsg: string): Promise<boolean> {
 // Mark a job failed and refund its cost. Idempotent: the ledger's unique
 // idempotency_key guards against a double refund if both the webhook and the
 // poll try to fail the same job.
-export async function failMediaJob(job: Job, errorMsg: string): Promise<void> {
-  if (await retryImageJob(job, errorMsg)) return;
+export async function failMediaJob(
+  job: Job,
+  errorMsg: string,
+  failedRunpodId?: string,
+): Promise<void> {
+  if (await retryImageJob(job, errorMsg, failedRunpodId)) return;
   await supabaseAdmin
     .from("media_jobs")
     .update({ status: "failed", error: errorMsg, updated_at: new Date().toISOString() })

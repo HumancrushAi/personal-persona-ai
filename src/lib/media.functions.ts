@@ -1295,6 +1295,9 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     // Written but not yet launched, and not old enough to give up on. The
     // caller keeps polling.
     if (!(job as any).replicate_id) return { status: job.status };
+    // Being resubmitted after a worker error (see retryImageJob): nothing to
+    // poll yet, and the placeholder must never be reported as a failed id.
+    if ((job as any).replicate_id === "retrying") return { status: "processing" };
 
     // A video still rendering its face-locked opening frame on the ComfyUI
     // endpoint (see startVideoJob). Poll THAT endpoint, and when the still is
@@ -1317,7 +1320,11 @@ export const checkMediaJob = createServerFn({ method: "POST" })
       const err = runpodOutputError(res.output, res.error);
       const url = runpodOutputUrl(res.output);
       if (state === "failed" || err || !url) {
-        await fail(job as any, err || `Her opening frame did not render (${res.status})`);
+        await fail(
+          job as any,
+          err || `Her opening frame did not render (${res.status})`,
+          (job as any).replicate_id,
+        );
         return { status: "failed" };
       }
       const { advanceVideoFromStill } = await import("./media-finalize.server");
@@ -1342,14 +1349,18 @@ export const checkMediaJob = createServerFn({ method: "POST" })
 
       const state = runpodStatusOf(res.status);
       if (state === "failed") {
-        await fail(job as any, runpodOutputError(res.output, res.error) || `Job ${res.status}`);
+        await fail(
+          job as any,
+          runpodOutputError(res.output, res.error) || `Job ${res.status}`,
+          (job as any).replicate_id,
+        );
         return { status: "failed" };
       }
       if (state === "processing") return { status: "processing" };
 
       const err = runpodOutputError(res.output, res.error);
       if (err) {
-        await fail(job as any, err);
+        await fail(job as any, err, (job as any).replicate_id);
         return { status: "failed" };
       }
       const url = runpodOutputUrl(res.output);
@@ -1359,7 +1370,11 @@ export const checkMediaJob = createServerFn({ method: "POST" })
         // the job row rather than a flat "no output", because it is the
         // difference between a bad request and a misconfigured endpoint.
         const { comfyError } = await import("./comfy");
-        await fail(job as any, comfyError(res.output) || "No output from generation model");
+        await fail(
+          job as any,
+          comfyError(res.output) || "No output from generation model",
+          (job as any).replicate_id,
+        );
         return { status: "failed" };
       }
       try {

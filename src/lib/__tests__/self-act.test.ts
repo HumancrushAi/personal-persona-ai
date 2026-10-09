@@ -42,7 +42,8 @@ describe("the renderer is allowed to change her mouth", () => {
   });
 
   it("leads with the act as tags, and leaves the whole-body anatomy out", () => {
-    expect(mouthActTags(LICK)).toContain("licking own nipple");
+    expect(mouthActTags(LICK)).toContain("sucking own nipple");
+    expect(mouthActTags(LICK)).not.toContain("tongue out");
     expect(mouthActTags("suck on your dildo")).toContain("dildo in mouth");
     expect(mouthActTags("show me your tits")).toBe("");
     const out = finishMediaPrompt("exact same woman, tongue on her own nipple", LICK, {
@@ -68,7 +69,11 @@ describe("the renderer is allowed to change her mouth", () => {
   it("starts the face lock a quarter of the way in on a mouth act", () => {
     delete process.env.COMFY_IPA_START_AT_MOUTH;
     delete process.env.COMFY_IPA_START_AT;
-    expect(comfySettings("x", { mouthAct: true }).ipaStartAt).toBe(0.3);
+    expect(comfySettings("x", { mouthAct: true }).ipaStartAt).toBe(0.6);
+    // The face pass has its own patch at full strength, on every request.
+    expect(FACEID_WORKFLOW).toContain('"15"');
+    expect(FACEID_WORKFLOW).toContain('"model": ["15", 0]');
+    expect(comfySettings("x", { mouthAct: true }).ipaWeightFace).toBe(0.9);
     expect(comfySettings("x").ipaStartAt).toBe(0);
     expect(FACEID_WORKFLOW).toContain("{{IPA_START_AT}}");
   });
@@ -77,8 +82,8 @@ describe("the renderer is allowed to change her mouth", () => {
     for (const k of ["COMFY_IPA_WEIGHT_MOUTH", "COMFY_IPA_V2_WEIGHT_MOUTH", "COMFY_FACE_DENOISE_MOUTH", "COMFY_IPA_WEIGHT", "COMFY_FACE_DENOISE"])
       delete process.env[k];
     const mouth = comfySettings("x", { mouthAct: true });
-    expect(mouth.ipaWeight).toBe(0.6);
-    expect(mouth.faceDenoise).toBe(0.2);
+    expect(mouth.ipaWeight).toBe(0.5);
+    expect(mouth.faceDenoise).toBe(0.3);
     const plain = comfySettings("x");
     expect(plain.ipaWeight).toBe(0.9);
     expect(plain.faceDenoise).toBe(0.35);

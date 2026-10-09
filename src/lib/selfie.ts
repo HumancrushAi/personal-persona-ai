@@ -438,7 +438,7 @@ export function mouthActTags(req: string): string {
     // No "tongue out" here: on its own that tag reads as a face tilted BACK
     // with the tongue out at the camera, which is what came back. Everything
     // here says down.
-    return "licking own nipple, tongue touching own nipple, head bent down to own breast, chin tucked to chest, eyes looking down at own nipple, breast pushed up to mouth";
+    return "sucking own nipple, licking own nipple, mouth on own nipple, head bent down to own breast, chin tucked to chest, eyes on own nipple, breast pushed up into mouth";
   if (SELF_FINGER_MOUTH_RE.test(t))
     return "sucking own finger, finger in mouth, lips closed around finger";
   if (SELF_TONGUE_OUT_RE.test(t)) return "tongue out, mouth open, tongue sticking out";

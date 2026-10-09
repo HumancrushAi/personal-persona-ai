@@ -56,6 +56,9 @@ export type ComfyVars = {
    * for mouth acts, where the pose is the whole point.
    */
   ipaStartAt?: number;
+  /** The face pass's own FaceID weights (node 15): full strength, every request. */
+  ipaWeightFace?: number;
+  ipaV2WeightFace?: number;
   /** The adapter preset, e.g. "FACEID PLUS V2". */
   faceidPreset: string;
   /**
@@ -140,6 +143,16 @@ export const DEFAULT_WORKFLOW = `{
 //   12 IPAdapterFaceID              conditions the MODEL on her face
 //   13 UltralyticsDetectorProvider  the face bbox detector
 //   14 FaceDetailer                 re-renders the face at its own resolution
+//   15 IPAdapterFaceID              a second FaceID patch, full strength from
+//                                   step 0, used ONLY by the face pass
+//
+// Two patches because the two stages want opposite things. The sampler (3)
+// needs the face lock light and late on a hard pose — a head bent down to her
+// own breast never formed while the adapter was painting her portrait's
+// forward-facing head from step one. The face pass (14) needs the lock at
+// full strength to put her identity back onto whatever face the pose
+// produced. Node 12 is the sampler's patch (weight and start_at move per
+// request); node 15 is the face pass's, and does not move.
 //
 // The identity conditioning is applied to the MODEL, so node 3's `model` input
 // moves from the checkpoint (4) to the IPAdapter output (12). Everything else —
@@ -213,6 +226,21 @@ export const FACEID_WORKFLOW = `{
       "embeds_scaling": "V only"
     }
   },
+  "15": {
+    "class_type": "IPAdapterFaceID",
+    "inputs": {
+      "model": ["11", 0],
+      "ipadapter": ["11", 1],
+      "image": ["10", 0],
+      "weight": "{{IPA_WEIGHT_FACE}}",
+      "weight_faceidv2": "{{IPA_FACEID_WEIGHT_FACE}}",
+      "weight_type": "linear",
+      "combine_embeds": "concat",
+      "start_at": 0,
+      "end_at": 1,
+      "embeds_scaling": "V only"
+    }
+  },
   "13": {
     "class_type": "UltralyticsDetectorProvider",
     "inputs": { "model_name": "bbox/face_yolov8m.pt" }
@@ -221,7 +249,7 @@ export const FACEID_WORKFLOW = `{
     "class_type": "FaceDetailer",
     "inputs": {
       "image": ["8", 0],
-      "model": ["12", 0],
+      "model": ["15", 0],
       "clip": ["4", 1],
       "vae": ["4", 2],
       "positive": ["6", 0],
@@ -383,6 +411,8 @@ function tokenValues(vars: ComfyVars): Record<string, string | number> {
     IPA_FACEID_WEIGHT: vars.ipaV2Weight ?? vars.ipaWeight,
     IPA_LORA: vars.ipaLora,
     IPA_START_AT: vars.ipaStartAt ?? 0,
+    IPA_WEIGHT_FACE: vars.ipaWeightFace ?? vars.ipaWeight,
+    IPA_FACEID_WEIGHT_FACE: vars.ipaV2WeightFace ?? vars.ipaV2Weight ?? vars.ipaWeight,
     FACEID_PRESET: vars.faceidPreset,
     FACE_DENOISE: vars.faceDenoise,
   };
@@ -699,8 +729,11 @@ export function comfySettings(
     })(),
     // FaceID path: pull harder toward the reference face (site portrait).
     ipaWeight: opts.mouthAct
-      ? numberSetting("COMFY_IPA_WEIGHT_MOUTH", 0.6)
+      ? numberSetting("COMFY_IPA_WEIGHT_MOUTH", 0.5)
       : numberSetting("COMFY_IPA_WEIGHT", 0.9),
+    // The face pass keeps the full lock whatever the request asked for.
+    ipaWeightFace: numberSetting("COMFY_IPA_WEIGHT", 0.9),
+    ipaV2WeightFace: numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
     // The FaceID v2 embedding is what carries likeness; it shared the 0.9 above
     // and faces came back "not exactly like the models". 1.0-2.0 is its range.
     ipaV2Weight: opts.mouthAct
@@ -708,12 +741,12 @@ export function comfySettings(
       : numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     ipaStartAt: opts.mouthAct
-      ? numberSetting("COMFY_IPA_START_AT_MOUTH", 0.3)
+      ? numberSetting("COMFY_IPA_START_AT_MOUTH", 0.6)
       : numberSetting("COMFY_IPA_START_AT", 0),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
     // Keep FaceDetailer from inventing a new face on the refine pass.
     faceDenoise: opts.mouthAct
-      ? numberSetting("COMFY_FACE_DENOISE_MOUTH", 0.2)
+      ? numberSetting("COMFY_FACE_DENOISE_MOUTH", 0.3)
       : numberSetting("COMFY_FACE_DENOISE", 0.35),
   };
 }

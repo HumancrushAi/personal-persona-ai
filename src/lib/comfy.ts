@@ -48,6 +48,14 @@ export type ComfyVars = {
   ipaV2Weight?: number;
   /** Strength of the FaceID LoRA that ships with the adapter. */
   ipaLora: number;
+  /**
+   * Where in the denoising (0..1) FaceID starts applying. At 0 the adapter
+   * shapes the picture from the first step, and with it the portrait's
+   * framing and expression; starting it a quarter of the way in lets the
+   * prompt settle the pose first and then paints her identity onto it. Used
+   * for mouth acts, where the pose is the whole point.
+   */
+  ipaStartAt?: number;
   /** The adapter preset, e.g. "FACEID PLUS V2". */
   faceidPreset: string;
   /**
@@ -200,7 +208,7 @@ export const FACEID_WORKFLOW = `{
       "weight_faceidv2": "{{IPA_FACEID_WEIGHT}}",
       "weight_type": "linear",
       "combine_embeds": "concat",
-      "start_at": 0,
+      "start_at": "{{IPA_START_AT}}",
       "end_at": 1,
       "embeds_scaling": "V only"
     }
@@ -377,6 +385,7 @@ function tokenValues(vars: ComfyVars): Record<string, string | number> {
     IPA_WEIGHT: vars.ipaWeight,
     IPA_FACEID_WEIGHT: vars.ipaV2Weight ?? vars.ipaWeight,
     IPA_LORA: vars.ipaLora,
+    IPA_START_AT: vars.ipaStartAt ?? 0,
     FACEID_PRESET: vars.faceidPreset,
     FACE_DENOISE: vars.faceDenoise,
   };
@@ -677,6 +686,10 @@ export function comfySettings(
     // Never 0.90+ — that wiped site identity in chat.
     denoise: (() => {
       if (!usesStartLatent(opts.template)) return 1;
+      // A mouth act changes the pose her portrait is in more than a toy does
+      // (head down, breast lifted), and at 0.78 the portrait's pose still won.
+      // Identity comes from FaceID here, not from the start latent.
+      if (opts.mouthAct) return numberSetting("COMFY_DENOISE_MOUTH", 0.86);
       if (opts.promptSetsComposition) {
         return numberSetting("COMFY_DENOISE_POSED", 0.78);
       }
@@ -695,6 +708,9 @@ export function comfySettings(
       ? numberSetting("COMFY_IPA_V2_WEIGHT_MOUTH", 0.8)
       : numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
+    ipaStartAt: opts.mouthAct
+      ? numberSetting("COMFY_IPA_START_AT_MOUTH", 0.25)
+      : numberSetting("COMFY_IPA_START_AT", 0),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
     // Keep FaceDetailer from inventing a new face on the refine pass.
     faceDenoise: opts.mouthAct

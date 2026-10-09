@@ -3,6 +3,7 @@ import {
   finishMediaPrompt,
   isMouthAct,
   isSelfAct,
+  mouthActTags,
   requestComposesShot,
   selfActSentence,
   stillImagePrompt,
@@ -38,6 +39,38 @@ describe("the renderer is allowed to change her mouth", () => {
     expect(c).not.toContain("natural soft vulva");
     expect(propIsOral("sucking on a dildo")).toBe(true);
     expect(propIsOral("dildo in pussy")).toBe(false);
+  });
+
+  it("leads with the act as tags, and leaves the whole-body anatomy out", () => {
+    expect(mouthActTags(LICK)).toContain("licking own nipple");
+    expect(mouthActTags("suck on your dildo")).toContain("dildo in mouth");
+    expect(mouthActTags("show me your tits")).toBe("");
+    const out = finishMediaPrompt("exact same woman, tongue on her own nipple", LICK, {
+      anatomy: anatomyOf("female"),
+      appendAnatomy: true,
+      still: true,
+    });
+    expect(out).not.toContain("pointing straight forward");
+    expect(out).not.toContain("closed pussy");
+    expect(out).toContain("Completely nude");
+  });
+
+  it("gives a mouth act its own denoise tier", () => {
+    delete process.env.COMFY_DENOISE_MOUTH;
+    // Only a graph that starts from her portrait's latent has a denoise to
+    // tier; the FaceID graph is text-to-image and always 1.
+    const img2img = '{"5": {"class_type": "VAEEncode"}}';
+    expect(comfySettings("x", { mouthAct: true, template: img2img }).denoise).toBe(0.86);
+    expect(comfySettings("x", { promptSetsComposition: true, template: img2img }).denoise).toBe(0.78);
+    expect(comfySettings("x", { mouthAct: true, template: FACEID_WORKFLOW }).denoise).toBe(1);
+  });
+
+  it("starts the face lock a quarter of the way in on a mouth act", () => {
+    delete process.env.COMFY_IPA_START_AT_MOUTH;
+    delete process.env.COMFY_IPA_START_AT;
+    expect(comfySettings("x", { mouthAct: true }).ipaStartAt).toBe(0.25);
+    expect(comfySettings("x").ipaStartAt).toBe(0);
+    expect(FACEID_WORKFLOW).toContain("{{IPA_START_AT}}");
   });
 
   it("lightens the face lock and drops the detailer pass only for those", () => {

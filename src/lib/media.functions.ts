@@ -702,6 +702,7 @@ export async function comfyJobInput(
     requestIsNude,
     requestKeepsGarment,
     isMouthAct,
+    mouthActTags,
   } = await import("./selfie");
   const req = request ?? "";
   const promptSetsComposition = composes(req);
@@ -711,6 +712,11 @@ export async function comfyJobInput(
   // pass, on these requests only. See isMouthAct and templateForMouthAct.
   const mouthAct = isMouthAct(req);
   if (mouthAct) template = templateForMouthAct(template);
+  // The act first, weighted. ComfyUI's text encoder reads "(…:1.3)" as
+  // emphasis, and the first tokens of an SDXL prompt carry the most weight —
+  // which is exactly where the act was not.
+  const tags = mouthAct ? mouthActTags(req) : "";
+  const finalPrompt = tags ? `(${tags}:1.3), ${prompt}` : prompt;
 
   return comfyInput(
     {
@@ -721,7 +727,7 @@ export async function comfyJobInput(
         seedSalt,
         mouthAct,
       }),
-      prompt,
+      prompt: finalPrompt,
       negative,
     },
     { template, referenceBase64 },

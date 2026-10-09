@@ -426,6 +426,25 @@ export function isMouthAct(req: string): boolean {
   return isSelfAct(t) || (hasProp(t) && MOUTH_VERB_RE.test(t));
 }
 
+// The act as short tags, for the front of a ComfyUI prompt with emphasis
+// (see comfyJobInput). The prose sentence is right but it is one clause among
+// twenty, and a checkpoint reads the first few tokens hardest: "licking your
+// tits" rendered as a hand cupping a breast and a smile at the camera, with
+// the licking sentence sitting correct and ignored in the middle of 200 words.
+// Pronoun-free so the same tags serve every body.
+export function mouthActTags(req: string): string {
+  const t = req ?? "";
+  if (SELF_BREAST_ORAL_RE.test(t))
+    return "licking own nipple, tongue out touching own nipple, breast lifted up to mouth, head tilted down looking at own breast, mouth open";
+  if (SELF_FINGER_MOUTH_RE.test(t))
+    return "sucking own finger, finger in mouth, lips closed around finger";
+  if (SELF_TONGUE_OUT_RE.test(t)) return "tongue out, mouth open, tongue sticking out";
+  if (SELF_LIPS_RE.test(t)) return "biting lower lip";
+  if (hasProp(t) && /\b(?:suck\w*|lick\w*|blow\w*|deep\s*throat\w*|mouth|tongue|lips)\b/i.test(t))
+    return "sucking a dildo, dildo in mouth, lips wrapped around the dildo, mouth open, holding the dildo by its base";
+  return "";
+}
+
 /** The self-act puts at least one of her hands to work, so a posture line that parks both hands elsewhere must give way. */
 export function selfActUsesHands(req: string): boolean {
   const t = req ?? "";
@@ -1180,7 +1199,17 @@ export function finishMediaPrompt(
   //
   // Withheld when the user set their own viewpoint, for the reason
   // requestSetsViewpoint exists: this clause describes the front of the body.
-  if (opts.appendAnatomy && requestIsNude(request) && !requestSetsViewpoint(request)) {
+  // Withheld for a mouth act too. The clause describes a whole front-facing
+  // body — nipples "pointing straight forward", a closed pussy, a round ass —
+  // and a mouth act is a close-up on her face and chest in which the breast
+  // is lifted toward her mouth. Two hundred words of the wrong pose outvoted
+  // the one sentence of the right one. Nudity is still stated by NUDE_FORCE.
+  if (
+    opts.appendAnatomy &&
+    requestIsNude(request) &&
+    !requestSetsViewpoint(request) &&
+    !isMouthAct(request)
+  ) {
     const clause = nudeAnatomy(a.kind);
     if (clause)
       out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${clause}`;

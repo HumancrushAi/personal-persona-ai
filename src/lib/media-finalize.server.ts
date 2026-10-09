@@ -620,6 +620,9 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
 // could not find 289 KB was already full before this job arrived, and the
 // next worker RunPod hands the job to almost certainly is not.
 const WORKER_MEMORY_ERROR = /VRAM|out of memory|\bOOM\b|CUDA (?:error|out)|cudaMalloc|failed to allocat/i;
+// The pose guide's model is not on this worker yet (the image has not been
+// rolled out, or the download failed). Rendered again without the guide.
+const POSE_MODEL_ERROR = /ControlNetLoader|control_net_name|controlnet|OpenPoseXL2/i;
 const RETRY_MARK = "retry 1 after: ";
 // While the retry is being prepared the row carries this instead of a RunPod
 // id, so a status poll that still holds the OLD id cannot mistake the old
@@ -683,7 +686,11 @@ async function jobContext(jobId: string): Promise<JobContext | null> {
 }
 
 // Render the same job again with a fresh seed; returns the new RunPod id.
-async function resubmitImageJob(ctx: JobContext, seedSalt: string): Promise<string> {
+async function resubmitImageJob(
+  ctx: JobContext,
+  seedSalt: string,
+  opts: { noPose?: boolean } = {},
+): Promise<string> {
   const { comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
     await import("./media.functions");
   const { runpodEndpoint, runpodRun } = await import("./runpod");
@@ -696,6 +703,7 @@ async function resubmitImageJob(ctx: JobContext, seedSalt: string): Promise<stri
     resolveHostedImage(ctx.companion.image_url),
     ctx.userRequest,
     seedSalt,
+    opts,
   );
   const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));
   await supabaseAdmin
@@ -818,7 +826,8 @@ async function verifiedOrRetake(
 // against the row is what tells a stale report from the retry's own failure.
 async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string): Promise<boolean> {
   if (job.kind !== "image" || job.provider !== "runpod") return false;
-  if (!WORKER_MEMORY_ERROR.test(errorMsg)) return false;
+  const poseMissing = POSE_MODEL_ERROR.test(errorMsg);
+  if (!WORKER_MEMORY_ERROR.test(errorMsg) && !poseMissing) return false;
 
   const { imageProvider, comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
     await import("./media.functions");
@@ -864,8 +873,9 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
   try {
     const ctx = await jobContext(job.id);
     if (!ctx) throw new Error("nothing to resubmit");
-    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-    const id = await resubmitImageJob(ctx, `retry-${job.id}`);
+    // A full worker needs time to be torn down; a missing model does not.
+    if (!poseMissing) await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    const id = await resubmitImageJob(ctx, `retry-${job.id}`, { noPose: poseMissing });
     console.warn(`media job ${job.id} resubmitted as ${id} after worker error: ${errorMsg.slice(0, 120)}`);
     return true;
   } catch (e: any) {

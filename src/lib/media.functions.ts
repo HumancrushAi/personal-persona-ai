@@ -658,15 +658,31 @@ export async function comfyJobInput(
   portraitUrl: string | null,
   request?: string,
   seedSalt?: string,
+  opts: {
+    /** Render without the pose guide — the retry after a worker that lacks the model. */
+    noPose?: boolean;
+  } = {},
 ): Promise<Record<string, unknown>> {
   const {
     comfyInput,
     comfySettings,
     comfyTemplate,
     wantsReference,
+    FACEID_WORKFLOW,
+    FACEID_POSE_WORKFLOW,
     DEFAULT_WORKFLOW,
   } = await import("./comfy");
   let template = comfyTemplate();
+
+  // A pose guide, when this request has one and the worker can use it. Only
+  // the FaceID graph has the wiring for it.
+  const { poseFor, poseGuideAvailable } = await import("./poses");
+  const guide = !opts.noPose && poseGuideAvailable() ? poseFor(request ?? "") : null;
+  const extraImages: { name: string; base64: string }[] = [];
+  if (guide && template === FACEID_WORKFLOW) {
+    template = FACEID_POSE_WORKFLOW;
+    extraImages.push({ name: guide.file, base64: guide.base64 });
+  }
 
   let referenceBase64: string | undefined;
   if (wantsReference(template)) {
@@ -734,8 +750,9 @@ export async function comfyJobInput(
       }),
       prompt: finalPrompt,
       negative,
+      poseImage: extraImages[0]?.name,
     },
-    { template, referenceBase64 },
+    { template, referenceBase64, extraImages },
   );
 }
 

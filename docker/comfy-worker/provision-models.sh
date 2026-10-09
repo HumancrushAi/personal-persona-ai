@@ -48,7 +48,7 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 trap 'rm -rf "$LOCK"' EXIT
 
-mkdir -p "$MODELS"/{ipadapter,loras,clip_vision,ultralytics/bbox,ultralytics/segm,insightface/models}
+mkdir -p "$MODELS"/{ipadapter,loras,clip_vision,ultralytics/bbox,ultralytics/segm,insightface/models,controlnet}
 
 # A model that arrives as a 4KB HTML error page is worse than one that is
 # missing: the loader fails with a parse error rather than "not found", and the
@@ -99,6 +99,11 @@ fetch "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/m
 
 fetch "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt" \
       "$MODELS/ultralytics/bbox/face_yolov8m.pt" || FAILED=1
+# OpenPose ControlNet for SDXL: the pose guide for the acts the checkpoint
+# will not pose from words alone (comfy.ts FACEID_POSE_WORKFLOW). Native
+# ComfyUI format, loaded by the core ControlNetLoader node.
+fetch "https://huggingface.co/thibaud/controlnet-openpose-sdxl-1.0/resolve/main/OpenPoseXL2.safetensors" \
+      "$MODELS/controlnet/OpenPoseXL2.safetensors" || FAILED=1
 
 # InsightFace's own detection and recognition models: a zip of .onnx files that
 # unpacks to a buffalo_l/ directory, which is the name the loader looks for.

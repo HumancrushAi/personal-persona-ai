@@ -59,6 +59,11 @@ export type ComfyVars = {
   /** The face pass's own FaceID weights (node 15): full strength, every request. */
   ipaWeightFace?: number;
   ipaV2WeightFace?: number;
+  /** Pose guide (FACEID_POSE_WORKFLOW): the uploaded skeleton's filename, the ControlNet model, and how hard it pins. */
+  poseImage?: string;
+  controlnet?: string;
+  cnStrength?: number;
+  cnEnd?: number;
   /** The adapter preset, e.g. "FACEID PLUS V2". */
   faceidPreset: string;
   /**
@@ -300,6 +305,36 @@ export const FACEID_WORKFLOW = `{
 // face lost the texture the pass supplies and came back plastic. At 0.2 it
 // cannot restructure a mouth — it only refines skin.
 
+// FACEID_WORKFLOW plus a pose guide: an OpenPose skeleton (uploaded with the
+// job as {{POSE_IMAGE}}) through an SDXL OpenPose ControlNet, applied to the
+// sampler's conditioning only. The face pass keeps the plain conditioning —
+// a pose has nothing to say about a face crop. Needs the ControlNet model on
+// the worker's volume (provision-models.sh) and COMFY_CONTROLNET naming it.
+//
+//   16 LoadImage                the skeleton
+//   18 ControlNetLoader         {{CONTROLNET}}
+//   17 ControlNetApplyAdvanced  pins the pose for the first {{CN_END}} of the steps
+export const FACEID_POSE_WORKFLOW = (() => {
+  const g = JSON.parse(FACEID_WORKFLOW) as Record<string, any>;
+  g["16"] = { class_type: "LoadImage", inputs: { image: "{{POSE_IMAGE}}" } };
+  g["18"] = { class_type: "ControlNetLoader", inputs: { control_net_name: "{{CONTROLNET}}" } };
+  g["17"] = {
+    class_type: "ControlNetApplyAdvanced",
+    inputs: {
+      positive: ["6", 0],
+      negative: ["7", 0],
+      control_net: ["18", 0],
+      image: ["16", 0],
+      strength: "{{CN_STRENGTH}}",
+      start_percent: 0,
+      end_percent: "{{CN_END}}",
+    },
+  };
+  g["3"].inputs.positive = ["17", 0];
+  g["3"].inputs.negative = ["17", 1];
+  return JSON.stringify(g, null, 2);
+})();
+
 export const FACEID_LITE_WORKFLOW = (() => {
   const g = JSON.parse(FACEID_WORKFLOW) as Record<string, any>;
   delete g["13"];
@@ -411,6 +446,10 @@ function tokenValues(vars: ComfyVars): Record<string, string | number> {
     IPA_FACEID_WEIGHT: vars.ipaV2Weight ?? vars.ipaWeight,
     IPA_LORA: vars.ipaLora,
     IPA_START_AT: vars.ipaStartAt ?? 0,
+    POSE_IMAGE: vars.poseImage ?? "",
+    CONTROLNET: vars.controlnet ?? "",
+    CN_STRENGTH: vars.cnStrength ?? 0.75,
+    CN_END: vars.cnEnd ?? 0.7,
     IPA_WEIGHT_FACE: vars.ipaWeightFace ?? vars.ipaWeight,
     IPA_FACEID_WEIGHT_FACE: vars.ipaV2WeightFace ?? vars.ipaV2Weight ?? vars.ipaWeight,
     FACEID_PRESET: vars.faceidPreset,
@@ -481,7 +520,12 @@ export const REFERENCE_NAME = "reference.png";
  */
 export function comfyInput(
   vars: ComfyVars,
-  opts: { template?: string; referenceBase64?: string } = {},
+  opts: {
+    template?: string;
+    referenceBase64?: string;
+    /** More files for the worker's input folder, e.g. a pose skeleton. */
+    extraImages?: { name: string; base64: string }[];
+  } = {},
 ): Record<string, unknown> {
   const template = opts.template ?? DEFAULT_WORKFLOW;
   const needsRef = wantsReference(template);
@@ -498,9 +542,11 @@ export function comfyInput(
     { ...vars, referenceImage: needsRef ? REFERENCE_NAME : vars.referenceImage },
     template,
   );
-  return needsRef
-    ? { workflow, images: [{ name: REFERENCE_NAME, image: opts.referenceBase64 }] }
-    : { workflow };
+  const images = [
+    ...(needsRef ? [{ name: REFERENCE_NAME, image: opts.referenceBase64 }] : []),
+    ...(opts.extraImages ?? []).map((i) => ({ name: i.name, image: i.base64 })),
+  ];
+  return images.length ? { workflow, images } : { workflow };
 }
 
 /**
@@ -731,6 +777,12 @@ export function comfySettings(
     ipaWeight: opts.mouthAct
       ? numberSetting("COMFY_IPA_WEIGHT_MOUTH", 0.5)
       : numberSetting("COMFY_IPA_WEIGHT", 0.9),
+    // The pose guide's model and grip (FACEID_POSE_WORKFLOW). 0.75 for the
+    // first 70% of the steps: the skeleton decides where the head and hands
+    // are, the checkpoint finishes the picture on its own.
+    controlnet: (process.env.COMFY_CONTROLNET ?? "").trim(),
+    cnStrength: numberSetting("COMFY_CN_STRENGTH", 0.75),
+    cnEnd: numberSetting("COMFY_CN_END", 0.7),
     // The face pass keeps the full lock whatever the request asked for.
     ipaWeightFace: numberSetting("COMFY_IPA_WEIGHT", 0.9),
     ipaV2WeightFace: numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),

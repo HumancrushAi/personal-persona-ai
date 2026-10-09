@@ -1001,10 +1001,15 @@ export function kontextSelfiePrompt(
 // accounting, and the ratio is stable enough for prose. The tail is preserved
 // across the cut, because dropping the middle of a description costs less than
 // dropping the instruction that says "photograph, not render".
+// Faces came back haggard, then plastic. Said once, positively, on every
+// render: real skin has pores; it is not lined, and it is not glossy.
+const FACE_CLAUSE =
+  "Fresh youthful adult face, clear skin with fine pores, matte finish, soft natural eyebrows, soft full lips, bright eyes.";
+
 // 340, up from 300: the adult/face clause added to every render pushed a
 // plain nude builder prompt past 300, and the cap — which cuts from the end —
 // took the back of the anatomy clause with it.
-const PROMPT_WORD_BUDGET = 340;
+export const PROMPT_WORD_BUDGET = 340;
 
 const REALISM_TAIL =
   "Candid raw photograph on a real camera, amateur and unretouched, natural healthy skin with fine pores and fine texture, matte natural finish, slight film grain.";
@@ -1286,7 +1291,7 @@ export function finishMediaPrompt(
     // "smooth clear skin" and "soft glow" swung the other way — faces came
     // back plastic with razor-edged brows. Real skin has pores; it is just
     // not lined. Matte, fine pores, soft natural brows.
-    `adult ${statedAge}-year-old ${a.noun}, fully grown adult body, fresh youthful adult face, clear skin with fine pores, matte finish, soft natural eyebrows, soft full lips, bright eyes`,
+    `adult ${statedAge}-year-old ${a.noun}, fully grown adult body`,
   ];
   if (opts.appendAppearance) {
     const ethnicity = (opts.appearance?.ethnicity ?? "").trim();
@@ -1304,6 +1309,11 @@ export function finishMediaPrompt(
     const sentence = `${clause[0].toUpperCase()}${clause.slice(1)}.`;
     out = rest.length ? `${first} ${sentence} ${rest.join(" ")}` : `${sentence} ${out}`;
   }
+
+  // Her face, at the END of the body rather than in the sentence above: it
+  // only has to be present, and up front it pushed the prop specification
+  // past the midpoint of the prompt, where the encoder weighs it less.
+  out = `${out.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(out.trim()) ? "" : "."} ${FACE_CLAUSE}`;
 
 
   // A toy the user asked to have inserted, described as being held, is the

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { anatomyOf } from "../anatomy";
-import { videoStillPrompt, videoActionPrompt, capPromptWords, finishMediaPrompt } from "../selfie";
+import { videoStillPrompt, videoActionPrompt, capPromptWords, finishMediaPrompt, PROMPT_WORD_BUDGET } from "../selfie";
 
 const FEMALE = anatomyOf("female");
 
@@ -129,7 +129,7 @@ describe("capPromptWords", () => {
 
   it("brings an over-long prompt under the budget", () => {
     const long = Array.from({ length: 500 }, (_, i) => `word${i}`).join(" ");
-    expect(capPromptWords(long).split(/\s+/).length).toBeLessThanOrEqual(300);
+    expect(capPromptWords(long).split(/\s+/).length).toBeLessThanOrEqual(PROMPT_WORD_BUDGET);
   });
 
   it("keeps the realism tail across the cut", () => {
@@ -198,7 +198,7 @@ describe("finishMediaPrompt on the refined path", () => {
 
   it("keeps the refined path inside the budget too", () => {
     const p = finishMediaPrompt(refined, req, { anatomy: FEMALE, appendProps: true });
-    expect(p.split(/\s+/).length).toBeLessThanOrEqual(300);
+    expect(p.split(/\s+/).length).toBeLessThanOrEqual(PROMPT_WORD_BUDGET);
   });
 });
 

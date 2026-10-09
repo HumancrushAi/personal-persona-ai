@@ -346,6 +346,12 @@ function ChatPage() {
       qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
       await qc.invalidateQueries({ queryKey: ["messages", conversationId] });
       setPendingUser(null); // real messages are loaded now — drop the optimistic bubble
+      // She just said she cannot afford the photo; the next step is one tap.
+      if ((res as any)?.needsCredits) {
+        toast("Not enough credits for that", {
+          action: { label: "Get credits", onClick: () => navigate({ to: "/credits" }) },
+        });
+      }
       if (res?.relationship?.leveledUp) {
         toast.success(`💖 Relationship level up — now level ${res.relationship.level}`);
       }

@@ -446,6 +446,32 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       return { reply };
     }
 
+    // Asked for a photo or a clip they cannot pay for.
+    //
+    // This used to fall through to the text model, which role-played taking
+    // the selfie — "*takes a selfie licking a pert nipple*" — so the user was
+    // told nothing, charged a message for it, and reported that photos had
+    // stopped delivering. Said plainly, in her voice, and for free: a notice
+    // that they are out of credits must not cost one.
+    const mediaCost =
+      askedFor === "video" ? VIDEO_COST : askedFor === "image" ? SELFIE_COST : 0;
+    if (mediaCost && totalCredits(bal) < mediaCost) {
+      const what = askedFor === "video" ? "a video" : "a photo";
+      const reply = `mmm i want to send you ${what} so badly… but ${what} takes ${mediaCost} credits and you've only got ${totalCredits(bal)}. top up and i'll take it the second you're back ${askedFor === "video" ? "🎬" : "📸"}`;
+      await supabase.from("messages").insert({
+        conversation_id: data.conversationId,
+        user_id: userId,
+        role: "assistant",
+        content: reply,
+        kind: "text",
+      });
+      await supabase
+        .from("conversations")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", data.conversationId);
+      return { reply, needsCredits: true as const };
+    }
+
     // Auto-video: if the user asks her to send/make a video, queue it through
     // the same async job pipeline as the 🎬 button. Checked BEFORE the selfie
     // path so "send me a video of you…" doesn't get answered with a photo.

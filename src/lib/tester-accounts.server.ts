@@ -10,6 +10,12 @@
 //
 // The list is the env var when set, else the built-in one. An address has to
 // match exactly, case-insensitively.
+//
+// Every admin-role account counts too. The owner's admin account was being
+// used for testing and ran dry mid-session: a photo request on 4 credits fell
+// through to the text model, which role-played taking the selfie, and the
+// report that came back was "no image is delivering". Staff testing the
+// product should never be the ones hitting the paywall.
 
 const DEFAULT_TESTERS = ["nft.king137@gmail.com"];
 const REFILL_TO = 1_000_000;
@@ -29,8 +35,30 @@ export function isTesterEmail(email: string | null | undefined): boolean {
  * gate, so a tester's request never sees OUT_OF_CREDITS. A no-op for everyone
  * else, and best-effort: a failed refill must not fail the request itself.
  */
+const adminCache = new Map<string, { admin: boolean; at: number }>();
+const ADMIN_CACHE_MS = 10 * 60_000;
+
+async function isAdminUser(userId: string): Promise<boolean> {
+  const hit = adminCache.get(userId);
+  if (hit && Date.now() - hit.at < ADMIN_CACHE_MS) return hit.admin;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .limit(1);
+    const admin = Boolean(data?.length);
+    adminCache.set(userId, { admin, at: Date.now() });
+    return admin;
+  } catch {
+    return false;
+  }
+}
+
 export async function topUpTester(userId: string, email: string | null | undefined) {
-  if (!isTesterEmail(email)) return;
+  if (!isTesterEmail(email) && !(await isAdminUser(userId))) return;
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: bal } = await supabaseAdmin

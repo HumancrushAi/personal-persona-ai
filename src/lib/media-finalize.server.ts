@@ -10,6 +10,8 @@ type Job = {
   conversation_id: string | null;
   kind: string;
   cost: number;
+  /** Which renderer ran it (runpod, runpod-still, …); the retry only touches a plain runpod photo. */
+  provider?: string | null;
 };
 
 // In the deployed function the ffmpeg binary sits at bin/ffmpeg, put there by

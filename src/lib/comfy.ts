@@ -778,11 +778,11 @@ export function comfySettings(
       ? numberSetting("COMFY_IPA_WEIGHT_MOUTH", 0.5)
       : numberSetting("COMFY_IPA_WEIGHT", 0.9),
     // The pose guide's model and grip (FACEID_POSE_WORKFLOW). 0.75 for the
-    // first 70% of the steps: the skeleton decides where the head and hands
+    // first 80% of the steps: the skeleton decides where the head and hands
     // are, the checkpoint finishes the picture on its own.
     controlnet: (process.env.COMFY_CONTROLNET ?? "").trim(),
-    cnStrength: numberSetting("COMFY_CN_STRENGTH", 0.75),
-    cnEnd: numberSetting("COMFY_CN_END", 0.7),
+    cnStrength: numberSetting("COMFY_CN_STRENGTH", 0.9),
+    cnEnd: numberSetting("COMFY_CN_END", 0.8),
     // The face pass keeps the full lock whatever the request asked for.
     ipaWeightFace: numberSetting("COMFY_IPA_WEIGHT", 0.9),
     ipaV2WeightFace: numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),

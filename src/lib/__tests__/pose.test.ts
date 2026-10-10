@@ -47,7 +47,7 @@ describe("the pose guide", () => {
     const graph: any = comfyWorkflow({ ...vars, referenceImage: "ref.png" }, FACEID_POSE_WORKFLOW);
     expect(graph["18"].inputs.control_net_name).toBe("OpenPoseXL2.safetensors");
     expect(graph["16"].inputs.image).toBe("pose-breast-lick.png");
-    expect(graph["17"].inputs.strength).toBe(0.75);
+    expect(graph["17"].inputs.strength).toBe(0.9);
     const input: any = comfyInput(
       { ...vars, checkpoint: "c.safetensors" },
       { template: FACEID_POSE_WORKFLOW, referenceBase64: "AAAA", extraImages: [{ name: "pose-breast-lick.png", base64: "BBBB" }] },

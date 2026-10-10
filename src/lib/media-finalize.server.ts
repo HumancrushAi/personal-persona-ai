@@ -873,8 +873,14 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
   try {
     const ctx = await jobContext(job.id);
     if (!ctx) throw new Error("nothing to resubmit");
-    // A full worker needs time to be torn down; a missing model does not.
-    if (!poseMissing) await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    // A full worker needs time to be torn down; a missing model does not —
+    // but it is remembered, so the retake after this does not go back to it.
+    if (poseMissing) {
+      const { disablePoseGuide } = await import("./poses");
+      await disablePoseGuide();
+    } else {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    }
     const id = await resubmitImageJob(ctx, `retry-${job.id}`, { noPose: poseMissing });
     console.warn(`media job ${job.id} resubmitted as ${id} after worker error: ${errorMsg.slice(0, 120)}`);
     return true;

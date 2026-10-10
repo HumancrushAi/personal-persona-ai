@@ -677,7 +677,7 @@ export async function comfyJobInput(
   // A pose guide, when this request has one and the worker can use it. Only
   // the FaceID graph has the wiring for it.
   const { poseFor, poseGuideAvailable } = await import("./poses");
-  const guide = !opts.noPose && poseGuideAvailable() ? poseFor(request ?? "") : null;
+  const guide = !opts.noPose && (await poseGuideAvailable()) ? poseFor(request ?? "") : null;
   const extraImages: { name: string; base64: string }[] = [];
   if (guide && template === FACEID_WORKFLOW) {
     template = FACEID_POSE_WORKFLOW;

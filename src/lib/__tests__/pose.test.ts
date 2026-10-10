@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { FACEID_POSE_WORKFLOW, FACEID_WORKFLOW, comfyInput, comfySettings, comfyWorkflow } from "../comfy";
-import { poseFor, poseGuideAvailable } from "../poses";
+import { poseFor, poseGuideConfigured } from "../poses";
 
 const prev = process.env.COMFY_CONTROLNET;
 afterEach(() => {
@@ -19,9 +19,9 @@ describe("the pose guide", () => {
 
   it("is only used when the worker has the model", () => {
     delete process.env.COMFY_CONTROLNET;
-    expect(poseGuideAvailable()).toBe(false);
+    expect(poseGuideConfigured()).toBe(false);
     process.env.COMFY_CONTROLNET = "OpenPoseXL2.safetensors";
-    expect(poseGuideAvailable()).toBe(true);
+    expect(poseGuideConfigured()).toBe(true);
   });
 
   it("wires the skeleton into the sampler's conditioning and leaves the face pass alone", () => {

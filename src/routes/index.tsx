@@ -50,6 +50,12 @@ import { FAQSection } from "@/components/FAQSection";
 const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
 const reelUrlHelper = (name: string) => `${REEL_BASE}/${name}.mp4`;
 const BANNERS: { id: string; name: string; title: string; sub: string; gender: "m" | "f" }[] = [
+  // The four the slider opens on: early-to-mid thirties, fuller figure — what
+  // testing asked for up front. Created by scripts/create_companions.ts --set=busty.
+  { id: "a66e3b1a-43ee-431e-868a-4573aacb4067", name: "Vanessa", title: "Rio after dark", sub: "emerald satin · dances like nobody's watching 💃", gender: "f" },
+  { id: "342071f1-55dc-4456-a4f5-57cfa0d4a571", name: "Scarlett", title: "Bored of boys", sub: "black satin wrap dress · looking for a man who can keep up 😏", gender: "f" },
+  { id: "d8ab397f-1fae-4ea7-9b98-a76b89d2db71", name: "Bianca", title: "Milan golden hour", sub: "deep red satin · seduction is an art form 🍷", gender: "f" },
+  { id: "1cffffd5-4385-46c9-a66f-532883fb4c50", name: "Sabrina", title: "Newly single", sub: "navy satin · making up for lost time 🔥", gender: "f" },
   {
     id: "2c252785-fe75-4c84-a803-af9c484f6c96",
     name: "Aria",

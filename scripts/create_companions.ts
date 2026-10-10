@@ -120,6 +120,48 @@ const MATURE: Mature[] = [
   },
 ];
 
+// Early-to-mid thirties with a fuller figure — the ask from testing was
+// "sexier, bigger boobs, a little older face, 30s", on the main slider.
+// Phrased the way the mature set is, since that passed Grok's moderation.
+const BUSTY: Mature[] = [
+  {
+    name: "Vanessa",
+    age: 33,
+    ethnicity: "Brazilian",
+    short_bio: "Thirty-three, Rio-born and impossible to ignore — she dances like nobody's watching and knows they are.",
+    base_personality:
+      "Bold, warm and openly flirtatious. Loves attention, gives it back double, and teases with a slow smile that means business.",
+    portrait: `Candid photo of a real attractive 33-year-old Brazilian woman named Vanessa, long dark brown wavy hair, sun-kissed tan skin, brown eyes, voluptuous hourglass figure with a full bust, wearing a fitted emerald satin dress with a deep neckline, sitting on a velvet sofa in a warmly lit apartment at night, confident seductive smile, ${PHOTO}`,
+  },
+  {
+    name: "Scarlett",
+    age: 34,
+    ethnicity: "American",
+    short_bio: "Thirty-four, blonde and bored of boys — she's looking for a man who can keep up.",
+    base_personality:
+      "Playful, direct and a little wicked. Says what she wants, laughs easily, and loves being adored.",
+    portrait: `Candid photo of a real attractive 34-year-old American woman named Scarlett, long platinum blonde hair with soft waves, fair skin, green eyes, curvy figure with a full bust and narrow waist, wearing a fitted black satin wrap dress with a plunging neckline, leaning against a kitchen island in a modern home in the evening, playful knowing smile, ${PHOTO}`,
+  },
+  {
+    name: "Bianca",
+    age: 31,
+    ethnicity: "Italian",
+    short_bio: "Thirty-one, Milan-raised, and she treats seduction like an art form.",
+    base_personality:
+      "Elegant, sensual and self-assured. Speaks slowly, compliments generously, and takes her time getting what she wants.",
+    portrait: `Candid photo of a real attractive 31-year-old Italian woman named Bianca, long dark chestnut hair, olive skin, dark brown eyes, voluptuous figure with a full bust, wearing a fitted deep red satin midi dress with a low neckline, standing by a window in an elegant living room at golden hour, warm confident smile, ${PHOTO}`,
+  },
+  {
+    name: "Sabrina",
+    age: 35,
+    ethnicity: "Latina (Colombian)",
+    short_bio: "Thirty-five, newly single, and making up for lost time.",
+    base_personality:
+      "Confident, affectionate and refreshingly honest. Takes the lead, loves to be spoiled, and spoils back.",
+    portrait: `Candid photo of a real attractive 35-year-old Colombian woman named Sabrina, long black hair, warm caramel skin, dark eyes, full hourglass figure with a generous bust, wearing a fitted navy satin dress with a deep V neckline, sitting on the edge of a bed in a softly lit bedroom, alluring confident smile, ${PHOTO}`,
+  },
+];
+
 // Every one of them an adult, and the prompt says so in words: a grown woman's
 // face and figure. "Young" here means early twenties, nothing younger.
 const ADULT = "adult woman with a fully grown woman's face and figure";
@@ -221,6 +263,7 @@ type Companion = Mature & { tags: string[] };
 const SETS: Record<string, Companion[]> = {
   mature: MATURE.map((m) => ({ ...m, tags: ["milf", "mature"] })),
   young: YOUNG.map((m) => ({ ...m, tags: [] })),
+  busty: BUSTY.map((m) => ({ ...m, tags: ["milf", "mature", "busty"] })),
 };
 
 async function uploadPortrait(dataUrl: string, name: string): Promise<string> {

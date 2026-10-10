@@ -48,6 +48,17 @@ describe("the renderer is allowed to change her mouth", () => {
     expect(mouthActTags(LICK)).not.toContain("tongue out");
     expect(mouthActTags("suck on your dildo")).toContain("dildo in mouth");
     expect(mouthActTags("show me your tits")).toBe("");
+    expect(mouthActTags("send me a picture of you rubbing your pussy")).toContain("rubbing own pussy");
+    const anal = propClause("stick a dildo up your ass", { anatomy: anatomyOf("female") });
+    expect(anal).toContain("deep inside her ass");
+    expect(anal).not.toContain("deep inside her pussy");
+    const vag = propClause("stick a dildo in your pussy", { anatomy: anatomyOf("female") });
+    expect(vag).toContain("deep inside her pussy");
+    const looked = finishMediaPrompt("exact same woman, nude", "send me a selfie", {
+      anatomy: anatomyOf("female"),
+      appearance: { age: 22, look: "blue shoulder-length wavy hair, blue eyes, fair skin" },
+    });
+    expect(looked).toContain("blue shoulder-length wavy hair");
     const out = finishMediaPrompt("exact same woman, tongue on her own nipple", LICK, {
       anatomy: anatomyOf("female"),
       appendAnatomy: true,

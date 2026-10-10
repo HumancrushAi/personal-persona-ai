@@ -437,8 +437,18 @@ export function isMouthAct(req: string): boolean {
 // tits" rendered as a hand cupping a breast and a smile at the camera, with
 // the licking sentence sitting correct and ignored in the middle of 200 words.
 // Pronoun-free so the same tags serve every body.
+// Rubbing / fingering herself: the hand is the act, and "right hand between
+// her thighs" in the prose rendered no hand at all.
+const RUB_RE =
+  /\b(?:rub\w*|finger\w*|touch\w*|play\w*\s+with|stroke\w*|masturbat\w*|pleasur\w*)\b[^.?!]{0,30}\b(?:her|his|their|your|own|)\s*(?:self|pussy|clit\w*|vulva|cunt|slit)\b|\bmasturbat\w*/i;
+export function isRubAct(req: string): boolean {
+  return RUB_RE.test(req ?? "");
+}
+
 export function mouthActTags(req: string): string {
   const t = req ?? "";
+  if (!isMouthAct(t) && RUB_RE.test(t))
+    return "rubbing own pussy, hand between own thighs, two fingers pressed on own clit, legs spread, looking down at own hand";
   if (SELF_BREAST_ORAL_RE.test(t))
     // No "tongue out" here: on its own that tag reads as a face tilted BACK
     // with the tongue out at the camera, which is what came back. Everything
@@ -1200,7 +1210,12 @@ export function finishMediaPrompt(
      * indoors" for every companion in the app, so an Asian companion rendered
      * white and a stranger every time.
      */
-    appearance?: { age?: number | null; ethnicity?: string | null };
+    appearance?: {
+      age?: number | null;
+      ethnicity?: string | null;
+      /** Her hair, eyes, skin and build in words (look.server.ts). FaceID carries only the face. */
+      look?: string | null;
+    };
     still?: boolean;
     /** This prompt is for a CLIP. Appends the motion tail, as still appends the still cue. */
     moving?: boolean;
@@ -1312,6 +1327,12 @@ export function finishMediaPrompt(
     // not lined. Matte, fine pores, soft natural brows.
     `adult ${statedAge}-year-old ${a.noun}, fully grown adult body`,
   ];
+  // Hair, eyes, skin, build — on every render that has them. The reference
+  // photo carries her face and nothing else; "identical hair" in the prompt
+  // was a promise the graph could not keep, and a blue-haired companion came
+  // back brunette.
+  const look = (opts.appearance?.look ?? "").trim();
+  if (look) describes.push(look);
   if (opts.appendAppearance) {
     const ethnicity = (opts.appearance?.ethnicity ?? "").trim();
     if (ethnicity) describes.push(`${ethnicity} ${a.noun}`);

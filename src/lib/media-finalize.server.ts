@@ -775,7 +775,8 @@ async function verifiedOrRetake(
   const { anatomyOf } = await import("./anatomy");
   const { verifyQuestion, parseCandidates, candidateLine, bestCandidate, shouldRetake, DEFAULT_RETAKES } =
     await import("./photo-check");
-  const question = verifyQuestion(ctx.userRequest, anatomyOf(ctx.companion.gender).hasBreasts);
+  const anat = anatomyOf(ctx.companion.gender);
+  const question = verifyQuestion(ctx.userRequest, anat.hasBreasts, anat.hasVulva);
   if (!question) return mediaUrl;
 
   const score = await scorePhoto(mediaUrl, question, job.id);

@@ -19,8 +19,13 @@ export type Candidate = { url: string; score: number | null };
 
 // The yes/no the vision model is asked, per act. Null means the act is not
 // one that gets checked.
-export function verifyQuestion(userRequest: string, hasBreasts: boolean): string | null {
+export function verifyQuestion(userRequest: string, hasBreasts: boolean, hasVulva = true): string | null {
   const req = userRequest ?? "";
+  if (
+    hasVulva &&
+    /\b(?:rub\w*|finger\w*|touch\w*|play\w*\s+with|stroke\w*|masturbat\w*|pleasur\w*)\b[^.?!]{0,30}\b(?:her|his|their|your|own|)\s*(?:self|pussy|clit\w*|vulva|cunt|slit)\b/i.test(req)
+  )
+    return "Is one of the woman's own hands between her legs with her fingers touching or rubbing her own pussy?";
   const breastOral =
     /\b(?:lick\w*|suck\w*|kiss\w*|bit(?:e|es|ing)|nibbl\w*|tongu\w*)\b[^.?!]{0,30}\b(?:her|his|their|own|your)\s+(?:own\s+)?(?:tits?|titties|boobs?|boobies|breasts?|nipples?|chest)\b/i;
   if (hasBreasts && breastOral.test(req))

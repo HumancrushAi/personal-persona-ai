@@ -736,7 +736,7 @@ export async function comfyJobInput(
   // The act first, weighted. ComfyUI's text encoder reads "(…:1.3)" as
   // emphasis, and the first tokens of an SDXL prompt carry the most weight —
   // which is exactly where the act was not.
-  const tags = mouthAct ? mouthActTags(req) : "";
+  const tags = mouthActTags(req);
   const finalPrompt = tags ? `(${tags}:1.3), ${prompt}` : prompt;
 
   return comfyInput(
@@ -813,6 +813,7 @@ export async function photoPromptWithAvoid(
     ethnicity: string;
     gender?: string | null;
     short_bio?: string | null;
+    imageUrl?: string | null;
   },
   userRequest: string | undefined,
   styleBackstory: string | null | undefined,
@@ -821,7 +822,11 @@ export async function photoPromptWithAvoid(
   // Grok rewrites the user's line into a full prompt in the house style; the
   // keyword builder is the fallback when no key is set or the call fails.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
-  const refinedResult = await refineMediaPrompt("photo", userRequest ?? "", companion);
+  const { companionLook } = await import("./look.server");
+  const [refinedResult, look] = await Promise.all([
+    refineMediaPrompt("photo", userRequest ?? "", companion),
+    companionLook(companion.imageUrl),
+  ]);
   const refined = refinedResult?.prompts;
   const avoid = refinedResult?.avoid ?? [];
 
@@ -881,7 +886,7 @@ export async function photoPromptWithAvoid(
     // Her own row, not a default. Without this every companion in the app
     // rendered as the same anonymous woman, because the prompt opened
     // "Photograph of a woman indoors" and nothing ever said which one.
-    appearance: { age: companion.age, ethnicity: companion.ethnicity },
+    appearance: { age: companion.age, ethnicity: companion.ethnicity, look },
     // Same condition as appendProps and for the same reason: the builders write
     // their own anatomy clause, the refined prompt no longer does.
     appendAnatomy: Boolean(refined?.[0]),

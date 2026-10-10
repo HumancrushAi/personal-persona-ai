@@ -86,6 +86,15 @@ const INSERTED_CLAUSE =
   "Her open thighs frame the entry. Her pussy lips stretch around the shaft (the narrow mid-section), not around the wide base. Clear wetness at the rim of entry, sharp focus on the insertion point. " +
   "The toy angles down between her thighs. This is real penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
 
+// The same clause for the other hole. The pussy wording was being sent for
+// "a dildo up your ass", and the render put it where the words said.
+const ANAL_INSERTED_CLAUSE =
+  "Penetration complete, tip-first orientation only: the narrow rounded tip is deep inside her ass, the wide flat flared base is fully outside her body and is the only end her fingers touch. " +
+  "Most of the shaft is hidden inside her; a short length of shaft plus the flared base remain visible outside, between her cheeks. " +
+  "Her hips are tilted up and her thighs apart so the entry is visible; her anus stretches around the shaft (the narrow mid-section), not around the wide base, and her pussy stays closed and untouched in front of it. Sharp focus on the insertion point. " +
+  "The toy angles up between her cheeks. This is real anal penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
+const ANAL_TARGET_RE = /\b(?:ass|asshole|arse|anus|butt|booty|rear|cheeks|back\s*door|butthole)\b/i;
+
 // A toy at her mouth. "sucking on a dildo" rendered the toy held up beside her
 // cheek with her lips closed: the spec said what the toy IS and the hand
 // clause where the base is, and nothing said where the tip was. Stated the
@@ -128,8 +137,9 @@ export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): strin
   const a = opts.anatomy ?? anatomyOf("female");
   const inserted = INSERTED_RE.test(text);
   const oral = !inserted && ORAL_RE.test(text);
+  const anal = inserted && ANAL_TARGET_RE.test(text) && !/\b(?:pussy|vagina|cunt|slit)\b/i.test(text);
   const parts = inserted
-    ? [INSERTED_CLAUSE, prop.spec, TWO_HANDS]
+    ? [anal ? ANAL_INSERTED_CLAUSE : INSERTED_CLAUSE, prop.spec, TWO_HANDS]
     : oral
       ? [oralClause(a), prop.spec]
       : [prop.spec];

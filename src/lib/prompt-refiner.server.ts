@@ -192,7 +192,7 @@ ${toyAsked
 ${climax
     ? kind === "male" || kind === "trans-female"
       ? `- the climax is HAPPENING in the picture and it is ${kind === "male" ? "his" : "her"} own: thick white cum spurting from the tip of ${kind === "male" ? "his" : "her"} own cock in ropes, landing on ${kind === "male" ? "his" : "her"} own stomach or chest, the fist still around the shaft; head back, mouth open. One person in the picture, no partner anywhere`
-      : `- the climax is HAPPENING in the picture and it is her own: eyes squeezed shut, mouth open, back arched, fingers still on her clit, and ${/\b(?:squirt|gush)/i.test("") ? "" : ""}a clear arc of fluid squirting from her own pussy down her inner thighs (or, if she only asked to cum, her pussy glistening wet). One person in the picture, no partner, nothing landing on her from anyone else`
+      : `- the climax is HAPPENING in the picture and it is her own: eyes squeezed shut, mouth open, back arched, fingers still on her clit, and a clear arc of fluid squirting from her own pussy down her inner thighs (or, if she only asked to cum, her pussy glistening wet). One person in the picture, no partner, nothing landing on her from anyone else`
     : ``
   }
 ${selfAct

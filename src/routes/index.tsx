@@ -50,82 +50,30 @@ import { FAQSection } from "@/components/FAQSection";
 const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
 const reelUrlHelper = (name: string) => `${REEL_BASE}/${name}.mp4`;
 const BANNERS: { id: string; name: string; title: string; sub: string; gender: "m" | "f" }[] = [
-  // The four the slider opens on: early-to-mid thirties, fuller figure — what
-  // testing asked for up front. Created by scripts/create_companions.ts --set=busty.
-  { id: "a66e3b1a-43ee-431e-868a-4573aacb4067", name: "Vanessa", title: "Rio after dark", sub: "emerald satin · dances like nobody's watching 💃", gender: "f" },
-  { id: "342071f1-55dc-4456-a4f5-57cfa0d4a571", name: "Scarlett", title: "Bored of boys", sub: "black satin wrap dress · looking for a man who can keep up 😏", gender: "f" },
-  { id: "d8ab397f-1fae-4ea7-9b98-a76b89d2db71", name: "Bianca", title: "Milan golden hour", sub: "deep red satin · seduction is an art form 🍷", gender: "f" },
-  { id: "1cffffd5-4385-46c9-a66f-532883fb4c50", name: "Sabrina", title: "Newly single", sub: "navy satin · making up for lost time 🔥", gender: "f" },
-  {
-    id: "2c252785-fe75-4c84-a803-af9c484f6c96",
-    name: "Aria",
-    title: "Silk & Night lights",
-    sub: "seductive crimson slip dress · penthouse luxury vibes 💋",
-    gender: "f",
-  },
-  {
-    id: "9a173fea-67ea-45d3-996a-9084dc3c98d0",
-    name: "Sofia",
-    title: "After hours",
-    sub: "skimpy halter top · thinking about you 😏",
-    gender: "f",
-  },
-  {
-    id: "f668101d-486e-45e2-9e87-69e70e272401",
-    name: "Raven",
-    title: "Dark poetry",
-    sub: "lace corset & leather skirt · alt goth babe 🖤",
-    gender: "f",
-  },
-  {
-    id: "5eaaf212-055d-44f8-841e-94967f4a674c",
-    name: "Vesper",
-    title: "Neon nights",
-    sub: "sheer mesh & leather harness · goth queen 💋",
-    gender: "f",
-  },
-  {
-    id: "eae18174-2e5e-4bc5-8c3f-16e1b5265e50",
-    name: "Ruby",
-    title: "Curvy perfection",
-    sub: "voluptuous blonde · soft curves & warm smile ✨",
-    gender: "f",
-  },
-  {
-    id: "948f3ac7-a60c-4342-93fb-0f3ae3578101",
-    name: "Zara",
-    title: "Golden glow",
-    sub: "curvy golden-hour goddess · radiant charm & seductive warmth 💋",
-    gender: "f",
-  },
-  {
-    id: "78e5f6af-2c52-4dde-b710-09512d28f9aa",
-    name: "Dante",
-    title: "Salsa & fitness",
-    sub: "open linen shirt & abs · golden hour vibes 🌊",
-    gender: "m",
-  },
-  {
-    id: "667ae29d-7e55-4588-b9c8-7bfad68f455e",
-    name: "Jade",
-    title: "Midnight vibes",
-    sub: "sheer black mesh lace corset · alt goth babe 🖤",
-    gender: "f",
-  },
-  {
-    id: "f9aa06f5-7f49-4f5f-be43-f707e8a2ef78",
-    name: "Mei",
-    title: "Soft elegance",
-    sub: "white silk slip dress · sweet & quiet poet 💋",
-    gender: "f",
-  },
-  {
-    id: "ab334fc9-fe99-4f60-bd63-1a969aece70c",
-    name: "Skye",
-    title: "Sun-kissed skies",
-    sub: "blue-haired baddie · swimsuit & tropical sunshine vibes 🩵",
-    gender: "f",
-  },
+  // At least two of every kind — twenties, thirties, forties, fifties, trans,
+  // and the fuller-figured four — interleaved so any rotation start (one
+  // model further on per visit, see heroVisit) opens on a different kind.
+  { id: "a66e3b1a-43ee-431e-868a-4573aacb4067", name: "Vanessa", title: "Rio after dark", sub: "33 · emerald satin · dances like nobody's watching 💃", gender: "f" },
+  { id: "fabb7bf4-3138-4543-a391-03813db3f254", name: "Valeria", title: "Done playing games", sub: "30 · knows exactly what she wants 😏", gender: "f" },
+  { id: "2c252785-fe75-4c84-a803-af9c484f6c96", name: "Aria", title: "Silk & Night lights", sub: "24 · seductive crimson slip dress · penthouse luxury vibes 💋", gender: "f" },
+  { id: "bea40c7d-1fe0-4b9b-92ca-5e217af5c9ad", name: "Monica", title: "Forty & fabulous", sub: "40 · fluent in the art of seduction 🍷", gender: "f" },
+  { id: "7cc8217f-180c-4d10-89b5-5598622aa626", name: "Nova", title: "Living authentically", sub: "24 · trans · deep talks and deeper nights 💙", gender: "f" },
+  { id: "b61e09e9-0f45-4515-b95b-3ece814b6c4a", name: "Diane", title: "Fifty, fit, fun", sub: "50 · far more fun than you'd expect ✨", gender: "f" },
+  { id: "342071f1-55dc-4456-a4f5-57cfa0d4a571", name: "Scarlett", title: "Bored of boys", sub: "34 · black satin wrap dress · keep up if you can 😏", gender: "f" },
+  { id: "46f62501-8d69-470a-ab1c-1fc14f88e60c", name: "Natalie", title: "Newly free", sub: "35 · recently divorced · not wasting another night 🔥", gender: "f" },
+  { id: "9a173fea-67ea-45d3-996a-9084dc3c98d0", name: "Sofia", title: "After hours", sub: "26 · skimpy halter top · thinking about you 😏", gender: "f" },
+  { id: "b3140655-f382-4b7c-a77d-4258ac6d5ce9", name: "Keisha", title: "Grown & gorgeous", sub: "45 · unapologetically herself 👑", gender: "f" },
+  { id: "347215a1-7c96-4b0a-ada5-d21143578eae", name: "Chloe", title: "Infectious energy", sub: "24 · trans · fashion stylist with a wild side 💄", gender: "f" },
+  { id: "522f76e0-cba6-4767-9118-0bbe1f8abe62", name: "Carmen", title: "Still magnetic", sub: "55 · former flamenco dancer · slow, smoky voice 💃", gender: "f" },
+  { id: "d8ab397f-1fae-4ea7-9b98-a76b89d2db71", name: "Bianca", title: "Milan golden hour", sub: "31 · deep red satin · seduction is an art form 🍷", gender: "f" },
+  { id: "f668101d-486e-45e2-9e87-69e70e272401", name: "Raven", title: "Dark poetry", sub: "22 · lace corset & leather skirt · alt goth babe 🖤", gender: "f" },
+  { id: "4d2b42bb-ac22-4b6c-bc98-e881ef3c6abc", name: "Tianna", title: "Playful brat", sub: "35 · trans · she makes the rules 😈", gender: "f" },
+  { id: "1cffffd5-4385-46c9-a66f-532883fb4c50", name: "Sabrina", title: "Newly single", sub: "35 · navy satin · making up for lost time 🔥", gender: "f" },
+  { id: "57e0969f-0047-4b38-a1c2-524913a2bb49", name: "Tess", title: "Playful brat", sub: "31 · try and keep her in line 😜", gender: "f" },
+  { id: "ab334fc9-fe99-4f60-bd63-1a969aece70c", name: "Skye", title: "Blue-haired baddie", sub: "22 · sunshine, selfies and late night chats 🩵", gender: "f" },
+  { id: "eae18174-2e5e-4bc5-8c3f-16e1b5265e50", name: "Ruby", title: "Cozy evenings", sub: "25 · curvy, warm and confident 🍒", gender: "f" },
+  { id: "78e5f6af-2c52-4dde-b710-09512d28f9aa", name: "Dante", title: "Salsa after dark", sub: "26 · sultry fitness trainer 🔥", gender: "m" },
+  { id: "3c02cb21-651e-4a4a-8c28-6514857072f1", name: "Ethan", title: "Golden hour", sub: "26 · barista by day, photographer by night 📸", gender: "m" },
 ];
 
 export const Route = createFileRoute("/")({

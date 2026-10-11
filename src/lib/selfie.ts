@@ -244,7 +244,7 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   // "send me a pic of", "show me", "can you take a photo of", "i wanna see"...
   s = s.replace(
     new RegExp(
-      `^\\s*(?:hey|hi|yo|please|pls|plz)?[,\\s]*(?:can|could|will|would)?\\s*(?:you|u)?\\s*(?:please|pls)?\\s*(?:send|show|take|snap|give|make|do|shoot|film|record)\\s*(?:me|us)?\\s*(?:a|an|some|the|another)?\\s*(?:new|quick|sexy|hot|nice)?\\s*(?:${PHOTO_LEAD})?\\s*(?:of|with|where)?\\s*`,
+      `^\\s*(?:hey|hi|yo|please|pls|plz)?[,\\s]*(?:can|could|will|would)?\\s*(?:you|u)?\\s*(?:please|pls)?\\s*(?:send|show|take(?!\\s+off)|snap|give|make|do|shoot|film|record)\\s*(?:me|us)?\\s*(?:a|an|some|the|another)?\\s*(?:new|quick|sexy|hot|nice)?\\s*(?:${PHOTO_LEAD})?\\s*(?:of\\b|with\\b|where\\b)?\\s*`,
       "i",
     ),
     "",
@@ -287,6 +287,11 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   s = s.replace(/\bat\s+me\b/gi, "at the camera");
   s = s.replace(/\bfor\s+me\b/gi, "for the camera");
   s = s.replace(/\btowards?\s+me\b/gi, "toward the camera");
+  s = s.replace(/\bon top of me\b/gi, "on top, straddling, seen from below");
+  s = s.replace(/\b(?:sitting|sit|squatting|squat)\s+on my face\b/gi, "squatting over the camera, seen from below");
+  // A garment named with "off" or "to the side" is a state, not a verb.
+  s = s.replace(/\b(bra|top|shirt|dress|panties|thong|skirt|jeans|shorts)\s+off\b/gi, `with ${poss} $1 off`);
+  s = s.replace(/\b(panties|thong|bikini bottoms?)\s+(?:pulled\s+)?to the side\b/gi, `with ${poss} $1 pulled to the side`);
 
   return s.replace(/^[\s,.:;-]+/, "").trim();
 }
@@ -294,7 +299,7 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
 // Body-part and object nouns that can open a request, used only to decide
 // whether the action needs a verb in front of it.
 const BARE_NOUN_START = new RegExp(
-  `^(?:${[TOY_VOCAB, "tits|titties|boobs|boobies|breasts?|nipples?|cleavage|pussy|vagina|clit\\w*|labia|cunt|ass|asshole|butt|booty|cheeks|dick|cock|penis|balls|body|legs|thighs|feet"].join("|")})\\b`,
+  `^(?:${[TOY_VOCAB, "tits|titties|boobs|boobies|breasts?|nipples?|cleavage|pussy|vagina|clit\\w*|labia|cunt|ass|asshole|butt|booty|cheeks|dick|cock|penis|balls|body|legs|thighs|feet|armpits?|panties|bra|lingerie|stockings|heels|face|full[- ]body|wet|ahegao|blowjob|mirror selfie|yoga|cum|squirt\\w*|soles|toes"].join("|")})\\b`,
   "i",
 );
 
@@ -357,6 +362,28 @@ const IMPERATIVE_GERUND: Record<string, string> = {
   twerk: "twerking",
   use: "using",
   wear: "wearing",
+  pinch: "pinching",
+  turn: "turning",
+  kiss: "kissing",
+  wink: "winking",
+  pee: "peeing",
+  smile: "smiling",
+  blow: "blowing",
+  press: "pressing",
+  cup: "cupping",
+  look: "looking",
+  give: "giving",
+  raise: "raising",
+  close: "closing",
+  remove: "removing",
+  shake: "shaking",
+  wiggle: "wiggling",
+  flex: "flexing",
+  squirt: "squirting",
+  moan: "moaning",
+  cover: "covering",
+  lean: "leaning",
+  stretch: "stretching",
 };
 
 /**
@@ -445,8 +472,20 @@ export function isRubAct(req: string): boolean {
   return RUB_RE.test(req ?? "");
 }
 
+// Her own hands on her own breasts — squeezing, cupping, pinching. No pose
+// problem, but "She is squeeze her tits" was the whole instruction before.
+const BREAST_HANDS_RE =
+  /\b(?:squeez\w*|hold\w*|cup\w*|grab\w*|press\w*|pinch\w*|massag\w*|play\w*\s+with|fondl\w*|lift\w*)\b[^.?!]{0,20}\b(?:her|his|their|your|own)\s+(?:own\s+)?(?:tits?|titties|boobs?|boobies|breasts?|nipples?)\b/i;
+export function isBreastHandsAct(req: string): boolean {
+  return BREAST_HANDS_RE.test(req ?? "") && !SELF_BREAST_ORAL_RE.test(req ?? "");
+}
+
 export function mouthActTags(req: string): string {
   const t = req ?? "";
+  if (isBreastHandsAct(t))
+    return /pinch/i.test(t)
+      ? "pinching own nipples, fingers on own nipples, both hands on own breasts, looking at the camera"
+      : "squeezing own breasts, both hands cupping own breasts, fingers pressing into own breasts, breasts pushed together, looking at the camera";
   if (!isMouthAct(t) && RUB_RE.test(t))
     return "rubbing own pussy, hand between own thighs, two fingers pressed on own clit, legs spread, looking down at own hand";
   if (SELF_BREAST_ORAL_RE.test(t))

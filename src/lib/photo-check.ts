@@ -22,6 +22,14 @@ export type Candidate = { url: string; score: number | null };
 export function verifyQuestion(userRequest: string, hasBreasts: boolean, hasVulva = true): string | null {
   const req = userRequest ?? "";
   if (
+    hasBreasts &&
+    /\b(?:squeez\w*|hold\w*|cup\w*|grab\w*|press\w*|pinch\w*|massag\w*|play\w*\s+with|fondl\w*|lift\w*)\b[^.?!]{0,20}\b(?:her|his|their|your|own)\s+(?:own\s+)?(?:tits?|titties|boobs?|boobies|breasts?|nipples?)\b/i.test(req) &&
+    !/\b(?:lick\w*|suck\w*|kiss\w*)\b/i.test(req)
+  )
+    return "Are the woman's own hands on her own breasts, squeezing, cupping or pinching them?";
+  if (hasVulva && /\bmasturbat\w*/i.test(req))
+    return "Is one of the woman's own hands between her legs touching her own pussy?";
+  if (
     hasVulva &&
     /\b(?:rub\w*|finger\w*|touch\w*|play\w*\s+with|stroke\w*|masturbat\w*|pleasur\w*)\b[^.?!]{0,30}\b(?:her|his|their|your|own|)\s*(?:self|pussy|clit\w*|vulva|cunt|slit)\b/i.test(req)
   )

@@ -41,13 +41,25 @@ describe("the renderer is allowed to change her mouth", () => {
     expect(propIsOral("dildo in pussy")).toBe(false);
   });
 
-  it("leads with the act as tags, and leaves the whole-body anatomy out", () => {
+  it("leads with the act as tags, and leaves the whole-body anatomy out", async () => {
     expect(mouthActTags(LICK)).toContain("hands under the breast");
     expect(mouthActTags(LICK)).toContain("head bent down to own breast");
     expect(mouthActTags(LICK)).not.toMatch(/tongue|looking down|face turned/);
     expect(mouthActTags(LICK)).not.toContain("tongue out");
     expect(mouthActTags("suck on your dildo")).toContain("dildo in mouth");
     expect(mouthActTags("show me your tits")).toBe("");
+    expect(mouthActTags("squeeze your tits")).toContain("squeezing own breasts");
+    expect(mouthActTags("pinch your nipples")).toContain("pinching own nipples");
+    const { normalizeRequest, actionSentence } = await import("../selfie");
+    const say = (r: string) => actionSentence("she", normalizeRequest(r, "she"));
+    expect(say("take off your top")).toBe("She is taking off her top.");
+    expect(say("pinch your nipples")).toBe("She is pinching her nipples.");
+    expect(say("turn around and show me your ass")).toBe("She is turning around and show me her ass.");
+    expect(say("bra off")).toBe("She is with her bra off.");
+    expect(say("panties to the side")).toBe("She is with her panties pulled to the side.");
+    expect(say("pov you on top of me")).toContain("seen from below");
+    expect(say("armpits")).toBe("She is showing armpits.");
+    expect(say("wink")).toBe("She is winking.");
     expect(mouthActTags("send me a picture of you rubbing your pussy")).toContain("rubbing own pussy");
     const anal = propClause("stick a dildo up your ass", { anatomy: anatomyOf("female") });
     expect(anal).toContain("deep inside her ass");

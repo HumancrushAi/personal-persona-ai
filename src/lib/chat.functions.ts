@@ -8,7 +8,7 @@ import { hasUsableName, extractName, askedForName, isRealName, isEmailHandle } f
 import { chatComplete, modelContextTokens, resolveChatModel } from "./ai";
 import { estimateTokens, fitToBudget } from "./history-budget";
 import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
-import { wantsSelfie, wantsVideo, checkCrossGenderRequest, isFollowUpMediaRequest, followUpDetail } from "./selfie";
+import { wantsSelfie, wantsVideo, checkCrossGenderRequest, resolveMediaRequest } from "./selfie";
 import { deductCredits } from "./credit-wallet";
 import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
@@ -387,41 +387,16 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     //
     // Only meaningful when the last thing she sent actually WAS media; on its
     // own "again" is ordinary conversation.
-    const lastMedia = [...(history ?? [])]
-      .reverse()
-      .find((m: any) => m.role === "assistant" && (m.kind === "image" || m.kind === "video"));
-    const followUp =
-      lastMedia && isFollowUpMediaRequest(data.content)
-        ? ((lastMedia as any).kind as "image" | "video")
-        : null;
-
-    // "send another one" must re-run the SAME act as the last media request,
-    // not the words "another one". Walk back to the user message that triggered
-    // the previous image/video and reuse that text for the new job.
-    let mediaRequestText = data.content;
-    if (followUp) {
-      const hist = (history ?? []) as any[];
-      const lastMediaIdx = [...hist]
-        .map((m, i) => ({ m, i }))
-        .reverse()
-        .find(({ m }) => m.role === "assistant" && (m.kind === "image" || m.kind === "video"))
-        ?.i;
-      if (lastMediaIdx != null) {
-        for (let i = lastMediaIdx - 1; i >= 0; i--) {
-          const m = hist[i];
-          if (m?.role === "user" && typeof m.content === "string" && m.content.trim()) {
-            if (!isFollowUpMediaRequest(m.content)) {
-              // Keep what THIS message adds: "another one with your legs
-              // spread" is the last request plus the pose, not a copy of it.
-              const detail = followUpDetail(data.content);
-              mediaRequestText = detail ? `${m.content.trim()}, ${detail}` : m.content;
-              break;
-            }
-          }
-        }
-      }
-    }
-
+    // Only meaningful when the last thing she sent actually WAS media; on its
+    // own "again" is ordinary conversation. "send another one" re-runs the SAME
+    // act as the last media request, plus whatever this message adds, and
+    // "send me a picture of this" is the scene she just described — see
+    // resolveMediaRequest, which the retake and the vision check share, so
+    // every path renders the same request.
+    const { request: mediaRequestText, followUp } = resolveMediaRequest(
+      data.content,
+      (history ?? []) as any[],
+    );
     const askedFor = wantsVideo(data.content)
       ? ("video" as const)
       : wantsSelfie(data.content)

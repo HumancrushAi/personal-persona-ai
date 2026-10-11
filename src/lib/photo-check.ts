@@ -11,6 +11,7 @@
 // scoring and resubmitting.
 
 import { hasProp } from "./props";
+import { isClimaxAct } from "./selfie";
 
 export const PASS_SCORE = 7;
 export const DEFAULT_RETAKES = 2;
@@ -27,9 +28,22 @@ export type Candidate = { url: string; score: number | null };
 // The yes/no the vision model is asked, per act. Null means the act is not
 // one that gets checked.
 export function verifyQuestion(userRequest: string, hasBreasts: boolean, hasVulva = true): string | null {
+  const q = verifyQuestionFor(userRequest, hasBreasts, hasVulva);
+  // Every question was written about "the woman"; a man or a trans man is
+  // asked about as a person, so the checker is not told to look for someone
+  // who is not in the picture.
+  return q && !(hasBreasts && hasVulva)
+    ? q
+        .replace(/\bthe woman's\b/g, "the person's")
+        .replace(/\bthe woman\b/g, "the person")
+        .replace(/\bher\b/g, "their")
+    : q;
+}
+
+function verifyQuestionFor(userRequest: string, hasBreasts: boolean, hasVulva: boolean): string | null {
   const req = userRequest ?? "";
-  const climax =
-    /\b(?:cum\w*|squirt\w*|gush\w*|orgasm\w*|climax\w*|jizz|spunk|ejaculat\w*|nut|nutting|bust\w*\s+(?:a\s+)?nut|shoot\w*\s+(?:your|his|her|my|a)\s+load|come\s+for\s+me|get\s+off|cream\w*)\b/i.test(req);
+  // One definition of a climax request, shared with the prose and the tags.
+  const climax = isClimaxAct(req);
   if (climax && !hasVulva)
     return "Is cum visibly spurting or dripping from the person's own penis, with their hand on it?";
   if (climax && /\b(?:squirt\w*|gush\w*|cum\w*|come)\b/i.test(req))

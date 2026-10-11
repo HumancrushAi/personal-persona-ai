@@ -25,7 +25,8 @@ const REFINE_TIMEOUT_MS = 30_000;
 // this covers the next one. "licking your tits" came back with a toy in her
 // hand because nothing in any list said "no object": the model writing the
 // prompt knows that is the obvious mistake, and now says so.
-export const AVOID_MARKER = /^\s*AVOID\s*:/im;
+// Tolerates the markdown a model wraps it in: "**AVOID:**", "- Avoid:".
+export const AVOID_MARKER = /^[\s*_#>-]*AVOID\s*[*_]*\s*:/im;
 
 export function splitAvoid(raw: string): { text: string; avoid: string[] } {
   const m = AVOID_MARKER.exec(raw);
@@ -49,14 +50,24 @@ export function filterAvoid(
   anatomy: { hasBreasts: boolean; hasVulva: boolean; hasPenis: boolean },
 ): string[] {
   const req = userRequest.toLowerCase();
-  const reqWords = new Set(req.split(/[^a-z]+/).filter((w) => w.length > 2));
+  // Content words only. "the", "you", "her" and "with" are in nearly every
+  // request, and counting them as collisions dropped nearly every avoid term
+  // with more than one word in it.
+  const STOP = new Set([
+    "the", "and", "for", "you", "your", "her", "his", "their", "with", "from", "that", "this", "she", "him",
+    "them", "are", "was", "has", "have", "get", "got", "send", "sent", "show", "take", "give", "make", "can",
+    "could", "would", "will", "please", "pic", "pics", "picture", "pictures", "photo", "photos", "selfie",
+    "video", "clip", "some", "one", "more", "another", "now", "just", "really", "very", "like", "want",
+    "wanna", "need", "see", "let", "lemme", "into", "onto", "out", "off", "own", "all", "any", "but",
+  ]);
+  const reqWords = new Set(req.split(/[^a-z]+/).filter((w) => w.length > 2 && !STOP.has(w)));
   const owned = [
     anatomy.hasBreasts && /\b(breasts?|tits?|boobs?|nipples?|chest|cleavage|bust)\b/,
     anatomy.hasVulva && /\b(pussy|vulva|vagina|labia|clit\w*|cunt)\b/,
     anatomy.hasPenis && /\b(penis|cock|dick|testicles?|balls|shaft|erection)\b/,
     // Parts every body has: a negative must never push a part away, however
     // the model phrased it ("tongue" on a licking request would fight the act).
-    /\b(face|head|eyes?|hair|skin|hands?|fingers?|arms?|legs?|thighs?|feet|body|woman|man|ass|butt|tongue|mouth|lips|teeth|neck|shoulders?|stomach|belly|hips?|waist|back)\b/,
+    /\b(face|head|eyes?|hair|skin|hands?|fingers?|arms?|legs?|thighs?|feet|body|woman|man|ass|butt|tongue|mouth|lips|teeth|neck|shoulders?|stomach|belly|hips?|waist|back|torso|groin|crotch|pelvis|abdomen|ribs|collarbones?|cheeks?|navel|knees?|elbows?|wrists?|ankles?|toes|palms?|forehead|chin|jaw|nose|ears?|brows?|lashes|figure|frame|curves)\b/,
   ].filter(Boolean) as RegExp[];
   const out: string[] = [];
   for (const t of terms) {
@@ -127,6 +138,24 @@ type Shape = {
   /** Orgasm / squirt / ejaculation asked for — from this body, never a partner's. */
   climax: boolean;
 };
+
+// The rules below are written about "her" and "the woman", and were sent
+// unchanged for a man: "every prompt must contain exact same woman as the
+// reference image". Said to the model about a man, they say him.
+function forKind(text: string, kind: SubjectKind): string {
+  if (kind === "female" || kind === "trans-female") return text;
+  const nb = kind === "nb";
+  return text
+    .replace(/\bherself\b/g, nb ? "themselves" : "himself")
+    .replace(/\bHerself\b/g, nb ? "Themselves" : "Himself")
+    .replace(/\bof her\b/g, nb ? "of them" : "of him")
+    .replace(/\bher\b/g, nb ? "their" : "his")
+    .replace(/\bHer\b/g, nb ? "Their" : "His")
+    .replace(/\bshe\b/g, nb ? "they" : "he")
+    .replace(/\bShe\b/g, nb ? "They" : "He")
+    .replace(/\bwoman\b/g, nb ? "person" : "man")
+    .replace(/\bWoman\b/g, nb ? "Person" : "Man");
+}
 
 const rules = ({
   undress,
@@ -227,7 +256,7 @@ function systemFor(kind: "photo" | "video", scenes: number, shape: Shape): strin
   if (kind === "photo") {
     return `You write prompts for an uncensored ComfyUI image model in an adults-only AI companion app.
 
-${rules(shape)}
+${forKind(rules(shape), shape.kind)}
 
 This is a STILL photograph: end with the pose held and the camera locked off.
 
@@ -238,7 +267,7 @@ ${examples}`;
   }
   return `You write prompts for an uncensored ComfyUI image-to-video model in an adults-only AI companion app.
 
-${rules({ ...shape, groinFocus: false })}
+${forKind(rules({ ...shape, groinFocus: false }), shape.kind)}
 
 The clip has ${scenes} scenes that play back to back. Break the requested action into ${scenes} steps that PROGRESS. Each scene keeps her identity, the setting and the lighting consistent.
 
@@ -284,7 +313,20 @@ const EXPLICIT_MARKER =
 
 function usableRefinement(raw: string, nude: boolean, minLength: number): boolean {
   if (raw.length < minLength) return false;
-  if (/^(i (can'?t|cannot|won'?t)|i'm sorry|as an ai|sorry,)/i.test(raw)) return false;
+  // A refusal, in the shapes they come in. One that mentions the nude words
+  // it is refusing passed the explicit-marker test and became the prompt.
+  if (
+    /^\s*(?:i(?:'m| am)?\s+(?:sorry|unable|not able|afraid|apolog\w*)|i\s+(?:can'?t|cannot|won'?t|will not|do not|don'?t|must|have to|need to)\b|sorry|unfortunately|as an ai|i'?m an ai|this request|i'?m not (?:able|going|comfortable)|we (?:can'?t|cannot|do not|don'?t))/i.test(
+      raw,
+    )
+  )
+    return false;
+  if (
+    /\b(?:can'?t|cannot|unable to|not able to|won'?t be able to|refuse to|decline to)\s+(?:help|assist|create|generate|produce|write|do|fulfill|fulfil|comply|provide|continue|proceed)\b/i.test(
+      raw.slice(0, 200),
+    )
+  )
+    return false;
   return !nude || EXPLICIT_MARKER.test(raw);
 }
 

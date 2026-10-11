@@ -88,11 +88,35 @@ const INSERTED_CLAUSE =
 
 // The same clause for the other hole. The pussy wording was being sent for
 // "a dildo up your ass", and the render put it where the words said.
-const ANAL_INSERTED_CLAUSE =
+const analInsertedClause = (a: Anatomy) =>
   "Penetration complete, tip-first orientation only: the narrow rounded tip is deep inside her ass, the wide flat flared base is fully outside her body and is the only end her fingers touch. " +
   "Most of the shaft is hidden inside her; a short length of shaft plus the flared base remain visible outside, between her cheeks. " +
-  "Her hips are tilted up and her thighs apart so the entry is visible; her anus stretches around the shaft (the narrow mid-section), not around the wide base, and her pussy stays closed and untouched in front of it. Sharp focus on the insertion point. " +
+  `Her hips are tilted up and her thighs apart so the entry is visible; her anus stretches around the shaft (the narrow mid-section), not around the wide base${
+    a.hasVulva
+      ? ", and her pussy stays closed and untouched in front of it"
+      : a.hasPenis
+        ? ", and her cock and balls hang in front of it"
+        : ""
+  }. Sharp focus on the insertion point. ` +
   "The toy angles up between her cheeks. This is real anal penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
+
+// Every clause here was written for "her", and a man asking for a toy got
+// "her ass" and "her hand" in his prompt. "her" is both possessive and
+// object in English; "inside her" is the one object use these clauses make.
+function pronounize(text: string, a: Anatomy): string {
+  if (a.subject === "she") return text;
+  const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
+  const Poss = `${a.poss[0].toUpperCase()}${a.poss.slice(1)}`;
+  return text
+    .replace(/\binside her\b(?!\s+(?:ass|pussy|mouth|body|open|lips|cheeks|thighs))/g, `inside ${a.object}`)
+    .replace(/\bShe is\b/g, `${S} ${a.is}`)
+    .replace(/\bShe has\b/g, `${S} ${a.is === "are" ? "have" : "has"}`)
+    .replace(/\bHer\b/g, Poss)
+    .replace(/\bher\b/g, a.poss)
+    .replace(/\bShe\b/g, S)
+    .replace(/\bshe\b/g, a.subject)
+    .replace(/\bherself\b/g, a.refl);
+}
 const ANAL_TARGET_RE = /\b(?:ass|asshole|arse|anus|butt|booty|rear|cheeks|back\s*door|butthole)\b/i;
 
 // A toy at her mouth. "sucking on a dildo" rendered the toy held up beside her
@@ -139,7 +163,7 @@ export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): strin
   const oral = !inserted && ORAL_RE.test(text);
   const anal = inserted && ANAL_TARGET_RE.test(text) && !/\b(?:pussy|vagina|cunt|slit)\b/i.test(text);
   const parts = inserted
-    ? [anal ? ANAL_INSERTED_CLAUSE : INSERTED_CLAUSE, prop.spec, TWO_HANDS]
+    ? [anal ? analInsertedClause(a) : INSERTED_CLAUSE, prop.spec, TWO_HANDS]
     : oral
       ? [oralClause(a), prop.spec]
       : [prop.spec];
@@ -148,7 +172,7 @@ export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): strin
   // The vulva sentence places the toy "against her skin"; at her mouth that is
   // the wrong place, and the word pulls the camera to her groin.
   if (a.hasVulva && !oral) parts.push(vulvaAnatomy(a));
-  return parts.join(" ");
+  return pronounize(parts.join(" "), a);
 }
 
 export function propNegative(req: string): string {

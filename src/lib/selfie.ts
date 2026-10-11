@@ -16,7 +16,7 @@ const KW = {
   // a request for a photo, so "dirty" here is never someone's dishes. "sexy" is
   // deliberately absent — a sexy picture in a dress is a real, clothed request.
   explicitIntent:
-    "nasty|nastier|naughty|naughtier|dirty|dirtier|filthy|slutty|sluttier|lewd|explicit|xxx|x-rated|nsfw|uncensored|horny|freaky|kinky|raunchy|spicy|spicier",
+    "nasty|nastier|naughty|naughtier|dirty|dirtier|filthy|slutty|sluttier|lewd|explicit|xxx|x-rated|nsfw|uncensored|horny|freaky|kinky|raunchy|spicy|spicier|dripping wet|soaking wet",
   undress:
     "nude|nudes|naked|nakie|nekkid|unclothed|undress\\w*|strip\\w*|no clothes|without clothes|clothes off|take .{0,10}off|topless|bottomless|bare|exposed|full frontal|birthday suit|in the buff|show everything|show it all|show me all",
   breasts:
@@ -32,7 +32,7 @@ const KW = {
   oral: "blow\\s*job|blowjob|bj|suck\\w*|oral|deep\\s*throat|fellati\\w*|lick\\w*|cunnilingus|rim\\w*|tongue|69",
   anal: "anal|butt\\s*plug|up (?:her|your|my) ass|in (?:her|your|my) ass|ass\\s*fuck\\w*|sodom\\w*|butt stuff",
   sex: "fuck\\w*|sex|penetrat\\w*|insert\\w*|creampie|gape|missionary|reverse cowgirl|gangbang|threesome|orgy",
-  cum: "cum\\w*|cream\\s*pie|squirt\\w*|gush\\w*|orgasm\\w*|climax\\w*|ahegao|facial|jizz|spunk|dripping wet|precum|load|ejaculat\\w*|nut|nutting|bust\\w*\\s+(?:a\\s+)?nut|shoot\\w*\\s+(?:your|his|her|my|a)\\s+load|come\\s+for\\s+me|coming\\s+for\\s+me|make\\s+(?:yourself|urself)\\s+c[uo]m\\w*|finish\\s+(?:yourself|on)|get\\s+off|cream\\w*",
+  cum: "cum|cums|cumming|cummed|cuming|cummin|came|come\\s+for\\s+me|coming\\s+for\\s+me|c[uo]m\\s+(?:on|for|all\\s+over|in|inside)\\b|orgasm\\w*|climax\\w*|squirt\\w*|gush\\w*|ejaculat\\w*|jizz|spunk|cum\\s*shots?|creampie|cream\\s*pie|bust\\w*\\s+(?:a\\s+)?nut|nut(?:ting|s)?\\s+(?:on|for|all\\s+over|in)\\b|shoot\\w*\\s+(?:your|ur|his|her|my|a)\\s+load|blow\\w*\\s+(?:your|ur|his|her|my|a)\\s+load|make\\s+(?:yourself|urself)\\s+c[uo]m\\w*|finish\\s+(?:yourself|urself|on|all\\s+over)|get\\s+(?:yourself|urself)\\s+off|get\\s+off\\s+for\\s+me|precum|ahegao|female\\s+ejaculat\\w*|o-?face|orgasm\\s+face",
   fetish:
     "bdsm|bondage|tied up|handcuff\\w*|collar|leash|spank\\w*|chok\\w*|dominat\\w*|submissive|latex|leather|fishnet|garter|corset|maid outfit|schoolgirl outfit|nurse outfit",
   lingerie:
@@ -236,19 +236,126 @@ const PHOTO_NOUNS =
   "pictures?|pics?|pix|photos?|photographs?|portraits?|potraits?|portaits?|protraits?|headshots?|head shots?|backshots?|back shots?|snapshots?|selfies?|selfy|images?";
 // The same words with an optional "face"/"body" qualifier in front, as the
 // lead-in to strip: "send me a face portrait of you smiling".
-const PHOTO_LEAD = `(?:(?:face|head|full[- ]?body|body|close[- ]?up)\\s*)?(?:${PHOTO_NOUNS}|shots?|videos?|vids?|clips?|nudes?)`;
+const PHOTO_LEAD = `(?:(?:face|head|full[- ]?body|body|close[- ]?up)\\s*)?(?:${PHOTO_NOUNS}|shots?|videos?|vids?|clips?|nudes?|sexts?)`;
 
-export function normalizeRequest(req: string, subject: "she" | "he" | "they"): string {
-  let s = req.trim();
+// Adjectives people put on the picture noun. They say how explicit the
+// picture should be — requestIsNude reads the raw message for that — and
+// nothing about the pose, so they go with the noun. "a dirtier picture" was
+// reaching the renderer as "She is dirtier picture."
+//
+// Two lists. A tone word is stripped even with no noun after it ("do a sexy
+// pose" → "pose"); a state word is only stripped as part of a noun phrase,
+// because on its own it IS the request ("naked" is a pose, "nude pic" is not).
+const PHOTO_ADJ_TONE =
+  "new|quick|sexy|sexxy|sexi|sexier|hot|hotter|nice|cute|pretty|beautiful|gorgeous|sweet|good|great|better|best|different|dirty|dirtier|dirtiest|nasty|nastier|naughty|naughtier|filthy|explicit|raunchy|raunchier|kinky|kinkier|lewd|slutty|sluttier|spicy|spicier|steamy|xxx|x-rated|nsfw|uncensored|freaky|sultry|seductive|provocative|erotic|revealing|intimate|private|special|proper|clear|little|lil|small|tiny|big|hd|realistic|real|candid|artistic|tasteful|personal|solo|amateur|homemade|teasing|flirty|racy|risqu[eé]|suggestive|playful";
+const PHOTO_ADJ_STATE = "nude|naked|topless|wet|horny|full|close[- ]?up|frontal";
+const PHOTO_ADJ = `${PHOTO_ADJ_TONE}|${PHOTO_ADJ_STATE}`;
 
-  // "send me a pic of", "show me", "can you take a photo of", "i wanna see"...
-  s = s.replace(
-    new RegExp(
-      `^\\s*(?:hey|hi|yo|please|pls|plz)?[,\\s]*(?:can|could|will|would)?\\s*(?:you|u)?\\s*(?:please|pls)?\\s*(?:send|show|take(?!\\s+off)|snap|give|make|do|shoot|film|record)\\s*(?:me|us)?\\s*(?:a|an|some|the|another)?\\s*(?:new|quick|sexy|hot|nice)?\\s*(?:${PHOTO_LEAD})?\\s*(?:of\\b|with\\b|where\\b)?\\s*`,
+// What a message opens with before it gets to the ask: "ok then take a dildo
+// and…", "yes. show me your tits", "hi, can you send me a video?". Every one of
+// these reached the renderer inside the sentence that says what the picture
+// is of — "She is Yes. Show me her tits."
+const OPENING_FILLER_RE =
+  /^(?:ok(?:ay)?|yes+|yeah|yep|yup|sure|alright|so|now|then|thrn|and|also|hi+|hey+|hello|yo|please|pls|plz|babe|baby|hun|honey|omg|lol|hmm+|mmm+|oh+|ooh+|ah+|haha+|again|pov)\b[\s,!.?:;-]*/i;
+
+// The verbs people give these orders with. Used to tell the sentence that is
+// the ask from the talk around it, so it is the explicit ones, not every verb
+// actionSentence knows a gerund for — "talk", "read" and "change" are chat.
+const CUE_VERBS =
+  "arch|bend|bounce|crawl|cum|dance|finger|flash|fuck|grab|grind|hold|insert|jerk|kneel|lay|lick|lie|lift|masturbate|open|play|pose|pull|push|put|ride|rub|shove|show|sit|slide|spread|squat|squeeze|straddle|stand|stick|strip|stroke|suck|tease|touch|twerk|use|wear|pinch|turn|kiss|wink|pee|smile|blow|press|cup|look|raise|close|remove|shake|wiggle|flex|squirt|moan|cover|lean|stretch|undress|get naked|get nude|take off|pull down|spank|slap|hump|thrust|gape|bare|expose|reveal|flaunt|jiggle|bite";
+
+// Words that make a sentence the ask rather than the talk around it: the
+// picture nouns, the body, the acts, the clothes, and the verbs above.
+let contentCue: RegExp | null = null;
+function contentCueRe(): RegExp {
+  if (!contentCue)
+    contentCue = new RegExp(
+      `\\b(?:${[
+        PHOTO_NOUNS,
+        "shots?|videos?|vids?|clips?|nudes?|sexts?",
+        KW.undress,
+        KW.breasts,
+        KW.pussy,
+        KW.penis,
+        KW.ass,
+        KW.masturbation,
+        KW.toys,
+        KW.oral,
+        KW.anal,
+        KW.sex,
+        KW.cum,
+        KW.lingerie,
+        POSES_NUDE,
+        CUE_VERBS,
+      ].join("|")})\\b`,
       "i",
-    ),
-    "",
+    );
+  return contentCue;
+}
+
+// The sentences of a message that carry the ask — all of them when none does.
+// "Send me a picture of this! Im getting so horny" is one ask and one aside,
+// and the aside was going into the prompt.
+function askSentences(s: string): string {
+  const parts = s
+    .split(/(?<=[.!?;])\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return s;
+  const kept = parts.filter((p) => contentCueRe().test(p));
+  return kept.length ? kept.join(" ") : s;
+}
+
+// A clause about the asker in front of the ask — "I had a rough day, show me
+// your tits". Only a clause about THEM is dropped; "lying on the bed, spread
+// your legs" is all picture.
+let askStart: RegExp | null = null;
+function askStartRe(): RegExp {
+  if (!askStart)
+    askStart = new RegExp(
+      `^([^,.!?;:]{1,60}?)[,;:]\\s*(?=(?:please\\s+|pls\\s+)?(?:can|could|will|would|why\\s+don'?t|i\\s+(?:want|wanna|need|'?d\\s+like|would\\s+like|gotta)|let\\s+me|lemme|send|sned|show|take|snap|give|gimme|make|shoot|film|record|get|${CUE_VERBS})\\b)`,
+      "i",
+    );
+  return askStart;
+}
+const PREAMBLE_ABOUT_ASKER_RE =
+  /\b(?:i|i'?m|im|i'?ve|i'?d|i'?ll|me|my|mine|we|our|it'?s|its|today|tonight|tomorrow|day|night|work|home)\b/i;
+
+// The ask itself, in every shape it arrives in: "can you please send me
+// another really dirty pic of", "i want you to take a photo of", "i said i
+// wanted a nude photo". Every piece is optional, so this also matches the
+// empty string and leaves a bare description alone.
+//
+// "take", "do", "make" and "get" are only picture verbs in front of a picture
+// noun — "take off your top", "take a dildo", "make yourself cum" and "get
+// naked" are the pose, and stripping the verb left "She is herself cum."
+const ASK_LEAD_RE = new RegExp(
+  "^\\s*" +
+    "(?:i\\s+(?:said|told\\s+(?:you|u)|asked(?:\\s+for)?|meant)\\s*,?\\s*)?" +
+    "(?:(?:i|we)\\s+(?:really\\s+|just\\s+|only\\s+|also\\s+|still\\s+)?(?:want|wanted|need|needed|would\\s+like|'?d\\s+like|'?d\\s+love|wanna|gotta)\\s+(?:(?:to\\s+)?(?:see|get|have)\\s+|(?:you|u)\\s+to\\s+)?)?" +
+    "(?:(?:can|could|will|would|why\\s+don'?t|do)\\s+(?:you|u)\\s+(?:please\\s+|pls\\s+)?)?" +
+    "(?:(?:please|pls|plz)\\s+)?" +
+    `(?:(?:send|sned|snd|sends|sending|show|shows|snap|give|gimme|film|record|post|drop|share|(?:take|do|make|get|shoot)(?=\\s+(?:me\\s+|us\\s+)?(?:(?:another|an|a|some|the|one|more)\\s+)?(?:(?:${PHOTO_ADJ})\\s+)*(?:${PHOTO_LEAD})))\\s*(?:me|us)?\\s+)?` +
+    "(?:(?:another|an|a|some|the|one|1|more)\\b\\s*)?(?:(?:one|more)\\b\\s*)?" +
+    `(?:(?:(?:really|very|super|extra|more|real|so|pretty|kinda|kind\\s+of)\\s+)?(?:(?:(?:${PHOTO_ADJ})\\s+)*(?:${PHOTO_LEAD})\\s*(?:(?:of|with|where|showing|that\\s+shows|in\\s+which|like)\\b\\s*)?|(?:(?:${PHOTO_ADJ_TONE})\\s+)*))`,
+  "i",
+);
+
+// "send me a picture of THIS": the words say nothing to a renderer, and the
+// thing they point at is whatever she just said — resolveMediaRequest puts
+// that in. Anchored at both ends: "this: she is lying on her bed" is a scene.
+const DEMONSTRATIVE_RE =
+  /^(?:this|that|it|the same|like that|like this|what\s+(?:you|u)\s+(?:just\s+)?(?:said|described|mentioned|were\s+saying|are\s+doing|'?re\s+doing)|what\s+i\s+(?:said|asked(?:\s+for)?))\s*$/i;
+
+/** The message with the ask stripped off: what is left is the picture. */
+function stripAsk(req: string): string {
+  let s = req.trim().replace(/\byoure\b/gi, "you're");
+  s = askSentences(s);
+  for (let i = 0; i < 4; i++) s = s.replace(OPENING_FILLER_RE, "");
+  s = s.replace(askStartRe(), (m, pre: string) =>
+    PREAMBLE_ABOUT_ASKER_RE.test(pre) && !contentCueRe().test(pre) ? "" : m,
   );
+  s = s.replace(ASK_LEAD_RE, "");
   s = s.replace(/^\s*(?:i\s*(?:wanna|want\s*to|would\s*like\s*to|'?d\s*like\s*to)\s*see)\s*/i, "");
   s = s.replace(/^\s*(?:lemme|let\s*me)\s*see\s*/i, "");
   // Bare noun phrases with no verb ("a video of you bouncing…") slipped past the
@@ -256,20 +363,88 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   // video of she bouncing on a dick."
   s = s.replace(
     new RegExp(
-      `^\\s*(?:a|an|another|some)?\\s*(?:new|quick|sexy|hot|nice)?\\s*${PHOTO_LEAD}\\s*(?:of|with)?\\s*`,
+      `^\\s*(?:like\\s+)?(?:(?:another|an|a|some|the)\\b\\s*)?(?:(?:${PHOTO_ADJ})\\s+)*(?:${PHOTO_LEAD})\\s*(?:(?:of|with|where|showing)\\b\\s*)?`,
       "i",
     ),
     "",
   );
+  // Emoji, and the sign-off: "licking your tits please babe!!"
+  s = s.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, " ");
+  for (let i = 0; i < 3; i++)
+    s = s.replace(
+      /\s*\b(?:please|pls|plz|babe|baby|hun|honey|daddy|lol|asap|thanks|thank you|ty|pretty please|right now|now)\b[\s!.?,]*$/i,
+      "",
+    );
+  s = s.replace(/[\s!?.,;:]+$/g, "");
+  // "…and send me a pic of it" on the end adds nothing to the picture.
+  s = s.replace(
+    new RegExp(
+      `\\s*\\b(?:and|then|&|\\+)\\s+(?:please\\s+)?(?:(?:send|show|give|gimme|snap|take|shoot)\\s+(?:me|us)?\\s*)?(?:(?:another|an|a|some|the|one)\\b\\s*)?(?:(?:${PHOTO_ADJ})\\s+)*(?:${PHOTO_LEAD})\\b(?:\\s+of\\s+(?:it|that|this))?\\s*$`,
+      "i",
+    ),
+    "",
+  );
+  // Emoji, and the sign-off: "licking your tits please babe!!"
+  s = s.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, " ");
+  for (let i = 0; i < 3; i++)
+    s = s.replace(
+      /\s*\b(?:please|pls|plz|babe|baby|hun|honey|daddy|lol|asap|thanks|thank you|ty|pretty please|right now|now)\b[\s!.?,]*$/i,
+      "",
+    );
+  return s
+    .replace(/[\s!?.,;:]+$/g, "")
+    .replace(/\s+\b(?:and|or|with|of|for|the|a|an|&)$/i, "")
+    .replace(/^[\s,.:;!?-]+/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** "send me a picture of this" — the picture is whatever she just described. */
+export function isDemonstrativeMediaRequest(req: string): boolean {
+  return DEMONSTRATIVE_RE.test(stripAsk(req ?? ""));
+}
+
+export function normalizeRequest(req: string, subject: "she" | "he" | "they"): string {
+  let s = stripAsk(req);
+  s = s.replace(
+    /^(?:this|that|it|the same|like that|like this|what\s+(?:you|u)\s+(?:just\s+)?(?:said|described|mentioned|were\s+saying|are\s+doing|'?re\s+doing)|what\s+i\s+(?:said|asked(?:\s+for)?))\b\s*[:!.?,-]*\s*/i,
+    "",
+  );
+  s = s.replace(
+    /^(?:not clothed|no clothes|nothing on|with nothing on|without clothes|without anything on)$/i,
+    "naked",
+  );
+  s = s.replace(/^what\s+(?:you|u)(?:'re|\s+are|re)\s+wearing\b.*$/i, "showing what you are wearing");
+  s = s.replace(/^what\s+(?:you|u)\s+(?:have|got)\s+on\b.*$/i, "showing what you have on");
+
+  // A second order after "and" is said to the camera, not to her: "spread your
+  // legs and show me your pussy" was reaching the renderer with the "show me"
+  // still in it.
+  s = s.replace(
+    /\b(and|then|while|&)\s+(?:please\s+)?(?:show|send|give|gimme)\s+(?:me|us)\s+(?:(?:some|a|the)\s+)?/gi,
+    "$1 showing ",
+  );
+  s = s.replace(/\b(and|then|while|&)\s+(?:let\s+me|lemme)\s+see\s+(?:(?:some|a|the)\s+)?/gi, "$1 showing ");
+  s = s.replace(/\bshow\s+(?:me|us)\s+/gi, "showing ");
 
   const poss = subject === "he" ? "his" : subject === "they" ? "their" : "her";
   const refl = subject === "he" ? "himself" : subject === "they" ? "themselves" : "herself";
-  s = s.replace(/\byourself\b/gi, refl);
-  s = s.replace(/\byour\b/gi, poss);
+  const obj = subject === "he" ? "him" : subject === "they" ? "them" : "her";
+  const is = subject === "they" ? "are" : "is";
+  s = s.replace(/\b(?:yourself|urself|yourselves)\b/gi, refl);
+  s = s.replace(/\b(?:your|ur)\b/gi, poss);
   // A leading "you" is the subject of the sentence being built, so translating
-  // it would double up ("She is she naked") — drop it instead.
-  s = s.replace(/^\s*you\b\s*/i, "");
-  s = s.replace(/\byou\b/gi, subject);
+  // it would double up ("She is she naked") — drop it, and "you are" with it.
+  s = s.replace(/^\s*(?:you|u)(?:'re|re|\s+are)?\s+/i, "");
+  s = s.replace(/^\s*(?:you|u)\s*$/i, "");
+  s = s.replace(/\b(?:you|u)(?:'re|re)\b|\b(?:you|u)\s+are\b/gi, `${subject} ${is}`);
+  // After a preposition "you" is an object: "a picture of you naked" is "of
+  // her", not "of she".
+  s = s.replace(
+    /(?<=\b(?:of|with|at|to|for|on|in|by|from|like|about|behind|under|over|see|watch|want|fuck|ride|around|near|beside|against|onto|into|inside|between|below|above|without|than)\s+)(?:you|u)\b/gi,
+    obj,
+  );
+  s = s.replace(/\b(?:you|u)\b/gi, subject);
 
   // The person asking is not in the picture — they are behind the lens. Left
   // alone, "your pussy close to my face" reached the renderer as "close to my
@@ -288,18 +463,142 @@ export function normalizeRequest(req: string, subject: "she" | "he" | "they"): s
   s = s.replace(/\bfor\s+me\b/gi, "for the camera");
   s = s.replace(/\btowards?\s+me\b/gi, "toward the camera");
   s = s.replace(/\bon top of me\b/gi, "on top, straddling, seen from below");
-  s = s.replace(/\b(?:sitting|sit|squatting|squat)\s+on my face\b/gi, "squatting over the camera, seen from below");
+  s = s.replace(
+    /\b(?:sitting|sit|squatting|squat)\s+on my face\b/gi,
+    "squatting over the camera, seen from below",
+  );
   // A garment named with "off" or "to the side" is a state, not a verb.
-  s = s.replace(/\b(bra|top|shirt|dress|panties|thong|skirt|jeans|shorts)\s+off\b/gi, `with ${poss} $1 off`);
-  s = s.replace(/\b(panties|thong|bikini bottoms?)\s+(?:pulled\s+)?to the side\b/gi, `with ${poss} $1 pulled to the side`);
+  s = s.replace(
+    /(?<!\b(?:tak\w*|pull\w*|slip\w*|peel\w*|rip\w*|strip\w*|get\w*|throw\w*|toss\w*|kick\w*|whip\w*)\s+(?:her|his|their|the|my)?\s*)\b(?:with\s+)?(?:(?:her|his|their)\s+)?(bra|top|shirt|dress|panties|thong|skirt|jeans|shorts)\s+off\b/gi,
+    `with ${poss} $1 off`,
+  );
+  s = s.replace(
+    /\b(?:with\s+)?(?:(?:her|his|their)\s+)?(panties|thong|bikini bottoms?)\s+(?:pulled\s+)?to the side\b/gi,
+    `with ${poss} $1 pulled to the side`,
+  );
 
-  return s.replace(/^[\s,.:;-]+/, "").trim();
+  return s
+    .replace(/^[\s,.:;-]+/, "")
+    .replace(/[\s,;:]+$/, "")
+    .trim();
+}
+
+/**
+ * Her last message, said back to her as a request — the scene behind "send me
+ * a picture of this". Her "you" is the person asking, who stays behind the
+ * lens; her "I" becomes the "you" every other request is written in, so the
+ * builder and the refiner both read it the way they read any ask. Only the
+ * sentences in which she describes herself, and only a couple of them.
+ */
+export function herWordsAsRequest(text: string): string {
+  const clean = (text ?? "")
+    .replace(/\*/g, " ")
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, " ")
+    .replace(/["“”]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const sentences = clean
+    .split(/(?<=[.!?])\s+/)
+    .map((p) => {
+      let t = p.trim();
+      for (let i = 0; i < 4; i++)
+        t = t.replace(
+          /^(?:mmm+|hmm+|mm+|oh+|ooh+|ah+|aw+|baby|babe|hun|honey|sweetie|darling|daddy|sir|god|fuck|yes+|haha+|well|so|ok(?:ay)?|hey+|hi+)\b[\s,!.-]*/i,
+          "",
+        );
+      return t;
+    })
+    .filter((p) => p && !/\?$/.test(p) && /\b(?:i|i'?m|im|i'?ve|my|me|myself)\b/i.test(p));
+  let out = "";
+  for (const p of sentences) {
+    if (out && `${out} ${p}`.length > 220) break;
+    out = out ? `${out} ${p}` : p;
+  }
+  return out
+    .replace(/\byourself\b/gi, "\u0000self")
+    .replace(/\byour\b/gi, "\u0000r")
+    .replace(/\byou\b/gi, "\u0000")
+    .replace(/\b(?:I'?m|Im)\b/g, "you're")
+    .replace(/\bI am\b/g, "you are")
+    .replace(/\bI'?ve\b/g, "you've")
+    .replace(/\bI'?ll\b/g, "you'll")
+    .replace(/\bI'?d\b/g, "you'd")
+    .replace(/\bI\b/g, "you")
+    .replace(/\bmyself\b/gi, "yourself")
+    .replace(/\bmy\b/gi, "your")
+    .replace(/\bme\b/gi, "you")
+    .replace(/\bmine\b/gi, "yours")
+    .replace(/\u0000self/g, "myself")
+    .replace(/\u0000r/g, "my")
+    .replace(/\u0000/g, "me")
+    .replace(/[\s.!]+$/, "")
+    .trim();
+}
+
+/**
+ * The request a photo or clip is actually of, from the message and the
+ * conversation before it. One function for everything that renders, retakes
+ * or checks a picture, because they were each reading the raw message:
+ *
+ *   - "send another one" means another of whatever she just sent — the
+ *     message that asked for the last photo, plus anything this one adds
+ *     ("another one with your legs spread").
+ *   - "send me a picture of this" means the scene she just described.
+ *
+ * The chat path resolved the first of these and nothing else did, so a retake
+ * after a worker error and the vision check both rebuilt the job from the
+ * words "another one". `followUp` is the kind of media being repeated, for
+ * the caller that has no picture noun to route on.
+ */
+export function resolveMediaRequest(
+  content: string,
+  history: { role: string; content: string | null; kind?: string | null }[],
+): { request: string; followUp: "image" | "video" | null } {
+  const hist = history ?? [];
+  const lastMediaIdx = [...hist]
+    .map((m, i) => ({ m, i }))
+    .reverse()
+    .find(({ m }) => m.role === "assistant" && (m.kind === "image" || m.kind === "video"))?.i;
+  const lastMedia = lastMediaIdx == null ? null : hist[lastMediaIdx];
+  const followUp =
+    lastMedia && isFollowUpMediaRequest(content) ? (lastMedia.kind as "image" | "video") : null;
+  let request = content;
+  if (followUp && lastMediaIdx != null) {
+    for (let i = lastMediaIdx - 1; i >= 0; i--) {
+      const m = hist[i];
+      if (
+        m?.role === "user" &&
+        typeof m.content === "string" &&
+        m.content.trim() &&
+        !isFollowUpMediaRequest(m.content)
+      ) {
+        // Keep what THIS message adds: "another one with your legs spread" is
+        // the last request plus the pose, not a copy of it.
+        const detail = followUpDetail(content);
+        request = detail ? `${m.content.trim()}, ${detail}` : m.content;
+        break;
+      }
+    }
+  } else if (isDemonstrativeMediaRequest(content)) {
+    const herLast = [...hist]
+      .reverse()
+      .find(
+        (m) =>
+          m.role === "assistant" &&
+          (!m.kind || m.kind === "text") &&
+          typeof m.content === "string" &&
+          m.content.trim(),
+      );
+    const scene = herLast ? herWordsAsRequest(herLast.content as string) : "";
+    if (scene) request = `${content.trim().replace(/[!.?\s]+$/, "")}: ${scene}`;
+  }
+  return { request, followUp };
 }
 
 // Body-part and object nouns that can open a request, used only to decide
 // whether the action needs a verb in front of it.
 const BARE_NOUN_START = new RegExp(
-  `^(?:${[TOY_VOCAB, "tits|titties|boobs|boobies|breasts?|nipples?|cleavage|pussy|vagina|clit\\w*|labia|cunt|ass|asshole|butt|booty|cheeks|dick|cock|penis|balls|body|legs|thighs|feet|armpits?|panties|bra|lingerie|stockings|heels|face|full[- ]body|wet|ahegao|blowjob|mirror selfie|yoga|cum|squirt\\w*|soles|toes"].join("|")})\\b`,
+  `^(?:${[TOY_VOCAB, "tits|titties|boobs|boobies|breasts?|nipples?|cleavage|pussy|vagina|clit\\w*|labia|cunt|ass|asshole|butt|booty|cheeks|dick|cock|penis|balls|body|legs|thighs|feet|armpits?|panties|bra|lingerie|stockings|heels|full[- ]?face|face|full[- ]body|wet|ahegao|blowjob|mirror selfie|yoga|cum|squirt\\w*|soles|toes"].join("|")})\\b`,
   "i",
 );
 
@@ -384,6 +683,154 @@ const IMPERATIVE_GERUND: Record<string, string> = {
   cover: "covering",
   lean: "leaning",
   stretch: "stretching",
+  shoot: "shooting",
+  do: "doing",
+  eat: "eating",
+  drink: "drinking",
+  bite: "biting",
+  tie: "tying",
+  wrap: "wrapping",
+  slap: "slapping",
+  spank: "spanking",
+  twist: "twisting",
+  lower: "lowering",
+  drop: "dropping",
+  unbutton: "unbuttoning",
+  unzip: "unzipping",
+  peel: "peeling",
+  slip: "slipping",
+  step: "stepping",
+  walk: "walking",
+  run: "running",
+  jump: "jumping",
+  swim: "swimming",
+  shower: "showering",
+  bathe: "bathing",
+  oil: "oiling",
+  smoke: "smoking",
+  pour: "pouring",
+  spit: "spitting",
+  drool: "drooling",
+  gag: "gagging",
+  choke: "choking",
+  swallow: "swallowing",
+  taste: "tasting",
+  nibble: "nibbling",
+  hump: "humping",
+  thrust: "thrusting",
+  gape: "gaping",
+  clench: "clenching",
+  stare: "staring",
+  gaze: "gazing",
+  scream: "screaming",
+  gasp: "gasping",
+  pant: "panting",
+  shiver: "shivering",
+  tremble: "trembling",
+  undress: "undressing",
+  dress: "dressing",
+  change: "changing",
+  try: "trying",
+  model: "modelling",
+  present: "presenting",
+  display: "displaying",
+  expose: "exposing",
+  reveal: "revealing",
+  bare: "baring",
+  part: "parting",
+  point: "pointing",
+  wave: "waving",
+  rock: "rocking",
+  sway: "swaying",
+  roll: "rolling",
+  flip: "flipping",
+  hang: "hanging",
+  dangle: "dangling",
+  crouch: "crouching",
+  recline: "reclining",
+  lounge: "lounging",
+  sprawl: "sprawling",
+  curl: "curling",
+  hug: "hugging",
+  cuddle: "cuddling",
+  fondle: "fondling",
+  caress: "caressing",
+  tickle: "tickling",
+  tug: "tugging",
+  tweak: "tweaking",
+  flick: "flicking",
+  tap: "tapping",
+  pat: "patting",
+  smack: "smacking",
+  pump: "pumping",
+  milk: "milking",
+  jiggle: "jiggling",
+  flaunt: "flaunting",
+  strut: "strutting",
+  gyrate: "gyrating",
+  pop: "popping",
+  clap: "clapping",
+  drip: "dripping",
+  soak: "soaking",
+  splash: "splashing",
+  rinse: "rinsing",
+  scrub: "scrubbing",
+  dry: "drying",
+  shave: "shaving",
+  brush: "brushing",
+  paint: "painting",
+  apply: "applying",
+  read: "reading",
+  cook: "cooking",
+  bake: "baking",
+  clean: "cleaning",
+  wash: "washing",
+  drive: "driving",
+  sunbathe: "sunbathing",
+  tan: "tanning",
+  exercise: "exercising",
+  sleep: "sleeping",
+  nap: "napping",
+  yawn: "yawning",
+  relax: "relaxing",
+  rest: "resting",
+  chill: "chilling",
+  sing: "singing",
+  whisper: "whispering",
+  talk: "talking",
+  laugh: "laughing",
+  giggle: "giggling",
+  grin: "grinning",
+  smirk: "smirking",
+  pout: "pouting",
+  blush: "blushing",
+  cry: "crying",
+  beg: "begging",
+  bow: "bowing",
+  mount: "mounting",
+  climb: "climbing",
+  tilt: "tilting",
+  prop: "propping",
+  throw: "throwing",
+  toss: "tossing",
+  bring: "bringing",
+  come: "coming",
+  go: "going",
+  keep: "keeping",
+  let: "letting",
+  make: "making",
+  be: "being",
+  act: "acting",
+  pretend: "pretending",
+  imagine: "imagining",
+  feel: "feeling",
+  enjoy: "enjoying",
+  love: "loving",
+  start: "starting",
+  begin: "beginning",
+  stop: "stopping",
+  finish: "finishing",
+  continue: "continuing",
 };
 
 /**
@@ -408,11 +855,19 @@ export function actionSentence(subject: "she" | "he" | "they", action: string): 
   const Subject = `${subject[0].toUpperCase()}${subject.slice(1)}`;
   if (!a) return "";
 
-  const gerund = IMPERATIVE_GERUND[a.split(/\s+/)[0].toLowerCase()];
-  if (gerund) return `${Subject} ${verb} ${gerund}${a.slice(a.split(/\s+/)[0].length)}.`;
+  // "spread her legs and show her pussy": the second order is an imperative
+  // too, and it was left as one — "She is spreading her legs and show her
+  // pussy." A conjunction followed by a verb from the table is the same case.
+  const joined = a.replace(/(,|\band\b|\bthen\b|\bwhile\b)\s+(?!close\s+(?:to|up)\b)([a-z]+)\b/gi, (m, c, v) => {
+    const g = IMPERATIVE_GERUND[v.toLowerCase()];
+    return g ? `${c} ${g}` : m;
+  });
+  const first = joined.split(/\s+/)[0];
+  const gerund = IMPERATIVE_GERUND[first.toLowerCase()];
+  if (gerund) return `${Subject} ${verb} ${gerund}${joined.slice(first.length)}.`;
 
-  const needsVerb = /^(?:her|his|their|its|a|an|the)\b/i.test(a) || BARE_NOUN_START.test(a);
-  return `${Subject} ${verb} ${needsVerb ? "showing " : ""}${a}.`;
+  const needsVerb = /^(?:her|his|their|its|a|an|the)\b/i.test(joined) || BARE_NOUN_START.test(joined);
+  return `${Subject} ${verb} ${needsVerb ? "showing " : ""}${joined}.`;
 }
 
 // Acts she does to HER OWN body with her mouth or hands, after normalizeRequest
@@ -660,9 +1115,28 @@ export function followUpDetail(req: string): string {
  */
 export function requestKeepsGarment(req: string): boolean {
   const p = req ?? "";
-  if (!kw(KW.lingerie).test(p)) return false;
+  if (!GARMENT_RE.test(p)) return false;
+  // "take your bra off and show me your tits" names a garment AND a part, and
+  // was read as keeping the bra on — so nothing pushed it off, and the
+  // builder said she was "wearing what was asked for".
+  if (GARMENT_OFF_RE.test(p)) return false;
   return (["vulva", "breasts", "ass"] as const).some((part) => mentionsPart(p, part));
 }
+
+// Everything a person can be asked to keep on. Lingerie, and the ordinary
+// clothes that used to be pushed away by CLOTHING_NEGATIVE the moment a body
+// part was named beside them: "in a dress with your tits out" lost the dress.
+const GARMENT_WORDS =
+  "dress|skirt|mini\\s*skirt|top|crop\\s*top|tank\\s*top|t-?shirt|shirt|blouse|jeans|shorts|leggings|yoga\\s*pants|pants|trousers|heels|high\\s*heels|boots|socks|thigh\\s*highs?|fishnets?|jacket|hoodie|sweater|cardigan|uniform|costume|outfit|robe|bathrobe|towel|apron|corset|bodysuit|swimsuit|one-?piece|sweatpants|pajamas|pyjamas|pjs|nightgown|gown|lab\\s*coat|nurse\\s*outfit|maid\\s*outfit|cheerleader|bunny\\s*(?:suit|outfit|ears)|cat\\s*ears|collar|choker|gloves|hat|glasses|sunglasses|mask|scarf|coat|cosplay|jersey|bikini\\s*top|bikini\\s*bottoms?|swim\\s*trunks|boxers|briefs|jockstrap|harness|leather|latex|silk|satin|lace";
+const GARMENT_RE = new RegExp(`\\b(?:${KW.lingerie}|${GARMENT_WORDS})\\b`, "i");
+// The garment is coming OFF, or was never on.
+const GARMENT_OFF_RE = new RegExp(
+  `\\b(?:tak\\w*|pull\\w*|slip\\w*|peel\\w*|rip\\w*|strip\\w*|get\\w*|throw\\w*|toss\\w*|kick\\w*)\\s+(?:off|down|out of)?\\s*(?:your|ur|her|his|their|the|that|those|my)?\\s*(?:${KW.lingerie}|${GARMENT_WORDS})\\s*(?:off|down|away)?\\b` +
+    `|\\b(?:${KW.lingerie}|${GARMENT_WORDS})\\s+(?:off|down|removed|gone|on the floor)\\b` +
+    `|\\b(?:without|no|remov\\w*|los\\w*|ditch\\w*|drop\\w*)\\s+(?:your|ur|her|his|their|the|any|that|those|my)?\\s*(?:${KW.lingerie}|${GARMENT_WORDS})\\b` +
+    `|\\b(?:${KW.lingerie}|${GARMENT_WORDS})\\s+(?:pulled|slid|pushed|moved)\\s+(?:down|aside|to the side|off)\\b`,
+  "i",
+);
 
 /**
  * Whether the request sets its own viewpoint, rather than leaving the default
@@ -878,6 +1352,35 @@ export const IDENTITY_LOCK =
 export const NUDE_FORCE =
   "Completely nude, fully undressed, bare skin everywhere, bare breasts and bare groin, wardrobe fully removed.";
 
+/**
+ * The same clause for the body in question. It said "bare breasts" on every
+ * nude render, a man's included — and a man's prompt that asks for breasts
+ * gets them.
+ */
+export function nudeForceFor(a?: Anatomy | null): string {
+  return a && !a.hasBreasts
+    ? NUDE_FORCE.replace("bare breasts and bare groin", "bare chest and bare groin")
+    : NUDE_FORCE;
+}
+
+/**
+ * What she does when the request says only how explicit the picture should
+ * be — "send me a dirtier picture", "a nasty photo of you". Those words all
+ * came off with the ask, and what was left was the default pose: a nude in
+ * the same posture a plain "send me a pic" gets. "Dirty" means the one thing
+ * the body can show that a plain nude does not.
+ */
+function fallbackAct(req: string, a: Anatomy, moving: boolean): string {
+  if (req.trim() && kw(KW.explicitIntent).test(req) && !kw(KW.lingerie).test(req)) {
+    if (a.hasVulva) return `naked with ${a.poss} legs spread wide, showing ${a.poss} pussy to the camera`;
+    if (a.hasPenis) return `naked with ${a.poss} legs apart, showing ${a.poss} hard cock to the camera`;
+    return `naked, showing ${a.poss} whole body to the camera`;
+  }
+  return moving
+    ? "performing a slow seductive striptease for the camera"
+    : "posing seductively for the camera";
+}
+
 const QUALITY =
   "Candid photograph on a phone, amateur and unretouched, natural available light, true-to-life colour, natural healthy skin with fine pores and fine texture, matte natural finish, light natural makeup, slight film grain, soft natural shadows. Looks like a real photo taken on a real phone.";
 
@@ -955,7 +1458,7 @@ function buildStillPrompt(
   // as a headless torso, and at higher tag density as an extreme close-up, no
   // matter what the framing text said. The user's own words in plain language
   // render the same act and keep the camera wide.
-  const action = normalizeRequest(req, subject) || "posing seductively for the camera";
+  const action = normalizeRequest(req, subject) || fallbackAct(req, a, false);
   const isCloseUp = CLOSE_UP_RE.test(req);
   const Subject = `${subject[0].toUpperCase()}${subject.slice(1)}`;
   const settles = `settle${a.s}`;
@@ -973,25 +1476,38 @@ function buildStillPrompt(
   // on pillows, chest lifted — which is also how the reference photos in the
   // refiner's examples have her.
   const lyingDown = /\b(?:lying|lie|laid|lay|on (?:her|his|their|your|my) back)\b/i.test(req);
+  // A hand with a job in the act cannot also be resting on her thigh. The
+  // posture line said it was, two sentences after the act said otherwise.
+  const handsBusy =
+    selfActUsesHands(req) ||
+    isRubAct(req) ||
+    isBreastHandsAct(req) ||
+    hasProp(req) ||
+    isClimaxAct(req);
+  const handsLine = handsBusy ? "" : `, ${poss} hands resting on ${poss} thighs`;
+  const freeHands = (text: string) =>
+    handsBusy ? text.replace(`, ${poss} hands resting on ${poss} thighs`, "") : text;
   const posture =
     nude && req && !POSTURE_RE.test(req)
-      ? `${Subject} ${a.is} reclining back against pillows on a bed with plain white sheets, propped up on ${poss} elbows, ${poss} back gently arched and ${poss} knees apart, ${poss} hands resting on ${poss} thighs, soft daylight from a window beside ${a.object}.`
+      ? `${Subject} ${a.is} reclining back against pillows on a bed with plain white sheets, propped up on ${poss} elbows, ${poss} back gently arched and ${poss} knees apart${handsLine}, soft daylight from a window beside ${a.object}.`
       : nude && lyingDown
-        ? `${Subject} ${a.is} lying back against a stack of pillows, ${poss} shoulders and upper back raised, ${poss} back gently arched, ${poss} hands resting on ${poss} thighs.`
+        ? `${Subject} ${a.is} lying back against a stack of pillows, ${poss} shoulders and upper back raised, ${poss} back gently arched${handsLine}.`
         : "";
 
   return [
-    framingFor(
-      noun,
-      poss,
-      POSTURE_RE.test(req),
-      !!req,
-      c.name,
-      isCloseUp,
-      // Only where there is a vulva to point the camera at, only on a still,
-      // and only where the renderer actually needs the help.
-      a.hasVulva && mentionsPart(req, "vulva") && !rendersAtStillResolution(),
-      requestedShot(req),
+    freeHands(
+      framingFor(
+        noun,
+        poss,
+        POSTURE_RE.test(req),
+        !!req,
+        c.name,
+        isCloseUp,
+        // Only where there is a vulva to point the camera at, only on a still,
+        // and only where the renderer actually needs the help.
+        a.hasVulva && mentionsPart(req, "vulva") && !rendersAtStillResolution(),
+        requestedShot(req),
+      ),
     ),
     selfActSentence(action, a) || actionSentence(subject, action),
     climaxSentence(req, a),
@@ -1033,8 +1549,7 @@ export function videoActionPrompt(
       : `${subject} move${a.s} seductively for the camera.`;
 
   // Same reason as videoStillPrompt: no booru tags for this model.
-  const action =
-    normalizeRequest(req, subject) || "performing a slow seductive striptease for the camera";
+  const action = normalizeRequest(req, subject) || fallbackAct(req, a, true);
   const isCloseUp = CLOSE_UP_RE.test(req);
 
   return [
@@ -1521,8 +2036,9 @@ export function finishMediaPrompt(
     !/CRITICAL identity lock|same person as the reference photo/i.test(body);
   // Both are appended after the cut, so their words are reserved before it;
   // otherwise they pushed a capped prompt 57 words past the budget.
+  const nudeForce = nudeForceFor(opts.anatomy);
   const tailWords =
-    (forceNude ? NUDE_FORCE.split(/\s+/).length : 0) +
+    (forceNude ? nudeForce.split(/\s+/).length : 0) +
     (lockIdentity ? IDENTITY_LOCK.split(/\s+/).length : 0) +
     FACE_WORDS;
 
@@ -1532,7 +2048,7 @@ export function finishMediaPrompt(
   // never costs the scene a word, and never pushes the spec down the prompt.
   capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${FACE_CLAUSE}`;
   if (forceNude) {
-    capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${NUDE_FORCE}`;
+    capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${nudeForce}`;
   }
   if (lockIdentity) {
     capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${IDENTITY_LOCK}`;
@@ -1607,8 +2123,15 @@ export function wantsSelfie(t: string): boolean {
   // "gimme a pic babe". Capped at five words so "i really loved those pics you
   // sent me earlier" stays a comment about photos rather than a new order.
   const words = s.split(/\s+/).filter(Boolean);
+  // A reaction to the one she just sent is not a request for another: "that's
+  // a great pic", "nice photo", "love that selfie" each cost a user 8 credits.
+  const reaction =
+    /^(?:that'?s|thats|that is|this is|what a|such a|wow|omg|lol|thanks|thank you|ty|i love|i loved|love|loved|nice|great|good|beautiful|amazing|gorgeous|stunning|cute|hot|sexy|damn|mmm+|perfect|awesome|fire|yum+|wow+)\b/.test(
+      s.trim(),
+    );
   if (
     words.length <= 5 &&
+    !reaction &&
     /\b(?:pic|pics|pix|picture|photo|portrait|potrait|portait|protrait|headshot|backshot|snapshot|selfie|selfy|nude|nudes)\b/.test(
       s,
     )

@@ -651,7 +651,7 @@ const RETRY_DELAY_MS = Number(process.env.MEDIA_RETRY_DELAY_MS || 45_000);
 // for it, and the companion. Shared by the memory retry and the retake.
 type JobContext = {
   row: { id: string; prompt: string; created_at: string; conversation_id: string };
-  companion: { gender?: string | null; image_url?: string | null };
+  companion: { gender?: string | null; image_url?: string | null; age?: number | null };
   userRequest: string;
 };
 
@@ -668,20 +668,32 @@ async function jobContext(jobId: string): Promise<JobContext | null> {
     .eq("id", row.conversation_id)
     .maybeSingle();
   const companion: any = (conv as any)?.user_personalities?.companions ?? {};
-  // The message that asked for this photo: the user's last one before the
-  // job was written.
-  const { data: asked } = await supabaseAdmin
+  // The message that asked for this photo — the user's last one before the
+  // job was written — resolved against the conversation the same way the
+  // chat path resolved it when the job was made. Read raw, "send another
+  // one" rebuilt the retake's tags and the vision check from the words
+  // "another one".
+  const { data: newestFirst } = await supabaseAdmin
     .from("messages")
-    .select("content")
+    .select("role, content, kind")
     .eq("conversation_id", row.conversation_id)
-    .eq("role", "user")
     .lte("created_at", row.created_at)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .order("id", { ascending: false })
+    .limit(30);
+  const history = (newestFirst ?? []).slice().reverse() as {
+    role: string;
+    content: string | null;
+    kind?: string | null;
+  }[];
+  const asked = [...history]
+    .reverse()
+    .find((m) => m.role === "user" && typeof m.content === "string" && m.content.trim());
+  const { resolveMediaRequest } = await import("./selfie");
   return {
     row: row as JobContext["row"],
     companion,
-    userRequest: asked?.[0]?.content ?? "",
+    userRequest: asked ? resolveMediaRequest(asked.content as string, history).request : "",
   };
 }
 
@@ -697,7 +709,10 @@ async function resubmitImageJob(
   const { runpodEndpoint, runpodRun } = await import("./runpod");
   const endpoint = runpodEndpoint("image");
   if (!endpoint) throw new Error("no image endpoint");
-  const negative = negativeFor(ctx.userRequest, ctx.companion.gender, { moving: false });
+  const negative = negativeFor(ctx.userRequest, ctx.companion.gender, {
+    moving: false,
+    age: ctx.companion.age,
+  });
   const input = await comfyJobInput(
     ctx.row.prompt,
     negative,
@@ -845,7 +860,7 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
     .maybeSingle();
   if (!fresh || fresh.status === "failed" || fresh.status === "completed") return false;
   if (failedRunpodId === RETRYING_ID) return true;
-  if (String(fresh.error ?? "").startsWith(RETRY_MARK)) {
+  if (String(fresh.error ?? "").includes(RETRY_MARK)) {
     // Already retried. A report about the id the row currently carries is the
     // retry's own failure, and it gets no second one. A report about any other
     // id — the first attempt's — is stale and must not fail the job.
@@ -854,17 +869,22 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
   // A report about an id that is not the row's is stale too.
   if (failedRunpodId && fresh.replicate_id && fresh.replicate_id !== failedRunpodId) return true;
 
-  const { data: claimed } = await supabaseAdmin
+  // Compare-and-set on whatever the column holds now. It used to require
+  // null, and after a retake the column holds the candidate lines — so a
+  // worker error on a retake could never be claimed, and the job sat in
+  // "processing" until the stale sweep wrote it off. The candidates are kept.
+  const claim = supabaseAdmin
     .from("media_jobs")
     .update({
-      error: `${RETRY_MARK}${errorMsg.slice(0, 300)}`,
+      error: [fresh.error, `${RETRY_MARK}${errorMsg.slice(0, 300)}`].filter(Boolean).join("\n"),
       status: "processing",
       replicate_id: RETRYING_ID,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", job.id)
-    .is("error", null)
-    .select("id, prompt, created_at, conversation_id");
+    .eq("id", job.id);
+  const { data: claimed } = await (
+    fresh.error == null ? claim.is("error", null) : claim.eq("error", fresh.error)
+  ).select("id, prompt, created_at, conversation_id");
   const row = claimed?.[0] as
     | { id: string; prompt: string | null; created_at: string; conversation_id: string | null }
     | undefined;

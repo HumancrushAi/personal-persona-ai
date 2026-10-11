@@ -65,7 +65,7 @@ describe("the renderer is allowed to change her mouth", () => {
     const say = (r: string) => actionSentence("she", normalizeRequest(r, "she"));
     expect(say("take off your top")).toBe("She is taking off her top.");
     expect(say("pinch your nipples")).toBe("She is pinching her nipples.");
-    expect(say("turn around and show me your ass")).toBe("She is turning around and show me her ass.");
+    expect(say("turn around and show me your ass")).toBe("She is turning around and showing her ass.");
     expect(say("bra off")).toBe("She is with her bra off.");
     expect(say("panties to the side")).toBe("She is with her panties pulled to the side.");
     expect(say("pov you on top of me")).toContain("seen from below");

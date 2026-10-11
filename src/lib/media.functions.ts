@@ -23,6 +23,7 @@ import {
   requestKeepsGarment,
   checkCrossGenderRequest,
   finishMediaPrompt,
+  isClimaxAct,
 } from "./selfie";
 
 // Negative prompt for the RunPod WAN endpoint, in two halves.
@@ -166,6 +167,11 @@ const PLASTIC_NEGATIVE =
 const AGED_NEGATIVE =
   "wrinkles, wrinkled, deep lines, crow's feet, nasolabial folds, sagging skin, leathery skin, weathered skin, haggard, gaunt, elderly, middle-aged, aged face, chapped lips, cracked lips, dry lips, tired eyes, dark circles, eye bags, grey hair, gray hair";
 
+// The same list for a companion of forty or more, who is allowed her lines,
+// her folds and her grey: only the neglect stays pushed away.
+const AGED_NEGATIVE_OLDER =
+  "haggard, gaunt, leathery skin, weathered skin, chapped lips, cracked lips, dry lips, tired eyes, dark circles, eye bags";
+
 // Body mass, suppressed where suppression actually works.
 //
 // The positive prompt was doing all of this on its own and losing. A stated
@@ -220,7 +226,7 @@ const ORAL_SOLO_NEGATIVE_NO_PENIS = "phallus, phallic object, cylinder, rod, pol
 export function negativeFor(
   userReq: string | undefined,
   gender?: string | null,
-  opts: { moving?: boolean; extra?: string[] } = {},
+  opts: { moving?: boolean; extra?: string[]; age?: number | null } = {},
 ): string {
   const req = userReq ?? "";
   const isNude = requestIsNude(req);
@@ -246,19 +252,52 @@ export function negativeFor(
   // well as her penis. On a clothed render it changes nothing.
   const cross = crossSexNegative(gender);
   if (cross) base = `${base}, ${cross}`;
-  if (isNude && a.hasVulva) base = `${base}, ${VULVA_NEGATIVE}`;
-  if (a.hasBreasts) base = `${base}, ${SAG_NEGATIVE}`;
+  if (isNude && a.hasVulva) {
+    // The closed-vulva list keeps her closed on every nude render — except
+    // the one that asks her to spread it, which it was fighting word for word.
+    const spreadPussy =
+      /\b(?:spread\w*|open\w*|pull\w*\s+(?:apart|open)|part\w*)\b[^.?!]{0,16}\b(?:pussy|lips|labia|vulva|cunt|slit|herself|yourself)\b/i.test(req) &&
+      !/\b(?:legs?|thighs?)\b/i.test(req);
+    base = `${base}, ${
+      spreadPussy
+        ? VULVA_NEGATIVE.replace(/,?\s*(?:spread open|pulled apart|splayed open|exposed pink interior)\b/g, "")
+        : VULVA_NEGATIVE
+    }`;
+  }
+  if (a.hasBreasts) {
+    // "splayed, spread flat" are breast-shape words, but a negative carries
+    // no noun, and on "spread your legs" they pushed against the request.
+    const spreadAsked =
+      /\b(?:spread\w*|splay\w*|open\w*)\b[^.?!]{0,20}\b(?:legs?|thighs?|pussy|ass|cheeks|wide)\b|\blegs?\s+(?:spread|open|apart)\b/i.test(
+        req,
+      );
+    base = `${base}, ${spreadAsked ? SAG_NEGATIVE.replace(", splayed, spread flat", "") : SAG_NEGATIVE}`;
+  }
   // Every render. See BUILD_NEGATIVE: the reported failure came back on a
   // clothed request, so gating this on nudity would miss it.
   base = `${base}, ${BUILD_NEGATIVE}`;
   // Unconditional, and first among equals. See AGE_NEGATIVE.
   base = `${base}, ${AGE_NEGATIVE}`;
   if (a.hasBreasts) base = `${base}, ${AGE_NEGATIVE_BREASTS}`;
-  base = `${base}, ${AGED_NEGATIVE}, ${PLASTIC_NEGATIVE}`;
+  // A companion in her forties or fifties IS middle-aged, and pushing that
+  // away made her a stranger to her own portrait. She keeps her age; only
+  // the neglect words stay.
+  const aged = (opts.age ?? 0) >= 40 ? AGED_NEGATIVE_OLDER : AGED_NEGATIVE;
+  base = `${base}, ${aged}, ${PLASTIC_NEGATIVE}`;
 
   // Her mouth on her own body, with no toy and no penis in the request.
   if (ORAL_SOLO_RE.test(req) && !hasProp(req) && !mentionsPart(req, "penis")) {
-    base = `${base}, ${ORAL_SOLO_NEGATIVE}`;
+    const climax = isClimaxAct(req);
+    const oral = ORAL_SOLO_NEGATIVE.split(", ").filter((t) => {
+      // His own cum is the act; his own hand is a man's hand.
+      if (t === "semen" && climax && a.hasPenis) return false;
+      if (t === "man's hand" && !a.hasBreasts) return false;
+      // An object the request names is the picture, not a thing to push away.
+      if (/^(?:bottle|lollipop|popsicle|banana|microphone)$/.test(t) && new RegExp(`\\b${t}s?\\b`, "i").test(req))
+        return false;
+      return true;
+    });
+    base = `${base}, ${oral.join(", ")}`;
     if (!a.hasPenis) base = `${base}, ${ORAL_SOLO_NEGATIVE_NO_PENIS}`;
   }
 
@@ -563,7 +602,11 @@ export async function startImageJob(
     // mid-movement. And the companion's own gender is passed, without which
     // negativeFor defaulted to female and a male companion's nude photo was
     // rendered with "penis, cock, male genitalia" in its negative prompt.
-    const negative = negativeFor(userRequest, companion.gender, { moving: false, extra: avoid });
+    const negative = negativeFor(userRequest, companion.gender, {
+      moving: false,
+      extra: avoid,
+      age: companion.age,
+    });
     // How many photos this chat already has: the Nth photo of a request always
     // renders the same way, but the next one is a new picture, not a copy.
     const { count: photosSoFar } = await supabase
@@ -1207,7 +1250,11 @@ export async function startVideoJob(
     num_scenes: scenePrompts.length,
     sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
     prompts: scenePrompts,
-    negative_prompt: negativeFor(userReq, companion.gender, { moving: true, extra: videoAvoid }),
+    negative_prompt: negativeFor(userReq, companion.gender, {
+      moving: true,
+      extra: videoAvoid,
+      age: companion.age,
+    }),
     lora_strengths: VIDEO_LORA_STRENGTHS,
   };
 
@@ -1234,7 +1281,11 @@ export async function startVideoJob(
         );
         const stillInput = await comfyJobInput(
           stillPrompt,
-          negativeFor(userReq, companion.gender, { moving: false, extra: stillAvoid }),
+          negativeFor(userReq, companion.gender, {
+            moving: false,
+            extra: stillAvoid,
+            age: companion.age,
+          }),
           startImage,
           userReq,
           `video-${job.id}`,

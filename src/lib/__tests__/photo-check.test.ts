@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  maxRetakesFor,
   attemptsSoFar,
   bestCandidate,
   candidateLine,
@@ -11,7 +12,9 @@ import {
 
 describe("which photos get checked", () => {
   it("asks the right question per act", () => {
-    expect(verifyQuestion("send me a picture of you licking your tits", true)).toMatch(/OWN nipple/);
+    expect(verifyQuestion("send me a picture of you licking your tits", true)).toMatch(/own breast/);
+    expect(maxRetakesFor(verifyQuestion("licking your tits", true), 2)).toBe(3);
+    expect(maxRetakesFor(verifyQuestion("sucking on a dildo", true), 2)).toBe(2);
     expect(verifyQuestion("sucking on a dildo", true)).toMatch(/sex toy/);
     expect(verifyQuestion("stick out your tongue", true)).toMatch(/tongue sticking out/);
     expect(verifyQuestion("suck on your fingers", true)).toMatch(/finger/);

@@ -14,6 +14,13 @@ import { hasProp } from "./props";
 
 export const PASS_SCORE = 7;
 export const DEFAULT_RETAKES = 2;
+// Licking her own breast still comes up face-up about one render in three,
+// guide or no guide, so it gets one more try than the other checked acts.
+export const BREAST_RETAKES = 3;
+
+export function maxRetakesFor(question: string | null, fallback: number): number {
+  return question && /own breast/.test(question) ? Math.max(fallback, BREAST_RETAKES) : fallback;
+}
 
 export type Candidate = { url: string; score: number | null };
 
@@ -47,7 +54,12 @@ export function verifyQuestion(userRequest: string, hasBreasts: boolean, hasVulv
   if (hasBreasts && breastOral.test(req))
     // The hands are part of the question: a render with her head down and her
     // tongue out but licking her own fingers scored as a pass.
-    return "Is the woman's tongue touching her OWN nipple, with her head bent down to her breast and her hands holding that breast from UNDERNEATH (her hands are not at her mouth and she is not licking her fingers)?";
+    // The owner's definition, word for word: she carries the breast up with her
+    // hands and her tongue or lips touch the nipple — not a hand, not a finger.
+    // A render with the mouth on the breast beside the nipple is most of the
+    // way there and must score well above a face-up one; licking her own
+    // fingers must not.
+    return "Is the woman's head bent down to her own breast with her mouth or tongue touching that breast at or next to the nipple, while her hands hold or lift the breast? Score 9-10 if the tongue or lips clearly touch the nipple; 6-8 if the mouth is on the breast near the nipple; 0-2 if she is licking her hand or fingers, or her face is turned up or toward the camera.";
   if (hasProp(req) && /\b(?:suck\w*|lick\w*|blow\w*|deep\s*throat\w*|mouth|tongue|lips)\b/i.test(req))
     return "Is the tip of the sex toy inside her mouth or between her lips?";
   if (/\b(?:suck\w*|lick\w*)\s+(?:on\s+)?(?:her|his|their|your)\s+(?:own\s+)?fingers?\b|\bfingers?\s+in\s+(?:her|his|their|your)\s+mouth\b/i.test(req))

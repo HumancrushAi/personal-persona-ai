@@ -774,7 +774,7 @@ async function verifiedOrRetake(
   const ctx = await jobContext(job.id);
   if (!ctx) return mediaUrl;
   const { anatomyOf } = await import("./anatomy");
-  const { verifyQuestion, parseCandidates, candidateLine, bestCandidate, shouldRetake, DEFAULT_RETAKES } =
+  const { verifyQuestion, parseCandidates, candidateLine, bestCandidate, shouldRetake, DEFAULT_RETAKES, maxRetakesFor } =
     await import("./photo-check");
   const anat = anatomyOf(ctx.companion.gender);
   const question = verifyQuestion(ctx.userRequest, anat.hasBreasts, anat.hasVulva);
@@ -782,7 +782,7 @@ async function verifiedOrRetake(
 
   const score = await scorePhoto(mediaUrl, question, job.id);
   const all = [...parseCandidates(errorNow), { url: mediaUrl, score }];
-  const maxRetakes = Number(process.env.MEDIA_RETAKES || DEFAULT_RETAKES);
+  const maxRetakes = maxRetakesFor(question, Number(process.env.MEDIA_RETAKES || DEFAULT_RETAKES));
   if (!shouldRetake(score, attempt, maxRetakes)) {
     const best = bestCandidate(all);
     if (best.url !== mediaUrl)

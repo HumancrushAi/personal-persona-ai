@@ -50,7 +50,7 @@ import { FAQSection } from "@/components/FAQSection";
 const REEL_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/reels`;
 const reelUrlHelper = (name: string) => `${REEL_BASE}/${name}.mp4`;
 const BANNERS: { id: string; name: string; title: string; sub: string; gender: "m" | "f" }[] = [
-  // At least two of every kind — twenties, thirties, forties, fifties, trans,
+  // At least two of every kind — twenties, thirties, forties, fifties, trans, tattooed,
   // and the fuller-figured four — interleaved so any rotation start (one
   // model further on per visit, see heroVisit) opens on a different kind.
   { id: "a66e3b1a-43ee-431e-868a-4573aacb4067", name: "Vanessa", title: "Rio after dark", sub: "33 · emerald satin · dances like nobody's watching 💃", gender: "f" },
@@ -69,9 +69,12 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
   { id: "f668101d-486e-45e2-9e87-69e70e272401", name: "Raven", title: "Dark poetry", sub: "22 · lace corset & leather skirt · alt goth babe 🖤", gender: "f" },
   { id: "4d2b42bb-ac22-4b6c-bc98-e881ef3c6abc", name: "Tianna", title: "Playful brat", sub: "35 · trans · she makes the rules 😈", gender: "f" },
   { id: "1cffffd5-4385-46c9-a66f-532883fb4c50", name: "Sabrina", title: "Newly single", sub: "35 · navy satin · making up for lost time 🔥", gender: "f" },
+  { id: "e60aff3f-094e-42f0-b2a5-058a2bcf1f80", name: "Mazzy", title: "Inked & unbothered", sub: "30 · tattooed collarbone to knee · tattoo artist 🖤", gender: "f" },
   { id: "57e0969f-0047-4b38-a1c2-524913a2bb49", name: "Tess", title: "Playful brat", sub: "31 · try and keep her in line 😜", gender: "f" },
+  { id: "f6bd1226-456a-45cc-b8b5-d305fce79e1d", name: "Roxy", title: "London ink", sub: "27 · bartender · more tattoos than regrets 🍸", gender: "f" },
   { id: "ab334fc9-fe99-4f60-bd63-1a969aece70c", name: "Skye", title: "Blue-haired baddie", sub: "22 · sunshine, selfies and late night chats 🩵", gender: "f" },
   { id: "eae18174-2e5e-4bc5-8c3f-16e1b5265e50", name: "Ruby", title: "Cozy evenings", sub: "25 · curvy, warm and confident 🍒", gender: "f" },
+  { id: "1baa4bd7-72b7-485a-ad7f-1022fc032ee2", name: "Lola", title: "Ink on every curve", sub: "29 · Guadalajara-born · laughs loud, loves louder 🌹", gender: "f" },
   { id: "78e5f6af-2c52-4dde-b710-09512d28f9aa", name: "Dante", title: "Salsa after dark", sub: "26 · sultry fitness trainer 🔥", gender: "m" },
   { id: "3c02cb21-651e-4a4a-8c28-6514857072f1", name: "Ethan", title: "Golden hour", sub: "26 · barista by day, photographer by night 📸", gender: "m" },
 ];

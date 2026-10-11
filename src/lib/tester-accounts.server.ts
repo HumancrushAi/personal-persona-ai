@@ -38,7 +38,7 @@ export function isTesterEmail(email: string | null | undefined): boolean {
 const adminCache = new Map<string, { admin: boolean; at: number }>();
 const ADMIN_CACHE_MS = 10 * 60_000;
 
-async function isAdminUser(userId: string): Promise<boolean> {
+export async function isAdminUser(userId: string): Promise<boolean> {
   const hit = adminCache.get(userId);
   if (hit && Date.now() - hit.at < ADMIN_CACHE_MS) return hit.admin;
   try {

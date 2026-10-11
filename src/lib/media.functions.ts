@@ -226,7 +226,7 @@ const ORAL_SOLO_NEGATIVE_NO_PENIS = "phallus, phallic object, cylinder, rod, pol
 export function negativeFor(
   userReq: string | undefined,
   gender?: string | null,
-  opts: { moving?: boolean; extra?: string[]; age?: number | null } = {},
+  opts: { moving?: boolean; extra?: string[]; age?: number | null; toy?: Toy | null } = {},
 ): string {
   const req = userReq ?? "";
   const isNude = requestIsNude(req);
@@ -301,7 +301,7 @@ export function negativeFor(
     if (!a.hasPenis) base = `${base}, ${ORAL_SOLO_NEGATIVE_NO_PENIS}`;
   }
 
-  const props = propNegative(req);
+  const props = propNegative(req, opts.toy);
   if (props) base = `${base}, ${props}`;
 
   // What the refiner said would go wrong for this request (see filterAvoid):
@@ -311,6 +311,7 @@ export function negativeFor(
   return extra.length ? `${base}, ${extra.join(", ")}` : base;
 }
 import { propClause, propNegative, hasProp } from "./props";
+import type { Toy } from "./toys";
 import { anatomyOf, crossSexNegative, genderKind, mentionsPart } from "./anatomy";
 import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
 import { companionImage } from "./companion-images";
@@ -434,6 +435,23 @@ export const generateSelfie = createServerFn({ method: "POST" })
     const crossGenderWarning = checkCrossGenderRequest(c.gender, userPrompt ?? "");
     if (crossGenderWarning) throw new Error(crossGenderWarning);
 
+    // A toy she does not have yet: she says so, in chat, and nothing is charged.
+    const { toyForRequest } = await import("./toys.server");
+    const { data: au } = await supabase.auth.getUser();
+    const { toy, needed } = await toyForRequest(supabase, userId, au?.user?.email, userPrompt ?? "");
+    if (needed) {
+      const { needsToyReply } = await import("./toys");
+      const reply = needsToyReply(needed);
+      await supabase.from("messages").insert({
+        conversation_id: data.conversationId,
+        user_id: userId,
+        role: "assistant",
+        content: reply,
+        kind: "text",
+      });
+      return { needsToy: needed.id, reply, status: "needs_toy" as const };
+    }
+
     const { free, paid } = await ensureBalance(supabase, userId, SELFIE_COST);
     const balance = await deductCredits(supabase, userId, SELFIE_COST, "image_debit", free, paid);
 
@@ -452,9 +470,10 @@ export const generateSelfie = createServerFn({ method: "POST" })
       userPrompt,
       p.style_backstory,
       balance,
+      toy,
     );
 
-    return { jobId, status: "pending", balance };
+    return { jobId, status: "pending" as const, balance };
   });
 
 // One job of a kind per conversation at a time.
@@ -505,6 +524,7 @@ export async function startImageJob(
   userRequest: string | undefined,
   styleBackstory: string | null | undefined,
   balance: { free: number; paid: number },
+  toy: Toy | null = null,
 ): Promise<string> {
   // Which of the three renderers this photo goes to, decided once and then
   // threaded through the prompt, the start frame and the job body — see
@@ -550,6 +570,7 @@ export async function startImageJob(
     userRequest,
     styleBackstory,
     provider,
+    toy,
   );
 
   // The WAN endpoint centre-crops to a square, which decapitated the result.
@@ -606,6 +627,7 @@ export async function startImageJob(
       moving: false,
       extra: avoid,
       age: companion.age,
+      toy,
     });
     // How many photos this chat already has: the Nth photo of a request always
     // renders the same way, but the next one is a new picture, not a copy.
@@ -847,8 +869,9 @@ export async function photoPrompt(
   userRequest: string | undefined,
   styleBackstory: string | null | undefined,
   provider: ImageProvider,
+  toy: Toy | null = null,
 ): Promise<string> {
-  return (await photoPromptWithAvoid(companion, userRequest, styleBackstory, provider)).prompt;
+  return (await photoPromptWithAvoid(companion, userRequest, styleBackstory, provider, toy)).prompt;
 }
 
 // The prompt and, from the same refiner call, the request-specific terms for
@@ -865,13 +888,14 @@ export async function photoPromptWithAvoid(
   userRequest: string | undefined,
   styleBackstory: string | null | undefined,
   provider: ImageProvider,
+  toy: Toy | null = null,
 ): Promise<{ prompt: string; avoid: string[] }> {
   // Grok rewrites the user's line into a full prompt in the house style; the
   // keyword builder is the fallback when no key is set or the call fails.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
   const { companionLook } = await import("./look.server");
   const [refinedResult, look] = await Promise.all([
-    refineMediaPrompt("photo", userRequest ?? "", companion),
+    refineMediaPrompt("photo", userRequest ?? "", companion, 1, toy),
     companionLook(companion.imageUrl),
   ]);
   const refined = refinedResult?.prompts;
@@ -895,8 +919,8 @@ export async function photoPromptWithAvoid(
     provider === "kontext"
       ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
       : provider === "comfy"
-        ? stillImagePrompt(companion, userRequest)
-        : videoStillPrompt(companion, userRequest);
+        ? stillImagePrompt(companion, userRequest, toy)
+        : videoStillPrompt(companion, userRequest, toy);
 
   // Does a picture of her actually reach the renderer?
   //
@@ -940,6 +964,7 @@ export async function photoPromptWithAvoid(
     // Only when the photo is being cut out of a clip. A real image endpoint
     // renders a still by definition and does not need telling.
     still: provider === "wan",
+    toy,
   });
   return { prompt, avoid };
 }
@@ -1042,6 +1067,22 @@ export const requestVideo = createServerFn({ method: "POST" })
     const crossGenderWarning = checkCrossGenderRequest(c.gender, userPrompt ?? "");
     if (crossGenderWarning) throw new Error(crossGenderWarning);
 
+    const { toyForRequest } = await import("./toys.server");
+    const { data: au } = await supabase.auth.getUser();
+    const { toy, needed } = await toyForRequest(supabase, userId, au?.user?.email, userPrompt ?? "");
+    if (needed) {
+      const { needsToyReply } = await import("./toys");
+      const reply = needsToyReply(needed);
+      await supabase.from("messages").insert({
+        conversation_id: data.conversationId,
+        user_id: userId,
+        role: "assistant",
+        content: reply,
+        kind: "text",
+      });
+      return { needsToy: needed.id, reply, status: "needs_toy" as const };
+    }
+
     const { free, paid } = await ensureBalance(supabase, userId, VIDEO_COST);
     const balance = await deductCredits(supabase, userId, VIDEO_COST, "video_debit", free, paid);
 
@@ -1059,9 +1100,10 @@ export const requestVideo = createServerFn({ method: "POST" })
       userPrompt,
       balance,
       data.seconds,
+      toy,
     );
 
-    return { jobId, status: "pending", balance };
+    return { jobId, status: "pending" as const, balance };
   });
 
 // Build the motion prompt for image-to-video. The companion's appearance comes
@@ -1143,6 +1185,7 @@ export async function startVideoJob(
   userReq: string | undefined,
   balance: { free: number; paid: number },
   seconds?: number,
+  toy: Toy | null = null,
 ): Promise<string> {
   const startImage = resolveHostedImage(companion.imageUrl);
 
@@ -1213,16 +1256,17 @@ export async function startVideoJob(
 
   // Now the slow part, with a job row already standing behind it.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
-  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount);
+  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount, toy);
   const videoAvoid = refinedVideo?.avoid ?? [];
   // Same reason as the photo path: a successful refine replaces the builder, so
   // the prop spec is re-appended to every scene rather than lost.
   const rawReq = userReq ?? "";
   const anatomy = anatomyOf(companion.gender);
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
-  const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq)]).map((p) =>
+  const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy)]).map((p) =>
     finishMediaPrompt(p, rawReq, {
       anatomy,
+      toy,
       appendProps: Boolean(refinedScenes),
       // Per scene, for the same reason it is per photo: the refiner no longer
       // writes the clause, so a scene that did not get it would be the one part
@@ -1254,6 +1298,7 @@ export async function startVideoJob(
       moving: true,
       extra: videoAvoid,
       age: companion.age,
+      toy,
     }),
     lora_strengths: VIDEO_LORA_STRENGTHS,
   };
@@ -1285,6 +1330,7 @@ export async function startVideoJob(
             moving: false,
             extra: stillAvoid,
             age: companion.age,
+            toy,
           }),
           startImage,
           userReq,

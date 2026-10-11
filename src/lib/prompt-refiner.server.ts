@@ -137,6 +137,8 @@ type Shape = {
   selfAct: boolean;
   /** Orgasm / squirt / ejaculation asked for — from this body, never a partner's. */
   climax: boolean;
+  /** The exact toy from the chest, when the user has one: its spec, word for word. */
+  toySpec?: string | null;
 };
 
 // The rules below are written about "her" and "the woman", and were sent
@@ -168,6 +170,7 @@ const rules = ({
   selfAct,
   climax,
   kind,
+  toySpec,
 }: Shape) => `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
 
 ${POSITIVE_ONLY}
@@ -214,7 +217,9 @@ ${rearView
       ? `- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin`
       : ANATOMY_IS_APPENDED
   }
-${toyAsked
+${toySpec
+    ? `- the toy is EXACTLY this one and nothing else, already in the position they named, and it is hers alone — no other person, no other hand: ${toySpec}`
+    : toyAsked
     ? `- the toy exactly as the user described it, already in the position they named, with material, size and how it interacts with her body stated clearly`
     : `- what each of her two hands is doing, named plainly (one hand lifting her breast, the other flat on her stomach). A hand with no stated job gets drawn holding something`
   }
@@ -423,6 +428,7 @@ export async function refineMediaPrompt(
   userRequest: string,
   companion: { gender?: string | null; ethnicity?: string; age?: number },
   scenes = 1,
+  toy?: { spec: string } | null,
 ): Promise<Refined | null> {
   const key = process.env.XAI_API_KEY;
   const req = (userRequest ?? "").trim();
@@ -486,10 +492,11 @@ export async function refineMediaPrompt(
     postureStated,
     kind: subjectKind,
     groinFocus,
-    toyAsked,
+    toyAsked: toyAsked || Boolean(toy),
     shot: requestedShot(req),
     selfAct: isSelfAct(req),
     climax: isClimaxAct(req),
+    toySpec: toy?.spec ?? null,
   };
 
   if (key) {

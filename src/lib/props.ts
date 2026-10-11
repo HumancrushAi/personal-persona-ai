@@ -9,14 +9,15 @@
 // end as the tip going in.
 
 import { type Anatomy, anatomyOf } from "./anatomy";
+import type { Toy } from "./toys";
 
 /** Toy vocabulary, owned here and re-exported into selfie.ts's KW table. */
-export const TOY_VOCAB = String.raw`dildos?|vibrators?|sex\s*toys?|butt\s*plugs?|plugs?|magic wands?|strap[- ]?ons?|anal beads|fleshlights?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo|clit vibrator|bullet vibrator|rabbit vibrator`;
+export const TOY_VOCAB = String.raw`dildos?|vibrators?|sex\s*toys?|butt\s*plugs?|plugs?|magic wands?|strap[- ]?ons?|anal beads|fleshlights?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo|clit vibrator|bullet vibrator|rabbit vibrator|flogger|whips?|riding crop|paddle|hand\s*cuffs?|cuffs|nipple clamps?|clamps|collar|leash|ball\s*gag|gag|shibari|blindfold|glass dildo`;
 
 const kw = (src: string) => new RegExp(String.raw`\b(?:${src})\b`, "i");
 
 const SHARED_NEGATIVE =
-  "baseball bat, cricket bat, club, wooden pole, broom handle, rolling pin, table leg, tree branch, weapon, wood grain, wooden texture, giant novelty prop, oversized prop, cartoon prop, balloon, sausage, melting object, deformed object, object fused to hand, object merging into skin, floating object, duplicated object, extra object, bong, pipe, hookah, vape, bottle, flask, microphone, telescope, smoking, vaping, drinking, blowing, dildo resting on skin, toy lying on body, external only, held against body, pressed on thigh, not inserted, outside only, inverted dildo, upside-down dildo, toy inverted, flared base inside, suction cup inside, wide base entering, tip outside body, base-first insertion, backwards toy, dildo on top of vulva, toy beside vulva";
+  "second person, another person, partner, another person's hand, someone else's hand, extra hand, three hands, baseball bat, cricket bat, club, wooden pole, broom handle, rolling pin, table leg, tree branch, weapon, wood grain, wooden texture, giant novelty prop, oversized prop, cartoon prop, balloon, sausage, melting object, deformed object, object fused to hand, object merging into skin, floating object, duplicated object, extra object, bong, pipe, hookah, vape, bottle, flask, microphone, telescope, smoking, vaping, drinking, blowing, dildo resting on skin, toy lying on body, external only, held against body, pressed on thigh, not inserted, outside only, inverted dildo, upside-down dildo, toy inverted, flared base inside, suction cup inside, wide base entering, tip outside body, base-first insertion, backwards toy, dildo on top of vulva, toy beside vulva";
 
 type Prop = {
   id: string;
@@ -153,12 +154,35 @@ export function propIsOral(req: string): boolean {
   return propFor(text) !== null && !INSERTED_RE.test(text) && ORAL_RE.test(text);
 }
 
-export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): string {
+// Which generic clause a chest toy of each kind is rendered with.
+const KIND_PROP: Record<string, string> = {
+  dildo: "dildo",
+  vibrator: "vibrator",
+  wand: "wand",
+  plug: "butt-plug",
+  beads: "anal-beads",
+  "strap-on": "strap-on",
+  stroker: "stroker",
+};
+
+const HELD_CLAUSE =
+  "Her hand holds the toy by its handle end with five separate countable fingers and a clean visible edge between skin and toy.";
+
+export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | null } = {}): string {
   const text = (req ?? "").trim();
-  const prop = propFor(text);
+  const a = opts.anatomy ?? anatomyOf("female");
+  const toy = opts.toy ?? null;
+  // A toy from the chest that she wears or holds rather than inserts: the
+  // spec says what it is and `use` says where it is on her. Nothing else.
+  if (toy?.use) return pronounize(`${toy.spec} ${toy.use}`, a);
+  // A chest toy replaces the generic spec word for word — that is the point
+  // of buying one. The insertion and mouth logic below is unchanged.
+  const generic = propFor(text);
+  const prop = toy
+    ? { ...(PROPS.find((p) => p.id === KIND_PROP[toy.kind]) ?? generic ?? PROPS[PROPS.length - 1]), spec: toy.spec }
+    : generic;
   if (!prop) return "";
 
-  const a = opts.anatomy ?? anatomyOf("female");
   const inserted = INSERTED_RE.test(text);
   const oral = !inserted && ORAL_RE.test(text);
   const anal = inserted && ANAL_TARGET_RE.test(text) && !/\b(?:pussy|vagina|cunt|slit)\b/i.test(text);
@@ -167,14 +191,16 @@ export function propClause(req: string, opts: { anatomy?: Anatomy } = {}): strin
     : oral
       ? [oralClause(a), prop.spec]
       : [prop.spec];
-  if (BIG_RE.test(text)) parts.push(BIG_CLAUSE);
-  parts.push(HAND_CLAUSE);
+  if (BIG_RE.test(text) && !toy) parts.push(BIG_CLAUSE);
+  // A wand or a bullet has no flared base to close a hand around.
+  parts.push(toy && (toy.kind === "wand" || toy.kind === "vibrator" || toy.kind === "stroker") ? HELD_CLAUSE : HAND_CLAUSE);
   // The vulva sentence places the toy "against her skin"; at her mouth that is
   // the wrong place, and the word pulls the camera to her groin.
   if (a.hasVulva && !oral) parts.push(vulvaAnatomy(a));
   return pronounize(parts.join(" "), a);
 }
 
-export function propNegative(req: string): string {
-  return hasProp(req ?? "") ? SHARED_NEGATIVE : "";
+export function propNegative(req: string, toy?: Toy | null): string {
+  const base = hasProp(req ?? "") || toy ? SHARED_NEGATIVE : "";
+  return toy?.negative ? (base ? `${base}, ${toy.negative}` : toy.negative) : base;
 }

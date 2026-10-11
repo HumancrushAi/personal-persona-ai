@@ -14,6 +14,7 @@ import {
   checkMediaJob,
 } from "@/lib/media.functions";
 import { MediaRequestModal, type MediaKind } from "@/components/MediaRequestModal";
+import { TreasureChestButton, TreasureChestModal } from "@/components/TreasureChest";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,6 +130,7 @@ function ChatPage() {
   const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
   // Which media request dialog is open, if any.
   const [asking, setAsking] = useState<MediaKind | null>(null);
+  const [chest, setChest] = useState<{ highlight?: string | null } | null>(null);
   const [showMobileLive, setShowMobileLive] = useState(true);
   // Seconds elapsed on the running job. Generation takes 90s+, and a static
   // "taking a pic for you…" with no movement reads as a hang — people gave up
@@ -352,6 +354,8 @@ function ChatPage() {
         toast.error("Oops, you ran out of credits — add more to get that");
         navigate({ to: "/credits" });
       }
+      // She asked for a toy she does not have: the chest opens on it.
+      if ((res as any)?.needsToy) setChest({ highlight: (res as any).needsToy });
       if (res?.relationship?.leveledUp) {
         toast.success(`💖 Relationship level up — now level ${res.relationship.level}`);
       }
@@ -603,6 +607,18 @@ function ChatPage() {
 
     try {
       const res = await selfie({ data: { conversationId, prompt } });
+      if ((res as any)?.needsToy) {
+        setLocalJobs((prev) => {
+          const next = prev.filter((j) => j.id !== localId);
+          saveLocalJobs(next);
+          return next;
+        });
+        mediaBusyRef.current = false;
+        setMediaBusy(null);
+        qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+        setChest({ highlight: (res as any).needsToy });
+        return;
+      }
       const jobId = (res as any).jobId;
       setLocalJobs((prev) => {
         const next = prev.map((j) => (j.id === localId ? { ...j, dbJobId: jobId } : j));
@@ -686,6 +702,18 @@ function ChatPage() {
       // the server no longer accepted, so zod stripped it and every clip came
       // back at the 5s default no matter what was picked.
       const res = await requestVideoFn({ data: { conversationId, prompt, seconds } });
+      if ((res as any)?.needsToy) {
+        setLocalJobs((prev) => {
+          const next = prev.filter((j) => j.id !== localId);
+          saveLocalJobs(next);
+          return next;
+        });
+        mediaBusyRef.current = false;
+        setMediaBusy(null);
+        qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+        setChest({ highlight: (res as any).needsToy });
+        return;
+      }
       const jobId = (res as any).jobId;
       setLocalJobs((prev) => {
         const next = prev.map((j) => (j.id === localId ? { ...j, dbJobId: jobId } : j));
@@ -1204,6 +1232,15 @@ function ChatPage() {
           </div>
         </form>
       </div>
+
+      <TreasureChestButton onClick={() => setChest({})} />
+      {chest && (
+        <TreasureChestModal
+          name={p?.nickname ?? "her"}
+          highlight={chest.highlight}
+          onClose={() => setChest(null)}
+        />
+      )}
 
       {asking && (
         <MediaRequestModal

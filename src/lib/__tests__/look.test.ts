@@ -10,11 +10,12 @@ describe("a companion's look in words", () => {
 
   it("drops a refusal or an essay", () => {
     expect(tidyLook("I'm sorry, I cannot describe people.")).toBe("");
-    expect(tidyLook("a ".repeat(40)).split(" ").length).toBeLessThanOrEqual(18);
+    expect(tidyLook("a ".repeat(40)).split(" ").length).toBeLessThanOrEqual(30);
   });
 
   it("keys the cache on the portrait, not the name", () => {
-    expect(lookCacheKey("https://x/a.png")).toMatch(/^look:[0-9a-f]{24}$/);
+    // "look2": the phrase gained bust size and tattoos; the old "look:" entries lack both.
+    expect(lookCacheKey("https://x/a.png")).toMatch(/^look2:[0-9a-f]{24}$/);
     expect(lookCacheKey("https://x/a.png")).not.toBe(lookCacheKey("https://x/b.png"));
   });
 });

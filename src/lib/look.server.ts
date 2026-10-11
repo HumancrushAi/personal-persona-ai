@@ -10,8 +10,9 @@
 
 import { createHash } from "node:crypto";
 
-const KEY_PREFIX = "look:";
-const MAX_WORDS = 18;
+// "look2": the phrase grew bust size and tattoos, and the cached "look:" phrases have neither.
+const KEY_PREFIX = "look2:";
+const MAX_WORDS = 30;
 
 export function lookCacheKey(imageUrl: string): string {
   return `${KEY_PREFIX}${createHash("sha1").update(imageUrl).digest("hex").slice(0, 24)}`;
@@ -54,14 +55,14 @@ async function describePortrait(url: string): Promise<string> {
       body: JSON.stringify({
         model: process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct",
         temperature: 0,
-        max_tokens: 60,
+        max_tokens: 90,
         messages: [
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Describe this person's looks for a portrait artist in one comma-separated phrase of at most 14 words: exact hair color, hair length and style, eye color, skin tone, body build. Only the phrase, no sentence, no names.",
+                text: "Describe this person's looks for a portrait artist in one comma-separated phrase of at most 24 words: exact hair color, hair length and style, eye color, skin tone, body build and bust size (e.g. very full bust, small bust), and any visible tattoos — say where and roughly what (e.g. full tattoo sleeves on both arms, large chest tattoo). If there are no tattoos, say nothing about tattoos. Only the phrase, no sentence, no names.",
               },
               { type: "image_url", image_url: { url } },
             ],

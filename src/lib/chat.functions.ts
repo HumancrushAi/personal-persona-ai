@@ -9,6 +9,7 @@ import { chatComplete, modelContextTokens, resolveChatModel } from "./ai";
 import { estimateTokens, fitToBudget } from "./history-budget";
 import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
 import { wantsSelfie, wantsVideo, checkCrossGenderRequest, resolveMediaRequest } from "./selfie";
+import { needsToyReply, type Toy } from "./toys";
 import { deductCredits } from "./credit-wallet";
 import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
@@ -108,7 +109,16 @@ const TEASERS = {
   video: "mmm okay… hold on, recording something just for you 🎬",
   photoBusy: "i'm already taking one for you, hold on 📸",
   videoBusy: "still filming that one for you, baby — give me a sec 🎬",
+  // "hurry up", "where is it" while one is rendering. The text model was
+  // answering these itself — once with "I'm not comfortable showing my body
+  // in such a rush" — while the photo was two minutes from landing.
+  photoWait: "still on it, baby — a good one takes me a couple of minutes to get right. don't go anywhere 📸",
+  videoWait: "almost done filming, baby — a clip takes a few minutes to come out right. stay right there 🎬",
 };
+
+// Impatience while a photo or clip is rendering, in the words people use.
+export const IMPATIENCE_RE =
+  /^\W*(?:hurry(?:\s+up)?|where(?:'?s|\s+is)\s+(?:it|she|my|the)\b|(?:still\s+|i'?m\s+)?waiting|well\W*$|\?{2,}|c'?mon|come\s+on|what'?s\s+taking|why\s+is\s+it\s+taking|taking\s+(?:so|too)\s+long|did\s+(?:you|u)\s+send|nothing\s+(?:came|arrived|showed|happened)|it\s+(?:didn'?t|doesn'?t|hasn'?t|never)\s+(?:come|came|arrive|show|load|work)|(?:it'?s\s+)?not\s+(?:here|loading|showing|coming|working)|i\s+(?:don'?t|dont|can'?t|cant)\s+see\s+(?:it|anything|the)|any\s*time\s+now|(?:today|soon|ready|done|yet)\W*$|how\s+long|is\s+it\s+coming|are\s+(?:you|u)\s+(?:there|still\s+there|sending|done)|hello\?+|hurry|faster|quick(?:er|ly)?\W*$|stuck|loading)/i;
 
 /**
  * A reply that is nothing but a refusal token.
@@ -421,6 +431,56 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       return { reply };
     }
 
+    // A toy she does not have yet. The treasure chest is how a toy gets into
+    // her pictures: she says so in her own voice, nothing is charged, and the
+    // chest opens on the one she asked for. With the toy in hand its exact
+    // spec goes to the renderer instead of the checkpoint's own idea of one.
+    let mediaToy: Toy | null = null;
+    if (askedFor) {
+      const { toyForRequest } = await import("./toys.server");
+      const { toy, needed } = await toyForRequest(supabase, userId, email, mediaRequestText);
+      if (needed) {
+        const reply = needsToyReply(needed);
+        await supabase.from("messages").insert({
+          conversation_id: data.conversationId,
+          user_id: userId,
+          role: "assistant",
+          content: reply,
+          kind: "text",
+        });
+        await supabase
+          .from("conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", data.conversationId);
+        return { reply, needsToy: needed.id };
+      }
+      mediaToy = toy;
+    }
+
+    // "hurry up" while one is rendering is answered here, not by the model.
+    if (
+      !askedFor &&
+      data.content.trim().split(/\s+/).length <= 8 &&
+      IMPATIENCE_RE.test(data.content.trim())
+    ) {
+      const waitingOn = (await mediaJobInFlight(supabase, data.conversationId, "image"))
+        ? "image"
+        : (await mediaJobInFlight(supabase, data.conversationId, "video"))
+          ? "video"
+          : null;
+      if (waitingOn) {
+        const reply = waitingOn === "video" ? TEASERS.videoWait : TEASERS.photoWait;
+        await supabase.from("messages").insert({
+          conversation_id: data.conversationId,
+          user_id: userId,
+          role: "assistant",
+          content: reply,
+          kind: "text",
+        });
+        return { reply };
+      }
+    }
+
     // Asked for a photo or a clip they cannot pay for.
     //
     // This used to fall through to the text model, which role-played taking
@@ -482,9 +542,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           supabase,
           userId,
           data.conversationId,
-          { name: c.name, gender: c.gender, imageUrl: c.image_url },
+          { name: c.name, gender: c.gender, imageUrl: c.image_url, age: c.age, ethnicity: c.ethnicity },
           mediaRequestText,
           balAfter,
+          undefined,
+          mediaToy,
         );
 
         const teaser = TEASERS.video;
@@ -563,6 +625,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           mediaRequestText,
           p.style_backstory,
           balAfter,
+          mediaToy,
         );
 
         const teaser = TEASERS.photo;

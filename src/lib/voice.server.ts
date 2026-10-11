@@ -67,7 +67,7 @@ export async function performScript(reply: string, userAsk: string): Promise<str
         {
           role: "system",
           content:
-            `You mark up a line of dialogue for a voice actress recording an intimate voice note. ` +
+            `You mark up a line of dialogue for a voice actress recording an intimate voice note to her lover, late at night, close to the mic: low, slow, breathy and seductive — never chirpy, never a customer-service voice. ` +
             `Return the line with EXACTLY the same words, adding only these cues where they fit naturally: ` +
             `${TAGS.map((t) => `<${t}>`).join(" ")} and [moan]. ` +
             `Use them sparingly, the way a real person would — a <sigh> before something tender, a <laugh> when she teases, ` +
@@ -155,7 +155,9 @@ async function orpheusNote(endpoint: string, script: string, voice: string): Pro
     const out = join(dir, "note.mp3");
     await ffmpeg([
       ...parts.flatMap((p) => ["-i", p]),
-      "-filter_complex", `${parts.map((_, i) => `[${i}:a]`).join("")}concat=n=${parts.length}:v=0:a=1[a]`,
+      // Slowed a touch: the synthesised read came out brisk and bright, and the
+      // note is meant to be murmured, not announced.
+      "-filter_complex", `${parts.map((_, i) => `[${i}:a]`).join("")}concat=n=${parts.length}:v=0:a=1,atempo=0.93[a]`,
       "-map", "[a]", "-codec:a", "libmp3lame", "-b:a", "128k", out,
     ]);
     return await readFile(out);

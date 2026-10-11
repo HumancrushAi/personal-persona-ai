@@ -2,6 +2,7 @@
 // (media.functions) and the auto-selfie when a user asks for a pic in chat.
 
 import { TOY_VOCAB, hasProp, propClause, propIsInserted } from "./props";
+import type { Toy } from "./toys";
 import { type Anatomy, type GenderKind, anatomyOf, mentionsPart, nudeAnatomy } from "./anatomy";
 
 // Explicit request vocabulary, grouped by category so the nudity gate and the
@@ -1402,23 +1403,26 @@ const QUALITY =
 export function stillImagePrompt(
   c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
+  toy?: Toy | null,
 ): string {
-  return buildStillPrompt(c, userPrompt, { holdCue: false });
+  return buildStillPrompt(c, userPrompt, { holdCue: false, toy });
 }
 
 export function videoStillPrompt(
   c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
+  toy?: Toy | null,
 ): string {
-  return buildStillPrompt(c, userPrompt, { holdCue: true });
+  return buildStillPrompt(c, userPrompt, { holdCue: true, toy });
 }
 
 function buildStillPrompt(
   c: { gender?: string | null; name?: string },
   userPrompt: string | null | undefined,
-  opts: { holdCue: boolean },
+  opts: { holdCue: boolean; toy?: Toy | null },
 ): string {
   const req = (userPrompt ?? "").trim();
+  const toy = opts.toy ?? null;
   // One resolver, and it reads ONLY the companion's stored gender. Each builder
   // in this file used to re-derive this with its own copy-pasted block that
   // also sniffed the user's message for "trans" and "futa" — so typing those
@@ -1483,6 +1487,7 @@ function buildStillPrompt(
     isRubAct(req) ||
     isBreastHandsAct(req) ||
     hasProp(req) ||
+    Boolean(toy) ||
     isClimaxAct(req);
   const handsLine = handsBusy ? "" : `, ${poss} hands resting on ${poss} thighs`;
   const freeHands = (text: string) =>
@@ -1513,7 +1518,7 @@ function buildStillPrompt(
     climaxSentence(req, a),
     posture,
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
-    propClause(req, { anatomy: a }),
+    propClause(req, { anatomy: a, toy }),
     QUALITY,
     opts.holdCue
       ? isCloseUp
@@ -1532,6 +1537,7 @@ function buildStillPrompt(
 export function videoActionPrompt(
   c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
+  toy?: Toy | null,
 ): string {
   const req = (userPrompt ?? "").trim();
   const a = anatomyOf(c.gender);
@@ -1566,7 +1572,7 @@ export function videoActionPrompt(
     selfActSentence(action, a) || actionSentence(subject, action),
     climaxSentence(req, a),
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
-    propClause(req, { anatomy: a }),
+    propClause(req, { anatomy: a, toy }),
     QUALITY,
     isCloseUp
       ? "Smooth natural lifelike motion throughout, consistent face and body. The camera holds its close point-of-view position."
@@ -1809,6 +1815,8 @@ export function finishMediaPrompt(
       look?: string | null;
     };
     still?: boolean;
+    /** The toy from the chest she uses in this picture; its spec replaces the generic one. */
+    toy?: Toy | null;
     /** This prompt is for a CLIP. Appends the motion tail, as still appends the still cue. */
     moving?: boolean;
   } = {},
@@ -2003,7 +2011,7 @@ export function finishMediaPrompt(
   // So the prop specification is lifted out before the cut and put back after
   // it, at the front where the encoder weighs it hardest. The scene text loses
   // the words instead, which is what a budget should spend first.
-  const propText = propClause(request, { anatomy: a });
+  const propText = propClause(request, { anatomy: a, toy: opts.toy });
   // Two ways the spec can be needed: the builder already wrote it into its own
   // text, or the refiner replaced the builder wholesale and it has to be added.
   // Both end up in the same place — third, after the cut.

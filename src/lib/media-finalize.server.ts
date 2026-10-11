@@ -653,12 +653,14 @@ type JobContext = {
   row: { id: string; prompt: string; created_at: string; conversation_id: string };
   companion: { gender?: string | null; image_url?: string | null; age?: number | null };
   userRequest: string;
+  /** The chest toy the job was rendered with, so a retake pushes away the same wrong toys. */
+  toy: import("./toys").Toy | null;
 };
 
 async function jobContext(jobId: string): Promise<JobContext | null> {
   const { data: row } = await supabaseAdmin
     .from("media_jobs")
-    .select("id, prompt, created_at, conversation_id")
+    .select("id, prompt, created_at, conversation_id, user_id")
     .eq("id", jobId)
     .maybeSingle();
   if (!row?.prompt || !row.conversation_id) return null;
@@ -690,10 +692,22 @@ async function jobContext(jobId: string): Promise<JobContext | null> {
     .reverse()
     .find((m) => m.role === "user" && typeof m.content === "string" && m.content.trim());
   const { resolveMediaRequest } = await import("./selfie");
+  const userRequest = asked ? resolveMediaRequest(asked.content as string, history).request : "";
+  let toy: JobContext["toy"] = null;
+  if (userRequest && row.user_id) {
+    try {
+      const { ownedToysAdmin } = await import("./toys.server");
+      const { resolveToy } = await import("./toys");
+      toy = resolveToy(userRequest, await ownedToysAdmin(row.user_id)).toy;
+    } catch {
+      /* a retake without the toy negative is still a retake */
+    }
+  }
   return {
     row: row as JobContext["row"],
     companion,
-    userRequest: asked ? resolveMediaRequest(asked.content as string, history).request : "",
+    userRequest,
+    toy,
   };
 }
 
@@ -712,6 +726,7 @@ async function resubmitImageJob(
   const negative = negativeFor(ctx.userRequest, ctx.companion.gender, {
     moving: false,
     age: ctx.companion.age,
+    toy: ctx.toy,
   });
   const input = await comfyJobInput(
     ctx.row.prompt,

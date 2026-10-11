@@ -32,7 +32,7 @@ const KW = {
   oral: "blow\\s*job|blowjob|bj|suck\\w*|oral|deep\\s*throat|fellati\\w*|lick\\w*|cunnilingus|rim\\w*|tongue|69",
   anal: "anal|butt\\s*plug|up (?:her|your|my) ass|in (?:her|your|my) ass|ass\\s*fuck\\w*|sodom\\w*|butt stuff",
   sex: "fuck\\w*|sex|penetrat\\w*|insert\\w*|creampie|gape|missionary|reverse cowgirl|gangbang|threesome|orgy",
-  cum: "cum\\w*|cream\\s*pie|squirt\\w*|orgasm\\w*|climax\\w*|ahegao|facial|jizz|dripping wet|precum|load",
+  cum: "cum\\w*|cream\\s*pie|squirt\\w*|gush\\w*|orgasm\\w*|climax\\w*|ahegao|facial|jizz|spunk|dripping wet|precum|load|ejaculat\\w*|nut|nutting|bust\\w*\\s+(?:a\\s+)?nut|shoot\\w*\\s+(?:your|his|her|my|a)\\s+load|come\\s+for\\s+me|coming\\s+for\\s+me|make\\s+(?:yourself|urself)\\s+c[uo]m\\w*|finish\\s+(?:yourself|on)|get\\s+off|cream\\w*",
   fetish:
     "bdsm|bondage|tied up|handcuff\\w*|collar|leash|spank\\w*|chok\\w*|dominat\\w*|submissive|latex|leather|fishnet|garter|corset|maid outfit|schoolgirl outfit|nurse outfit",
   lingerie:
@@ -464,6 +464,36 @@ export function isMouthAct(req: string): boolean {
 // tits" rendered as a hand cupping a breast and a smile at the camera, with
 // the licking sentence sitting correct and ignored in the middle of 200 words.
 // Pronoun-free so the same tags serve every body.
+// Her climax, his climax: the fluid is the act, and it comes from her or
+// his OWN body — never a partner's. Every way people ask for it, including
+// the slang, so "make yourself cum", "squirt for me", "bust a nut" and
+// "shoot your load" all land here.
+const CLIMAX_RE = new RegExp(
+  "\\b(?:" + KW.cum + ")\\b",
+  "i",
+);
+const SQUIRT_RE = /\b(?:squirt\w*|gush\w*|female ejaculat\w*)\b/i;
+export function isClimaxAct(req: string): boolean {
+  return CLIMAX_RE.test(req ?? "");
+}
+
+export function climaxSentence(req: string, a: Anatomy): string {
+  const t = req ?? "";
+  if (!CLIMAX_RE.test(t)) return "";
+  const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
+  const { poss } = a;
+  if (a.hasPenis) {
+    return `${S} ${a.is} ejaculating right now: thick white cum spurting from the tip of ${poss} own cock in ropes and landing across ${poss} stomach and chest, ${poss} fist still wrapped around the shaft mid-stroke, ${poss} head back and mouth open. ${S} ${a.is} alone in the frame; the cum is ${poss} own.`;
+  }
+  if (a.hasVulva) {
+    const squirt = SQUIRT_RE.test(t) || /\bcum\w*|come\b/i.test(t);
+    return squirt
+      ? `${S} ${a.is} in the middle of ${poss} own orgasm: eyes squeezed shut, mouth open, back arched, a clear arc of fluid squirting from ${poss} pussy and running down ${poss} inner thighs, ${poss} fingers still pressed on ${poss} clit. ${S} ${a.is} alone in the frame; the wetness is ${poss} own.`
+      : `${S} ${a.is} in the middle of ${poss} own orgasm: eyes squeezed shut, mouth open, back arched, ${poss} pussy glistening wet, ${poss} fingers still pressed on ${poss} clit. ${S} ${a.is} alone in the frame.`;
+  }
+  return `${S} ${a.is} in the middle of ${poss} own orgasm, eyes squeezed shut, mouth open, back arched. ${S} ${a.is} alone in the frame.`;
+}
+
 // Rubbing / fingering herself: the hand is the act, and "right hand between
 // her thighs" in the prose rendered no hand at all.
 const RUB_RE =
@@ -480,8 +510,14 @@ export function isBreastHandsAct(req: string): boolean {
   return BREAST_HANDS_RE.test(req ?? "") && !SELF_BREAST_ORAL_RE.test(req ?? "");
 }
 
-export function mouthActTags(req: string): string {
+export function mouthActTags(req: string, hasPenis = false): string {
   const t = req ?? "";
+  if (CLIMAX_RE.test(t) && !isMouthAct(t))
+    return hasPenis
+      ? "cumshot, ejaculation, thick cum spurting from own penis, ropes of cum on own stomach, hand stroking own cock, head back, mouth open"
+      : SQUIRT_RE.test(t) || /\bcum\w*|come\b/i.test(t)
+        ? "squirting, female ejaculation, clear fluid spraying from own pussy, orgasm face, eyes shut, mouth open, back arched, fingers on own clit"
+        : "orgasm face, eyes shut, mouth open, back arched, wet glistening pussy, fingers on own clit";
   if (isBreastHandsAct(t))
     return /pinch/i.test(t)
       ? "pinching own nipples, fingers on own nipples, both hands on own breasts, looking at the camera"
@@ -958,6 +994,7 @@ function buildStillPrompt(
       requestedShot(req),
     ),
     selfActSentence(action, a) || actionSentence(subject, action),
+    climaxSentence(req, a),
     posture,
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a }),
@@ -1012,6 +1049,7 @@ export function videoActionPrompt(
       requestedShot(req),
     ),
     selfActSentence(action, a) || actionSentence(subject, action),
+    climaxSentence(req, a),
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a }),
     QUALITY,

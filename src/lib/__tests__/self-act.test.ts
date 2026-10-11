@@ -49,6 +49,17 @@ describe("the renderer is allowed to change her mouth", () => {
     expect(mouthActTags("suck on your dildo")).toContain("dildo in mouth");
     expect(mouthActTags("show me your tits")).toBe("");
     expect(mouthActTags("squeeze your tits")).toContain("squeezing own breasts");
+    const { climaxSentence, isClimaxAct } = await import("../selfie");
+    for (const r of ["squirt for me", "make yourself cum", "bust a nut", "shoot your load", "cum for me", "gushing", "get off for me"])
+      expect(isClimaxAct(r), r).toBe(true);
+    expect(isClimaxAct("send me a selfie")).toBe(false);
+    expect(climaxSentence("squirt for me", anatomyOf("female"))).toContain("squirting from her pussy");
+    expect(climaxSentence("cum for me", anatomyOf("male"))).toContain("spurting from the tip of his own cock");
+    expect(climaxSentence("cum for me", anatomyOf("trans-female"))).toContain("her own cock");
+    expect(mouthActTags("squirt for me")).toContain("squirting");
+    expect(mouthActTags("cum for me", true)).toContain("cumshot");
+    expect(stillImagePrompt({ gender: "male", name: "Dante" }, "cum for me")).toContain("ejaculating");
+    expect(videoActionPrompt(nova, "squirt for me")).toContain("squirting from her pussy");
     expect(mouthActTags("pinch your nipples")).toContain("pinching own nipples");
     const { normalizeRequest, actionSentence } = await import("../selfie");
     const say = (r: string) => actionSentence("she", normalizeRequest(r, "she"));

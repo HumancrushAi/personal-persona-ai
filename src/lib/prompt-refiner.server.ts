@@ -124,6 +124,8 @@ type Shape = {
   shot: "face" | "back" | null;
   /** The act is something she does to her OWN body (licking her nipple, sucking her finger). */
   selfAct: boolean;
+  /** Orgasm / squirt / ejaculation asked for — from this body, never a partner's. */
+  climax: boolean;
 };
 
 const rules = ({
@@ -135,6 +137,8 @@ const rules = ({
   toyAsked,
   shot,
   selfAct,
+  climax,
+  kind,
 }: Shape) => `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
 
 ${POSITIVE_ONLY}
@@ -184,6 +188,12 @@ ${rearView
 ${toyAsked
     ? `- the toy exactly as the user described it, already in the position they named, with material, size and how it interacts with her body stated clearly`
     : `- what each of her two hands is doing, named plainly (one hand lifting her breast, the other flat on her stomach). A hand with no stated job gets drawn holding something`
+  }
+${climax
+    ? kind === "male" || kind === "trans-female"
+      ? `- the climax is HAPPENING in the picture and it is ${kind === "male" ? "his" : "her"} own: thick white cum spurting from the tip of ${kind === "male" ? "his" : "her"} own cock in ropes, landing on ${kind === "male" ? "his" : "her"} own stomach or chest, the fist still around the shaft; head back, mouth open. One person in the picture, no partner anywhere`
+      : `- the climax is HAPPENING in the picture and it is her own: eyes squeezed shut, mouth open, back arched, fingers still on her clit, and ${/\b(?:squirt|gush)/i.test("") ? "" : ""}a clear arc of fluid squirting from her own pussy down her inner thighs (or, if she only asked to cum, her pussy glistening wet). One person in the picture, no partner, nothing landing on her from anyone else`
+    : ``
   }
 ${selfAct
     ? `- the act is on HER OWN body. Say the part is her own and exactly where the contact is — "the tip of her tongue touching her own left nipple", "her own finger between her lips" — with her head angled toward it. Her hands hold nothing. She is the only person in the picture; nothing and nobody else is in it
@@ -385,6 +395,7 @@ export async function refineMediaPrompt(
     requestKeepsGarment,
     requestedShot,
     isSelfAct,
+    isClimaxAct,
   } = await import("./selfie");
 
   const undress: Shape["undress"] =
@@ -436,6 +447,7 @@ export async function refineMediaPrompt(
     toyAsked,
     shot: requestedShot(req),
     selfAct: isSelfAct(req),
+    climax: isClimaxAct(req),
   };
 
   if (key) {

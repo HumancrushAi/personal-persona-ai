@@ -574,7 +574,9 @@ export async function startImageJob(
     const seedSalt = String(photosSoFar ?? 0);
     const input =
       provider === "comfy"
-        ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt)
+        ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt, {
+            hasPenis: anatomyOf(companion.gender).hasPenis,
+          })
         : provider === "kontext"
           ? {
               prompt: imagePrompt,
@@ -661,6 +663,8 @@ export async function comfyJobInput(
   opts: {
     /** Render without the pose guide — the retry after a worker that lacks the model. */
     noPose?: boolean;
+    /** The companion has a penis: climax tags describe ejaculation, not squirting. */
+    hasPenis?: boolean;
   } = {},
 ): Promise<Record<string, unknown>> {
   const {
@@ -736,7 +740,7 @@ export async function comfyJobInput(
   // The act first, weighted. ComfyUI's text encoder reads "(…:1.3)" as
   // emphasis, and the first tokens of an SDXL prompt carry the most weight —
   // which is exactly where the act was not.
-  const tags = mouthActTags(req);
+  const tags = mouthActTags(req, Boolean(opts.hasPenis));
   const finalPrompt = tags ? `(${tags}:1.3), ${prompt}` : prompt;
 
   return comfyInput(
@@ -1234,6 +1238,7 @@ export async function startVideoJob(
           startImage,
           userReq,
           `video-${job.id}`,
+          { hasPenis: anatomyOf(companion.gender).hasPenis },
         );
         const still = await runpodRun(comfyEndpoint, stillInput, webhookFor("runpod"));
         await supabaseAdmin

@@ -21,6 +21,14 @@ export type Candidate = { url: string; score: number | null };
 // one that gets checked.
 export function verifyQuestion(userRequest: string, hasBreasts: boolean, hasVulva = true): string | null {
   const req = userRequest ?? "";
+  const climax =
+    /\b(?:cum\w*|squirt\w*|gush\w*|orgasm\w*|climax\w*|jizz|spunk|ejaculat\w*|nut|nutting|bust\w*\s+(?:a\s+)?nut|shoot\w*\s+(?:your|his|her|my|a)\s+load|come\s+for\s+me|get\s+off|cream\w*)\b/i.test(req);
+  if (climax && !hasVulva)
+    return "Is cum visibly spurting or dripping from the person's own penis, with their hand on it?";
+  if (climax && /\b(?:squirt\w*|gush\w*|cum\w*|come)\b/i.test(req))
+    return "Is a visible spray or stream of clear fluid squirting from the woman's own pussy, with her face in orgasm?";
+  if (climax)
+    return "Does the woman's face show orgasm (eyes shut, mouth open) with her pussy visibly wet and her own hand on it?";
   if (
     hasBreasts &&
     /\b(?:squeez\w*|hold\w*|cup\w*|grab\w*|press\w*|pinch\w*|massag\w*|play\w*\s+with|fondl\w*|lift\w*)\b[^.?!]{0,20}\b(?:her|his|their|your|own)\s+(?:own\s+)?(?:tits?|titties|boobs?|boobies|breasts?|nipples?)\b/i.test(req) &&

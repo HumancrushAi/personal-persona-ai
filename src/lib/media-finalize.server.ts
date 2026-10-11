@@ -691,6 +691,7 @@ async function resubmitImageJob(
   seedSalt: string,
   opts: { noPose?: boolean } = {},
 ): Promise<string> {
+  const { anatomyOf } = await import("./anatomy");
   const { comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
     await import("./media.functions");
   const { runpodEndpoint, runpodRun } = await import("./runpod");
@@ -703,7 +704,7 @@ async function resubmitImageJob(
     resolveHostedImage(ctx.companion.image_url),
     ctx.userRequest,
     seedSalt,
-    opts,
+    { ...opts, hasPenis: anatomyOf(ctx.companion.gender).hasPenis },
   );
   const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));
   await supabaseAdmin

@@ -19,6 +19,8 @@ describe("which photos get checked", () => {
     expect(verifyQuestion("rubbing your pussy", true, false)).toBeNull();
     expect(verifyQuestion("squeeze your tits", true)).toMatch(/squeezing, cupping or pinching/);
     expect(verifyQuestion("masturbating", true)).toMatch(/between her legs/);
+    expect(verifyQuestion("squirt for me", true)).toMatch(/squirting from the woman's own pussy/);
+    expect(verifyQuestion("cum for me", false, false)).toMatch(/own penis/);
   });
 
   it("checks nothing for an ordinary request, or a breast act on a body without breasts", () => {

@@ -1010,7 +1010,10 @@ export async function comfyJobInput(
       const name = (anal ? process.env.COMFY_LORA_INSERT_ASS : process.env.COMFY_LORA_INSERT_PUSSY)?.trim();
       if (name) {
         template = withLora(template, name, Number(process.env.COMFY_LORA_INSERT_STRENGTH || "0.8"));
-        insertTrigger = anal ? "insertion ass" : "insertion pussy";
+        // The LoRA's own trigger words (sdxl-dildo: "vaginal object insertion").
+        insertTrigger = anal
+          ? process.env.COMFY_LORA_INSERT_TRIGGER_ASS || "dildo, anal object insertion"
+          : process.env.COMFY_LORA_INSERT_TRIGGER_PUSSY || "dildo, vaginal object insertion";
       }
     }
   }

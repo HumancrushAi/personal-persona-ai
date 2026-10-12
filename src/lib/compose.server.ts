@@ -27,8 +27,22 @@ const IMAGE_TIMEOUT_MS = 75_000;
 
 export const START_NAME = "start.png";
 
+// What the uncensored pass starts from:
+//   portrait  her own portrait — the picture her reel is made from — encoded
+//             as the starting latent (default). Grok is a prompt refiner and
+//             nothing else; ComfyUI renders every nude pixel.
+//   grok      a clothed frame of the request drawn by grok-imagine first.
+//             Tried live: the frame came back dressed and not her, and the
+//             owner ruled it out — the image model must not be in the loop.
+//   off       an empty latent, the old text-to-image path.
+export type ComposeMode = "portrait" | "grok" | "off";
+export function composeMode(): ComposeMode {
+  const m = (process.env.COMFY_COMPOSE ?? "portrait").trim().toLowerCase();
+  return m === "grok" || m === "off" ? m : "portrait";
+}
+/** True only when grok-imagine is allowed to draw the start frame. */
 export function composeEnabled(): boolean {
-  return (process.env.COMFY_COMPOSE ?? "grok").trim().toLowerCase() !== "off";
+  return composeMode() === "grok";
 }
 
 // Words the image model refuses. A brief that still contains one is thrown

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sfwBrief, START_NAME } from "../compose.server";
+import { sfwBrief, START_NAME, composeMode, composeEnabled } from "../compose.server";
 import { FACEID_I2I_WORKFLOW, FACEID_WORKFLOW, comfyWorkflow, comfySettings, usesStartLatent } from "../comfy";
 
 // Grok composes the clothed version of the picture; the uncensored pass
@@ -35,6 +35,29 @@ describe("the clothed brief", () => {
     expect(sfwBrief("spread your legs")).toMatch(/knees wide apart/);
     expect(sfwBrief("bend over and show me your ass")).toMatch(/bending forward at the waist/);
     expect(sfwBrief("send me a selfie")).toMatch(/sitting on the edge of the bed/);
+  });
+});
+
+describe("what the pass starts from", () => {
+  it("is her portrait by default; grok only when asked for", () => {
+    const prev = process.env.COMFY_COMPOSE;
+    delete process.env.COMFY_COMPOSE;
+    expect(composeMode()).toBe("portrait");
+    expect(composeEnabled()).toBe(false);
+    process.env.COMFY_COMPOSE = "grok";
+    expect(composeEnabled()).toBe(true);
+    process.env.COMFY_COMPOSE = "off";
+    expect(composeMode()).toBe("off");
+    if (prev === undefined) delete process.env.COMFY_COMPOSE;
+    else process.env.COMFY_COMPOSE = prev;
+  });
+
+  it("uses the portrait tiers when the frame is her portrait", () => {
+    for (const k of Object.keys(process.env)) if (k.startsWith("COMFY_DENOISE")) delete process.env[k];
+    expect(comfySettings("p", { template: FACEID_I2I_WORKFLOW }).denoise).toBe(0.62);
+    expect(comfySettings("p", { template: FACEID_I2I_WORKFLOW, needsUndress: true }).denoise).toBe(0.73);
+    expect(comfySettings("p", { template: FACEID_I2I_WORKFLOW, promptSetsComposition: true }).denoise).toBe(0.78);
+    expect(comfySettings("p", { template: FACEID_I2I_WORKFLOW, mouthAct: true }).denoise).toBe(0.86);
   });
 });
 

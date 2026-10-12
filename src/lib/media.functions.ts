@@ -663,7 +663,9 @@ export async function startImageJob(
     // request from her portrait, and the uncensored pass starts from it. Kept
     // for the job so a retake starts from the same picture.
     let composedFrame: string | null = null;
-    if (provider === "comfy") {
+    const { composeMode } = await import("./compose.server");
+    const mode = composeMode();
+    if (provider === "comfy" && mode === "grok") {
       const { composeStartFrame, storeStartFrame } = await import("./compose.server");
       const composed = await composeStartFrame({
         portraitUrl: sourceImage,
@@ -685,6 +687,7 @@ export async function startImageJob(
             hasPenis: anatomyOf(companion.gender).hasPenis,
             toyTags: toy?.tags ?? null,
             startFrame: composedFrame,
+            startFromPortrait: mode === "portrait",
           })
         : provider === "kontext"
           ? {
@@ -778,6 +781,8 @@ export async function comfyJobInput(
     toyTags?: string | null;
     /** A composed frame of this request (compose.server.ts), base64: the pass starts from it. */
     startFrame?: string | null;
+    /** Start the pass from her portrait instead of from noise (COMFY_COMPOSE=portrait). */
+    startFromPortrait?: boolean;
   } = {},
 ): Promise<Record<string, unknown>> {
   const {
@@ -801,6 +806,11 @@ export async function comfyJobInput(
     template = FACEID_I2I_WORKFLOW;
     extraImages.push({ name: START_NAME, base64: opts.startFrame as string });
   }
+  // Her portrait as the start latent: the same graph, at the portrait tiers
+  // (0.62 plain / 0.73 nude / 0.78 posed / 0.86 mouth act, comfySettings), so
+  // her face, skin and light are what the pass starts from and FaceID holds
+  // identity through the undress. Resolved after the portrait is read below.
+  const fromPortrait = !composed && Boolean(opts.startFromPortrait) && template === FACEID_WORKFLOW;
 
   // A pose guide, when this request has one and the worker can use it. Only
   // the FaceID graph has the wiring for it.
@@ -829,6 +839,11 @@ export async function comfyJobInput(
     const portrait = portraitUrl ? await readPortrait(portraitUrl) : null;
     if (portrait) {
       referenceBase64 = portrait;
+      if (fromPortrait) {
+        const { START_NAME } = await import("./compose.server");
+        template = FACEID_I2I_WORKFLOW;
+        extraImages.push({ name: START_NAME, base64: portrait });
+      }
     } else {
       // NEVER fall back to empty-latent txt2img. That path produces a random
       // stranger (wrong ethnicity, wrong face) — the exact failure testers
@@ -879,7 +894,7 @@ export async function comfyJobInput(
       prompt: finalPrompt,
       negative,
       poseImage: guide ? extraImages.find((i) => i.name === guide.file)?.name : undefined,
-      startImage: composed ? extraImages[0]?.name : undefined,
+      startImage: template === FACEID_I2I_WORKFLOW ? "start.png" : undefined,
     },
     { template, referenceBase64, extraImages },
   );

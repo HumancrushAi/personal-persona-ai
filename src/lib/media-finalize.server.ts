@@ -811,8 +811,10 @@ async function resubmitImageJob(
       ...opts,
       hasPenis: anatomyOf(ctx.companion.gender).hasPenis,
       toyTags: ctx.toy?.tags ?? null,
-      // The same composed frame the first render started from, when it had one.
+      // The same composed frame the first render started from, when it had one;
+      // otherwise her portrait, as the first render did.
       startFrame: await (await import("./compose.server")).storedStartFrame(ctx.row.id),
+      startFromPortrait: (await import("./compose.server")).composeMode() === "portrait",
     },
   );
   const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));

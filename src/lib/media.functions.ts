@@ -789,6 +789,15 @@ export function inkTags(look: string | null | undefined): string | null {
   return ["heavily tattooed", ...parts].join(", ");
 }
 
+
+/** The nude state as lead tags, for a nude request that keeps no garment. */
+export function nudeTags(req: string, hasPenis: boolean): string | null {
+  if (!requestIsNude(req) || requestKeepsGarment(req)) return null;
+  return hasPenis
+    ? "completely nude, fully naked, no clothes, bare skin, bare chest, erect penis visible"
+    : "completely nude, fully naked, no clothes, no underwear, bare skin, bare breasts, visible nipples, bare pussy";
+}
+
 export async function comfyJobInput(
   prompt: string,
   negative: string,
@@ -903,7 +912,12 @@ export async function comfyJobInput(
   // The act first, weighted. ComfyUI's text encoder reads "(…:1.3)" as
   // emphasis, and the first tokens of an SDXL prompt carry the most weight —
   // which is exactly where the act was not.
-  const tags = [opts.lookTags, opts.toyTags, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
+  // Nudity first and weighted. From a dressed portrait the checkpoint kept
+  // turning the dress into underwear: "completely nude" sat in the middle of
+  // a 300-word prompt. At the head, weighted, it is the strongest thing said.
+  const tags = [nudeTags(req, Boolean(opts.hasPenis)), opts.lookTags, opts.toyTags, mouthActTags(req, Boolean(opts.hasPenis))]
+    .filter(Boolean)
+    .join(", ");
   const finalPrompt = tags ? `(${tags}:1.3), ${prompt}` : prompt;
 
   return comfyInput(

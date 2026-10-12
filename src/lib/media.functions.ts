@@ -998,6 +998,10 @@ export async function comfyJobInput(
   // knit sleeves on a nude body. Every mention is said as tattooed arms.
   const finalPrompt = unsleeve(lead.length ? `${lead.join(", ")}, ${prompt}` : prompt);
 
+  {
+    const { withFaceSwap, faceSwapOn } = await import("./comfy");
+    if (faceSwapOn() && wantsReference(template)) template = withFaceSwap(template);
+  }
   return comfyInput(
     {
       ...comfySettings(prompt, {

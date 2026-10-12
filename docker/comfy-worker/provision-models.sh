@@ -120,6 +120,13 @@ else
   fi
 fi
 
+# The face-swap model for hc_faceswap. Two mirrors; either will do.
+fetch "https://huggingface.co/datasets/Gourieff/ReActor/resolve/main/models/inswapper_128.onnx" \
+      "$MODELS/insightface/inswapper_128.onnx" \
+  || fetch "https://huggingface.co/ezioruan/inswapper_128.onnx/resolve/main/inswapper_128.onnx" \
+      "$MODELS/insightface/inswapper_128.onnx" \
+  || FAILED=1
+
 echo "[provision] volume now holds:"
 find "$MODELS/ipadapter" "$MODELS/loras" "$MODELS/clip_vision" \
      "$MODELS/ultralytics" "$MODELS/insightface" -type f 2>/dev/null \

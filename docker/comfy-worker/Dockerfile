@@ -93,6 +93,11 @@ RUN /hc-install-node.sh cubiq/ComfyUI_IPAdapter_plus
 RUN /hc-install-node.sh ltdrdata/ComfyUI-Impact-Pack
 RUN /hc-install-node.sh ltdrdata/ComfyUI-Impact-Subpack
 
+# Our own face-swap node (hc_faceswap/__init__.py): her portrait's face onto
+# the render. Not ReActor, which blanks every image its NSFW check flags.
+COPY hc_faceswap /tmp/hc_faceswap
+RUN . /etc/hc-build.env && cp -r /tmp/hc_faceswap "$COMFY_DIR/custom_nodes/hc_faceswap" && rm -rf /tmp/hc_faceswap
+
 # insightface has no wheel for this Python, so pip compiles it — against the
 # numpy 2 the node packs installed, with Cython 3.
 #
@@ -159,7 +164,8 @@ RUN chmod +x /hc-link-models.sh \
       grep -nE -B2 -A25 "Cannot import" /tmp/node-load.log; \
       exit 1; \
     fi \
- && grep -q "ComfyUI-Impact-Subpack" /tmp/node-load.log
+ && grep -q "ComfyUI-Impact-Subpack" /tmp/node-load.log \
+ && grep -q "hc_faceswap" /tmp/node-load.log
 
 # Three node packs, not two. UltralyticsDetectorProvider — the face detector
 # FaceDetailer takes its bbox from — lives in Impact SUBPACK. It was split out of

@@ -622,3 +622,17 @@ describe("realism settings", () => {
     if (prev !== undefined) process.env.COMFY_CFG = prev;
   });
 });
+
+describe("the face swap", () => {
+  it("puts her portrait's face on the render before the face pass", async () => {
+    const { withFaceSwap, FACEID_WORKFLOW, FACEID_POSE_WORKFLOW } = await import("../comfy");
+    for (const t of [FACEID_WORKFLOW, FACEID_POSE_WORKFLOW]) {
+      const g = JSON.parse(withFaceSwap(t));
+      expect(g["30"].class_type).toBe("HCFaceSwap");
+      expect(g["30"].inputs.image).toEqual(["8", 0]);
+      expect(g["30"].inputs.source).toEqual(["10", 0]);
+      expect(g["14"].inputs.image).toEqual(["30", 0]);
+      expect(withFaceSwap(withFaceSwap(t))).toBe(withFaceSwap(t));
+    }
+  });
+});

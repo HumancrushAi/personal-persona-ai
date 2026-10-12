@@ -361,6 +361,24 @@ export const FACEID_I2I_WORKFLOW = (() => {
   return JSON.stringify(g, null, 2);
 })();
 
+/**
+ * Any FaceID-family graph with her portrait's face swapped onto the render
+ * (node 30, hc_faceswap in the worker image) before the FaceDetailer pass,
+ * which then re-renders skin over the swapped face at a low denoise. FaceID
+ * alone borrows a likeness; the swap copies the face. COMFY_FACESWAP=on.
+ */
+export function withFaceSwap(template: string): string {
+  const g = JSON.parse(template) as Record<string, any>;
+  if (!g["14"] || !g["10"] || g["30"]) return template;
+  g["30"] = { class_type: "HCFaceSwap", inputs: { image: g["14"].inputs.image, source: ["10", 0] } };
+  g["14"].inputs.image = ["30", 0];
+  return JSON.stringify(g, null, 2);
+}
+
+export function faceSwapOn(): boolean {
+  return (process.env.COMFY_FACESWAP ?? "").trim().toLowerCase() === "on";
+}
+
 export const FACEID_LITE_WORKFLOW = (() => {
   const g = JSON.parse(FACEID_WORKFLOW) as Record<string, any>;
   delete g["13"];
@@ -845,8 +863,10 @@ export function comfySettings(
       : numberSetting("COMFY_IPA_START_AT", 0),
     faceidPreset: process.env.COMFY_FACEID_PRESET || "FACEID PLUS V2",
     // Keep FaceDetailer from inventing a new face on the refine pass.
-    faceDenoise: opts.mouthAct
-      ? numberSetting("COMFY_FACE_DENOISE_MOUTH", 0.3)
-      : numberSetting("COMFY_FACE_DENOISE", 0.35),
+    faceDenoise: faceSwapOn()
+      ? numberSetting("COMFY_FACE_DENOISE_SWAP", 0.25)
+      : opts.mouthAct
+        ? numberSetting("COMFY_FACE_DENOISE_MOUTH", 0.3)
+        : numberSetting("COMFY_FACE_DENOISE", 0.35),
   };
 }

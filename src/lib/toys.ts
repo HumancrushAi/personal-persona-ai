@@ -57,6 +57,7 @@ const SIZE_HAND = "about as long as her hand from wrist to fingertip";
 export const TOYS: Toy[] = [
   {
     id: "dildo-realistic",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-realistic.png",
     tags: "realistic flesh-toned dildo with balls and suction cup base",
     name: "Realistic Dildo",
     emoji: "🍆",
@@ -69,6 +70,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "dildo-black",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-black.png",
     tags: "huge thick matte black dildo",
     name: "Big Black Dildo",
     emoji: "🖤",
@@ -81,6 +83,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "dildo-glass",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-glass.png",
     tags: "clear transparent glass dildo",
     name: "Glass Dildo",
     emoji: "💎",
@@ -93,6 +96,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "rabbit-tongue",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rabbit-tongue.png",
     tags: "pink rabbit vibrator with clit tongue",
     name: "Vibrating Rabbit with Tongue",
     emoji: "🐰",
@@ -105,6 +109,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "wand",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/wand.png",
     tags: "white magic wand vibrator",
     name: "Magic Wand",
     emoji: "🪄",
@@ -117,6 +122,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "bullet",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/bullet.png",
     tags: "small pink bullet vibrator",
     name: "Bullet Vibe",
     emoji: "💗",
@@ -129,6 +135,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "plug-jewel",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/plug-jewel.png",
     tags: "polished steel butt plug with pink crystal base",
     name: "Jewelled Butt Plug",
     emoji: "💠",
@@ -141,6 +148,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "beads",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/beads.png",
     tags: "black silicone anal beads",
     name: "Anal Beads",
     emoji: "⚫",
@@ -153,6 +161,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "strap-on",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/strap-on.png",
     tags: "black leather strap-on harness with black dildo",
     name: "Strap-On",
     emoji: "🔗",
@@ -165,6 +174,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "stroker",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/stroker.png",
     tags: "black fleshlight stroker",
     name: "Stroker",
     emoji: "🔦",
@@ -177,6 +187,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "flogger",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/flogger.png",
     tags: "black leather flogger",
     name: "Leather Flogger",
     emoji: "🪢",
@@ -190,6 +201,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "crop",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/crop.png",
     tags: "black leather riding crop",
     name: "Riding Crop",
     emoji: "🏇",
@@ -203,6 +215,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "paddle",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/paddle.png",
     tags: "black leather spanking paddle",
     name: "Spanking Paddle",
     emoji: "🏓",
@@ -216,6 +229,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "cuffs",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/cuffs.png",
     tags: "silver steel handcuffs with chain",
     name: "Handcuffs & Chain",
     emoji: "⛓️",
@@ -229,6 +243,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "clamps",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/clamps.png",
     tags: "silver nipple clamps with chain",
     name: "Nipple Clamps",
     emoji: "🔩",
@@ -242,6 +257,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "collar",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/collar.png",
     tags: "black leather collar with leash",
     name: "Collar & Leash",
     emoji: "🐾",
@@ -255,6 +271,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "gag",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/gag.png",
     tags: "red ball gag",
     name: "Ball Gag",
     emoji: "🔴",
@@ -268,6 +285,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "rope",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rope.png",
     tags: "red shibari rope chest harness",
     name: "Shibari Rope",
     emoji: "🧶",
@@ -281,6 +299,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "blindfold",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/blindfold.png",
     tags: "black satin blindfold",
     name: "Satin Blindfold",
     emoji: "🎀",
@@ -299,10 +318,11 @@ export function toyById(id: string | null | undefined): Toy | null {
 }
 
 // What else the chest sells. Not toys: nothing to render by itself.
-export type ChestExtra = { id: string; name: string; emoji: string; blurb: string; price: number };
+export type ChestExtra = { id: string; name: string; emoji: string; blurb: string; price: number; image?: string };
 export const CHEST_EXTRAS: ChestExtra[] = [
   {
     id: "room",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/room.png",
     name: "Your room",
     emoji: "🛏️",
     blurb: "Show her a photo of your bedroom and she poses in it, in every photo and clip of that chat.",

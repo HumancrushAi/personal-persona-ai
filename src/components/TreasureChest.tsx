@@ -319,8 +319,12 @@ export function TreasureChestModal({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {room.url && (
-                    <img src={room.url} alt="Your room" className="h-14 w-14 rounded-xl border border-white/10 object-cover" />
+                  {(room.url || room.image) && (
+                    <img
+                      src={room.url ?? room.image}
+                      alt={room.url ? "Your room" : "A room"}
+                      className="h-16 w-16 rounded-xl border border-white/10 object-cover"
+                    />
                   )}
                   {!room.owned ? (
                     <Button

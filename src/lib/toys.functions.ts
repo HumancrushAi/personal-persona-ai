@@ -24,6 +24,8 @@ export type ChestRoom = {
   price: number;
   url: string | null;
   description: string | null;
+  /** The product photo in the chest, before the user adds their own room. */
+  image?: string;
 };
 
 export const listToys = createServerFn({ method: "POST" })
@@ -43,7 +45,13 @@ export const listToys = createServerFn({ method: "POST" })
       .maybeSingle();
     const credits = (bal?.free_messages_remaining ?? 0) + (bal?.paid_credits ?? 0);
     const roomItem = CHEST_EXTRAS.find((e) => e.id === "room")!;
-    let room: ChestRoom = { owned: owns(owned, "room"), price: roomItem.price, url: null, description: null };
+    let room: ChestRoom = {
+      owned: owns(owned, "room"),
+      price: roomItem.price,
+      url: null,
+      description: null,
+      image: roomItem.image,
+    };
     if (data.conversationId) {
       const { roomFor } = await import("./rooms.server");
       const r = await roomFor(data.conversationId);

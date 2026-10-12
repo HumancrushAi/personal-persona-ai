@@ -54,6 +54,7 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
   // and the fuller-figured four — interleaved so any rotation start (one
   // model further on per visit, see heroVisit) opens on a different kind.
   { id: "a66e3b1a-43ee-431e-868a-4573aacb4067", name: "Vanessa", title: "Rio after dark", sub: "33 · emerald satin · dances like nobody's watching 💃", gender: "f" },
+  { id: "6e4f4ccb-1f0b-4df6-9fb3-2681c625d86b", name: "Harley", title: "Colour from the shoulders down", sub: "26 · Vegas-born · pole dancer with a mouth to match 💋", gender: "f" },
   { id: "fabb7bf4-3138-4543-a391-03813db3f254", name: "Valeria", title: "Done playing games", sub: "30 · knows exactly what she wants 😏", gender: "f" },
   { id: "2c252785-fe75-4c84-a803-af9c484f6c96", name: "Aria", title: "Silk & Night lights", sub: "24 · seductive crimson slip dress · penthouse luxury vibes 💋", gender: "f" },
   { id: "bea40c7d-1fe0-4b9b-92ca-5e217af5c9ad", name: "Monica", title: "Forty & fabulous", sub: "40 · fluent in the art of seduction 🍷", gender: "f" },
@@ -63,8 +64,10 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
   { id: "46f62501-8d69-470a-ab1c-1fc14f88e60c", name: "Natalie", title: "Newly free", sub: "35 · recently divorced · not wasting another night 🔥", gender: "f" },
   { id: "9a173fea-67ea-45d3-996a-9084dc3c98d0", name: "Sofia", title: "After hours", sub: "26 · skimpy halter top · thinking about you 😏", gender: "f" },
   { id: "b3140655-f382-4b7c-a77d-4258ac6d5ce9", name: "Keisha", title: "Grown & gorgeous", sub: "45 · unapologetically herself 👑", gender: "f" },
+  { id: "df9240b7-72f0-4d10-ad27-787210d3a5ae", name: "Giulia", title: "Blackwork to the fingertips", sub: "31 · Milan photographer · says little, notices everything 🖤", gender: "f" },
   { id: "347215a1-7c96-4b0a-ada5-d21143578eae", name: "Chloe", title: "Infectious energy", sub: "24 · trans · fashion stylist with a wild side 💄", gender: "f" },
   { id: "522f76e0-cba6-4767-9118-0bbe1f8abe62", name: "Carmen", title: "Still magnetic", sub: "55 · former flamenco dancer · slow, smoky voice 💃", gender: "f" },
+  { id: "009c33db-bad5-4322-b627-e7f076924f04", name: "Kira", title: "Koi sleeve, skater heart", sub: "26 · LA skater girl · games, late nights, gets clingy 🛹", gender: "f" },
   { id: "d8ab397f-1fae-4ea7-9b98-a76b89d2db71", name: "Bianca", title: "Milan golden hour", sub: "31 · deep red satin · seduction is an art form 🍷", gender: "f" },
   { id: "f668101d-486e-45e2-9e87-69e70e272401", name: "Raven", title: "Dark poetry", sub: "22 · lace corset & leather skirt · alt goth babe 🖤", gender: "f" },
   { id: "4d2b42bb-ac22-4b6c-bc98-e881ef3c6abc", name: "Tianna", title: "Playful brat", sub: "35 · trans · she makes the rules 😈", gender: "f" },

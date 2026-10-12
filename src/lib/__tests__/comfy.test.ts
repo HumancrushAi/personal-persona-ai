@@ -599,13 +599,17 @@ describe("realism settings", () => {
     const { comfySettings, comfyWorkflow, FACEID_WORKFLOW } = await import("../comfy");
     const prev = process.env.COMFY_IPA_V2_WEIGHT;
     delete process.env.COMFY_IPA_V2_WEIGHT;
+    delete process.env.COMFY_IPA_V2_WEIGHT_MAIN;
     const s = comfySettings("p");
-    expect(s.ipaV2Weight).toBe(1.2);
+    // The main pass is lighter (1.0) so the face is not pasted on; the face
+    // pass keeps the full 1.2, which is where likeness is decided.
+    expect(s.ipaV2Weight).toBe(1.0);
+    expect(s.ipaV2WeightFace).toBe(1.2);
     const g = comfyWorkflow(
       { ...s, prompt: "p", negative: "n", checkpoint: "c.safetensors", referenceImage: "r.png" },
       FACEID_WORKFLOW,
     ) as any;
-    expect(g["12"].inputs.weight_faceidv2).toBe(1.2);
+    expect(g["12"].inputs.weight_faceidv2).toBe(1.0);
     // A caller that never sets it falls back to the shared weight, never null.
     const old = comfyWorkflow({ ...VARS, ipaV2Weight: undefined, referenceImage: "r.png" }, FACEID_WORKFLOW) as any;
     expect(old["12"].inputs.weight_faceidv2).toBe(VARS.ipaWeight);
@@ -616,7 +620,8 @@ describe("realism settings", () => {
     const { comfySettings } = await import("../comfy");
     const prev = process.env.COMFY_CFG;
     delete process.env.COMFY_CFG;
-    expect(comfySettings("p").cfg).toBe(5.5);
+    // 5.0: at 5.5 the faces still came back "glowing like plastic".
+    expect(comfySettings("p").cfg).toBe(5.0);
     if (prev !== undefined) process.env.COMFY_CFG = prev;
   });
 });

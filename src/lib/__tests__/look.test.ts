@@ -10,7 +10,7 @@ describe("a companion's look in words", () => {
 
   it("drops a refusal or an essay", () => {
     expect(tidyLook("I'm sorry, I cannot describe people.")).toBe("");
-    expect(tidyLook("a ".repeat(40)).split(" ").length).toBeLessThanOrEqual(30);
+    expect(tidyLook("a ".repeat(40)).split(" ").length).toBeLessThanOrEqual(34);
   });
 
   it("keys the cache on the portrait, not the name", () => {

@@ -355,12 +355,13 @@ describe("identity lock", () => {
   });
 
   it("forces nudity on a nude request and keeps both inside the budget", async () => {
-    const { finishMediaPrompt, NUDE_FORCE, IDENTITY_LOCK } = await import("../selfie");
+    const { finishMediaPrompt, NUDE_FORCE, IDENTITY_LOCK, PROMPT_WORD_BUDGET } = await import("../selfie");
     const long = `Photograph of a woman indoors. ${"soft warm light on the sheets, ".repeat(80)}`;
     const p = finishMediaPrompt(long, "send me a nude", { appearance: { age: 24 } });
     expect(p).toContain(NUDE_FORCE);
     expect(p).toContain(IDENTITY_LOCK);
-    expect(p.split(/\s+/).length).toBeLessThanOrEqual(300);
+    // The whole prompt, tails included, stays inside the renderer budget.
+    expect(p.split(/\s+/).length).toBeLessThanOrEqual(PROMPT_WORD_BUDGET);
   });
 
   it("uses no negation the renderer would draw", async () => {

@@ -549,7 +549,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           mediaToy,
         );
 
-        const teaser = TEASERS.video;
+        const teaser = mediaToy ? `mmm okay… hold on, grabbing my ${mediaToy.name.toLowerCase()} 😈🎬` : TEASERS.video;
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
           user_id: userId,
@@ -628,7 +628,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           mediaToy,
         );
 
-        const teaser = TEASERS.photo;
+        const teaser = mediaToy ? `mmm okay… give me a sec, grabbing my ${mediaToy.name.toLowerCase()} 😈📸` : TEASERS.photo;
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
           user_id: userId,

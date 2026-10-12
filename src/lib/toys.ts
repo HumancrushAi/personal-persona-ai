@@ -46,6 +46,10 @@ export type Toy = {
   use?: string;
   /** The look the checkpoint gives this kind of toy when left alone. */
   negative?: string;
+  /** Short, booru-style: leads the ComfyUI prompt weighted, so the toy is drawn at all. */
+  tags: string;
+  /** A product photo of it, for the chest. */
+  image?: string;
 };
 
 const SIZE_HAND = "about as long as her hand from wrist to fingertip";
@@ -53,6 +57,7 @@ const SIZE_HAND = "about as long as her hand from wrist to fingertip";
 export const TOYS: Toy[] = [
   {
     id: "dildo-realistic",
+    tags: "realistic flesh-toned dildo with balls and suction cup base",
     name: "Realistic Dildo",
     emoji: "🍆",
     blurb: "Seven inches, flesh-toned, veined, with balls and a suction base.",
@@ -64,6 +69,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "dildo-black",
+    tags: "huge thick matte black dildo",
     name: "Big Black Dildo",
     emoji: "🖤",
     blurb: "Nine inches, thick, matte black silicone with a wide flared base.",
@@ -75,6 +81,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "dildo-glass",
+    tags: "clear transparent glass dildo",
     name: "Glass Dildo",
     emoji: "💎",
     blurb: "Clear borosilicate glass with a ridged shaft and a rounded tip.",
@@ -86,6 +93,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "rabbit-tongue",
+    tags: "pink rabbit vibrator with clit tongue",
     name: "Vibrating Rabbit with Tongue",
     emoji: "🐰",
     blurb: "Pink rabbit vibrator — a curved shaft plus a flicking silicone tongue for her clit.",
@@ -97,6 +105,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "wand",
+    tags: "white magic wand vibrator",
     name: "Magic Wand",
     emoji: "🪄",
     blurb: "The classic white wand with a big soft head and a cord.",
@@ -108,6 +117,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "bullet",
+    tags: "small pink bullet vibrator",
     name: "Bullet Vibe",
     emoji: "💗",
     blurb: "A small pink bullet vibrator she can press anywhere.",
@@ -119,6 +129,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "plug-jewel",
+    tags: "polished steel butt plug with pink crystal base",
     name: "Jewelled Butt Plug",
     emoji: "💠",
     blurb: "Polished steel plug with a pink crystal base.",
@@ -130,6 +141,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "beads",
+    tags: "black silicone anal beads",
     name: "Anal Beads",
     emoji: "⚫",
     blurb: "Black silicone beads that grow bigger down the string, with a pull ring.",
@@ -141,6 +153,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "strap-on",
+    tags: "black leather strap-on harness with black dildo",
     name: "Strap-On",
     emoji: "🔗",
     blurb: "Black leather harness with a matte black silicone shaft.",
@@ -152,6 +165,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "stroker",
+    tags: "black fleshlight stroker",
     name: "Stroker",
     emoji: "🔦",
     blurb: "A flashlight-style stroker for him.",
@@ -163,6 +177,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "flogger",
+    tags: "black leather flogger",
     name: "Leather Flogger",
     emoji: "🪢",
     blurb: "A black leather flogger with a braided handle.",
@@ -175,6 +190,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "crop",
+    tags: "black leather riding crop",
     name: "Riding Crop",
     emoji: "🏇",
     blurb: "A slim black riding crop with a leather keeper.",
@@ -187,6 +203,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "paddle",
+    tags: "black leather spanking paddle",
     name: "Spanking Paddle",
     emoji: "🏓",
     blurb: "A black leather paddle with a heart cut-out.",
@@ -199,6 +216,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "cuffs",
+    tags: "silver steel handcuffs with chain",
     name: "Handcuffs & Chain",
     emoji: "⛓️",
     blurb: "Polished steel handcuffs on a chain.",
@@ -211,6 +229,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "clamps",
+    tags: "silver nipple clamps with chain",
     name: "Nipple Clamps",
     emoji: "🔩",
     blurb: "Silver clamps joined by a fine chain.",
@@ -223,6 +242,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "collar",
+    tags: "black leather collar with leash",
     name: "Collar & Leash",
     emoji: "🐾",
     blurb: "A black leather collar with a ring and a leash.",
@@ -235,6 +255,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "gag",
+    tags: "red ball gag",
     name: "Ball Gag",
     emoji: "🔴",
     blurb: "A red ball gag on black straps.",
@@ -247,6 +268,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "rope",
+    tags: "red shibari rope chest harness",
     name: "Shibari Rope",
     emoji: "🧶",
     blurb: "Red cotton rope tied in a chest harness.",
@@ -259,6 +281,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "blindfold",
+    tags: "black satin blindfold",
     name: "Satin Blindfold",
     emoji: "🎀",
     blurb: "A black satin blindfold.",
@@ -273,6 +296,22 @@ export const TOYS: Toy[] = [
 
 export function toyById(id: string | null | undefined): Toy | null {
   return TOYS.find((t) => t.id === id) ?? null;
+}
+
+// What else the chest sells. Not toys: nothing to render by itself.
+export type ChestExtra = { id: string; name: string; emoji: string; blurb: string; price: number };
+export const CHEST_EXTRAS: ChestExtra[] = [
+  {
+    id: "room",
+    name: "Your room",
+    emoji: "🛏️",
+    blurb: "Show her a photo of your bedroom and she poses in it, in every photo and clip of that chat.",
+    price: 400,
+  },
+];
+
+export function chestItemById(id: string | null | undefined): { id: string; name: string; price: number } | null {
+  return toyById(id) ?? CHEST_EXTRAS.find((e) => e.id === id) ?? null;
 }
 
 // The words that ask for a KIND of toy without naming one: "a dildo", "a

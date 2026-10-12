@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 
 // "look2": the phrase grew bust size and tattoos, and the cached "look:" phrases have neither.
 const KEY_PREFIX = "look2:";
-const MAX_WORDS = 30;
+const MAX_WORDS = 34;
 
 export function lookCacheKey(imageUrl: string): string {
   return `${KEY_PREFIX}${createHash("sha1").update(imageUrl).digest("hex").slice(0, 24)}`;
@@ -42,6 +42,69 @@ export async function companionLook(imageUrl: string | null | undefined): Promis
       });
   }
   return look;
+}
+
+// Where her portrait was taken, in words: the room, the light, the feel.
+// Her reel and her card are realistic because they ARE that photo; a chat
+// photo rendered in a renderer's default bedroom could never look like
+// them. Said as the setting of every chat photo that has no user room.
+const SCENE_PREFIX = "scene:";
+export async function companionScene(imageUrl: string | null | undefined): Promise<string> {
+  const url = (imageUrl ?? "").trim();
+  if (!/^https?:/i.test(url)) return "";
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const key = `${SCENE_PREFIX}${createHash("sha1").update(url).digest("hex").slice(0, 24)}`;
+  try {
+    const { data } = await supabaseAdmin.from("app_settings").select("value").eq("key", key).maybeSingle();
+    if (typeof data?.value === "string") return data.value;
+  } catch {
+    /* fall through to describing it */
+  }
+  const scene = await describeScene(url);
+  if (scene) {
+    await supabaseAdmin
+      .from("app_settings")
+      .upsert({ key, value: scene }, { onConflict: "key" })
+      .then(({ error }) => {
+        if (error) console.warn("scene cache write failed:", error.message);
+      });
+  }
+  return scene;
+}
+
+async function describeScene(url: string): Promise<string> {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return "";
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(25_000),
+      body: JSON.stringify({
+        model: process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct",
+        temperature: 0,
+        max_tokens: 110,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Describe the setting and the light of this photo for a photographer in one comma-separated phrase of at most 30 words: the room or place, the main furniture and its colours, what is on the walls, the light source and time of day, and the camera feel (e.g. candid phone photo). Say nothing about the person. Only the phrase.",
+              },
+              { type: "image_url", image_url: { url } },
+            ],
+          },
+        ],
+      }),
+    });
+    if (!res.ok) return "";
+    const json = await res.json();
+    const s = tidyLook(json.choices?.[0]?.message?.content);
+    return /\b(?:woman|man|girl|she|he|her|his|person)\b/i.test(s) ? s.replace(/\b(?:a |the )?(?:woman|man|girl|person)\b[^,]*,?/gi, "").replace(/\s{2,}/g, " ").replace(/^[,\s]+|[,\s]+$/g, "") : s;
+  } catch {
+    return "";
+  }
 }
 
 async function describePortrait(url: string): Promise<string> {

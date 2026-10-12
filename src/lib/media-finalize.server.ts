@@ -435,6 +435,44 @@ async function muxAudio(mp4: Buffer): Promise<Buffer> {
 // is still being stretched by the browser. 1600 is 1.9x, inside the 2x cap.
 const STILL_TARGET = 1600;
 
+function numberEnv(name: string, fallback: number): number {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+/**
+ * The same phone-camera finish for a clip: fine grain, a touch less
+ * saturation. The original bytes come back if ffmpeg cannot do it.
+ */
+export async function filmGrainVideo(mp4: Buffer): Promise<Buffer> {
+  const { mkdtemp, rm, readFile, writeFile } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const strength = numberEnv("VIDEO_GRAIN", 6);
+  if (!strength) return mp4;
+  const dir = await mkdtemp(join(tmpdir(), "grain-"));
+  try {
+    const inp = join(dir, "in.mp4");
+    const out = join(dir, "out.mp4");
+    await writeFile(inp, mp4);
+    await promisify(execFile)(await ffmpegBin(), [
+      "-y", "-loglevel", "error", "-i", inp,
+      "-vf", `noise=alls=${strength}:allf=t+u,eq=saturation=0.96`,
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart", "-c:a", "copy", out,
+    ]);
+    const res = await readFile(out);
+    return res.length > 1000 ? res : mp4;
+  } catch (e: any) {
+    console.warn("video grain skipped:", e?.message ?? e);
+    return mp4;
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 type Encoded = { buf: Buffer; ext: string; mime: string };
 
 const AS_PNG = (buf: Buffer): Encoded => ({ buf, ext: "png", mime: "image/png" });
@@ -450,16 +488,50 @@ export async function enhanceStill(png: Buffer): Promise<Encoded> {
     // Only ever enlarged, and never past 2x — beyond that Lanczos is inventing
     // pixels and it starts to look like exactly what it is. A larger render
     // (a real image endpoint, one day) is left alone.
+    let w = width;
+    let h = height;
     if (side < STILL_TARGET) {
       const scale = Math.min(2, STILL_TARGET / side);
-      img = img
-        .resize(Math.round(width * scale), Math.round(height * scale), { kernel: "lanczos3" })
-        .sharpen({ sigma: 0.7, m1: 0.4, m2: 1.2 });
+      w = Math.round(width * scale);
+      h = Math.round(height * scale);
+      img = img.resize(w, h, { kernel: "lanczos3" });
     }
 
-    const buf = await img
-      .jpeg({ quality: 90, mozjpeg: true, chromaSubsampling: "4:4:4" })
+    // The sharpen is gone and a phone's own grain is in its place. Looked at
+    // 1:1 on a real render, the unsharp mask was lifting exactly the thing
+    // people called plastic: the lit, glossy skin. A gentle highlight
+    // roll-off, a touch less saturation and fine luminance grain are what a
+    // phone camera does to skin, and the face underneath is untouched.
+    // Two stages, raw pixels between them. Chained in one pipeline with the
+    // overlay, sharp took eight seconds on a 1700px frame; split, it takes
+    // under one. The grain is drawn at half size and scaled up nearest-neighbour,
+    // which is also what makes it read as grain rather than hiss.
+    const sigma = numberEnv("STILL_GRAIN", 12);
+    const toned = await img
+      .blur(0.5)
+      .linear(0.95, 5)
+      .modulate({ saturation: 0.95 })
+      .removeAlpha()
+      .raw()
       .toBuffer();
+    let finished = sharp(toned, { raw: { width: w, height: h, channels: 3 } });
+    if (sigma) {
+      const grain = await sharp({
+        create: {
+          width: Math.ceil(w / 2),
+          height: Math.ceil(h / 2),
+          channels: 3,
+          background: "#808080",
+          noise: { type: "gaussian", mean: 128, sigma },
+        },
+      })
+        .resize(w, h, { kernel: "nearest" })
+        .raw()
+        .toBuffer();
+      finished = finished.composite([{ input: grain, raw: { width: w, height: h, channels: 3 }, blend: "overlay" }]);
+    }
+    // libjpeg rather than mozjpeg: a tenth of the time for a slightly larger file.
+    const buf = await finished.jpeg({ quality: 90, chromaSubsampling: "4:4:4" }).toBuffer();
     return { buf, ext: "jpg", mime: "image/jpeg" };
   } catch {
     // A photo that stores is worth more than a photo that is slightly crisper.
@@ -502,6 +574,7 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
   const gotVideo =
     /video\//i.test(response.headers.get("content-type") ?? "") ||
     /\.(mp4|webm|mov)(\?|$)/i.test(outputUrl);
+  if (job.kind === "video" && gotVideo) buf = await filmGrainVideo(buf);
   if (job.kind === "image" && gotVideo) {
     buf = await extractLastFrame(buf);
   } else if (job.kind === "video" && gotVideo && (await shouldAddAudio(job))) {
@@ -734,7 +807,7 @@ async function resubmitImageJob(
     resolveHostedImage(ctx.companion.image_url),
     ctx.userRequest,
     seedSalt,
-    { ...opts, hasPenis: anatomyOf(ctx.companion.gender).hasPenis },
+    { ...opts, hasPenis: anatomyOf(ctx.companion.gender).hasPenis, toyTags: ctx.toy?.tags ?? null },
   );
   const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));
   await supabaseAdmin

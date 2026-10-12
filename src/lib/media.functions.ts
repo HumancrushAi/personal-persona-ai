@@ -312,6 +312,7 @@ export function negativeFor(
 }
 import { propClause, propNegative, hasProp } from "./props";
 import type { Toy } from "./toys";
+import type { Setting } from "./selfie";
 import { anatomyOf, crossSexNegative, genderKind, mentionsPart } from "./anatomy";
 import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
 import { companionImage } from "./companion-images";
@@ -473,7 +474,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
       toy,
     );
 
-    return { jobId, status: "pending" as const, balance };
+    return { jobId, status: "pending" as const, balance, toy: toy?.name ?? null };
   });
 
 // One job of a kind per conversation at a time.
@@ -509,6 +510,23 @@ export async function mediaJobInFlight(
 // It is image-TO-image, so it needs a hosted photo to edit: a companion with no
 // fetchable image_url fails here and refunds rather than silently falling back.
 // There is no Replicate path any more — see the header comment on this file.
+
+/**
+ * Where a chat photo or clip is taken: the user's own room when they gave
+ * her one for this chat (rooms.server.ts), else her own place as read off
+ * her portrait (look.server.ts). Her reel and her card ARE her portrait, and
+ * a chat photo rendered in a renderer's default bedroom never looked like
+ * them; said as the setting, it is taken where they were.
+ */
+async function settingFor(conversationId: string, imageUrl: string | null | undefined): Promise<Setting> {
+  const { roomFor } = await import("./rooms.server");
+  const room = await roomFor(conversationId);
+  if (room?.description) return { text: room.description, whose: "user" };
+  const { companionScene } = await import("./look.server");
+  const scene = await companionScene(imageUrl);
+  return scene ? { text: scene, whose: "her" } : null;
+}
+
 export async function startImageJob(
   supabase: any,
   userId: string,
@@ -526,6 +544,9 @@ export async function startImageJob(
   balance: { free: number; paid: number },
   toy: Toy | null = null,
 ): Promise<string> {
+  // The user's own room, if they gave her one for this chat; else her own
+  // place, read off her portrait, so the photo is taken where her reel was.
+  const setting = await settingFor(conversationId, companion.imageUrl);
   // Which of the three renderers this photo goes to, decided once and then
   // threaded through the prompt, the start frame and the job body — see
   // imageProvider.
@@ -571,6 +592,7 @@ export async function startImageJob(
     styleBackstory,
     provider,
     toy,
+    setting,
   );
 
   // The WAN endpoint centre-crops to a square, which decapitated the result.
@@ -641,6 +663,7 @@ export async function startImageJob(
       provider === "comfy"
         ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt, {
             hasPenis: anatomyOf(companion.gender).hasPenis,
+            toyTags: toy?.tags ?? null,
           })
         : provider === "kontext"
           ? {
@@ -730,6 +753,8 @@ export async function comfyJobInput(
     noPose?: boolean;
     /** The companion has a penis: climax tags describe ejaculation, not squirting. */
     hasPenis?: boolean;
+    /** The chest toy's short tags, so the toy leads the prompt weighted and is drawn at all. */
+    toyTags?: string | null;
   } = {},
 ): Promise<Record<string, unknown>> {
   const {
@@ -805,7 +830,7 @@ export async function comfyJobInput(
   // The act first, weighted. ComfyUI's text encoder reads "(…:1.3)" as
   // emphasis, and the first tokens of an SDXL prompt carry the most weight —
   // which is exactly where the act was not.
-  const tags = mouthActTags(req, Boolean(opts.hasPenis));
+  const tags = [opts.toyTags, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
   const finalPrompt = tags ? `(${tags}:1.3), ${prompt}` : prompt;
 
   return comfyInput(
@@ -889,13 +914,14 @@ export async function photoPromptWithAvoid(
   styleBackstory: string | null | undefined,
   provider: ImageProvider,
   toy: Toy | null = null,
+  setting: Setting = null,
 ): Promise<{ prompt: string; avoid: string[] }> {
   // Grok rewrites the user's line into a full prompt in the house style; the
   // keyword builder is the fallback when no key is set or the call fails.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
   const { companionLook } = await import("./look.server");
   const [refinedResult, look] = await Promise.all([
-    refineMediaPrompt("photo", userRequest ?? "", companion, 1, toy),
+    refineMediaPrompt("photo", userRequest ?? "", companion, 1, toy, setting),
     companionLook(companion.imageUrl),
   ]);
   const refined = refinedResult?.prompts;
@@ -919,8 +945,8 @@ export async function photoPromptWithAvoid(
     provider === "kontext"
       ? kontextSelfiePrompt(companion, userRequest, styleBackstory)
       : provider === "comfy"
-        ? stillImagePrompt(companion, userRequest, toy)
-        : videoStillPrompt(companion, userRequest, toy);
+        ? stillImagePrompt(companion, userRequest, toy, setting)
+        : videoStillPrompt(companion, userRequest, toy, setting);
 
   // Does a picture of her actually reach the renderer?
   //
@@ -965,6 +991,7 @@ export async function photoPromptWithAvoid(
     // renders a still by definition and does not need telling.
     still: provider === "wan",
     toy,
+    setting,
   });
   return { prompt, avoid };
 }
@@ -1103,7 +1130,7 @@ export const requestVideo = createServerFn({ method: "POST" })
       toy,
     );
 
-    return { jobId, status: "pending" as const, balance };
+    return { jobId, status: "pending" as const, balance, toy: toy?.name ?? null };
   });
 
 // Build the motion prompt for image-to-video. The companion's appearance comes
@@ -1188,6 +1215,7 @@ export async function startVideoJob(
   toy: Toy | null = null,
 ): Promise<string> {
   const startImage = resolveHostedImage(companion.imageUrl);
+  const setting = await settingFor(conversationId, companion.imageUrl);
 
   // The endpoint renders one scene per prompt and joins them, so a clip is cut
   // into ~5s scenes and Grok writes the action as a progression across them.
@@ -1256,17 +1284,18 @@ export async function startVideoJob(
 
   // Now the slow part, with a job row already standing behind it.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
-  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount, toy);
+  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount, toy, setting);
   const videoAvoid = refinedVideo?.avoid ?? [];
   // Same reason as the photo path: a successful refine replaces the builder, so
   // the prop spec is re-appended to every scene rather than lost.
   const rawReq = userReq ?? "";
   const anatomy = anatomyOf(companion.gender);
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
-  const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy)]).map((p) =>
+  const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) =>
     finishMediaPrompt(p, rawReq, {
       anatomy,
       toy,
+      setting,
       appendProps: Boolean(refinedScenes),
       // Per scene, for the same reason it is per photo: the refiner no longer
       // writes the clause, so a scene that did not get it would be the one part

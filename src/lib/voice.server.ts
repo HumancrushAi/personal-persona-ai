@@ -157,7 +157,9 @@ async function orpheusNote(endpoint: string, script: string, voice: string): Pro
       ...parts.flatMap((p) => ["-i", p]),
       // Slowed a touch: the synthesised read came out brisk and bright, and the
       // note is meant to be murmured, not announced.
-      "-filter_complex", `${parts.map((_, i) => `[${i}:a]`).join("")}concat=n=${parts.length}:v=0:a=1,atempo=0.93[a]`,
+      // …and a shade lower: asetrate drops the pitch (and the pace with it),
+      // atempo settles the pace at about 0.93x. Env-tunable without a deploy.
+      "-filter_complex", `${parts.map((_, i) => `[${i}:a]`).join("")}concat=n=${parts.length}:v=0:a=1,asetrate=24000*${process.env.VOICE_PITCH || "0.965"},aresample=24000,atempo=${process.env.VOICE_TEMPO || "0.965"}[a]`,
       "-map", "[a]", "-codec:a", "libmp3lame", "-b:a", "128k", out,
     ]);
     return await readFile(out);

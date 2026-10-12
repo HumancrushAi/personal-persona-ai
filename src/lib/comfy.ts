@@ -720,7 +720,10 @@ export function comfySettings(
     // the prompt on this checkpoint; COMFY_CFG overrides.
     // A notch lower on a mouth act: the act tags are already emphasised, and
     // a high guidance on an emphasised prompt is what over-renders a face.
-    cfg: opts.mouthAct ? numberSetting("COMFY_CFG_MOUTH", 5.0) : numberSetting("COMFY_CFG", 5.5),
+    // 5.0, down from 5.5: the faces still read as glossy and over-rendered —
+    // "glowing like plastic" was the report — and guidance is the first dial
+    // for that. The face pass keeps the full lock, so likeness does not pay.
+    cfg: opts.mouthAct ? numberSetting("COMFY_CFG_MOUTH", 5.0) : numberSetting("COMFY_CFG", 5.0),
     width: numberSetting("COMFY_WIDTH", 832),
     height: numberSetting("COMFY_HEIGHT", 1216),
     sampler: process.env.COMFY_SAMPLER || "dpmpp_2m_sde",
@@ -774,9 +777,12 @@ export function comfySettings(
       return numberSetting("COMFY_DENOISE", 0.62);
     })(),
     // FaceID path: pull harder toward the reference face (site portrait).
+    // The main pass at 0.8 rather than 0.9: a FaceID lock this hard pastes a
+    // waxy, lit-from-within face onto the body. The detailer pass below keeps
+    // the full 0.9 / 1.2 on the face crop, which is where likeness is decided.
     ipaWeight: opts.mouthAct
       ? numberSetting("COMFY_IPA_WEIGHT_MOUTH", 0.5)
-      : numberSetting("COMFY_IPA_WEIGHT", 0.9),
+      : numberSetting("COMFY_IPA_WEIGHT", 0.8),
     // The pose guide's model and grip (FACEID_POSE_WORKFLOW). 0.75 for the
     // first 80% of the steps: the skeleton decides where the head and hands
     // are, the checkpoint finishes the picture on its own.
@@ -790,7 +796,7 @@ export function comfySettings(
     // and faces came back "not exactly like the models". 1.0-2.0 is its range.
     ipaV2Weight: opts.mouthAct
       ? numberSetting("COMFY_IPA_V2_WEIGHT_MOUTH", 0.8)
-      : numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
+      : numberSetting("COMFY_IPA_V2_WEIGHT_MAIN", 1.0),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     ipaStartAt: opts.mouthAct
       ? numberSetting("COMFY_IPA_START_AT_MOUTH", 0.6)

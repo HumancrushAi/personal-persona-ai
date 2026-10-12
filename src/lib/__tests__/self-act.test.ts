@@ -121,10 +121,11 @@ describe("the renderer is allowed to change her mouth", () => {
     expect(mouth.ipaWeight).toBe(0.5);
     expect(mouth.faceDenoise).toBe(0.3);
     const plain = comfySettings("x");
-    expect(plain.ipaWeight).toBe(0.9);
+    expect(plain.ipaWeight).toBe(0.8);
+    expect(plain.ipaWeightFace).toBe(0.9);
     expect(plain.faceDenoise).toBe(0.35);
     expect(mouth.cfg).toBe(5.0);
-    expect(plain.cfg).toBe(5.5);
+    expect(plain.cfg).toBe(5.0);
   });
 });
 
@@ -147,7 +148,8 @@ describe("faces are not pushed toward old", () => {
       anatomy: anatomyOf("female"),
       still: true,
     });
-    expect(out).toMatch(/fresh youthful adult face/i);
+    expect(out).toMatch(/natural adult face/i);
+    expect(out).not.toMatch(/bright eyes|fresh youthful/i);
     expect(out).not.toContain("visible pores");
   });
 });

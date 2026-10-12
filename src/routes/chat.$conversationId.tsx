@@ -131,6 +131,7 @@ function ChatPage() {
   // Which media request dialog is open, if any.
   const [asking, setAsking] = useState<MediaKind | null>(null);
   const [chest, setChest] = useState<{ highlight?: string | null } | null>(null);
+  const [chestAttention, setChestAttention] = useState(false);
   const [showMobileLive, setShowMobileLive] = useState(true);
   // Seconds elapsed on the running job. Generation takes 90s+, and a static
   // "taking a pic for you…" with no movement reads as a hang — people gave up
@@ -355,7 +356,10 @@ function ChatPage() {
         navigate({ to: "/credits" });
       }
       // She asked for a toy she does not have: the chest opens on it.
-      if ((res as any)?.needsToy) setChest({ highlight: (res as any).needsToy });
+      if ((res as any)?.needsToy) {
+        setChestAttention(true);
+        setTimeout(() => setChest({ highlight: (res as any).needsToy }), 900);
+      }
       if (res?.relationship?.leveledUp) {
         toast.success(`💖 Relationship level up — now level ${res.relationship.level}`);
       }
@@ -620,6 +624,7 @@ function ChatPage() {
         return;
       }
       const jobId = (res as any).jobId;
+      if ((res as any)?.toy) toast(`${p?.nickname ?? "She"} is grabbing her ${String((res as any).toy).toLowerCase()} 😈`);
       setLocalJobs((prev) => {
         const next = prev.map((j) => (j.id === localId ? { ...j, dbJobId: jobId } : j));
         saveLocalJobs(next);
@@ -715,6 +720,7 @@ function ChatPage() {
         return;
       }
       const jobId = (res as any).jobId;
+      if ((res as any)?.toy) toast(`${p?.nickname ?? "She"} is grabbing her ${String((res as any).toy).toLowerCase()} 😈`);
       setLocalJobs((prev) => {
         const next = prev.map((j) => (j.id === localId ? { ...j, dbJobId: jobId } : j));
         saveLocalJobs(next);
@@ -1233,12 +1239,23 @@ function ChatPage() {
         </form>
       </div>
 
-      <TreasureChestButton onClick={() => setChest({})} />
+      <TreasureChestButton
+        attention={chestAttention && !chest}
+        open={Boolean(chest)}
+        onClick={() => {
+          setChestAttention(false);
+          setChest({});
+        }}
+      />
       {chest && (
         <TreasureChestModal
           name={p?.nickname ?? "her"}
+          conversationId={conversationId}
           highlight={chest.highlight}
-          onClose={() => setChest(null)}
+          onClose={() => {
+            setChestAttention(false);
+            setChest(null);
+          }}
         />
       )}
 

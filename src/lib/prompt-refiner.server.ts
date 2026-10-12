@@ -139,6 +139,9 @@ type Shape = {
   climax: boolean;
   /** The exact toy from the chest, when the user has one: its spec, word for word. */
   toySpec?: string | null;
+  /** The user's own room, or her own place from her portrait: the setting, instead of one the model invents. */
+  setting?: string | null;
+  settingWhose?: "user" | "her";
 };
 
 // The rules below are written about "her" and "the woman", and were sent
@@ -171,6 +174,8 @@ const rules = ({
   climax,
   kind,
   toySpec,
+  setting,
+  settingWhose,
 }: Shape) => `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
 
 ${POSITIVE_ONLY}
@@ -216,6 +221,12 @@ ${rearView
     : undress === "clothed"
       ? `- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin`
       : ANATOMY_IS_APPENDED
+  }
+${setting
+    ? settingWhose === "her"
+      ? `- the SETTING is her own place, the one in her portrait, and must match this description — the same room, furniture, walls and light, the same candid phone-camera feel, nothing invented: ${setting}`
+      : `- the SETTING is the user's own room and must match this description exactly — the same bed, walls, floor, light and objects, nothing invented: ${setting}`
+    : ""
   }
 ${toySpec
     ? `- the toy is EXACTLY this one and nothing else, already in the position they named, and it is hers alone — no other person, no other hand: ${toySpec}`
@@ -429,6 +440,7 @@ export async function refineMediaPrompt(
   companion: { gender?: string | null; ethnicity?: string; age?: number },
   scenes = 1,
   toy?: { spec: string } | null,
+  setting?: import("./selfie").Setting,
 ): Promise<Refined | null> {
   const key = process.env.XAI_API_KEY;
   const req = (userRequest ?? "").trim();
@@ -437,6 +449,7 @@ export async function refineMediaPrompt(
   const {
     requestIsNude,
     CLOSE_UP_RE,
+    settingText,
     requestSetsViewpoint,
     PARTIAL_UNDRESS_RE,
     STATED_POSTURE_RE,
@@ -497,6 +510,8 @@ export async function refineMediaPrompt(
     selfAct: isSelfAct(req),
     climax: isClimaxAct(req),
     toySpec: toy?.spec ?? null,
+    setting: settingText(setting) || null,
+    settingWhose: typeof setting === "object" && setting ? setting.whose : "user",
   };
 
   if (key) {

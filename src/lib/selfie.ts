@@ -1404,22 +1404,24 @@ export function stillImagePrompt(
   c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
   toy?: Toy | null,
+  setting?: Setting,
 ): string {
-  return buildStillPrompt(c, userPrompt, { holdCue: false, toy });
+  return buildStillPrompt(c, userPrompt, { holdCue: false, toy, setting });
 }
 
 export function videoStillPrompt(
   c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
   toy?: Toy | null,
+  setting?: Setting,
 ): string {
-  return buildStillPrompt(c, userPrompt, { holdCue: true, toy });
+  return buildStillPrompt(c, userPrompt, { holdCue: true, toy, setting });
 }
 
 function buildStillPrompt(
   c: { gender?: string | null; name?: string },
   userPrompt: string | null | undefined,
-  opts: { holdCue: boolean; toy?: Toy | null },
+  opts: { holdCue: boolean; toy?: Toy | null; setting?: Setting },
 ): string {
   const req = (userPrompt ?? "").trim();
   const toy = opts.toy ?? null;
@@ -1494,7 +1496,7 @@ function buildStillPrompt(
     handsBusy ? text.replace(`, ${poss} hands resting on ${poss} thighs`, "") : text;
   const posture =
     nude && req && !POSTURE_RE.test(req)
-      ? `${Subject} ${a.is} reclining back against pillows on a bed with plain white sheets, propped up on ${poss} elbows, ${poss} back gently arched and ${poss} knees apart${handsLine}, soft daylight from a window beside ${a.object}.`
+      ? `${Subject} ${a.is} reclining back against pillows on ${opts.setting ? "the bed" : "a bed with plain white sheets"}, propped up on ${poss} elbows, ${poss} back gently arched and ${poss} knees apart${handsLine}, soft daylight from a window beside ${a.object}.`
       : nude && lyingDown
         ? `${Subject} ${a.is} lying back against a stack of pillows, ${poss} shoulders and upper back raised, ${poss} back gently arched${handsLine}.`
         : "";
@@ -1519,6 +1521,7 @@ function buildStillPrompt(
     posture,
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a, toy }),
+    settingSentenceFor(opts.setting),
     QUALITY,
     opts.holdCue
       ? isCloseUp
@@ -1538,9 +1541,11 @@ export function videoActionPrompt(
   c: { gender?: string | null; name?: string },
   userPrompt?: string | null,
   toy?: Toy | null,
+  setting?: Setting,
 ): string {
   const req = (userPrompt ?? "").trim();
   const a = anatomyOf(c.gender);
+  const opts = { setting };
   const { noun, subject, poss } = a;
 
   // Same contradiction as the still builder above, same fix.
@@ -1573,6 +1578,7 @@ export function videoActionPrompt(
     climaxSentence(req, a),
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a, toy }),
+    settingSentenceFor(opts.setting),
     QUALITY,
     isCloseUp
       ? "Smooth natural lifelike motion throughout, consistent face and body. The camera holds its close point-of-view position."
@@ -1629,9 +1635,34 @@ export function kontextSelfiePrompt(
 // dropping the instruction that says "photograph, not render".
 // Faces came back haggard, then plastic. Said once, positively, on every
 // render: real skin has pores; it is not lined, and it is not glossy.
+// "Fresh youthful… clear skin… bright eyes" was asking for the glossy, lit
+// face that came back. Real skin: pores, a little unevenness, no shine.
 const FACE_CLAUSE =
-  "Fresh youthful adult face, clear skin with fine pores, matte finish, soft natural eyebrows, soft full lips, bright eyes.";
+  "Natural adult face, real skin with fine pores and subtle unevenness, matte finish, soft natural eyebrows, natural lips and eyes.";
 const FACE_WORDS = FACE_CLAUSE.split(/\s+/).length;
+
+/**
+ * Where the picture is taken. The user's own room when they gave her one;
+ * otherwise her own place, read off her portrait — so a chat photo is taken
+ * where her reel and her card were, not in a renderer's default bedroom.
+ */
+export type Setting = string | { text: string; whose: "user" | "her" } | null | undefined;
+
+export function settingText(setting: Setting): string {
+  if (!setting) return "";
+  return (typeof setting === "string" ? setting : setting.text).trim();
+}
+
+/** The setting as the one sentence every prompt says it with. */
+export function settingSentenceFor(setting: Setting): string {
+  const d = settingText(setting);
+  if (!d) return "";
+  const whose = typeof setting === "object" && setting ? setting.whose : "user";
+  return whose === "her"
+    ? `The setting is her own place, exactly as in her photos: ${d}.`
+    : `The setting is the user's own room, exactly as it is: ${d}.`;
+}
+
 
 // 340, up from 300: the adult/face clause added to every render pushed a
 // plain nude builder prompt past 300, and the cap — which cuts from the end —
@@ -1817,6 +1848,8 @@ export function finishMediaPrompt(
     still?: boolean;
     /** The toy from the chest she uses in this picture; its spec replaces the generic one. */
     toy?: Toy | null;
+    /** The user's own room, or her own place from her portrait: the setting of the picture. */
+    setting?: Setting;
     /** This prompt is for a CLIP. Appends the motion tail, as still appends the still cue. */
     moving?: boolean;
   } = {},
@@ -1941,7 +1974,13 @@ export function finishMediaPrompt(
   // portrait supplies her face and nothing below it, so the body came from the
   // checkpoint's default - thin and airbrushed - and users called the models
   // "too skinny, like plastic". COMFY_BUILD overrides the wording.
-  const build = (process.env.COMFY_BUILD ?? DEFAULT_BUILD).trim();
+  // The house default — "curvy, full hips, thick thighs" — went out on top of
+  // her own build whenever the look phrase carried one, and a slim companion
+  // came back looking, in a tester's words, like she had had surgery. Her own
+  // build, when the look has it; the default only when nothing does.
+  const lookHasBuild =
+    /\b(?:build|figure|bust|curvy|slim|slender|petite|athletic|hourglass|plus[- ]size|thick|voluptuous|toned|lean|chubby|skinny|busty|frame|physique)\b/i.test(look);
+  const build = (process.env.COMFY_BUILD ?? (lookHasBuild ? "" : DEFAULT_BUILD)).trim();
   if (build) describes.push(build);
   {
     const clause = describes.join(", ");
@@ -2045,7 +2084,10 @@ export function finishMediaPrompt(
   // Both are appended after the cut, so their words are reserved before it;
   // otherwise they pushed a capped prompt 57 words past the budget.
   const nudeForce = nudeForceFor(opts.anatomy);
+  const settingText = settingSentenceFor(opts.setting);
+  const wantSetting = Boolean(settingText) && !out.includes(settingText);
   const tailWords =
+    (wantSetting ? settingText.split(/\s+/).length : 0) +
     (forceNude ? nudeForce.split(/\s+/).length : 0) +
     (lockIdentity ? IDENTITY_LOCK.split(/\s+/).length : 0) +
     FACE_WORDS;
@@ -2055,6 +2097,9 @@ export function finishMediaPrompt(
   // Her face, after the cut and after the prop spec: reserved above, so it
   // never costs the scene a word, and never pushes the spec down the prompt.
   capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${FACE_CLAUSE}`;
+  if (wantSetting) {
+    capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${settingText}`;
+  }
   if (forceNude) {
     capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${nudeForce}`;
   }

@@ -6,9 +6,11 @@
 // user-and-toy so a double-tap cannot buy one twice. Testers and admins own
 // everything — the product is tested on those accounts.
 
-import { TOY_PURCHASE_PREFIX, TOYS, resolveToy, type Toy, type ToyResolution } from "./toys";
+import { CHEST_EXTRAS, TOY_PURCHASE_PREFIX, TOYS, resolveToy, type Toy, type ToyResolution } from "./toys";
 
 export type Owned = Set<string> | "all";
+
+const KNOWN_IDS = new Set([...TOYS.map((t) => t.id), ...CHEST_EXTRAS.map((e) => e.id)]);
 
 /** The toys this user has, read with whichever client the caller has. */
 export async function ownedToys(
@@ -27,9 +29,13 @@ export async function ownedToys(
   const ids = new Set<string>();
   for (const row of data ?? []) {
     const id = String(row.reason ?? "").slice(TOY_PURCHASE_PREFIX.length);
-    if (TOYS.some((t) => t.id === id)) ids.add(id);
+    if (KNOWN_IDS.has(id)) ids.add(id);
   }
   return ids;
+}
+
+export function owns(owned: Owned, id: string): boolean {
+  return owned === "all" || owned.has(id);
 }
 
 /** Ownership for a server path that has only a user id (a retake, a webhook). */

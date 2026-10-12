@@ -472,11 +472,10 @@ function ChatPage() {
           qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
           throw new Error("Generation failed");
         }
-        // Waiting on a free GPU, not rendering: said once, so a slow start does
-        // not read as a broken app.
+        // A slow start, said once and in her terms — never the infrastructure.
         if (res?.queued && (res?.waitedMs ?? 0) > 90_000 && !saidQueued) {
           saidQueued = true;
-          toast.info(`Waiting for a free GPU for her ${label} — it starts the moment one opens up.`);
+          toast.info(`She is taking a little longer on this ${label} — it is on its way.`);
         }
         await new Promise((r) => setTimeout(r, 2000));
         attempts++;

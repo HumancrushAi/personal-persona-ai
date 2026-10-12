@@ -16,9 +16,9 @@ import { comfyImageUrl } from "./comfy";
 
 const RUNPOD_BASE = "https://api.runpod.ai/v2";
 
-// A dedicated, always-warm GPU pod running the same worker image with
-// SERVE_API_LOCALLY=true: the identical job API, on the pod's port 8000,
-// with no cold start and no queue for a GPU. It is the first place a photo
+// A dedicated, always-warm GPU pod running the same worker image, driven
+// through ComfyUI's own API on its port 8188 (comfy-pod.ts): no cold start,
+// no queue for a GPU, and ComfyUI's real job queue. It is the first place a photo
 // goes; the serverless endpoint is the overflow when the pod is busy, and
 // the fallback when it is down. docs/dedicated-comfy-pod.md sets it up.
 //
@@ -65,8 +65,8 @@ export async function podHealthy(): Promise<boolean> {
   if (podHealth && Date.now() - podHealth.at < 20_000) return podHealth.ok;
   let ok = false;
   try {
-    const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout(2_500) });
-    ok = res.ok;
+    const { podAlive } = await import("./comfy-pod");
+    ok = await podAlive(base);
   } catch {
     ok = false;
   }
@@ -220,6 +220,10 @@ export async function runpodRun(
   input: Record<string, unknown>,
   webhookUrl?: string,
 ): Promise<{ id: string; status: string }> {
+  if (isPodTarget(endpoint)) {
+    const { podQueue } = await import("./comfy-pod");
+    return podQueue(endpoint, input);
+  }
   const key = process.env.RUNPOD_API_KEY;
   if (!key) throw new Error("RUNPOD_API_KEY not configured");
 
@@ -246,6 +250,10 @@ export async function runpodGet(
   endpoint: string,
   id: string,
 ): Promise<{ status: string; output?: any; error?: any; delayTime?: number; executionTime?: number; workerId?: string }> {
+  if (isPodTarget(endpoint)) {
+    const { podStatus } = await import("./comfy-pod");
+    return podStatus(endpoint, id);
+  }
   const key = process.env.RUNPOD_API_KEY;
   if (!key) throw new Error("RUNPOD_API_KEY not configured");
 
@@ -268,6 +276,10 @@ export async function runpodGet(
 
 /** Cancel a queued or running job. Best effort: a job that already finished is simply done. */
 export async function runpodCancel(endpoint: string, id: string): Promise<void> {
+  if (isPodTarget(endpoint)) {
+    const { podCancel } = await import("./comfy-pod");
+    return podCancel(endpoint, id);
+  }
   const key = process.env.RUNPOD_API_KEY;
   if (!key) return;
   try {

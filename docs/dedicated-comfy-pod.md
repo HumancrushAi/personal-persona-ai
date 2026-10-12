@@ -23,7 +23,7 @@ RunPod → **Pods → Deploy**.
 | Container disk | 20 GB |
 | Network volume | the one with `/models/checkpoints/lustifySDXLNSFWSFW_v20.safetensors` — attach it at **`/runpod-volume`** (the mount path field), not `/workspace` |
 | Expose HTTP ports | `8000` (the job API). `8188` too if you want ComfyUI's own UI |
-| Environment variables | `SERVE_API_LOCALLY=true` |
+| Environment variables | `SERVE_API_LOCALLY=true` (starts ComfyUI on 8188 alongside the worker; the app talks to ComfyUI's own API, not to the test server on 8000) |
 | Start command | leave the image's default |
 
 If the volume can only be mounted at `/workspace` on your account, set the
@@ -38,21 +38,21 @@ first boot links the FaceID models from the volume; about a minute).
 
 ## 2. Find the URL
 
-Pod → **Connect** → the HTTP port 8000 link, which looks like:
+Pod → **Connect** → the HTTP port 8188 link, which looks like:
 
 ```
-https://<podid>-8000.proxy.runpod.net
+https://<podid>-8188.proxy.runpod.net
 ```
 
-Check it answers: open `https://<podid>-8000.proxy.runpod.net/docs` in a
-browser — the worker's own API page. `/health` returns `200`.
+Check it answers: open `https://<podid>-8188.proxy.runpod.net/system_stats` in a
+browser — ComfyUI's own status page.
 
 ## 3. Point the app at it
 
 In Vercel (production):
 
 ```
-COMFY_POD_URL=https://<podid>-8000.proxy.runpod.net
+COMFY_POD_URL=https://<podid>-8188.proxy.runpod.net
 COMFY_POD_CONCURRENCY=2      # open jobs on the pod before new ones overflow to serverless
 ```
 

@@ -307,6 +307,9 @@ export function negativeFor(
   // What the refiner said would go wrong for this request (see filterAvoid):
   // terms already in the list are not pushed twice.
   const have = new Set(base.toLowerCase().split(/\s*,\s*/));
+  if (opts.tattooed && isNude)
+    base = `${base}, sleeves, long sleeves, shirt, cardigan, sweater, arm warmers, gloves, holding a flower, real flower, bouquet`;
+  base = `${base}, logo, signature, artist name, corner text, watermark logo`;
   // The refiner names "tattoos" as a thing to avoid on a plain request; on an
   // inked companion that would push her own sleeves off her arms.
   const extra = (opts.extra ?? []).filter(
@@ -803,14 +806,38 @@ export function imageProvider(): ImageProvider {
  * still rendered bare arms on the first live test: ink is the first thing an
  * SDXL checkpoint drops when it redraws skin. Said first and weighted, it stays.
  */
+
+/** "tattoo sleeves" → "tattooed arms": the checkpoint draws a sleeve as a garment. */
+export function unsleeve(text: string): string {
+  return text
+    .replace(/\b(?:full\s+)?(?:colou?rful\s+|black(?:-and-grey|work)?\s+|ink\s+)?(?:tattoo\s+)?sleeves?(?:\s+tattoos?)?(?=\s+(?:on|down|covering)\b)/gi, "tattoos")
+    .replace(/\b(?:full\s+)?(?:colou?rful\s+|black(?:-and-grey|work)?\s+|ink\s+)?(?:tattoo\s+)?sleeves?(?:\s+tattoos?)?\b/gi, "arms covered in tattoos");
+}
+
 export function inkTags(look: string | null | undefined): string | null {
   const l = (look ?? "").toLowerCase();
-  if (!/tattoo/.test(l)) return null;
+  // Her build rides with the ink: the house build was dropped for hers, but
+  // said once mid-prompt it lost to the checkpoint's default body.
+  const build = l.split(/\s*,\s*/).filter((p) => /\b(?:bust|build|figure|curvy|slim|petite|hourglass|voluptuous)\b/.test(p));
+  if (!/tattoo/.test(l)) return build.length ? build.join(", ") : null;
   const parts = l
     .split(/\s*,\s*/)
     .filter((p) => /tattoo/.test(p))
-    .map((p) => p.trim());
-  return ["heavily tattooed", ...parts].join(", ");
+    .map((p) => unsleeve(p.trim()))
+    // Placement in plain words the checkpoint renders: a second pod render
+    // came back with bare arms and no chest piece from "tattoos on both arms".
+    .map((p) =>
+      /\barms?\b/.test(p)
+        ? "both arms fully covered in dense tattoos from shoulder to wrist"
+        : /\bchest\b/.test(p)
+          ? "large floral chest tattoo inked across her upper chest above her breasts and along her collarbones"
+          : /\b(?:legs?|thighs?)\b/.test(p)
+            ? "tattoos covering both thighs"
+            : /\b(?:stomach|belly)\b/.test(p)
+              ? "large tattoo across the stomach"
+              : p,
+    );
+  return ["heavily tattooed woman", ...parts, ...build].join(", ");
 }
 
 
@@ -939,10 +966,19 @@ export async function comfyJobInput(
   // Nudity first and weighted. From a dressed portrait the checkpoint kept
   // turning the dress into underwear: "completely nude" sat in the middle of
   // a 300-word prompt. At the head, weighted, it is the strongest thing said.
-  const tags = [nudeTags(req, Boolean(opts.hasPenis)), opts.lookTags, opts.toyTags, mouthActTags(req, Boolean(opts.hasPenis))]
-    .filter(Boolean)
-    .join(", ");
-  const finalPrompt = tags ? `(${tags}:1.3), ${prompt}` : prompt;
+  // Three groups, three weights. One long weighted group drowned the act:
+  // the first pod render had her nude and inked but waving instead of
+  // rubbing. The act leads, strongest; the nude state next; her ink after.
+  const act = [opts.toyTags, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
+  const nude = nudeTags(req, Boolean(opts.hasPenis));
+  const lead = [
+    act ? `(${act}:1.35)` : "",
+    nude ? `(${nude}:1.25)` : "",
+    opts.lookTags ? `(${unsleeve(opts.lookTags)}:1.2)` : "",
+  ].filter(Boolean);
+  // "Sleeve" is a garment to the checkpoint: "tattoo sleeves" rendered white
+  // knit sleeves on a nude body. Every mention is said as tattooed arms.
+  const finalPrompt = unsleeve(lead.length ? `${lead.join(", ")}, ${prompt}` : prompt);
 
   return comfyInput(
     {

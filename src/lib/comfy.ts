@@ -793,14 +793,18 @@ export function comfySettings(
     // Never 0.90+ — that wiped site identity in chat.
     denoise: (() => {
       if (!usesStartLatent(opts.template)) return 1;
-      // A composed frame (compose.server.ts) already has the pose, the room and
-      // her face in place; the pass only has to undress her and render the
-      // act, so it starts much closer to the picture than the portrait did.
+      // A composed frame (compose.server.ts) has the pose, the room and the
+      // light in place. It does NOT reliably have her face — grok-imagine
+      // follows a reference loosely — and at 0.62 it kept its clothes and its
+      // own girl: the first live test came back dressed and not her. So the
+      // pass redraws most of the frame: high enough that the clothes go and
+      // the FaceID lock decides the face, low enough that the composition,
+      // the room and the light are still the frame's.
       if (opts.composed) {
-        if (opts.mouthAct) return numberSetting("COMFY_DENOISE_COMPOSED_MOUTH", 0.72);
-        if (opts.promptSetsComposition) return numberSetting("COMFY_DENOISE_COMPOSED_POSED", 0.7);
-        if (opts.needsUndress) return numberSetting("COMFY_DENOISE_COMPOSED_NUDE", 0.62);
-        return numberSetting("COMFY_DENOISE_COMPOSED", 0.5);
+        if (opts.mouthAct) return numberSetting("COMFY_DENOISE_COMPOSED_MOUTH", 0.86);
+        if (opts.promptSetsComposition) return numberSetting("COMFY_DENOISE_COMPOSED_POSED", 0.84);
+        if (opts.needsUndress) return numberSetting("COMFY_DENOISE_COMPOSED_NUDE", 0.8);
+        return numberSetting("COMFY_DENOISE_COMPOSED", 0.66);
       }
       // A mouth act changes the pose her portrait is in more than a toy does
       // (head down, breast lifted), and at 0.78 the portrait's pose still won.

@@ -73,7 +73,7 @@ export function sfwBrief(request: string, opts: { setting?: string | null } = {}
   s = s.replace(/\b(?:of|with|and|the|a|in|on)\s*$/i, "").replace(/\s{2,}/g, " ").replace(/^[\s,.-]+|[\s,.-]+$/g, "").trim();
   const pose = s || "sitting on the edge of the bed, looking at the camera";
   const setting = (opts.setting ?? "").trim();
-  return `Candid phone photo of the same woman as the reference image, identical face and hair, wearing the same outfit as in the reference image, ${pose}${
+  return `Candid phone photo of the same woman as the reference image, identical face and hair, wearing a small black bikini, ${pose}${
     setting ? `, ${setting}` : ""
   }, natural light, realistic, photographed by a friend, no text.`;
 }
@@ -89,9 +89,9 @@ export async function composeBrief(
   const setting = (opts.setting ?? "").trim();
   const system =
     `You write a one-sentence photo brief for an image model that refuses nudity and sexual content. ` +
-    `The brief describes the same ${opts.noun ?? "woman"} as in a reference photo — "the same woman as the reference image, identical face and hair, wearing the same outfit as in the reference image" — ` +
+    `The brief describes the same ${opts.noun ?? "woman"} as in a reference photo — "the same woman as the reference image, identical face and hair, wearing a small black bikini" — ` +
     `in EXACTLY the pose, body position, hand placement, framing, camera angle and expression the request implies, but fully clothed and non-explicit. ` +
-    `Replace nudity with her wearing her outfit; replace any sex act with the same body position done clothed; replace any sex toy with her hand in the same place, or a small smooth harmless object held the same way. ` +
+    `She wears a small black bikini and nothing else is said about clothes; replace any sex act with the same body position done in the bikini; replace any sex toy with her hand in the same place, or a small smooth harmless object held the same way. ` +
     (setting ? `The setting is: ${setting}. ` : "") +
     `Never use sexual or anatomical words of any kind. Candid phone-photo feel, natural light. At most 55 words. Output only the sentence.`;
   try {
@@ -117,7 +117,7 @@ export async function composeBrief(
     if (!text || text.length < 20 || text.length > 600 || EXPLICIT_RE.test(text)) return fallback;
     return /reference image/i.test(text)
       ? text
-      : `The same woman as the reference image, identical face and hair, wearing the same outfit as in the reference image: ${text}`;
+      : `The same woman as the reference image, identical face and hair, wearing a small black bikini: ${text}`;
   } catch {
     return fallback;
   }

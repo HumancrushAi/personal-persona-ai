@@ -24,7 +24,7 @@ describe("the clothed brief", () => {
       const b = sfwBrief(r, { setting: "a small bedroom with a grey bed and a window" });
       expect(b, r).not.toMatch(EXPLICIT);
       expect(b, r).toMatch(/same woman as the reference image/);
-      expect(b, r).toMatch(/same outfit as in the reference image/);
+      expect(b, r).toMatch(/small black bikini/);
       expect(b, r).toMatch(/grey bed/);
     }
   });
@@ -55,16 +55,16 @@ describe("the composed-frame graph", () => {
     const plain = comfySettings("p", { template: FACEID_I2I_WORKFLOW, composed: true });
     const nude = comfySettings("p", { template: FACEID_I2I_WORKFLOW, composed: true, needsUndress: true });
     const posed = comfySettings("p", { template: FACEID_I2I_WORKFLOW, composed: true, promptSetsComposition: true });
-    expect(plain.denoise).toBe(0.5);
-    expect(nude.denoise).toBe(0.62);
-    expect(posed.denoise).toBe(0.7);
+    expect(plain.denoise).toBe(0.66);
+    expect(nude.denoise).toBe(0.8);
+    expect(posed.denoise).toBe(0.84);
     expect(comfySettings("p", { template: FACEID_WORKFLOW }).denoise).toBe(1);
     const g = comfyWorkflow(
       { ...nude, prompt: "p", negative: "n", checkpoint: "c.safetensors", referenceImage: "r.png", startImage: START_NAME },
       FACEID_I2I_WORKFLOW,
     ) as any;
     expect(g["20"].inputs.image).toBe("start.png");
-    expect(g["3"].inputs.denoise).toBe(0.62);
+    expect(g["3"].inputs.denoise).toBe(0.8);
     expect(g["12"].inputs.weight_faceidv2).toBe(1.2);
   });
 });

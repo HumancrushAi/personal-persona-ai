@@ -1641,7 +1641,16 @@ export const checkMediaJob = createServerFn({ method: "POST" })
         );
         return { status: "failed" };
       }
-      if (state === "processing") return { status: "processing" };
+      if (state === "processing") {
+        // Still in the queue after minutes: no worker has taken it. Send it
+        // again once, and tell the client what it is waiting on.
+        const queued = String(res.status).toUpperCase() === "IN_QUEUE";
+        if (queued) {
+          const { requeueIfStuck } = await import("./media-finalize.server");
+          await requeueIfStuck(job as any, endpoint, res.status);
+        }
+        return { status: "processing", queued, waitedMs: ageMs };
+      }
 
       const err = runpodOutputError(res.output, res.error);
       if (err) {

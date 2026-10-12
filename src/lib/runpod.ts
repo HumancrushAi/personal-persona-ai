@@ -159,7 +159,7 @@ export async function runpodRun(
 export async function runpodGet(
   endpoint: string,
   id: string,
-): Promise<{ status: string; output?: any; error?: any }> {
+): Promise<{ status: string; output?: any; error?: any; delayTime?: number; executionTime?: number; workerId?: string }> {
   const key = process.env.RUNPOD_API_KEY;
   if (!key) throw new Error("RUNPOD_API_KEY not configured");
 
@@ -168,7 +168,30 @@ export async function runpodGet(
   });
   if (!res.ok) throw new Error(`RunPod status error: ${res.status}`);
   const json = await res.json();
-  return { status: json.status, output: json.output, error: json.error };
+  return {
+    status: json.status,
+    output: json.output,
+    error: json.error,
+    // How long it waited for a worker, and how long it ran: the difference
+    // between "no GPU free" and "a worker is stuck on it".
+    delayTime: typeof json.delayTime === "number" ? json.delayTime : undefined,
+    executionTime: typeof json.executionTime === "number" ? json.executionTime : undefined,
+    workerId: typeof json.workerId === "string" ? json.workerId : undefined,
+  };
+}
+
+/** Cancel a queued or running job. Best effort: a job that already finished is simply done. */
+export async function runpodCancel(endpoint: string, id: string): Promise<void> {
+  const key = process.env.RUNPOD_API_KEY;
+  if (!key) return;
+  try {
+    await fetch(`${RUNPOD_BASE}/${endpoint}/cancel/${id}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}` },
+    });
+  } catch {
+    /* nothing to do about it */
+  }
 }
 
 // Pull the finished media URL out of an output payload. The two endpoints return

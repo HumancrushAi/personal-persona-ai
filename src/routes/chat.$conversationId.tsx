@@ -448,6 +448,7 @@ function ChatPage() {
   // Resolves on completion/timeout; throws on failure.
   async function pollMediaJob(jobId: string, label: "photo" | "video") {
     let attempts = 0;
+    let saidQueued = false;
     // 90 ticks was three minutes, which a 10s clip plus queue time runs past —
     // the poll gave up while the job was still healthy and the media only
     // arrived if the webhook happened to land. Videos get eight minutes.
@@ -470,6 +471,12 @@ function ChatPage() {
         if (res?.status === "failed") {
           qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
           throw new Error("Generation failed");
+        }
+        // Waiting on a free GPU, not rendering: said once, so a slow start does
+        // not read as a broken app.
+        if (res?.queued && (res?.waitedMs ?? 0) > 90_000 && !saidQueued) {
+          saidQueued = true;
+          toast.info(`Waiting for a free GPU for her ${label} — it starts the moment one opens up.`);
         }
         await new Promise((r) => setTimeout(r, 2000));
         attempts++;

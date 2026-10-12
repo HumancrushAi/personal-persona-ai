@@ -784,6 +784,45 @@ async function jobContext(jobId: string): Promise<JobContext | null> {
   };
 }
 
+// A job the endpoint never picked up — IN_QUEUE for minutes with no worker
+// taking it — is cancelled and sent again, once. The second submission often
+// lands on a worker that has started in the meantime; a job that sits in the
+// same queue is no worse off, and either way the user sees why it is slow
+// instead of a flat failure at the fifteen-minute mark.
+const REQUEUE_MARK = "requeued after waiting for a worker";
+const REQUEUE_AFTER_MS = Number(process.env.MEDIA_REQUEUE_AFTER_MS || 5 * 60_000);
+
+export async function requeueIfStuck(
+  job: Job & { replicate_id?: string | null; created_at?: string; error?: string | null },
+  endpoint: string,
+  runpodStatus: string,
+): Promise<boolean> {
+  if (job.kind !== "image" || job.provider !== "runpod") return false;
+  if (String(runpodStatus).toUpperCase() !== "IN_QUEUE") return false;
+  const age = Date.now() - new Date(job.created_at ?? Date.now()).getTime();
+  if (age < REQUEUE_AFTER_MS) return false;
+  if (String(job.error ?? "").includes(REQUEUE_MARK)) return false;
+  // Claim it: compare-and-set on the error column, as the retry does.
+  const claim = supabaseAdmin
+    .from("media_jobs")
+    .update({ error: [job.error, REQUEUE_MARK].filter(Boolean).join("\n"), updated_at: new Date().toISOString() })
+    .eq("id", job.id);
+  const { data: claimed } = await (job.error == null ? claim.is("error", null) : claim.eq("error", job.error)).select("id");
+  if (!claimed?.length) return false;
+  try {
+    const { runpodCancel } = await import("./runpod");
+    if (job.replicate_id) await runpodCancel(endpoint, job.replicate_id);
+    const ctx = await jobContext(job.id);
+    if (!ctx) return false;
+    const id = await resubmitImageJob(ctx, `requeue-${job.id}`);
+    console.warn(`media job ${job.id} requeued as ${id} after ${Math.round(age / 1000)}s in the queue`);
+    return true;
+  } catch (e: any) {
+    console.error("requeue failed", job.id, e?.message ?? e);
+    return false;
+  }
+}
+
 // Render the same job again with a fresh seed; returns the new RunPod id.
 async function resubmitImageJob(
   ctx: JobContext,

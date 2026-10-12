@@ -1638,7 +1638,7 @@ export function kontextSelfiePrompt(
 // "Fresh youthful… clear skin… bright eyes" was asking for the glossy, lit
 // face that came back. Real skin: pores, a little unevenness, no shine.
 const FACE_CLAUSE =
-  "Natural adult face, real skin with fine pores and subtle unevenness, matte finish, soft natural eyebrows, natural lips and eyes.";
+  "Fresh youthful adult face, clear skin with fine pores, matte finish, soft natural eyebrows, soft full lips, bright eyes.";
 const FACE_WORDS = FACE_CLAUSE.split(/\s+/).length;
 
 /**

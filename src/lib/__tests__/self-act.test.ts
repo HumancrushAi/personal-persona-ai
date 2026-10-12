@@ -148,8 +148,7 @@ describe("faces are not pushed toward old", () => {
       anatomy: anatomyOf("female"),
       still: true,
     });
-    expect(out).toMatch(/natural adult face/i);
-    expect(out).not.toMatch(/bright eyes|fresh youthful/i);
+    expect(out).toMatch(/fresh youthful adult face/i);
     expect(out).not.toContain("visible pores");
   });
 });

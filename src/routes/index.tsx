@@ -113,6 +113,7 @@ type Companion = {
   orientation: string;
   art_style: string;
   created_by?: string | null;
+  sort_order?: number | null;
 };
 
 const CATEGORIES = [
@@ -227,6 +228,39 @@ function opener(name: string, id: string) {
   return OPENERS[hash(id) % OPENERS.length](name);
 }
 
+// The rows under the slider used to be the first fourteen by sort order,
+// forever — so every companion added since launch was on the slider or
+// nowhere. They are dealt from the whole roster now, in an order that holds
+// for half an hour: the same on every refresh inside the window, a new deal
+// when the window turns. The newest faces are dealt in first, so each window
+// shows some of them.
+const SHUFFLE_WINDOW_MS = 30 * 60_000;
+const windowSeed = () => Math.floor(Date.now() / SHUFFLE_WINDOW_MS);
+function seededShuffle<T>(list: T[], seed: number): T[] {
+  let x = (Math.imul(seed + 1, 2654435761) >>> 0) || 1;
+  const rand = () => {
+    x ^= x << 13;
+    x >>>= 0;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    x >>>= 0;
+    return x / 4294967296;
+  };
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+/** A window's deal of a list: the newest few guaranteed, the rest drawn. */
+function dealForWindow(list: Companion[], count: number, seed: number): Companion[] {
+  const newest = [...list].sort((a, b) => (b.sort_order ?? 0) - (a.sort_order ?? 0)).slice(0, 12);
+  const picks = seededShuffle(newest, seed).slice(0, Math.min(5, count));
+  const rest = seededShuffle(list.filter((c) => !picks.includes(c)), seed + 7).slice(0, Math.max(0, count - picks.length));
+  return seededShuffle([...picks, ...rest], seed + 13);
+}
+
 function Landing() {
   const { data: companions } = useQuery({
     queryKey: ["companions-home"],
@@ -234,7 +268,7 @@ function Landing() {
       const { data, error } = await supabase
         .from("companions")
         .select(
-          "id, name, age, ethnicity, short_bio, image_url, gender, orientation, art_style, created_by",
+          "id, name, age, ethnicity, short_bio, image_url, gender, orientation, art_style, created_by, sort_order",
         )
         .order("sort_order");
       if (error) throw error;
@@ -357,7 +391,10 @@ function Landing() {
       .map((c) => toSlide(c, c.ethnicity));
   }
 
-  const liveNow = useMemo(() => (companions ?? []).filter(inTab).slice(0, 14), [companions, inTab]);
+  const liveNow = useMemo(
+    () => dealForWindow((companions ?? []).filter(inTab), 14, windowSeed()),
+    [companions, inTab],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -383,13 +420,15 @@ function Landing() {
     }
 
     // Filter by search query or category pill
-    return list.filter((c) => {
+    const picked = list.filter((c) => {
       if (q) {
         const hay = `${c.name} ${c.ethnicity} ${c.short_bio}`.toLowerCase();
         return hay.includes(q);
       }
       return matchesCategory(c, activeCat);
     });
+    // A search keeps its order; a browse is dealt for the half hour, newest first.
+    return q ? picked : dealForWindow(picked, picked.length, windowSeed() + 3);
   }, [companions, activeCat, query, topTab]);
 
   // Only offer categories that actually have someone in them

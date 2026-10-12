@@ -36,8 +36,9 @@ export const listToys = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: authUser } = await supabase.auth.getUser();
-    const { ownedToys, owns } = await import("./toys.server");
+    const { ownedToys, owns, isFreeAccount } = await import("./toys.server");
     const owned = await ownedToys(supabase, userId, authUser?.user?.email);
+    const free = await isFreeAccount(userId, authUser?.user?.email);
     const { data: bal } = await supabase
       .from("credit_balances")
       .select("free_messages_remaining, paid_credits")
@@ -58,7 +59,7 @@ export const listToys = createServerFn({ method: "POST" })
       if (r) room = { ...room, url: r.url, description: r.description };
     }
     return {
-      free: owned === "all",
+      free,
       credits,
       toys: TOYS.map(
         (t): ChestToy => ({
@@ -86,9 +87,12 @@ export const buyToy = createServerFn({ method: "POST" })
     if (!item) throw new Error("No such item");
 
     const { data: authUser } = await supabase.auth.getUser();
-    const { ownedToys, owns } = await import("./toys.server");
+    const { ownedToys, owns, isFreeAccount } = await import("./toys.server");
     const owned = await ownedToys(supabase, userId, authUser?.user?.email);
     if (owns(owned, item.id)) return { ok: true as const, owned: true as const, credits: null };
+    // A tester or an admin pays nothing, but the unlock is still recorded, so
+    // she asks for the toy until it is hers — the flow the product is tested on.
+    const price = (await isFreeAccount(userId, authUser?.user?.email)) ? 0 : item.price;
 
     const { data: bal } = await supabase
       .from("credit_balances")
@@ -97,18 +101,18 @@ export const buyToy = createServerFn({ method: "POST" })
       .maybeSingle();
     const free = bal?.free_messages_remaining ?? 0;
     const paid = bal?.paid_credits ?? 0;
-    if (!hasEnough(free, paid, item.price)) {
-      return { ok: false as const, needsCredits: true as const, credits: free + paid, price: item.price };
+    if (!hasEnough(free, paid, price)) {
+      return { ok: false as const, needsCredits: true as const, credits: free + paid, price };
     }
 
     // The ledger row is the receipt AND the inventory entry. Its idempotency
     // key is one per user and item, so a second tap on the button, or a
     // retried request, cannot charge twice: the insert fails on the unique
     // key and the balance is left alone.
-    const { free: newFree, paid: newPaid } = applyDeduction(free, paid, item.price);
+    const { free: newFree, paid: newPaid } = applyDeduction(free, paid, price);
     const { error } = await supabase.from("credit_ledger").insert({
       user_id: userId,
-      delta: -item.price,
+      delta: -price,
       reason: `${TOY_PURCHASE_PREFIX}${item.id}`,
       balance_after: newFree + newPaid,
       idempotency_key: `toy-${userId}-${item.id}`,

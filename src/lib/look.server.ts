@@ -48,7 +48,8 @@ export async function companionLook(imageUrl: string | null | undefined): Promis
 // Her reel and her card are realistic because they ARE that photo; a chat
 // photo rendered in a renderer's default bedroom could never look like
 // them. Said as the setting of every chat photo that has no user room.
-const SCENE_PREFIX = "scene:";
+// "scene2": the phrase is now scrubbed of clothing words; the cached "scene:" ones were not.
+const SCENE_PREFIX = "scene2:";
 export async function companionScene(imageUrl: string | null | undefined): Promise<string> {
   const url = (imageUrl ?? "").trim();
   if (!/^https?:/i.test(url)) return "";
@@ -70,6 +71,19 @@ export async function companionScene(imageUrl: string | null | undefined): Promi
       });
   }
   return scene;
+}
+
+
+// A setting has no person in it and nothing anyone is wearing. The model
+// was told so and still wrote "red dress"; the phrase is scrubbed anyway.
+const GARMENT_WORD =
+  /\b(?:dress|gown|lingerie|bra|panties|underwear|bikini|swimsuit|top|shirt|blouse|skirt|shorts|jeans|pants|leggings|stockings|heels|outfit|clothes|clothing|robe|nightie|slip|corset|bodysuit|jacket|sweater|hoodie|uniform|costume)\b/i;
+export function scrubScene(phrase: string): string {
+  const parts = phrase
+    .split(/\s*[,;]\s*/)
+    .map((p) => p.trim())
+    .filter((p) => p && !GARMENT_WORD.test(p) && !/\b(?:woman|man|girl|person|she|he|her|his|model|subject)\b/i.test(p));
+  return parts.join(", ");
 }
 
 async function describeScene(url: string): Promise<string> {
@@ -100,8 +114,7 @@ async function describeScene(url: string): Promise<string> {
     });
     if (!res.ok) return "";
     const json = await res.json();
-    const s = tidyLook(json.choices?.[0]?.message?.content);
-    return /\b(?:woman|man|girl|she|he|her|his|person)\b/i.test(s) ? s.replace(/\b(?:a |the )?(?:woman|man|girl|person)\b[^,]*,?/gi, "").replace(/\s{2,}/g, " ").replace(/^[,\s]+|[,\s]+$/g, "") : s;
+    return scrubScene(tidyLook(json.choices?.[0]?.message?.content));
   } catch {
     return "";
   }

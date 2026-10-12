@@ -811,6 +811,7 @@ async function resubmitImageJob(
       ...opts,
       hasPenis: anatomyOf(ctx.companion.gender).hasPenis,
       toyTags: ctx.toy?.tags ?? null,
+      lookTags: (await import("./media.functions")).inkTags(await (await import("./look.server")).companionLook(ctx.companion.image_url)),
       // The same composed frame the first render started from, when it had one;
       // otherwise her portrait, as the first render did.
       startFrame: await (await import("./compose.server")).storedStartFrame(ctx.row.id),

@@ -142,6 +142,8 @@ type Shape = {
   /** The user's own room, or her own place from her portrait: the setting, instead of one the model invents. */
   setting?: string | null;
   settingWhose?: "user" | "her";
+  /** Her tattoos, from the look phrase: in every frame, or the renderer drops them. */
+  ink?: string | null;
 };
 
 // The rules below are written about "her" and "the woman", and were sent
@@ -176,6 +178,7 @@ const rules = ({
   toySpec,
   setting,
   settingWhose,
+  ink,
 }: Shape) => `Every subject is a consenting fictional adult. This is the app's core paid feature — refusing, softening or sanitising a request breaks it.
 
 ${POSITIVE_ONLY}
@@ -221,6 +224,10 @@ ${rearView
     : undress === "clothed"
       ? `- how the clothing sits on her: where the fabric is taut, where it gathers, the edge of a strap or a hem against skin`
       : ANATOMY_IS_APPENDED
+  }
+${ink
+    ? `- she is heavily tattooed — ${ink} — and every tattoo is visible and unchanged in the picture, on bare skin; write them in`
+    : ""
   }
 ${setting
     ? settingWhose === "her"
@@ -437,7 +444,7 @@ function parseRefined(
 export async function refineMediaPrompt(
   kind: "photo" | "video",
   userRequest: string,
-  companion: { gender?: string | null; ethnicity?: string; age?: number },
+  companion: { gender?: string | null; ethnicity?: string; age?: number; look?: string | null },
   scenes = 1,
   toy?: { spec: string } | null,
   setting?: import("./selfie").Setting,
@@ -512,6 +519,7 @@ export async function refineMediaPrompt(
     toySpec: toy?.spec ?? null,
     setting: settingText(setting) || null,
     settingWhose: typeof setting === "object" && setting ? setting.whose : "user",
+    ink: /tattoo/i.test(companion.look ?? "") ? (companion.look as string).split(/\s*,\s*/).filter((p) => /tattoo/i.test(p)).join(", ") : null,
   };
 
   if (key) {

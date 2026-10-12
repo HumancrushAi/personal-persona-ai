@@ -271,7 +271,7 @@ export function TreasureChestModal({
             </div>
             {data && (
               <p className="mt-1.5 text-xs text-white/45">
-                {data.free ? "Everything in the chest is free on this account." : `You have ${data.credits} credits.`}
+                {data.free ? "Free on this account — unlock what you want her to use." : `You have ${data.credits} credits.`}
               </p>
             )}
           </div>
@@ -336,7 +336,7 @@ export function TreasureChestModal({
                     >
                       {buying === "room" ? "Unlocking…" : (
                         <span className="inline-flex items-center gap-1">
-                          <Gem className="h-3.5 w-3.5" /> {room.price} credits
+                          <Gem className="h-3.5 w-3.5" /> {data?.free ? "Unlock free" : `${room.price} credits`}
                         </span>
                       )}
                     </Button>
@@ -419,7 +419,7 @@ export function TreasureChestModal({
                     )}
                     {!t.owned && (
                       <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-amber-200 backdrop-blur">
-                        {t.price} <Gem className="-mt-0.5 inline h-3 w-3" />
+                        {data?.free ? "free" : <>{t.price} <Gem className="-mt-0.5 inline h-3 w-3" /></>}
                       </span>
                     )}
                   </div>
@@ -429,7 +429,7 @@ export function TreasureChestModal({
                   <div className="mt-3">
                     {t.owned ? (
                       <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-300">
-                        <Check className="h-3.5 w-3.5" /> {data?.free ? "Free for you" : "Hers"}
+                        <Check className="h-3.5 w-3.5" /> Hers
                       </div>
                     ) : (
                       <Button
@@ -443,7 +443,7 @@ export function TreasureChestModal({
                           "Unlocking…"
                         ) : (
                           <span className="inline-flex items-center gap-1">
-                            <Lock className="h-3 w-3 opacity-70" /> <Gem className="h-3.5 w-3.5" /> {t.price}
+                            <Lock className="h-3 w-3 opacity-70" /> {data?.free ? "Unlock free" : <><Gem className="h-3.5 w-3.5" /> {t.price}</>}
                           </span>
                         )}
                       </Button>

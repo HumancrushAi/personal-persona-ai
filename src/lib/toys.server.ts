@@ -12,14 +12,25 @@ export type Owned = Set<string> | "all";
 
 const KNOWN_IDS = new Set([...TOYS.map((t) => t.id), ...CHEST_EXTRAS.map((e) => e.id)]);
 
-/** The toys this user has, read with whichever client the caller has. */
+/** An account that pays nothing for the chest: testers and admins. */
+export async function isFreeAccount(userId: string, email: string | null | undefined): Promise<boolean> {
+  const { isTesterEmail, isAdminUser } = await import("./tester-accounts.server");
+  return isTesterEmail(email) || (await isAdminUser(userId));
+}
+
+/**
+ * The toys this user has, read with whichever client the caller has.
+ *
+ * A free account used to own everything outright, so on the owner's and the
+ * tester's accounts she never asked for a toy and the chest never got to
+ * perform — "it is not working in chat". They pay nothing, but they unlock
+ * like everyone else, and a purchase is a purchase: a ledger row.
+ */
 export async function ownedToys(
   client: any,
   userId: string,
-  email: string | null | undefined,
+  _email: string | null | undefined,
 ): Promise<Owned> {
-  const { isTesterEmail, isAdminUser } = await import("./tester-accounts.server");
-  if (isTesterEmail(email) || (await isAdminUser(userId))) return "all";
   const { data } = await client
     .from("credit_ledger")
     .select("reason")

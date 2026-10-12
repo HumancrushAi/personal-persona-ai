@@ -72,6 +72,41 @@ export async function squareStartFrame(portraitUrl: string, key: string): Promis
 }
 
 /**
+ * The start frame for a portrait clip. The endpoint centre-crops to the size
+ * it renders, so for a 720x1280 clip the portrait is fitted into that frame
+ * on the same washed backdrop, nothing cropped, her whole figure in it.
+ */
+export async function fitStartFrame(
+  portraitUrl: string,
+  key: string,
+  width: number,
+  height: number,
+): Promise<string> {
+  const res = await fetch(portraitUrl);
+  if (!res.ok) throw new Error(`Could not fetch companion photo (${res.status})`);
+  const src = Buffer.from(await res.arrayBuffer());
+  const wash = await sharp(src).resize(12, 12, { fit: "cover" }).toBuffer();
+  const backdrop = await sharp(wash)
+    .resize(width, height, { fit: "fill", kernel: "cubic" })
+    .blur(40)
+    .modulate({ brightness: 0.75 })
+    .toBuffer();
+  const subject = await sharp(src)
+    .resize(Math.round(width * 0.96), Math.round(height * 0.9), { fit: "inside", withoutEnlargement: false })
+    .toBuffer();
+  const fitted = await sharp(backdrop)
+    .composite([{ input: subject, gravity: "north" }])
+    .png()
+    .toBuffer();
+  const path = `startframes/${key}.png`;
+  const { error } = await supabaseAdmin.storage
+    .from("avatars")
+    .upload(path, fitted, { contentType: "image/png", upsert: true });
+  if (error) throw error;
+  return supabaseAdmin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+}
+
+/**
  * The start frame for a video rendered from her face-locked still.
  *
  * squareStartFrame shrinks the subject to 62% of the square, which is right for

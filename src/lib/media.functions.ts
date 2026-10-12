@@ -226,7 +226,7 @@ const ORAL_SOLO_NEGATIVE_NO_PENIS = "phallus, phallic object, cylinder, rod, pol
 export function negativeFor(
   userReq: string | undefined,
   gender?: string | null,
-  opts: { moving?: boolean; extra?: string[]; age?: number | null; toy?: Toy | null } = {},
+  opts: { moving?: boolean; extra?: string[]; age?: number | null; toy?: Toy | null; tattooed?: boolean } = {},
 ): string {
   const req = userReq ?? "";
   const isNude = requestIsNude(req);
@@ -307,7 +307,11 @@ export function negativeFor(
   // What the refiner said would go wrong for this request (see filterAvoid):
   // terms already in the list are not pushed twice.
   const have = new Set(base.toLowerCase().split(/\s*,\s*/));
-  const extra = (opts.extra ?? []).filter((t) => t && !have.has(t.toLowerCase()));
+  // The refiner names "tattoos" as a thing to avoid on a plain request; on an
+  // inked companion that would push her own sleeves off her arms.
+  const extra = (opts.extra ?? []).filter(
+    (t) => t && !have.has(t.toLowerCase()) && !(opts.tattooed && /\b(?:tattoo\w*|ink\w*|body art)\b/i.test(t)),
+  );
   return extra.length ? `${base}, ${extra.join(", ")}` : base;
 }
 import { propClause, propNegative, hasProp } from "./props";
@@ -586,7 +590,7 @@ export async function startImageJob(
     );
   }
 
-  const { prompt: imagePrompt, avoid } = await photoPromptWithAvoid(
+  const { prompt: imagePrompt, avoid, look } = await photoPromptWithAvoid(
     companion,
     userRequest,
     styleBackstory,
@@ -650,6 +654,7 @@ export async function startImageJob(
       extra: avoid,
       age: companion.age,
       toy,
+      tattooed: /tattoo/i.test(look),
     });
     // How many photos this chat already has: the Nth photo of a request always
     // renders the same way, but the next one is a new picture, not a copy.
@@ -686,6 +691,7 @@ export async function startImageJob(
         ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt, {
             hasPenis: anatomyOf(companion.gender).hasPenis,
             toyTags: toy?.tags ?? null,
+            lookTags: inkTags(look),
             startFrame: composedFrame,
             startFromPortrait: mode === "portrait",
           })
@@ -766,6 +772,23 @@ export function imageProvider(): ImageProvider {
  * The portrait is fetched HERE rather than handed over as a URL, because the
  * worker's contract takes image bytes, not links.
  */
+
+/**
+ * Her ink as weighted lead tags. A tattooed companion's look phrase says
+ * "full tattoo sleeves on both arms, large chest tattoo", and the checkpoint
+ * still rendered bare arms on the first live test: ink is the first thing an
+ * SDXL checkpoint drops when it redraws skin. Said first and weighted, it stays.
+ */
+export function inkTags(look: string | null | undefined): string | null {
+  const l = (look ?? "").toLowerCase();
+  if (!/tattoo/.test(l)) return null;
+  const parts = l
+    .split(/\s*,\s*/)
+    .filter((p) => /tattoo/.test(p))
+    .map((p) => p.trim());
+  return ["heavily tattooed", ...parts].join(", ");
+}
+
 export async function comfyJobInput(
   prompt: string,
   negative: string,
@@ -779,6 +802,8 @@ export async function comfyJobInput(
     hasPenis?: boolean;
     /** The chest toy's short tags, so the toy leads the prompt weighted and is drawn at all. */
     toyTags?: string | null;
+    /** Her ink, from the look phrase: leads the prompt weighted, or the checkpoint leaves it off. */
+    lookTags?: string | null;
     /** A composed frame of this request (compose.server.ts), base64: the pass starts from it. */
     startFrame?: string | null;
     /** Start the pass from her portrait instead of from noise (COMFY_COMPOSE=portrait). */
@@ -878,7 +903,7 @@ export async function comfyJobInput(
   // The act first, weighted. ComfyUI's text encoder reads "(…:1.3)" as
   // emphasis, and the first tokens of an SDXL prompt carry the most weight —
   // which is exactly where the act was not.
-  const tags = [opts.toyTags, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
+  const tags = [opts.lookTags, opts.toyTags, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
   const finalPrompt = tags ? `(${tags}:1.3), ${prompt}` : prompt;
 
   return comfyInput(
@@ -965,15 +990,14 @@ export async function photoPromptWithAvoid(
   provider: ImageProvider,
   toy: Toy | null = null,
   setting: Setting = null,
-): Promise<{ prompt: string; avoid: string[] }> {
+): Promise<{ prompt: string; avoid: string[]; look: string }> {
   // Grok rewrites the user's line into a full prompt in the house style; the
   // keyword builder is the fallback when no key is set or the call fails.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
   const { companionLook } = await import("./look.server");
-  const [refinedResult, look] = await Promise.all([
-    refineMediaPrompt("photo", userRequest ?? "", companion, 1, toy, setting),
-    companionLook(companion.imageUrl),
-  ]);
+  // The look first: the refiner is told about her tattoos.
+  const look = await companionLook(companion.imageUrl);
+  const refinedResult = await refineMediaPrompt("photo", userRequest ?? "", { ...companion, look }, 1, toy, setting);
   const refined = refinedResult?.prompts;
   const avoid = refinedResult?.avoid ?? [];
 
@@ -1043,7 +1067,7 @@ export async function photoPromptWithAvoid(
     toy,
     setting,
   });
-  return { prompt, avoid };
+  return { prompt, avoid, look };
 }
 
 // An env knob that can also be switched off entirely, so the worker falls back
@@ -1367,11 +1391,18 @@ export async function startVideoJob(
   // Same centre-crop problem as photos: hand the endpoint a square that keeps
   // her whole body rather than letting it slice the frame down to a torso.
   const fpsSetting = Number(process.env.RUNPOD_VIDEO_FPS || "16");
+  // 720p portrait, not the endpoint's square default. The clip a tester sent
+  // back was 368 pixels square; nothing about a face is realistic at that size.
+  // "WIDTH*HEIGHT"; RUNPOD_VIDEO_SIZE=off hands the choice back to the worker.
+  const videoSize = stillKnob("RUNPOD_VIDEO_SIZE", "720*1280");
   const videoInput = {
     fps: fpsSetting,
     frames_per_scene: Math.round((totalSeconds * fpsSetting) / scenePrompts.length),
     num_scenes: scenePrompts.length,
-    sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "25"),
+    // 30 steps, up from 25: the act has to be finished in every frame, not
+    // mostly there.
+    sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "30"),
+    ...(videoSize ? { size: videoSize } : {}),
     prompts: scenePrompts,
     negative_prompt: negativeFor(userReq, companion.gender, {
       moving: true,
@@ -1456,8 +1487,13 @@ export async function startVideoJob(
   }
   let startFrame = startSource;
   try {
-    const { squareStartFrame } = await import("./start-frame.server");
-    startFrame = await squareStartFrame(startSource, `vid-${userId}-${Date.now()}`);
+    const { squareStartFrame, fitStartFrame } = await import("./start-frame.server");
+    const [vw, vh] = (videoSize ?? "").split("*").map((n) => Number(n));
+    // A portrait clip takes the portrait fitted to its frame; a square one is squared.
+    startFrame =
+      vw && vh && vh > vw
+        ? await fitStartFrame(startSource, `vid-${userId}-${Date.now()}`, vw, vh)
+        : await squareStartFrame(startSource, `vid-${userId}-${Date.now()}`);
   } catch {
     /* fall back to the raw portrait rather than failing the whole request */
   }

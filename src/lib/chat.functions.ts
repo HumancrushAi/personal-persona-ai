@@ -10,6 +10,7 @@ import { estimateTokens, fitToBudget } from "./history-budget";
 import { parseMemory, formatMemory, mergeFacts, looksFactual } from "./memory";
 import { wantsSelfie, wantsVideo, checkCrossGenderRequest, resolveMediaRequest } from "./selfie";
 import { needsToyReply, type Toy } from "./toys";
+import { teaserFor, isTeaserLine } from "./teasers";
 import { deductCredits } from "./credit-wallet";
 import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.functions";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
@@ -104,17 +105,7 @@ const misstatesMedia = (text: string) =>
   (DENIES_MEDIA.test(text) && !FLIRTY_REFUSAL.test(text));
 
 /** What the app says while a real render is queued. Never written by the model. */
-const TEASERS = {
-  photo: "mmm okay… give me a sec, taking one just for you 📸",
-  video: "mmm okay… hold on, recording something just for you 🎬",
-  photoBusy: "i'm already taking one for you, hold on 📸",
-  videoBusy: "still filming that one for you, baby — give me a sec 🎬",
-  // "hurry up", "where is it" while one is rendering. The text model was
-  // answering these itself — once with "I'm not comfortable showing my body
-  // in such a rush" — while the photo was two minutes from landing.
-  photoWait: "still on it, baby — a good one takes me a couple of minutes to get right. don't go anywhere 📸",
-  videoWait: "almost done filming, baby — a clip takes a few minutes to come out right. stay right there 🎬",
-};
+// The app's own lines live in teasers.ts now, one voice per companion.
 
 // Impatience while a photo or clip is rendering, in the words people use.
 export const IMPATIENCE_RE =
@@ -403,6 +394,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // "send me a picture of this" is the scene she just described — see
     // resolveMediaRequest, which the retake and the vision check share, so
     // every path renders the same request.
+    // Which of her voices the app's own lines are said in (teasers.ts).
+    const herVoice = { name: c.name, base_personality: c.base_personality, tone: p.tone };
     const { request: mediaRequestText, followUp } = resolveMediaRequest(
       data.content,
       (history ?? []) as any[],
@@ -416,7 +409,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       askedFor !== null && (await mediaJobInFlight(supabase, data.conversationId, askedFor));
 
     if (mediaAlreadyComing) {
-      const reply = askedFor === "video" ? TEASERS.videoBusy : TEASERS.photoBusy;
+      const reply = teaserFor(askedFor === "video" ? "videoBusy" : "photoBusy", herVoice, { salt: history?.length });
       await supabase.from("messages").insert({
         conversation_id: data.conversationId,
         user_id: userId,
@@ -469,7 +462,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           ? "video"
           : null;
       if (waitingOn) {
-        const reply = waitingOn === "video" ? TEASERS.videoWait : TEASERS.photoWait;
+        const reply = teaserFor(waitingOn === "video" ? "videoWait" : "photoWait", herVoice, { salt: history?.length });
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
           user_id: userId,
@@ -549,7 +542,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           mediaToy,
         );
 
-        const teaser = mediaToy ? `mmm okay… hold on, grabbing my ${mediaToy.name.toLowerCase()} 😈🎬` : TEASERS.video;
+        const teaser = teaserFor("video", herVoice, { salt: history?.length, toy: mediaToy?.name ?? null });
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
           user_id: userId,
@@ -628,7 +621,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           mediaToy,
         );
 
-        const teaser = mediaToy ? `mmm okay… give me a sec, grabbing my ${mediaToy.name.toLowerCase()} 😈📸` : TEASERS.photo;
+        const teaser = teaserFor("photo", herVoice, { salt: history?.length, toy: mediaToy?.name ?? null });
         await supabase.from("messages").insert({
           conversation_id: data.conversationId,
           user_id: userId,
@@ -809,6 +802,8 @@ Answer the message actually in front of you. Never reuse a line from these instr
       if (m.kind && m.kind !== "text") return false;
       const text = (m.content ?? "").trim();
       if (!text) return false;
+      // The app's own "taking one for you" lines, in every voice they come in.
+      if (isTeaserLine(text)) return false;
       if (misstatesMedia(text)) return false;
       // Every "No." this bug already wrote is still in the transcript. Left in,
       // the model reads fifty turns of "how are you" -> "No." and reproduces it
@@ -848,6 +843,66 @@ Answer the message actually in front of you. Never reuse a line from these instr
     console.log(
       `[chat] model=${chatModel} ctx=${contextTokens} budget=${budget} sent=${fitted.kept.length}/${speech.length} msgs ~${fitted.tokens}tok dropped=${fitted.dropped}`,
     );
+
+    // Two model calls that need nothing from the reply about to be drafted —
+    // the rolling summary (every fifth message) and the fact extraction (when
+    // the message looks like one) read only the history and the message. They
+    // ran one after the other AFTER the reply, so a message that triggered both
+    // waited on three model calls in a row before anything came back. They
+    // start here, alongside the reply, and are collected once it is drafted.
+    const xpAfter = ((conv as any).relationship_xp ?? 0) + 1;
+    const summaryPromise: Promise<string> = (async () => {
+      if (!(xpAfter % 5 === 0 && history && history.length > 5)) return summary;
+      try {
+        const textToSummarize = history
+          .slice(-12)
+          .map((m) => `${m.role === "user" ? "User" : p.nickname}: ${m.content}`)
+          .join("\n");
+        const summaryPrompt = [
+          {
+            role: "system",
+            content:
+              "You are an assistant summarizing a conversation between the user and their companion. " +
+              "Write a very short, concise paragraph summarizing what has happened so far and their current situation/topic. " +
+              "Keep it under 300 characters. Focus on key topics discussed.",
+          },
+          {
+            role: "user",
+            content: `Previous Summary: ${summary}\n\nRecent exchange:\n${textToSummarize}`,
+          },
+        ];
+        const summaryReply = await chatComplete(summaryPrompt, { maxTokens: 100 });
+        return summaryReply ? summaryReply.trim() : summary;
+      } catch (err) {
+        console.error("Summary extraction failed", err);
+        return summary;
+      }
+    })();
+    const factsPromise: Promise<void> = (async () => {
+      if (!looksFactual(data.content)) return;
+      try {
+        const { extractUserFacts } = await import("./memory.server");
+        const lastLine = [...(history ?? [])]
+          .reverse()
+          .find((m) => m.role === "assistant")?.content;
+        const learned = await extractUserFacts(data.content, lastLine);
+        if (learned.length) {
+          const merged = mergeFacts(knownFacts, learned);
+          const nameFact = learned.find((f) => f.key === "name");
+          const updateObj: any = { user_memory: formatMemory(merged) };
+          if (
+            nameFact?.value &&
+            isRealName(nameFact.value) &&
+            !isEmailHandle(nameFact.value, email)
+          ) {
+            updateObj.display_name = nameFact.value.trim();
+          }
+          await supabase.from("profiles").update(updateObj).eq("id", userId);
+        }
+      } catch {
+        /* never let learning break a paid reply */
+      }
+    })();
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -946,72 +1001,9 @@ Answer the message actually in front of you. Never reuse a line from these instr
     const newXp = ((conv as any).relationship_xp ?? 0) + 1;
     const newLevel = Math.min(10, Math.floor(newXp / 15) + 1);
     const leveledUp = newLevel > level;
-
-    // Summarize older messages or update conversation summary every 5 messages
-    let newSummary = summary;
-    if (newXp % 5 === 0 && history && history.length > 5) {
-      try {
-        const textToSummarize = history
-          .slice(-12)
-          .map((m) => `${m.role === "user" ? "User" : p.nickname}: ${m.content}`)
-          .join("\n");
-        const summaryPrompt = [
-          {
-            role: "system",
-            content:
-              "You are an assistant summarizing a conversation between the user and their companion. " +
-              "Write a very short, concise paragraph summarizing what has happened so far and their current situation/topic. " +
-              "Keep it under 300 characters. Focus on key topics discussed.",
-          },
-          {
-            role: "user",
-            content: `Previous Summary: ${summary}\n\nRecent exchange:\n${textToSummarize}`,
-          },
-        ];
-        const summaryReply = await chatComplete(summaryPrompt, { maxTokens: 100 });
-        if (summaryReply) newSummary = summaryReply.trim();
-      } catch (err) {
-        console.error("Summary extraction failed", err);
-      }
-    }
-
-    // Learn from this message.
-    //
-    // This used to run on every fourth message (newXp % 4), which meant three
-    // disclosures out of four were never seen at all — say what you do for a
-    // living on the wrong turn and she simply never knew it. It now runs on any
-    // message that could plausibly carry a durable fact, which is a cheap local
-    // regex rather than a model call, so it costs less on the "mmm" messages
-    // and catches the ones that matter.
-    //
-    // It also merges rather than appends: a single-value key like city
-    // overwrites in place, so telling her you moved corrects her instead of
-    // leaving both answers in a prompt headed "do not contradict".
-    if (looksFactual(data.content)) {
-      try {
-        const { extractUserFacts } = await import("./memory.server");
-        const lastLine = [...(history ?? [])]
-          .reverse()
-          .find((m) => m.role === "assistant")?.content;
-        const learned = await extractUserFacts(data.content, lastLine);
-        if (learned.length) {
-          const merged = mergeFacts(knownFacts, learned);
-          const nameFact = learned.find((f) => f.key === "name");
-          const updateObj: any = { user_memory: formatMemory(merged) };
-          if (
-            nameFact?.value &&
-            isRealName(nameFact.value) &&
-            !isEmailHandle(nameFact.value, email)
-          ) {
-            updateObj.display_name = nameFact.value.trim();
-          }
-          await supabase.from("profiles").update(updateObj).eq("id", userId);
-        }
-      } catch {
-        /* never let learning break a paid reply */
-      }
-    }
-
+    // Started before the reply was drafted (see below); usually done by now.
+    const newSummary = await summaryPromise;
+    await factsPromise;
     await supabase
       .from("conversations")
       .update({
@@ -1030,12 +1022,16 @@ Answer the message actually in front of you. Never reuse a line from these instr
     try {
       const { sendPushToUser } = await import("@/lib/notify");
       const nick = p.nickname ?? "She";
-      await sendPushToUser(userId, {
-        title: `${nick} 💬`,
-        body: reply.slice(0, 120),
-        url: `/chat/${data.conversationId}`,
-        tag: `chat-${data.conversationId}`,
-      });
+      // Best effort and bounded: a slow push service must not hold the reply.
+      await Promise.race([
+        sendPushToUser(userId, {
+          title: `${nick} 💬`,
+          body: reply.slice(0, 120),
+          url: `/chat/${data.conversationId}`,
+          tag: `chat-${data.conversationId}`,
+        }),
+        new Promise((r) => setTimeout(r, 1200)),
+      ]);
     } catch {
       /* push best-effort */
     }

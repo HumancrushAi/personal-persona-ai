@@ -195,6 +195,32 @@ const TATTOO: Mature[] = [
       "Warm, passionate and playful. Nurturing one minute and filthy the next; loves cooking for you and being spoiled back.",
     portrait: `Candid photo of a real attractive 29-year-old Mexican woman named Lola, long wavy dark brown hair, warm tan skin, brown eyes, voluptuous hourglass figure with a full bust, heavily tattooed: colourful floral tattoo sleeves on both arms, a large chest piece of roses across her upper chest, a tattooed stomach, and tattoos down both thighs, wearing a fitted deep red satin slip dress with thin straps, standing by a window in a sunlit apartment, warm confident smile, ${PHOTO}`,
   },
+  {
+    name: "Harley",
+    age: 26,
+    ethnicity: "American",
+    short_bio: "Twenty-six, Vegas-born, colour from her shoulders to her knees and a mouth to match.",
+    base_personality:
+      "Loud, funny and fearless. Pole dancer by night, loves being looked at, and gives as good as she gets.",
+    portrait: `Candid photo of a real attractive 26-year-old American woman named Harley, long wavy platinum blonde hair with pink ends, fair skin, hazel eyes, fit curvy figure with a full bust, heavily tattooed: bright colourful traditional tattoo sleeves on both arms, a large colourful chest piece of roses and swallows, a tattooed stomach, and colourful tattoos covering both thighs, wearing a fitted black satin slip dress with thin straps, sitting on a leather sofa in a neon-lit apartment at night, cheeky grin, ${PHOTO}`,
+  },
+  {
+    name: "Sienna",
+    age: 31,
+    ethnicity: "Italian",
+    short_bio: "Thirty-one, Milan-born, blackwork from her neck to her fingertips.",
+    base_personality:
+      "Cool, dry and quietly intense. A photographer who says little and notices everything; melts slowly and completely.",
+    portrait: `Candid photo of a real attractive 31-year-old Italian woman named Sienna, long straight dark brown hair, olive skin, dark eyes, slim toned figure with a medium bust, heavily tattooed: solid blackwork tattoo sleeves on both arms down to her fingers, a large ornamental black tattoo across her chest and neck, a tattooed stomach, and black tattoos on both thighs, wearing a fitted black satin slip dress with thin straps, standing by a tall window in a loft studio with soft daylight, cool direct gaze, ${PHOTO}`,
+  },
+  {
+    name: "Kira",
+    age: 24,
+    ethnicity: "Japanese-American",
+    short_bio: "Twenty-four, LA skater girl with a koi sleeve and a dragon down her back.",
+    base_personality:
+      "Easygoing, playful and secretly romantic. Skates, games, stays up too late, and gets clingy in the sweetest way.",
+    portrait: `Candid photo of a real attractive 24-year-old Japanese-American woman named Kira, long black hair with blunt bangs, light skin, dark eyes, petite athletic figure with a small bust, heavily tattooed: a full Japanese irezumi-style koi and waves tattoo sleeve on one arm, cherry blossoms on the other arm, a large tattoo across her chest, and a tattooed thigh, wearing a fitted black satin slip dress with thin straps, sitting cross-legged on a bed in a small bright bedroom with posters on the wall, playful smile, ${PHOTO}`,  },
 ];
 
 // Every one of them an adult, and the prompt says so in words: a grown woman's

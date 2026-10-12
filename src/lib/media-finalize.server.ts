@@ -810,8 +810,9 @@ export async function requeueIfStuck(
   const { data: claimed } = await (job.error == null ? claim.is("error", null) : claim.eq("error", job.error)).select("id");
   if (!claimed?.length) return false;
   try {
-    const { runpodCancel } = await import("./runpod");
-    if (job.replicate_id) await runpodCancel(endpoint, job.replicate_id);
+    const { runpodCancel, targetFor } = await import("./runpod");
+    const where = targetFor(endpoint, job.replicate_id);
+    if (where.endpoint && where.id) await runpodCancel(where.endpoint, where.id);
     const ctx = await jobContext(job.id);
     if (!ctx) return false;
     const id = await resubmitImageJob(ctx, `requeue-${job.id}`);
@@ -832,7 +833,7 @@ async function resubmitImageJob(
   const { anatomyOf } = await import("./anatomy");
   const { comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
     await import("./media.functions");
-  const { runpodEndpoint, runpodRun } = await import("./runpod");
+  const { runpodEndpoint, runpodRun, pickImageTarget, tagJobId } = await import("./runpod");
   const endpoint = runpodEndpoint("image");
   if (!endpoint) throw new Error("no image endpoint");
   const negative = negativeFor(ctx.userRequest, ctx.companion.gender, {
@@ -857,12 +858,21 @@ async function resubmitImageJob(
       startFromPortrait: (await import("./compose.server")).composeMode() === "portrait",
     },
   );
-  const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));
+  const target = await pickImageTarget(supabaseAdmin, endpoint);
+  let sentTo = endpoint;
+  let id: string;
+  try {
+    if (!target.pod || !target.endpoint) throw new Error("serverless");
+    id = (await runpodRun(target.endpoint, input)).id;
+    sentTo = target.endpoint;
+  } catch {
+    id = (await runpodRun(endpoint, input, webhookFor("runpod"))).id;
+  }
   await supabaseAdmin
     .from("media_jobs")
-    .update({ replicate_id: id, status: "processing", updated_at: new Date().toISOString() })
+    .update({ replicate_id: tagJobId(id, sentTo), status: "processing", updated_at: new Date().toISOString() })
     .eq("id", ctx.row.id);
-  return id;
+  return tagJobId(id, sentTo);
 }
 
 // The vision check: 0-10 for how clearly the picture shows the act, null

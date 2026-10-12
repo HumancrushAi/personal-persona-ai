@@ -16,6 +16,92 @@ import { comfyImageUrl } from "./comfy";
 
 const RUNPOD_BASE = "https://api.runpod.ai/v2";
 
+// A dedicated, always-warm GPU pod running the same worker image with
+// SERVE_API_LOCALLY=true: the identical job API, on the pod's port 8000,
+// with no cold start and no queue for a GPU. It is the first place a photo
+// goes; the serverless endpoint is the overflow when the pod is busy, and
+// the fallback when it is down. docs/dedicated-comfy-pod.md sets it up.
+//
+// An "endpoint" everywhere below is either a serverless endpoint id or a
+// full pod URL; runpodBase tells them apart. A job that went to the pod
+// stores its id as "pod:<id>" so the status poll knows where to ask.
+const POD_PREFIX = "pod:";
+
+export function podUrl(): string | null {
+  const u = (process.env.COMFY_POD_URL ?? "").trim().replace(/\/+$/, "");
+  return /^https?:\/\//i.test(u) ? u : null;
+}
+
+export function isPodTarget(endpoint: string | null | undefined): boolean {
+  return /^https?:\/\//i.test(endpoint ?? "");
+}
+
+export function runpodBase(endpoint: string): string {
+  return isPodTarget(endpoint) ? endpoint.replace(/\/+$/, "") : `${RUNPOD_BASE}/${endpoint}`;
+}
+
+/** The stored job id for a job sent to `endpoint`. */
+export function tagJobId(id: string, endpoint: string): string {
+  return isPodTarget(endpoint) ? `${POD_PREFIX}${id}` : id;
+}
+
+/** Where to ask about a stored job id, and the id to ask with. */
+export function targetFor(
+  fallbackEndpoint: string | null,
+  storedId: string | null | undefined,
+): { endpoint: string | null; id: string } {
+  const raw = storedId ?? "";
+  if (raw.startsWith(POD_PREFIX)) return { endpoint: podUrl(), id: raw.slice(POD_PREFIX.length) };
+  return { endpoint: fallbackEndpoint, id: raw };
+}
+
+// The pod answers /health; a pod that does not answer in a moment is not
+// the pod to send a paying user's photo to. Remembered briefly so a burst of
+// requests does not knock on it a hundred times.
+let podHealth: { ok: boolean; at: number } | null = null;
+export async function podHealthy(): Promise<boolean> {
+  const base = podUrl();
+  if (!base) return false;
+  if (podHealth && Date.now() - podHealth.at < 20_000) return podHealth.ok;
+  let ok = false;
+  try {
+    const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout(2_500) });
+    ok = res.ok;
+  } catch {
+    ok = false;
+  }
+  podHealth = { ok, at: Date.now() };
+  return ok;
+}
+
+/**
+ * Where the next photo renders: the pod when it is up and has room, else
+ * the serverless endpoint. Room is counted from this app's own open jobs on
+ * the pod; the worker runs one render at a time and queues the rest, so
+ * past a couple in flight a new one is better off on serverless.
+ */
+export async function pickImageTarget(
+  supabaseAdmin: any,
+  serverlessEndpoint: string | null,
+): Promise<{ endpoint: string | null; pod: boolean }> {
+  const base = podUrl();
+  if (!base || !(await podHealthy())) return { endpoint: serverlessEndpoint, pod: false };
+  const room = Number(process.env.COMFY_POD_CONCURRENCY || "2");
+  try {
+    const since = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("media_jobs")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["pending", "processing"])
+      .like("replicate_id", `${POD_PREFIX}%`)
+      .gte("created_at", since);
+    if ((count ?? 0) >= room && serverlessEndpoint) return { endpoint: serverlessEndpoint, pod: false };
+  } catch {
+    /* if the count fails, the pod still takes it */
+  }
+  return { endpoint: base, pod: true };
+}
+
 // Both endpoints are opt-in by env var, with NO default.
 //
 // There used to be a default of "black-forest-labs-flux-1-kontext-dev" (RunPod's
@@ -87,7 +173,7 @@ export async function runpodRunSync(
   const key = process.env.RUNPOD_API_KEY;
   if (!key) throw new Error("RUNPOD_API_KEY not configured");
 
-  const res = await fetch(`${RUNPOD_BASE}/${endpoint}/runsync`, {
+  const res = await fetch(`${runpodBase(endpoint)}/runsync`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ input }),
@@ -137,7 +223,7 @@ export async function runpodRun(
   const key = process.env.RUNPOD_API_KEY;
   if (!key) throw new Error("RUNPOD_API_KEY not configured");
 
-  const res = await fetch(`${RUNPOD_BASE}/${endpoint}/run`, {
+  const res = await fetch(`${runpodBase(endpoint)}/run`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify(webhookUrl ? { input, webhook: webhookUrl } : { input }),
@@ -163,7 +249,7 @@ export async function runpodGet(
   const key = process.env.RUNPOD_API_KEY;
   if (!key) throw new Error("RUNPOD_API_KEY not configured");
 
-  const res = await fetch(`${RUNPOD_BASE}/${endpoint}/status/${id}`, {
+  const res = await fetch(`${runpodBase(endpoint)}/status/${id}`, {
     headers: { Authorization: `Bearer ${key}` },
   });
   if (!res.ok) throw new Error(`RunPod status error: ${res.status}`);
@@ -185,7 +271,7 @@ export async function runpodCancel(endpoint: string, id: string): Promise<void> 
   const key = process.env.RUNPOD_API_KEY;
   if (!key) return;
   try {
-    await fetch(`${RUNPOD_BASE}/${endpoint}/cancel/${id}`, {
+    await fetch(`${runpodBase(endpoint)}/cancel/${id}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}` },
     });

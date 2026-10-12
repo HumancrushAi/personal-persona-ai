@@ -318,7 +318,7 @@ import { propClause, propNegative, hasProp } from "./props";
 import type { Toy } from "./toys";
 import type { Setting } from "./selfie";
 import { anatomyOf, crossSexNegative, genderKind, mentionsPart } from "./anatomy";
-import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun } from "./runpod";
+import { VIDEO_LORA_STRENGTHS, runpodEndpoint, runpodRun, pickImageTarget, tagJobId, targetFor } from "./runpod";
 import { companionImage } from "./companion-images";
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 
@@ -531,6 +531,30 @@ async function settingFor(conversationId: string, imageUrl: string | null | unde
   return scene ? { text: scene, whose: "her" } : null;
 }
 
+
+/**
+ * Send a photo job: to the dedicated pod when it is up and has room, else
+ * to the serverless endpoint. A pod that fails to take the job hands it to
+ * serverless in the same call, so the user never pays for the pod being down.
+ */
+async function submitImage(
+  supabaseAdmin: any,
+  serverlessEndpoint: string,
+  input: Record<string, unknown>,
+): Promise<{ result: { id: string; status: string }; endpoint: string }> {
+  const target = await pickImageTarget(supabaseAdmin, serverlessEndpoint);
+  if (target.pod && target.endpoint) {
+    try {
+      const result = await runpodRun(target.endpoint, input);
+      return { result, endpoint: target.endpoint };
+    } catch (e: any) {
+      console.warn(`[media] pod refused the job (${String(e?.message ?? e).slice(0, 120)}); using serverless`);
+    }
+  }
+  const result = await runpodRun(serverlessEndpoint, input, webhookFor("runpod"));
+  return { result, endpoint: serverlessEndpoint };
+}
+
 export async function startImageJob(
   supabase: any,
   userId: string,
@@ -719,10 +743,10 @@ export async function startImageJob(
             }
           : stillJobInput(startFrame, imagePrompt, negative);
 
-    const result = await runpodRun(runpodImage, input, webhookFor("runpod"));
+    const { result, endpoint: sentTo } = await submitImage(supabaseAdmin, runpodImage, input);
     await supabaseAdmin
       .from("media_jobs")
-      .update({ replicate_id: result.id, status: "processing" })
+      .update({ replicate_id: tagJobId(result.id, sentTo), status: "processing" })
       .eq("id", job.id);
   } catch (err: any) {
     await supabaseAdmin
@@ -1461,11 +1485,11 @@ export async function startVideoJob(
           `video-${job.id}`,
           { hasPenis: anatomyOf(companion.gender).hasPenis },
         );
-        const still = await runpodRun(comfyEndpoint, stillInput, webhookFor("runpod"));
+        const { result: still, endpoint: stillSentTo } = await submitImage(supabaseAdmin, comfyEndpoint, stillInput);
         await supabaseAdmin
           .from("media_jobs")
           .update({
-            replicate_id: still.id,
+            replicate_id: tagJobId(still.id, stillSentTo),
             provider: "runpod-still",
             status: "processing",
             prompt: JSON.stringify({ stage: "still", videoInput, videoPrompt }),
@@ -1590,13 +1614,14 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     // atomically so only one of them submits it.
     if ((job as any).provider === "runpod-advancing") return { status: "processing" };
     if ((job as any).provider === "runpod-still") {
-      const endpoint = runpodEndpoint("comfy");
+      const stillTarget = targetFor(runpodEndpoint("comfy"), (job as any).replicate_id);
+      const endpoint = stillTarget.endpoint;
       if (!endpoint) return { status: "processing" };
       const { runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } =
         await import("./runpod");
       let res: { status: string; output?: any; error?: any };
       try {
-        res = await runpodGet(endpoint, (job as any).replicate_id);
+        res = await runpodGet(endpoint, stillTarget.id);
       } catch {
         return { status: "processing" };
       }
@@ -1620,14 +1645,15 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     // RunPod jobs need no face-swap chaining: the image path edits her real
     // photo and the video path animates it, so identity is already hers.
     if ((job as any).provider === "runpod") {
-      const endpoint = runpodEndpoint(job.kind);
+      const target = targetFor(runpodEndpoint(job.kind), (job as any).replicate_id);
+      const endpoint = target.endpoint;
       if (!endpoint) return { status: job.status };
 
       const { runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } =
         await import("./runpod");
       let res: { status: string; output?: any; error?: any };
       try {
-        res = await runpodGet(endpoint, (job as any).replicate_id);
+        res = await runpodGet(endpoint, target.id);
       } catch {
         return { status: job.status }; // transient — keep polling
       }

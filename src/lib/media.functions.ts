@@ -659,11 +659,32 @@ export async function startImageJob(
       .eq("conversation_id", conversationId)
       .eq("kind", "image");
     const seedSalt = String(photosSoFar ?? 0);
+    // The composed frame: Grok draws the clothed version of this exact
+    // request from her portrait, and the uncensored pass starts from it. Kept
+    // for the job so a retake starts from the same picture.
+    let composedFrame: string | null = null;
+    if (provider === "comfy") {
+      const { composeStartFrame, storeStartFrame } = await import("./compose.server");
+      const composed = await composeStartFrame({
+        portraitUrl: sourceImage,
+        request: userRequest ?? "",
+        setting: setting ? (typeof setting === "string" ? setting : setting.text) : null,
+        toy,
+        noun: anatomyOf(companion.gender).noun,
+      });
+      if (composed) {
+        composedFrame = composed.base64;
+        await storeStartFrame(job.id, composed.base64).catch((e) =>
+          console.warn("composed frame not stored:", e?.message ?? e),
+        );
+      }
+    }
     const input =
       provider === "comfy"
         ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt, {
             hasPenis: anatomyOf(companion.gender).hasPenis,
             toyTags: toy?.tags ?? null,
+            startFrame: composedFrame,
           })
         : provider === "kontext"
           ? {
@@ -755,6 +776,8 @@ export async function comfyJobInput(
     hasPenis?: boolean;
     /** The chest toy's short tags, so the toy leads the prompt weighted and is drawn at all. */
     toyTags?: string | null;
+    /** A composed frame of this request (compose.server.ts), base64: the pass starts from it. */
+    startFrame?: string | null;
   } = {},
 ): Promise<Record<string, unknown>> {
   const {
@@ -764,15 +787,25 @@ export async function comfyJobInput(
     wantsReference,
     FACEID_WORKFLOW,
     FACEID_POSE_WORKFLOW,
+    FACEID_I2I_WORKFLOW,
     DEFAULT_WORKFLOW,
   } = await import("./comfy");
   let template = comfyTemplate();
 
+  // A composed frame outranks the pose guide: it carries the pose already,
+  // and the whole picture with it.
+  const extraImages: { name: string; base64: string }[] = [];
+  const composed = Boolean(opts.startFrame) && template === FACEID_WORKFLOW;
+  if (composed) {
+    const { START_NAME } = await import("./compose.server");
+    template = FACEID_I2I_WORKFLOW;
+    extraImages.push({ name: START_NAME, base64: opts.startFrame as string });
+  }
+
   // A pose guide, when this request has one and the worker can use it. Only
   // the FaceID graph has the wiring for it.
   const { poseFor, poseGuideAvailable } = await import("./poses");
-  const guide = !opts.noPose && (await poseGuideAvailable()) ? poseFor(request ?? "") : null;
-  const extraImages: { name: string; base64: string }[] = [];
+  const guide = !opts.noPose && !composed && (await poseGuideAvailable()) ? poseFor(request ?? "") : null;
   if (guide && template === FACEID_WORKFLOW) {
     template = FACEID_POSE_WORKFLOW;
     extraImages.push({ name: guide.file, base64: guide.base64 });
@@ -841,10 +874,12 @@ export async function comfyJobInput(
         template,
         seedSalt,
         mouthAct,
+        composed,
       }),
       prompt: finalPrompt,
       negative,
-      poseImage: extraImages[0]?.name,
+      poseImage: guide ? extraImages.find((i) => i.name === guide.file)?.name : undefined,
+      startImage: composed ? extraImages[0]?.name : undefined,
     },
     { template, referenceBase64, extraImages },
   );
@@ -1383,10 +1418,31 @@ export async function startVideoJob(
     }
   }
 
-  let startFrame = startImage;
+  // The clip starts from the composed frame of this request when there is
+  // one: the pose and the room arrive in the first frame instead of being
+  // reached for from her portrait.
+  let startSource = startImage;
+  {
+    const { composeStartFrame, storeStartFrame } = await import("./compose.server");
+    const composed = await composeStartFrame({
+      portraitUrl: startImage,
+      request: userReq ?? "",
+      setting: setting ? (typeof setting === "string" ? setting : setting.text) : null,
+      toy,
+      noun: anatomy.noun,
+    });
+    if (composed) {
+      try {
+        startSource = await storeStartFrame(job.id, composed.base64);
+      } catch (e: any) {
+        console.warn("composed frame not stored:", e?.message ?? e);
+      }
+    }
+  }
+  let startFrame = startSource;
   try {
     const { squareStartFrame } = await import("./start-frame.server");
-    startFrame = await squareStartFrame(startImage, `vid-${userId}-${Date.now()}`);
+    startFrame = await squareStartFrame(startSource, `vid-${userId}-${Date.now()}`);
   } catch {
     /* fall back to the raw portrait rather than failing the whole request */
   }

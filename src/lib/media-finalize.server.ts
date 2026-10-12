@@ -807,7 +807,13 @@ async function resubmitImageJob(
     resolveHostedImage(ctx.companion.image_url),
     ctx.userRequest,
     seedSalt,
-    { ...opts, hasPenis: anatomyOf(ctx.companion.gender).hasPenis, toyTags: ctx.toy?.tags ?? null },
+    {
+      ...opts,
+      hasPenis: anatomyOf(ctx.companion.gender).hasPenis,
+      toyTags: ctx.toy?.tags ?? null,
+      // The same composed frame the first render started from, when it had one.
+      startFrame: await (await import("./compose.server")).storedStartFrame(ctx.row.id),
+    },
   );
   const { id } = await runpodRun(endpoint, input, webhookFor("runpod"));
   await supabaseAdmin

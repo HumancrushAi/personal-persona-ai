@@ -121,7 +121,7 @@ describe("the renderer is allowed to change her mouth", () => {
     expect(mouth.ipaWeight).toBe(0.5);
     expect(mouth.faceDenoise).toBe(0.3);
     const plain = comfySettings("x");
-    expect(plain.ipaWeight).toBe(0.8);
+    expect(plain.ipaWeight).toBe(0.9);
     expect(plain.ipaWeightFace).toBe(0.9);
     expect(plain.faceDenoise).toBe(0.35);
     expect(mouth.cfg).toBe(5.0);

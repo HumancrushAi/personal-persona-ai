@@ -35,6 +35,8 @@ export type ComfyVars = {
   denoise: number;
   /** Filename of the reference portrait uploaded alongside the job, if any. */
   referenceImage?: string;
+  /** Filename of the composed start frame (FACEID_I2I_WORKFLOW), uploaded with the job. */
+  startImage?: string;
   /**
    * How hard the IP-Adapter pulls the render toward her face. Read by the
    * FaceID graph only; the stock graph has no node to use it.
@@ -335,6 +337,30 @@ export const FACEID_POSE_WORKFLOW = (() => {
   return JSON.stringify(g, null, 2);
 })();
 
+// FACEID_WORKFLOW started from a picture instead of noise: the composed
+// frame (compose.server.ts) — her, clothed, already in the pose and the
+// room — is encoded into the starting latent, and the sampler denoises
+// from THERE at the composed tiers in comfySettings. Her face, skin, light
+// and setting survive because they are what the pass starts from; the
+// prompt does the undressing and the act. The face lock and the detailer
+// pass are unchanged.
+//
+//   20 LoadImage    {{START_IMAGE}}
+//   21 ImageScale   to the render size, centre-cropped
+//   22 VAEEncode    → the sampler's latent
+export const FACEID_I2I_WORKFLOW = (() => {
+  const g = JSON.parse(FACEID_WORKFLOW) as Record<string, any>;
+  g["20"] = { class_type: "LoadImage", inputs: { image: "{{START_IMAGE}}", upload: "image" } };
+  g["21"] = {
+    class_type: "ImageScale",
+    inputs: { image: ["20", 0], upscale_method: "lanczos", width: "{{WIDTH}}", height: "{{HEIGHT}}", crop: "center" },
+  };
+  g["22"] = { class_type: "VAEEncode", inputs: { pixels: ["21", 0], vae: ["4", 2] } };
+  g["3"].inputs.latent_image = ["22", 0];
+  delete g["5"];
+  return JSON.stringify(g, null, 2);
+})();
+
 export const FACEID_LITE_WORKFLOW = (() => {
   const g = JSON.parse(FACEID_WORKFLOW) as Record<string, any>;
   delete g["13"];
@@ -441,6 +467,7 @@ function tokenValues(vars: ComfyVars): Record<string, string | number> {
     SCHEDULER: vars.scheduler,
     CHECKPOINT: vars.checkpoint,
     DENOISE: vars.denoise,
+    START_IMAGE: vars.startImage ?? "start.png",
     REFERENCE_IMAGE: vars.referenceImage ?? "",
     IPA_WEIGHT: vars.ipaWeight,
     IPA_FACEID_WEIGHT: vars.ipaV2Weight ?? vars.ipaWeight,
@@ -704,6 +731,8 @@ export function comfySettings(
      */
     mouthAct?: boolean;
     template?: string;
+    /** The start latent is a composed frame of this very request, not her portrait. */
+    composed?: boolean;
     /**
      * Mixed into the seed so a second photo in the same chat is a new picture.
      * seedFor(prompt) alone made "send another" a copy of the first one: same
@@ -764,6 +793,15 @@ export function comfySettings(
     // Never 0.90+ — that wiped site identity in chat.
     denoise: (() => {
       if (!usesStartLatent(opts.template)) return 1;
+      // A composed frame (compose.server.ts) already has the pose, the room and
+      // her face in place; the pass only has to undress her and render the
+      // act, so it starts much closer to the picture than the portrait did.
+      if (opts.composed) {
+        if (opts.mouthAct) return numberSetting("COMFY_DENOISE_COMPOSED_MOUTH", 0.72);
+        if (opts.promptSetsComposition) return numberSetting("COMFY_DENOISE_COMPOSED_POSED", 0.7);
+        if (opts.needsUndress) return numberSetting("COMFY_DENOISE_COMPOSED_NUDE", 0.62);
+        return numberSetting("COMFY_DENOISE_COMPOSED", 0.5);
+      }
       // A mouth act changes the pose her portrait is in more than a toy does
       // (head down, breast lifted), and at 0.78 the portrait's pose still won.
       // Identity comes from FaceID here, not from the start latent.
@@ -782,7 +820,7 @@ export function comfySettings(
     // the full 0.9 / 1.2 on the face crop, which is where likeness is decided.
     ipaWeight: opts.mouthAct
       ? numberSetting("COMFY_IPA_WEIGHT_MOUTH", 0.5)
-      : numberSetting("COMFY_IPA_WEIGHT", 0.8),
+      : numberSetting("COMFY_IPA_WEIGHT", 0.9),
     // The pose guide's model and grip (FACEID_POSE_WORKFLOW). 0.75 for the
     // first 80% of the steps: the skeleton decides where the head and hands
     // are, the checkpoint finishes the picture on its own.
@@ -796,7 +834,7 @@ export function comfySettings(
     // and faces came back "not exactly like the models". 1.0-2.0 is its range.
     ipaV2Weight: opts.mouthAct
       ? numberSetting("COMFY_IPA_V2_WEIGHT_MOUTH", 0.8)
-      : numberSetting("COMFY_IPA_V2_WEIGHT_MAIN", 1.0),
+      : numberSetting("COMFY_IPA_V2_WEIGHT", 1.2),
     ipaLora: numberSetting("COMFY_IPA_LORA", 0.7),
     ipaStartAt: opts.mouthAct
       ? numberSetting("COMFY_IPA_START_AT_MOUTH", 0.6)

@@ -223,6 +223,47 @@ const TATTOO: Mature[] = [
     portrait: `Candid photo of a real attractive 26-year-old Japanese-American woman named Kira, long black hair with blunt bangs, light skin, dark eyes, slim athletic adult figure, heavily tattooed: a full Japanese irezumi-style koi and waves tattoo sleeve on one arm, cherry blossoms on the other arm, a large tattoo across her chest, and a tattooed thigh, wearing a fitted black satin slip dress with thin straps, standing on a rooftop terrace at golden hour with the city behind her, playful smile, ${PHOTO}`,  },
 ];
 
+// Rock girls: dark, sexy, skulls and leather, skimpy without being explicit —
+// the ask from testing. Grok's moderation passes fitted dresses and tops;
+// the outfits are said that way.
+const ROCK: Mature[] = [
+  {
+    name: "Jett",
+    age: 27,
+    ethnicity: "American",
+    short_bio: "Twenty-seven, lead guitarist in a punk band, and trouble on and off the stage.",
+    base_personality:
+      "Loud, cocky and fiercely loyal. Teases hard, plays harder, and loves the crowd screaming her name.",
+    portrait: `Candid photo of a real attractive 27-year-old American rock singer named Jett, long black hair with choppy bangs, pale skin, smoky eye makeup, slim curvy figure, tattoos on her arms, wearing a tight cropped black band t-shirt with a white skull print and a tiny black leather mini skirt with a studded belt, silver chains, fishnet tights, standing backstage at a rock club with red stage light behind her, cocky smirk, ${PHOTO}`,
+  },
+  {
+    name: "Vex",
+    age: 29,
+    ethnicity: "Canadian",
+    short_bio: "Twenty-nine, metal bassist, all leather, skulls and late nights.",
+    base_personality:
+      "Dark humour, slow burn, and dangerously confident. Says little, means all of it.",
+    portrait: `Candid photo of a real attractive 29-year-old Canadian woman named Vex, long platinum blonde hair with black streaks, fair skin, dark eyeliner, curvy figure, wearing a short fitted black leather dress with silver skull buckles and a chain belt, fishnet stockings and black platform boots, leaning against an amp in a dim rehearsal room lit by neon, dangerous smile, ${PHOTO}`,
+  },
+  {
+    name: "Ravenna",
+    age: 25,
+    ethnicity: "Italian",
+    short_bio: "Twenty-five, goth rock vocalist, velvet voice and a skull on everything she owns.",
+    base_personality:
+      "Moody, poetic and secretly sweet. Writes you songs at 3am and dares you to sing along.",
+    portrait: `Candid photo of a real attractive 25-year-old Italian woman named Ravenna, long wavy dark red hair, pale olive skin, dark lipstick, slim figure, wearing a fitted black satin slip dress, a black skull-print choker and a cropped black leather jacket, holding a microphone on a small dark stage with purple light, sultry gaze, ${PHOTO}`,
+  },
+  {
+    name: "Blaze",
+    age: 31,
+    ethnicity: "Latina (Puerto Rican)",
+    short_bio: "Thirty-one, drummer, loud, sweaty and impossible to forget.",
+    base_personality:
+      "High energy, filthy laugh, zero shame. Plays hard, parties harder, and makes you feel like the only one in the crowd.",
+    portrait: `Candid photo of a real attractive 31-year-old Puerto Rican woman named Blaze, curly black hair in a high ponytail, warm tan skin, gold hoop earrings, athletic curvy figure with a full bust, tattoos on her shoulders, wearing a ripped cropped black tank top with a skull and roses print and a short black denim skirt with chains, sitting behind a drum kit under hot orange stage lights, confident grin, ${PHOTO}`,
+  },
+];
 // Every one of them an adult, and the prompt says so in words: a grown woman's
 // face and figure. "Young" here means early twenties, nothing younger.
 const ADULT = "adult woman with a fully grown woman's face and figure";
@@ -326,6 +367,7 @@ const SETS: Record<string, Companion[]> = {
   young: YOUNG.map((m) => ({ ...m, tags: [] })),
   busty: BUSTY.map((m) => ({ ...m, tags: ["milf", "mature", "busty"] })),
   tattoo: TATTOO.map((m) => ({ ...m, tags: ["tattooed", "inked", "alt"] })),
+  rock: ROCK.map((m) => ({ ...m, tags: ["rock", "goth", "alt"] })),
 };
 
 async function uploadPortrait(dataUrl: string, name: string): Promise<string> {

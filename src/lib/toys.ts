@@ -391,6 +391,21 @@ export function resolveToy(request: string, owned: Set<string> | "all"): ToyReso
   return { toy: null, needed: cheapest };
 }
 
+// "Use a glass dildo and send me the picture" names no place, and the render
+// came back with her holding the toy at her stomach. An insertable toy with
+// no place, no mouth and no ass in the request goes inside her pussy (his ass
+// for a body without one) — said in the request itself, so the builder, the
+// refiner, the prop clause and the check all read the same thing.
+const INSERTABLE: ToyKind[] = ["dildo", "vibrator", "wand", "plug", "beads"];
+const PLACED_RE =
+  /\b(?:in|into|inside|up|on|against|between|deep|insert\w*|penetrat\w*|ride|riding|suck\w*|lick\w*|blow\w*|mouth|lips|tongue|deep\s*throat\w*|ass|anus|butt|clit\w*|nipples?|tits?|breasts?)\b/i;
+export function withToyPlace(request: string, toy: Toy | null, hasVulva = true): string {
+  const r = (request ?? "").trim();
+  if (!toy || !INSERTABLE.includes(toy.kind) || PLACED_RE.test(r)) return r;
+  const place = toy.kind === "plug" || toy.kind === "beads" || !hasVulva ? "in your ass" : "inside your pussy";
+  return `${r.replace(/[.!?\s]+$/, "")}, with the ${toy.name.toLowerCase()} ${place}`;
+}
+
 /** True when the request is about a toy at all. */
 export function mentionsToy(request: string): boolean {
   const r = resolveToy(request, "all");

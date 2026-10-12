@@ -396,7 +396,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // every path renders the same request.
     // Which of her voices the app's own lines are said in (teasers.ts).
     const herVoice = { name: c.name, base_personality: c.base_personality, tone: p.tone };
-    const { request: mediaRequestText, followUp } = resolveMediaRequest(
+    let { request: mediaRequestText, followUp } = resolveMediaRequest(
       data.content,
       (history ?? []) as any[],
     );
@@ -448,6 +448,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         return { reply, needsToy: needed.id };
       }
       mediaToy = toy;
+      if (toy) {
+        const { withToyPlace } = await import("./toys");
+        const { anatomyOf } = await import("./anatomy");
+        mediaRequestText = withToyPlace(mediaRequestText, toy, anatomyOf(c.gender).hasVulva);
+      }
     }
 
     // "hurry up" while one is rendering is answered here, not by the model.

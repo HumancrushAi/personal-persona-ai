@@ -431,7 +431,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
       throw new Error("She's already taking one for you — hold on 📸");
     }
 
-    const userPrompt = data.prompt?.trim();
+    let userPrompt = data.prompt?.trim();
     // Safety gate on the image request (blocks minors / illegal even for photos).
     const screen = screenUserMessage(userPrompt ?? "");
     if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
@@ -447,6 +447,10 @@ export const generateSelfie = createServerFn({ method: "POST" })
     const { toyForRequest } = await import("./toys.server");
     const { data: au } = await supabase.auth.getUser();
     const { toy, needed } = await toyForRequest(supabase, userId, au?.user?.email, userPrompt ?? "");
+    if (toy && userPrompt) {
+      const { withToyPlace } = await import("./toys");
+      userPrompt = withToyPlace(userPrompt, toy, anatomyOf(c.gender).hasVulva);
+    }
     if (needed) {
       const { needsToyReply } = await import("./toys");
       const reply = needsToyReply(needed);
@@ -969,7 +973,21 @@ export async function comfyJobInput(
   // Three groups, three weights. One long weighted group drowned the act:
   // the first pod render had her nude and inked but waving instead of
   // rubbing. The act leads, strongest; the nude state next; her ink after.
-  const act = [opts.toyTags, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
+  // A toy's tags say what it is; where it is, and the pose that shows it,
+  // have to lead too, or the render holds it at her stomach or crops the
+  // insertion out of the frame (both seen on the pod).
+  const { propIsInserted, propIsOral } = await import("./props");
+  const analToy = /\b(?:ass|anus|butt|asshole|booty)\b/i.test(req) && !/\b(?:pussy|vagina|cunt)\b/i.test(req);
+  const toyPlaced = opts.toyTags
+    ? propIsInserted(req)
+      ? analToy
+        ? `${opts.toyTags} inserted in her ass, anal insertion, bent over, ass toward the camera, legs apart`
+        : `${opts.toyTags} inserted in her pussy, vaginal insertion, lying back with legs spread wide, knees up, framed from head to knees`
+      : propIsOral(req)
+        ? `${opts.toyTags} in her mouth, lips around it`
+        : opts.toyTags
+    : null;
+  const act = [toyPlaced, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
   const nude = nudeTags(req, Boolean(opts.hasPenis));
   const lead = [
     act ? `(${act}:1.35)` : "",
@@ -1225,7 +1243,7 @@ export const requestVideo = createServerFn({ method: "POST" })
       throw new Error("She's still filming the last one — give her a sec 🎬");
     }
 
-    const userPrompt = data.prompt?.trim();
+    let userPrompt = data.prompt?.trim();
     if (userPrompt) {
       const screen = screenUserMessage(userPrompt);
       if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
@@ -1245,6 +1263,10 @@ export const requestVideo = createServerFn({ method: "POST" })
     const { toyForRequest } = await import("./toys.server");
     const { data: au } = await supabase.auth.getUser();
     const { toy, needed } = await toyForRequest(supabase, userId, au?.user?.email, userPrompt ?? "");
+    if (toy && userPrompt) {
+      const { withToyPlace } = await import("./toys");
+      userPrompt = withToyPlace(userPrompt, toy, anatomyOf(c.gender).hasVulva);
+    }
     if (needed) {
       const { needsToyReply } = await import("./toys");
       const reply = needsToyReply(needed);

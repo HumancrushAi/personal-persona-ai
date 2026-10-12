@@ -636,3 +636,17 @@ describe("the face swap", () => {
     }
   });
 });
+
+describe("the insertion LoRA", () => {
+  it("sits between the checkpoint and everything that read it", async () => {
+    const { withLora, withFaceSwap, FACEID_WORKFLOW } = await import("../comfy");
+    const g = JSON.parse(withLora(withFaceSwap(FACEID_WORKFLOW), "InsertionPussyXL.safetensors", 0.8));
+    expect(g["40"].class_type).toBe("LoraLoader");
+    expect(g["40"].inputs.model).toEqual(["4", 0]);
+    expect(g["11"].inputs.model).toEqual(["40", 0]);
+    expect(g["6"].inputs.clip).toEqual(["40", 1]);
+    expect(g["7"].inputs.clip).toEqual(["40", 1]);
+    expect(g["14"].inputs.clip).toEqual(["40", 1]);
+    expect(g["8"].inputs.vae).toEqual(["4", 2]);
+  });
+});

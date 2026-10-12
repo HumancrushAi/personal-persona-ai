@@ -989,6 +989,7 @@ export async function comfyJobInput(
     : null;
   const act = [toyPlaced, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
   const nude = nudeTags(req, Boolean(opts.hasPenis));
+  let insertTrigger = "";
   const lead = [
     act ? `(${act}:1.35)` : "",
     nude ? `(${nude}:1.25)` : "",
@@ -996,12 +997,24 @@ export async function comfyJobInput(
   ].filter(Boolean);
   // "Sleeve" is a garment to the checkpoint: "tattoo sleeves" rendered white
   // knit sleeves on a nude body. Every mention is said as tattooed arms.
-  const finalPrompt = unsleeve(lead.length ? `${lead.join(", ")}, ${prompt}` : prompt);
+  let finalPrompt = unsleeve(lead.length ? `${lead.join(", ")}, ${prompt}` : prompt);
 
   {
-    const { withFaceSwap, faceSwapOn } = await import("./comfy");
+    const { withFaceSwap, faceSwapOn, withLora } = await import("./comfy");
     if (faceSwapOn() && wantsReference(template)) template = withFaceSwap(template);
+    // The insertion LoRA, for a toy inside her (COMFY_LORA_INSERT_PUSSY /
+    // _ASS name the files on the volume; unset, nothing changes).
+    const { propIsInserted } = await import("./props");
+    if (propIsInserted(req)) {
+      const anal = /\b(?:ass|anus|butt|asshole|booty)\b/i.test(req) && !/\b(?:pussy|vagina|cunt)\b/i.test(req);
+      const name = (anal ? process.env.COMFY_LORA_INSERT_ASS : process.env.COMFY_LORA_INSERT_PUSSY)?.trim();
+      if (name) {
+        template = withLora(template, name, Number(process.env.COMFY_LORA_INSERT_STRENGTH || "0.8"));
+        insertTrigger = anal ? "insertion ass" : "insertion pussy";
+      }
+    }
   }
+  if (insertTrigger) finalPrompt = `${insertTrigger}, ${finalPrompt}`;
   return comfyInput(
     {
       ...comfySettings(prompt, {

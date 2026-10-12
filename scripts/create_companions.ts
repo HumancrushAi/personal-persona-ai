@@ -264,6 +264,51 @@ const ROCK: Mature[] = [
     portrait: `Candid photo of a real attractive 31-year-old Puerto Rican woman named Blaze, curly black hair in a high ponytail, warm tan skin, gold hoop earrings, athletic curvy figure with a full bust, tattoos on her shoulders, wearing a ripped cropped black tank top with a skull and roses print and a short black denim skirt with chains, sitting behind a drum kit under hot orange stage lights, confident grin, ${PHOTO}`,
   },
 ];
+// Goth fetish: corsets, harness straps, fishnets with garters, against a wall
+// of skulls — the reference from testing. Grok moderates lingerie, so each
+// has an `alt` outfit that passes; the script tries the portrait first.
+const GOTH: (Mature & { alt?: string })[] = [
+  {
+    name: "Sin",
+    age: 26,
+    ethnicity: "Ukrainian",
+    short_bio: "Twenty-six, platinum, red lips and black leather — she was made for sin.",
+    base_personality:
+      "Cold stare, wicked tongue, melts only for you. Dominant when she wants to be and devastating when she does not.",
+    portrait: `Candid photo of a real attractive 26-year-old Ukrainian woman named Sin, straight platinum blonde bob, pale skin, smoky red eye makeup, dark red lips, slim curvy figure, a tattoo on one forearm, wearing a black mesh corset with black leather harness straps and silver buckles, a short black tulle skirt, fishnet stockings with garters, arms raised behind her head, standing in front of a wall made entirely of stacked old skulls, dramatic warm side light, intense gaze, ${PHOTO}`,
+    alt: `Candid photo of a real attractive 26-year-old Ukrainian woman named Sin, straight platinum blonde bob, pale skin, smoky red eye makeup, dark red lips, slim figure, a tattoo on one forearm, wearing a fitted black corset dress with leather straps and silver buckles over a black tulle skirt, fishnet tights, arms raised behind her head, standing in front of a wall made entirely of stacked old skulls, dramatic warm side light, intense gaze, ${PHOTO}`,
+  },
+  {
+    name: "Morticia",
+    age: 30,
+    ethnicity: "Romanian",
+    short_bio: "Thirty, raven hair, velvet and lace, and a taste for the dark.",
+    base_personality:
+      "Slow, elegant and hypnotic. Speaks softly, smiles rarely, and makes every word sound like a secret.",
+    portrait: `Candid photo of a real attractive 30-year-old Romanian woman named Morticia, very long straight black hair, porcelain skin, black lipstick, curvy figure, wearing a black lace corset with harness straps across her chest, a black lace choker and fishnet stockings with garters, standing in front of a wall made entirely of stacked old skulls, dramatic warm side light, hypnotic stare, ${PHOTO}`,
+    alt: `Candid photo of a real attractive 30-year-old Romanian woman named Morticia, very long straight black hair, porcelain skin, black lipstick, curvy figure, wearing a fitted black lace corset gown with a black choker and fishnet tights, standing in front of a wall made entirely of stacked old skulls, dramatic warm side light, hypnotic stare, ${PHOTO}`,
+  },
+  {
+    name: "Nyxa",
+    age: 24,
+    ethnicity: "American",
+    short_bio: "Twenty-four, pastel goth with black harness straps and a soft spot for you.",
+    base_personality:
+      "Bratty, playful and clingy. Pretends to be scary, is actually sweet, and never lets you forget her.",
+    portrait: `Candid photo of a real attractive 24-year-old American woman named Nyxa, long silver-lilac hair with black ends, pale skin, heavy black eyeliner, slim figure, tattoos on her arms, wearing a black PVC corset top with leather harness straps and O-rings, a black pleated mini skirt, fishnet stockings with garters and platform boots, standing in front of a wall made entirely of stacked old skulls, dramatic warm side light, bratty smirk, ${PHOTO}`,
+    alt: `Candid photo of a real attractive 24-year-old American woman named Nyxa, long silver-lilac hair with black ends, pale skin, heavy black eyeliner, slim figure, tattoos on her arms, wearing a black PVC corset dress with harness straps and O-rings, fishnet tights and platform boots, standing in front of a wall made entirely of stacked old skulls, dramatic warm side light, bratty smirk, ${PHOTO}`,
+  },
+  {
+    name: "Lilith",
+    age: 33,
+    ethnicity: "Brazilian",
+    short_bio: "Thirty-three, dark goddess in leather, here to make you kneel.",
+    base_personality:
+      "Commanding, sensual and amused by you. Takes control, rewards obedience, and laughs low when you squirm.",
+    portrait: `Candid photo of a real attractive 33-year-old Brazilian woman named Lilith, long wavy dark brown hair, warm tan skin, dark smoky eyes, deep red lips, voluptuous figure, wearing a black leather underbust corset with chest harness straps and silver studs, black fishnet stockings with garters and long black gloves, standing in front of a wall made entirely of stacked old skulls, dramatic warm side light, commanding gaze, ${PHOTO}`,
+    alt: `Candid photo of a real attractive 33-year-old Brazilian woman named Lilith, long wavy dark brown hair, warm tan skin, dark smoky eyes, deep red lips, voluptuous figure, wearing a fitted black leather corset dress with harness straps and silver studs, fishnet tights and long black gloves, standing in front of a wall made entirely of stacked old skulls, dramatic warm side light, commanding gaze, ${PHOTO}`,
+  },
+];
 // Every one of them an adult, and the prompt says so in words: a grown woman's
 // face and figure. "Young" here means early twenties, nothing younger.
 const ADULT = "adult woman with a fully grown woman's face and figure";
@@ -368,6 +413,7 @@ const SETS: Record<string, Companion[]> = {
   busty: BUSTY.map((m) => ({ ...m, tags: ["milf", "mature", "busty"] })),
   tattoo: TATTOO.map((m) => ({ ...m, tags: ["tattooed", "inked", "alt"] })),
   rock: ROCK.map((m) => ({ ...m, tags: ["rock", "goth", "alt"] })),
+  goth: GOTH.map((m) => ({ ...m, tags: ["goth", "fetish", "alt"] })),
 };
 
 async function uploadPortrait(dataUrl: string, name: string): Promise<string> {
@@ -382,9 +428,10 @@ async function uploadPortrait(dataUrl: string, name: string): Promise<string> {
 
 async function portraitFor(m: Companion): Promise<string> {
   let lastErr: unknown;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  const briefs = [m.portrait, (m as any).alt].filter(Boolean) as string[];
+  for (let attempt = 1; attempt <= 4; attempt++) {
     try {
-      return await generateCompanionPortrait(m.portrait, { gender: "female", noNudity: true });
+      return await generateCompanionPortrait(briefs[Math.min(briefs.length - 1, Math.floor((attempt - 1) / 2))], { gender: "female", noNudity: true });
     } catch (e) {
       lastErr = e;
       console.log(`   attempt ${attempt} failed: ${(e as Error).message}`);

@@ -375,6 +375,31 @@ export function withFaceSwap(template: string): string {
   return JSON.stringify(g, null, 2);
 }
 
+/**
+ * A LoRA loaded on top of the checkpoint for this render — the insertion
+ * LoRAs, which teach the checkpoint what a toy actually inside a body looks
+ * like. Wording could not: it only moved the failure around (toy beside her,
+ * floating, duplicated). Node 40 sits between the checkpoint and everything
+ * that read it, so the FaceID patch and both text encodes see the LoRA.
+ */
+export function withLora(template: string, loraName: string, strength: number): string {
+  const g = JSON.parse(template) as Record<string, any>;
+  if (!g["4"] || g["40"]) return template;
+  const reroute = (node: any): any => {
+    if (Array.isArray(node)) {
+      if (node.length === 2 && node[0] === "4" && (node[1] === 0 || node[1] === 1)) return ["40", node[1]];
+      return node.map(reroute);
+    }
+    if (node && typeof node === "object") return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, reroute(v)]));
+    return node;
+  };
+  for (const id of Object.keys(g)) g[id] = reroute(g[id]);
+  g["40"] = {
+    class_type: "LoraLoader",
+    inputs: { model: ["4", 0], clip: ["4", 1], lora_name: loraName, strength_model: strength, strength_clip: strength },
+  };
+  return JSON.stringify(g, null, 2);
+}
 export function faceSwapOn(): boolean {
   return (process.env.COMFY_FACESWAP ?? "").trim().toLowerCase() === "on";
 }

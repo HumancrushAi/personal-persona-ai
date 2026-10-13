@@ -1176,6 +1176,10 @@ export async function photoPromptWithAvoid(
     // Only when the photo is being cut out of a clip. A real image endpoint
     // renders a still by definition and does not need telling.
     still: provider === "wan",
+    // A posed/prop request may also need written appearance details, but it is
+    // still an edit of this companion's reference image. Keep the identity
+    // clause in that case instead of letting the action prompt replace it.
+    lockIdentity: referenceReachesRenderer,
     toy,
     setting,
   });
@@ -1549,6 +1553,11 @@ export async function startVideoJob(
           userReq,
           null,
           "comfy",
+          // The opening frame is the image the video actually animates. If the
+          // owned toy is omitted here, the video starts from a different scene
+          // than the request and the action/prop is lost during animation.
+          toy,
+          setting,
         );
         const stillInput = await comfyJobInput(
           stillPrompt,

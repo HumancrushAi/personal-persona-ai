@@ -127,10 +127,21 @@ const ANAL_TARGET_RE = /\b(?:ass|asshole|arse|anus|butt|booty|rear|cheeks|back\s
 // what the mouth is doing around it.
 const ORAL_RE =
   /\b(?:suck\w*|lick\w*|blow\w*|deep\s*throat\w*|gag\w*|mouth|tongue|lips|kiss\w*)\b/i;
+const LICK_RE = /\blick\w*\b/i;
 
 const oralClause = (a: Anatomy) => {
   const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
   return `The narrow rounded tip of the toy is inside ${a.poss} open mouth, ${a.poss} lips closed around the shaft just below the tip, ${a.poss} cheeks drawn in and ${a.poss} eyes raised to the lens. The toy points straight into ${a.poss} mouth with its wide flared base in ${a.poss} hand. Exactly one toy and exactly two hands; ${S} ${a.is} alone in the frame.`;
+};
+
+// Licking is a different action from sucking or blowing. The old shared oral
+// clause put the tip inside a closed mouth for every oral verb, so a request to
+// lick a glass dildo became a generic blowjob pose. Keep the toy outside the
+// mouth, show the tongue making the contact, and preserve a readable sensual
+// expression instead of inventing a second person or a second object.
+const lickClause = (a: Anatomy) => {
+  const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
+  return `The toy is held just in front of ${a.poss} parted lips, its smooth shaft angled toward ${a.poss} mouth while the tip of ${a.poss} tongue visibly traces along the shaft; ${a.poss} lips are parted in a slow sensual lick, eyes lifted toward the lens, and ${a.poss} wide flared base is held in one hand. Exactly one toy and exactly two hands; ${S} ${a.is} alone in the frame.`;
 };
 
 const INSERTED_RE =
@@ -189,7 +200,7 @@ export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | n
   const parts = inserted
     ? [anal ? analInsertedClause(a) : INSERTED_CLAUSE, prop.spec, TWO_HANDS]
     : oral
-      ? [oralClause(a), prop.spec]
+      ? [LICK_RE.test(text) ? lickClause(a) : oralClause(a), prop.spec]
       : [prop.spec];
   if (BIG_RE.test(text) && !toy) parts.push(BIG_CLAUSE);
   // A wand or a bullet has no flared base to close a hand around.

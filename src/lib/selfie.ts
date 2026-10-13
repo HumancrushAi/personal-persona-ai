@@ -1852,13 +1852,27 @@ export function finishMediaPrompt(
     setting?: Setting;
     /** This prompt is for a CLIP. Appends the motion tail, as still appends the still cue. */
     moving?: boolean;
+    /**
+     * Keep the reference identity clause even when the request also needs a
+     * written appearance description (posed/prop shots). Those are the shots
+     * where the renderer changes the most of the source frame, so dropping the
+     * identity reminder there causes the face to drift.
+     */
+    lockIdentity?: boolean;
   } = {},
 ): string {
   // Applied to the WHOLE prompt, not just the appended clause: the builders
   // compose the anatomy clause in themselves, and the refiner opens every
   // prompt with "exact same woman as the reference image". On a graph with no
   // reference, all of it points at nothing.
-  let out = withoutDeadReference((base ?? "").trim(), opts.appendAppearance);
+  // appendAppearance means "describe what the reference does not carry". It
+  // does not mean the reference has stopped being the subject. Keep the
+  // reference language whenever the caller explicitly asks for identity lock;
+  // only pure text-to-image callers should have it stripped.
+  let out = withoutDeadReference(
+    (base ?? "").trim(),
+    Boolean(opts.appendAppearance) && opts.lockIdentity !== true,
+  );
   const request = (req ?? "").trim();
   const a = opts.anatomy ?? anatomyOf("female");
 
@@ -2079,7 +2093,7 @@ export function finishMediaPrompt(
   // IDENTITY_LOCK would fight a described build. On img2img/FaceID, this line is
   // what keeps Aria in chat the same person as Aria on the site.
   const lockIdentity =
-    !opts.appendAppearance &&
+    (opts.lockIdentity === true || !opts.appendAppearance) &&
     !/CRITICAL identity lock|same person as the reference photo/i.test(body);
   // Both are appended after the cut, so their words are reserved before it;
   // otherwise they pushed a capped prompt 57 words past the budget.

@@ -66,14 +66,14 @@ export async function storeRoomPhoto(userId: string, conversationId: string, byt
 /** The room in words, from the photo. "" when the model could not say. */
 export async function describeRoom(url: string): Promise<string> {
   const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return "";
-  try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const xaiKey = process.env.XAI_API_KEY;
+  const request = async (endpoint: string, authorization: string, model: string) => {
+    const res = await fetch(endpoint, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: authorization, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(25_000),
       body: JSON.stringify({
-        model: process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct",
+        model,
         temperature: 0,
         max_tokens: 120,
         messages: [
@@ -93,6 +93,31 @@ export async function describeRoom(url: string): Promise<string> {
     if (!res.ok) return "";
     const json = await res.json();
     return tidyRoom(json.choices?.[0]?.message?.content);
+  };
+
+  try {
+    // Prefer the existing OpenRouter vision configuration when present.
+    if (key) {
+      const described = await request(
+        "https://openrouter.ai/api/v1/chat/completions",
+        `Bearer ${key}`,
+        process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct",
+      );
+      if (described) return described;
+    }
+
+    // This deployment uses xAI for prompt/image generation and does not carry
+    // an OpenRouter key. xAI's chat-completions endpoint accepts the same
+    // image_url content shape, so room uploads still work without a second
+    // provider being configured.
+    if (xaiKey) {
+      return await request(
+        "https://api.x.ai/v1/chat/completions",
+        `Bearer ${xaiKey}`,
+        process.env.XAI_VISION_MODEL || "grok-4.7",
+      );
+    }
+    return "";
   } catch {
     return "";
   }

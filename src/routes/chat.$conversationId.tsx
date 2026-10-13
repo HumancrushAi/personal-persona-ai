@@ -470,7 +470,10 @@ function ChatPage() {
         }
         if (res?.status === "failed") {
           qc.invalidateQueries({ queryKey: ["pending-jobs", conversationId] });
-          throw new Error("Generation failed");
+          // Keep the provider's useful failure reason when one exists. The
+          // old generic message made a worker/configuration problem look like
+          // a random app failure and gave the user no actionable clue.
+          throw new Error(String(res.error || "Generation failed").slice(0, 240));
         }
         // A slow start, said once and in her terms — never the infrastructure.
         if (res?.queued && (res?.waitedMs ?? 0) > 90_000 && !saidQueued) {

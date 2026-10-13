@@ -1657,7 +1657,7 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     const { data: job } = await supabase
       .from("media_jobs")
       .select(
-        "id, user_id, conversation_id, kind, cost, status, provider, replicate_id, media_url, created_at",
+        "id, user_id, conversation_id, kind, cost, status, provider, replicate_id, media_url, error, created_at",
       )
       .eq("id", data.jobId)
       .eq("user_id", userId)
@@ -1666,7 +1666,8 @@ export const checkMediaJob = createServerFn({ method: "POST" })
 
     if (job.status === "completed")
       return { status: "completed", mediaUrl: (job as any).media_url };
-    if (job.status === "failed") return { status: "failed" };
+    if (job.status === "failed")
+      return { status: "failed", error: (job as any).error ?? "Generation failed" };
     const { completeMediaJob: complete, failMediaJob: fail } =
       await import("./media-finalize.server");
 

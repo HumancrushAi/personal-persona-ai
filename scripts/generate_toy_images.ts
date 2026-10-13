@@ -35,8 +35,8 @@ const STYLE =
 
 const PROMPTS: Record<string, [string, string]> = {
   "dildo-realistic": [
-    `A realistic flesh-toned silicone dildo with a suction cup base, standing upright, ${STYLE}`,
-    `A smooth flesh-toned silicone massager with a rounded tip and a round suction base, standing upright, ${STYLE}`,
+    `A realistic flesh-toned silicone dildo shaped like a real erect penis, with a defined rounded glans, subtle veins, a pair of clearly visible testicle-shaped balls beneath the shaft, and a flat suction cup base, standing upright, ${STYLE}`,
+    `A realistic flesh-toned silicone dildo with a rounded head, subtle shaft veins, two distinct attached balls beneath the shaft, and a round suction base, standing upright, ${STYLE}`,
   ],
   "dildo-black": [
     `A large thick matte black silicone dildo with a wide flared base, standing upright, ${STYLE}`,

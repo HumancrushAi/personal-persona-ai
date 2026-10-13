@@ -57,7 +57,7 @@ const SIZE_HAND = "about as long as her hand from wrist to fingertip";
 export const TOYS: Toy[] = [
   {
     id: "dildo-realistic",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-realistic.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-realistic.png?v=20261014",
     tags: "realistic flesh-toned dildo, defined glans, veined shaft, two attached testicle-shaped balls, suction cup base",
     name: "Realistic Dildo",
     emoji: "🍆",

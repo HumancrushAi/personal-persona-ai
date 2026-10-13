@@ -13,7 +13,8 @@ describe("propClause", () => {
   it("gives the toy a material, a colour and a body-relative size", () => {
     const c = propClause("stick a dildo in your pussy");
     expect(c).toContain("silicone");
-    expect(c).toContain("solid colour");
+    expect(c).toContain("flesh-toned");
+    expect(c).toContain("two attached rounded testicle-shaped balls");
     expect(c).toContain("as long as her hand");
     expect(c).toContain("two fingers thick");
   });

@@ -66,7 +66,8 @@ describe("the toy she owns is the toy in the prompt", () => {
     expect(c).not.toMatch(/purple or pink/);
     expect(c).toMatch(/tip is deep inside her pussy/);
     const generic = propClause("stick a dildo in your pussy", { anatomy: f });
-    expect(generic).toMatch(/purple or pink/);
+    expect(generic).toMatch(/realistic flesh-toned silicone/);
+    expect(generic).toMatch(/two attached rounded testicle-shaped balls/);
   });
 
   it("describes a worn toy with where it is on her, and on him", () => {

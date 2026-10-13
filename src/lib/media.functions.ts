@@ -1570,7 +1570,13 @@ export async function startVideoJob(
           startImage,
           userReq,
           `video-${job.id}`,
-          { hasPenis: anatomyOf(companion.gender).hasPenis },
+          {
+            hasPenis: anatomyOf(companion.gender).hasPenis,
+            // The opening still is the frame the video actually animates.
+            // Keep the owned chest toy in this path too; otherwise the video
+            // silently falls back to the checkpoint's generic prop.
+            toyTags: toy?.tags ?? null,
+          },
         );
         const { result: still, endpoint: stillSentTo } = await submitImage(supabaseAdmin, comfyEndpoint, stillInput);
         await supabaseAdmin

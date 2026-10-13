@@ -61,7 +61,7 @@ const PROPS: Prop[] = [
     match: kw(
       String.raw`dildos?|sex\s*toys?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo`,
     ),
-    spec: "The dildo is a separate solid object of smooth matte purple or pink silicone. Two clearly different ends: (1) a firm narrow rounded tip — this is the insertable end; (2) a wide flat flared base / suction-cup end — this is the handle end. Real toy scale — about as long as her hand from wrist to fingertip, roughly two fingers thick. Clean hard edges, sharp focus, distinct from skin.",
+    spec: "The dildo is a separate solid object of realistic flesh-toned silicone shaped like an erect penis, with a defined rounded glans, a subtly veined shaft, and two attached rounded testicle-shaped balls beneath the shaft. Two clearly different ends: (1) the firm narrow rounded tip / glans is the insertable end; (2) the wide flat flared base / suction-cup end is the handle end. Real toy scale — about as long as her hand from wrist to fingertip, roughly two fingers thick. Clean hard edges, sharp focus, distinct from skin.",
   },
 ];
 

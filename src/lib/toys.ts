@@ -58,14 +58,14 @@ export const TOYS: Toy[] = [
   {
     id: "dildo-realistic",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-realistic.png",
-    tags: "realistic flesh-toned dildo with balls and suction cup base",
+    tags: "realistic flesh-toned dildo, defined glans, veined shaft, two attached testicle-shaped balls, suction cup base",
     name: "Realistic Dildo",
     emoji: "🍆",
     blurb: "Seven inches, flesh-toned, veined, with balls and a suction base.",
     price: 300,
     kind: "dildo",
     match: /\b(?:realistic|real(?:istic)?[- ]?looking|flesh(?:[- ]?tone[d]?|[- ]?colou?red)?|skin[- ]?tone[d]?|veiny|veined|suction)\s+(?:cup\s+)?(?:dildo|cock|dick|toy)\b|\bdildo with balls\b/i,
-    spec: `The dildo is a separate solid object of realistic flesh-toned silicone shaped like an erect penis: a defined rounded head, a veined shaft, a pair of balls at the bottom and a flat suction-cup base below them. Real toy scale — ${SIZE_HAND}, roughly two fingers thick. Clean hard edges, sharp focus, distinct from skin.`,
+    spec: `The dildo is one separate, solid, realistic flesh-toned silicone product shaped like an erect penis: a defined rounded glans, subtle natural veins on the shaft, TWO DISTINCT ATTACHED ROUNDED TESTICLE-SHAPED BALLS directly beneath the shaft (one left and one right, each clearly visible and separated from the other), and a flat suction-cup base beneath the balls. The glans, shaft, two balls, and base are all visible as one coherent manufactured toy. Real toy scale — ${SIZE_HAND}, roughly two fingers thick. Clean hard edges, sharp focus, distinct from skin.`,
     negative: "purple dildo, pink dildo, blue dildo, glass dildo, transparent dildo, tiny dildo, cartoon dildo",
   },
   {

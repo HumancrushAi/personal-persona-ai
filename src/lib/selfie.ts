@@ -1383,7 +1383,7 @@ function fallbackAct(req: string, a: Anatomy, moving: boolean): string {
 }
 
 const QUALITY =
-  "Candid photograph on a phone, amateur and unretouched, natural available light, true-to-life colour, natural healthy skin with fine pores and fine texture, matte natural finish, light natural makeup, slight film grain, soft natural shadows. Looks like a real photo taken on a real phone.";
+  "Clear high-resolution candid photograph on a phone, unretouched, natural available light, true-to-life colour, natural healthy skin with fine pores and fine texture, matte natural finish, light natural makeup, clean sharp detail, soft natural shadows. Looks like a real photo taken on a modern phone.";
 
 /**
  * The same photograph, for a renderer that draws a still directly.
@@ -1638,7 +1638,7 @@ export function kontextSelfiePrompt(
 // "Fresh youthful… clear skin… bright eyes" was asking for the glossy, lit
 // face that came back. Real skin: pores, a little unevenness, no shine.
 const FACE_CLAUSE =
-  "Fresh youthful adult face, clear skin with fine pores, matte finish, soft natural eyebrows, soft full lips, bright eyes.";
+  "Natural unretouched facial skin texture with visible fine pores.";
 const FACE_WORDS = FACE_CLAUSE.split(/\s+/).length;
 
 /**
@@ -1670,7 +1670,7 @@ export function settingSentenceFor(setting: Setting): string {
 export const PROMPT_WORD_BUDGET = 340;
 
 const REALISM_TAIL =
-  "Candid raw photograph on a real camera, amateur and unretouched, natural healthy skin with fine pores and fine texture, matte natural finish, slight film grain.";
+  "Clear high-resolution candid photograph on a real camera, unretouched, natural healthy skin with fine pores and fine texture, matte natural finish, clean sharp detail.";
 
 const STILL_CUE = "The pose is held completely still and the camera is locked off.";
 const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;
@@ -1875,6 +1875,23 @@ export function finishMediaPrompt(
   );
   const request = (req ?? "").trim();
   const a = opts.anatomy ?? anatomyOf("female");
+  const ownsInk = /\b(?:tattoo\w*|inked|body art)\b/i.test(opts.appearance?.look ?? "");
+  if (!ownsInk) {
+    // Refiners occasionally invent "her existing tattoos" even when the
+    // portrait description explicitly has none. Remove each comma-delimited
+    // tattoo fragment before it reaches the positive diffusion prompt.
+    out = out
+      .split(/(,|\.)\s*/)
+      .reduce<string[]>((parts, part, index, all) => {
+        if (part === "," || part === ".") return parts;
+        if (/\b(?:tattoo\w*|inked|dark ink|body art)\b/i.test(part)) return parts;
+        const separator = index > 0 ? all[index - 1] : "";
+        parts.push(`${separator && parts.length ? separator + " " : ""}${part.trim()}`);
+        return parts;
+      }, [])
+      .join("")
+      .trim();
+  }
 
   // The anatomy clause, guaranteed.
   //
@@ -2103,8 +2120,11 @@ export function finishMediaPrompt(
   // Put an unambiguous requested rear camera/pose first, where CLIP gives it
   // more weight than any generic front-facing composition in a refined prompt.
   const rearView = requestSetsViewpoint(request);
+  const rearGroin = rearView && mentionsPart(request, "ass") && mentionsPart(request, "vulva");
   const rearClause = rearView
-    ? "Rear-view photograph from behind, her back and hips toward the camera, bent forward with legs apart, head turned over her shoulder so her face remains visible."
+    ? rearGroin
+      ? "Low rear-view photograph from directly behind, kneeling on all fours with knees wide apart, back and hips toward the camera, buttocks above and vulva clearly visible between her open thighs beneath them, head turned over her shoulder."
+      : "Rear-view photograph from behind, her back and hips toward the camera, bent forward with legs apart, head turned over her shoulder so her face remains visible."
     : "";
   const tailWords =
     (wantSetting ? settingText.split(/\s+/).length : 0) +

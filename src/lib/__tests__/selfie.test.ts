@@ -371,8 +371,19 @@ describe("identity lock", () => {
       "send me a nude picture of your ass facing me and your pussy showing",
       { appearance: { age: 33 } },
     );
-    expect(p).toMatch(/^Rear-view photograph from behind/);
+    expect(p).toMatch(/^Low rear-view photograph from directly behind/);
     expect(p).toContain("back and hips toward the camera");
+    expect(p).toContain("vulva clearly visible between her open thighs");
+  });
+
+  it("removes invented tattoos from a companion who has none", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const p = finishMediaPrompt(
+      "Same woman, completely nude, her existing tattoos visible across her lower back, kneeling on a couch.",
+      "send me a nude",
+      { appearance: { age: 33, look: "chest-length brown hair, hazel eyes, tan skin" } },
+    );
+    expect(p).not.toMatch(/tattoo|existing ink/i);
   });
 
   it("uses no negation the renderer would draw", async () => {

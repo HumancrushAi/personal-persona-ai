@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 
 // "look2": the phrase grew bust size and tattoos, and the cached "look:" phrases have neither.
 // Invalidate descriptions made by the old ambiguous hair-length prompt.
-const KEY_PREFIX = "look3:";
+const KEY_PREFIX = "look4:";
 const MAX_WORDS = 34;
 
 export function lookCacheKey(imageUrl: string): string {
@@ -139,7 +139,7 @@ async function describePortrait(url: string): Promise<string> {
             content: [
               {
                 type: "text",
-                text: "Describe this person's looks for a portrait artist in one comma-separated phrase of at most 28 words. State exact hair color, texture and part, and measure its visible length as chin-length, shoulder-length, chest-length, waist-length, or longer. Then state eye color, skin tone, body build, bust size, and visible tattoos with locations. Describe actual features, not clothing. Only the phrase, no sentence, no names.",
+                text: "Describe this person's looks for a portrait artist in one comma-separated phrase of at most 28 words. State exact hair color, texture and part, and measure its visible length as chin-length, shoulder-length, chest-length, waist-length, or longer. Then state eye color, skin tone, body build and bust size. Mention tattoos with locations only when clearly visible; if none are visible, omit tattoos entirely. Describe actual features, not clothing. Only the phrase, no sentence, no names.",
               },
               { type: "image_url", image_url: { url } },
             ],
@@ -163,6 +163,13 @@ export function tidyLook(raw: string | null | undefined): string {
     .trim();
   if (!s || /\b(sorry|cannot|can't|unable|as an ai)\b/i.test(s)) return "";
   s = s.toLowerCase().replace(/\s+/g, " ");
+  // A positive diffusion prompt cannot understand "no tattoos"; it sees the
+  // noun and draws one. Absence belongs in the negative prompt instead.
+  s = s
+    .replace(/(?:^|,\s*)no visible tattoos?(?=,|$)/gi, "")
+    .replace(/(?:^|,\s*)no tattoos?(?=,|$)/gi, "")
+    .replace(/^,\s*|,\s*$/g, "")
+    .replace(/,\s*,/g, ",");
   const words = s.split(" ");
   if (words.length > MAX_WORDS) s = words.slice(0, MAX_WORDS).join(" ");
   return s.replace(/,\s*$/, "");

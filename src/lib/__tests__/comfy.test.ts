@@ -684,7 +684,9 @@ describe("the face swap", () => {
     const { comfySettings, IMG2IMG_WORKFLOW } = await import("../comfy");
     const prev = process.env.COMFY_FACESWAP;
     process.env.COMFY_FACESWAP = "on";
-    expect(comfySettings("p", { template: IMG2IMG_WORKFLOW, promptSetsComposition: true }).denoise).toBe(0.92);
+    const posed = comfySettings("p", { template: IMG2IMG_WORKFLOW, promptSetsComposition: true });
+    expect(posed.denoise).toBe(0.92);
+    expect(posed.ipaWeight).toBe(0.55);
     expect(comfySettings("p", { template: IMG2IMG_WORKFLOW, mouthAct: true }).denoise).toBe(0.9);
     if (prev === undefined) delete process.env.COMFY_FACESWAP;
     else process.env.COMFY_FACESWAP = prev;

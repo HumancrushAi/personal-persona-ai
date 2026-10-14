@@ -21,6 +21,7 @@ import {
   stillImagePrompt,
   requestIsNude,
   requestKeepsGarment,
+  requestSetsViewpoint,
   checkCrossGenderRequest,
   finishMediaPrompt,
   isClimaxAct,
@@ -78,7 +79,7 @@ import {
 // head and face out of the picture. That is the headless torso a user was
 // actually sent. Framing is stated positively now (framingFor in selfie.ts).
 const QUALITY_NEGATIVE =
-  "blurry, low quality, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, magazine photoshoot, supermodel, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, third hand, extra hand, disembodied hand, floating hand, three arms, two people, second person, extra person, crowd, group of people, bystander, someone else's hand, someone else's arm, melting object, deformed object, object merging into hand, morphing, flickering";
+  "blurry, low quality, grain, film grain, digital noise, chromatic noise, compression artifacts, jpeg artifacts, soft focus, motion blur, out of focus, deformed, mutated, malformed, fused, warped anatomy, bad anatomy, extra limbs, extra arms, floating limbs, watermark, text, watermark text overlay, inconsistent characters, cartoon, anime, illustration, painting, drawing, 3d render, cgi, video game, plastic skin, waxy skin, magazine photoshoot, supermodel, oily skin, greasy skin, shiny skin, silicone skin, airbrushed, oversmoothed, doll face, mannequin, uncanny valley, lifeless eyes, oversaturated, overexposed, oversharpened, hdr, heavy makeup, instagram filter, beauty filter, beauty lighting, ring light, even lighting, flat lighting, CGI lighting, studio lighting, distorted hands, extra fingers, fused fingers, mutated hands, third hand, extra hand, disembodied hand, floating hand, three arms, two people, second person, extra person, crowd, group of people, bystander, someone else's hand, someone else's arm, melting object, deformed object, object merging into hand, morphing, flickering";
 
 // Motion terms. These stop the endpoint returning a near-still clip, and they
 // belong ONLY on a video.
@@ -309,6 +310,10 @@ export function negativeFor(
   const have = new Set(base.toLowerCase().split(/\s*,\s*/));
   if (opts.tattooed && isNude)
     base = `${base}, sleeves, long sleeves, shirt, cardigan, sweater, arm warmers, gloves, holding a flower, real flower, bouquet`;
+  if (!opts.tattooed) base = `${base}, tattoo, tattoos, body art, inked skin, tattooed arms, tattooed legs`;
+  if (requestSetsViewpoint(req)) {
+    base = `${base}, front view, side view, high camera angle, legs together, crossed legs, closed thighs, butt-only framing`;
+  }
   base = `${base}, logo, signature, artist name, corner text, watermark logo`;
   // The refiner names "tattoos" as a thing to avoid on a plain request; on an
   // inked companion that would push her own sleeves off her arms.

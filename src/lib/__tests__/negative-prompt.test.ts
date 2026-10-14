@@ -310,6 +310,12 @@ describe("age", () => {
     expect(negativeFor("", "female", { moving: false })).toMatch(/\bchild/);
   });
 
+  it("suppresses invented tattoos only for companions without ink", async () => {
+    const { negativeFor } = await import("../media.functions");
+    expect(negativeFor("send me a nude", "female", { tattooed: false })).toMatch(/tattooed arms/);
+    expect(negativeFor("send me a nude", "female", { tattooed: true })).not.toMatch(/tattooed arms/);
+  });
+
   // The rule this file turns on, and the reason the first draft of the
   // breast-specific list was wrong: a negative pushes on the TOKENS it
   // contains, so naming `chest` or `breast` here pushes against the anatomy her

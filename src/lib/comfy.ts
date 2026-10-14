@@ -833,7 +833,10 @@ export function comfySettings(
     height: memorySafe
       ? numberSetting("COMFY_MEMORY_HEIGHT", 960)
       : numberSetting("COMFY_HEIGHT", 1024),
-    sampler: process.env.COMFY_SAMPLER || "dpmpp_2m_sde",
+    // The SDE variant deliberately leaves stochastic texture behind. On skin
+    // that reads as coarse grain/noise, especially after a face swap. The
+    // deterministic 2M sampler is cleaner at the same resolution and steps.
+    sampler: process.env.COMFY_SAMPLER || "dpmpp_2m",
     scheduler: process.env.COMFY_SCHEDULER || "karras",
     checkpoint: process.env.COMFY_CHECKPOINT || "",
     // 1 means "ignore the starting latent entirely", which is correct for a
@@ -913,7 +916,12 @@ export function comfySettings(
     // the full 0.9 / 1.2 on the face crop, which is where likeness is decided.
     ipaWeight: opts.mouthAct
       ? numberSetting("COMFY_IPA_WEIGHT_MOUTH", 0.5)
-      : numberSetting("COMFY_IPA_WEIGHT", 0.9),
+      : faceSwapOn() && opts.promptSetsComposition
+        // Let a hard pose control the body and camera. The final face swap
+        // restores identity after sampling; a heavy whole-image FaceID lock
+        // otherwise pulls every rear request back into a face-first portrait.
+        ? numberSetting("COMFY_IPA_WEIGHT_POSED", 0.55)
+        : numberSetting("COMFY_IPA_WEIGHT", 0.9),
     // The pose guide's model and grip (FACEID_POSE_WORKFLOW). 0.75 for the
     // first 80% of the steps: the skeleton decides where the head and hands
     // are, the checkpoint finishes the picture on its own.

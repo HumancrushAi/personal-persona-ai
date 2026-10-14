@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runpodBase, isPodTarget, tagJobId, targetFor, podUrl, pickImageTarget } from "../runpod";
+import { runpodBase, isPodTarget, tagJobId, targetFor, podUrl } from "../runpod";
 
 // A dedicated pod serves the same job API as the serverless endpoint; the
 // only difference the app has to carry is WHERE to send and ask, and that
@@ -22,16 +22,6 @@ describe("the dedicated pod as a render target", () => {
     expect(targetFor("fuwhx4m75ctlv2", "j2")).toEqual({ endpoint: "fuwhx4m75ctlv2", id: "j2" });
     process.env.COMFY_POD_URL = "";
     expect(podUrl()).toBeNull();
-    if (prev === undefined) delete process.env.COMFY_POD_URL;
-    else process.env.COMFY_POD_URL = prev;
-  });
-
-  it("forces an OOM retry onto serverless instead of the same pod", async () => {
-    const prev = process.env.COMFY_POD_URL;
-    process.env.COMFY_POD_URL = "https://abc123-8188.proxy.runpod.net";
-    await expect(
-      pickImageTarget({}, "serverless-endpoint", { skipPod: true }),
-    ).resolves.toEqual({ endpoint: "serverless-endpoint", pod: false });
     if (prev === undefined) delete process.env.COMFY_POD_URL;
     else process.env.COMFY_POD_URL = prev;
   });

@@ -66,18 +66,20 @@ describe("enhanceStill", () => {
       .png()
       .toBuffer();
 
-  it("brings a 640 render up to something worth looking at", async () => {
+  it("cleanly enlarges only a legacy 640 render", async () => {
     const out = await enhanceStill(await square(640));
     const meta = await sharp(out.buf).metadata();
-    expect(meta.width).toBe(1280);
-    expect(out.ext).toBe("jpg");
-    expect(out.mime).toBe("image/jpeg");
+    expect(meta.width).toBe(1152);
+    expect(out.ext).toBe("png");
+    expect(out.mime).toBe("image/png");
   });
 
   it("leaves a render that is already big alone", async () => {
-    const out = await enhanceStill(await square(1700));
+    const original = await square(1700);
+    const out = await enhanceStill(original);
     const meta = await sharp(out.buf).metadata();
     expect(meta.width).toBe(1700);
+    expect(out.buf).toBe(original);
   });
 
   it("never enlarges past 2x, where it would be inventing pixels", async () => {

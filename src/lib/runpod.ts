@@ -83,7 +83,12 @@ export async function podHealthy(): Promise<boolean> {
 export async function pickImageTarget(
   supabaseAdmin: any,
   serverlessEndpoint: string | null,
+  opts: { skipPod?: boolean } = {},
 ): Promise<{ endpoint: string | null; pod: boolean }> {
+  // A retry after a dedicated-pod OOM must not be sent back to the same GPU.
+  // The pod can recover its caches in the background while this request uses
+  // the independently managed serverless worker.
+  if (opts.skipPod) return { endpoint: serverlessEndpoint, pod: false };
   const base = podUrl();
   if (!base || !(await podHealthy())) return { endpoint: serverlessEndpoint, pod: false };
   const room = Number(process.env.COMFY_POD_CONCURRENCY || "2");

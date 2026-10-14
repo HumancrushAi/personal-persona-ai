@@ -79,6 +79,29 @@ async function historyEntry(b: string, id: string): Promise<any | null> {
   return (await hist.json())?.[id] ?? null;
 }
 
+const GPU_MEMORY_ERROR = /out of memory|allocation on device|vram grow failed|cuda/i;
+
+/**
+ * ComfyUI caches checkpoints, VAEs and auxiliary models between prompts. After
+ * CUDA reports an OOM those cached allocations can leave the pod with only a
+ * few MiB free, so every smaller retry fails too. `/free` is ComfyUI's native
+ * cache eviction endpoint. Await it before reporting the failure so a later
+ * request can use the pod again instead of inheriting the poisoned process.
+ */
+async function releasePodMemory(b: string): Promise<void> {
+  try {
+    await fetch(`${b}/free`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ unload_models: true, free_memory: true }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    // Recovery is best effort. The caller still returns the original render
+    // error, which makes the application retry on the serverless worker.
+  }
+}
+
 export async function podStatus(
   url: string,
   id: string,
@@ -101,9 +124,13 @@ export async function podStatus(
   const state = entry.status?.status_str;
   if (state === "error") {
     const err = (entry.status?.messages ?? []).find((m: any) => m?.[0] === "execution_error")?.[1];
+    const message = err
+      ? `${err.node_type ?? "node"}: ${err.exception_message ?? "failed"}`
+      : "ComfyUI reported an error";
+    if (GPU_MEMORY_ERROR.test(message)) await releasePodMemory(b);
     return {
       status: "FAILED",
-      error: err ? `${err.node_type ?? "node"}: ${err.exception_message ?? "failed"}` : "ComfyUI reported an error",
+      error: message,
     };
   }
   // The SaveImage outputs, read back as base64 — the worker's own output shape.

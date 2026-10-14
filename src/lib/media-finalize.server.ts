@@ -828,7 +828,12 @@ export async function requeueIfStuck(
 async function resubmitImageJob(
   ctx: JobContext,
   seedSalt: string,
-  opts: { noPose?: boolean; graph?: "faceid-lite" | "img2img"; memorySafe?: boolean } = {},
+  opts: {
+    noPose?: boolean;
+    graph?: "faceid-lite" | "img2img";
+    memorySafe?: boolean;
+    skipPod?: boolean;
+  } = {},
 ): Promise<string> {
   const { anatomyOf } = await import("./anatomy");
   const { comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
@@ -858,7 +863,7 @@ async function resubmitImageJob(
       startFromPortrait: (await import("./compose.server")).composeMode() === "portrait",
     },
   );
-  const target = await pickImageTarget(supabaseAdmin, endpoint);
+  const target = await pickImageTarget(supabaseAdmin, endpoint, { skipPod: opts.skipPod });
   let sentTo = endpoint;
   let id: string;
   try {
@@ -1057,6 +1062,10 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
       noPose: poseMissing,
       graph: memorySafeGraph,
       memorySafe: !poseMissing,
+      // A pod-prefixed id proves this OOM came from the dedicated GPU. Its
+      // retry must use serverless, otherwise podHealthy() sees a responsive
+      // HTTP server and immediately sends the job back to exhausted VRAM.
+      skipPod: Boolean(failedRunpodId?.startsWith("pod:")),
     });
     console.warn(`media job ${job.id} resubmitted as ${id} after worker error: ${errorMsg.slice(0, 120)}`);
     return true;

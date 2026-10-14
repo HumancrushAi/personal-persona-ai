@@ -369,9 +369,21 @@ export const FACEID_I2I_WORKFLOW = (() => {
  */
 export function withFaceSwap(template: string): string {
   const g = JSON.parse(template) as Record<string, any>;
-  if (!g["14"] || !g["10"] || g["30"]) return template;
-  g["30"] = { class_type: "HCFaceSwap", inputs: { image: g["14"].inputs.image, source: ["10", 0] } };
-  g["14"].inputs.image = ["30", 0];
+  if (g["30"] || !g["9"]?.inputs?.images) return template;
+  // The low-memory core img2img graph has no FaceID nodes, but it still has
+  // node 10 (the companion portrait) and node 9 (the final SaveImage). Swap
+  // immediately before SaveImage so likeness is restored without loading the
+  // IPAdapter stack that exhausted the pod's VRAM.
+  if (!g["10"]) {
+    g["10"] = { class_type: "LoadImage", inputs: { image: "{{REFERENCE_IMAGE}}", upload: "image" } };
+  }
+  if (g["14"]?.inputs?.image) {
+    g["30"] = { class_type: "HCFaceSwap", inputs: { image: g["14"].inputs.image, source: ["10", 0] } };
+    g["14"].inputs.image = ["30", 0];
+  } else {
+    g["30"] = { class_type: "HCFaceSwap", inputs: { image: g["9"].inputs.images, source: ["10", 0] } };
+    g["9"].inputs.images = ["30", 0];
+  }
   return JSON.stringify(g, null, 2);
 }
 
@@ -859,6 +871,17 @@ export function comfySettings(
     // Never 0.90+ — that wiped site identity in chat.
     denoise: (() => {
       if (!usesStartLatent(opts.template)) return 1;
+      // With the lightweight post-render face swap, the sampler can obey the
+      // requested nudity, pose and mouth action without sacrificing identity:
+      // the swap restores her face after sampling. These dedicated settings
+      // deliberately ignore the older lower denoise env vars, which preserved
+      // Vanessa's dress and portrait pose instead of the user's request.
+      if (faceSwapOn()) {
+        if (opts.mouthAct) return numberSetting("COMFY_DENOISE_SWAP_MOUTH", 0.9);
+        if (opts.promptSetsComposition) return numberSetting("COMFY_DENOISE_SWAP_POSED", 0.92);
+        if (opts.needsUndress) return numberSetting("COMFY_DENOISE_SWAP_NUDE", 0.88);
+        return numberSetting("COMFY_DENOISE_SWAP", 0.68);
+      }
       // A composed frame (compose.server.ts) has the pose, the room and the
       // light in place. It does NOT reliably have her face — grok-imagine
       // follows a reference loosely — and at 0.62 it kept its clothes and its

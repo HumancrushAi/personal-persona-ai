@@ -364,6 +364,17 @@ describe("identity lock", () => {
     expect(p.split(/\s+/).length).toBeLessThanOrEqual(PROMPT_WORD_BUDGET);
   });
 
+  it("puts an explicit requested rear viewpoint first", async () => {
+    const { finishMediaPrompt } = await import("../selfie");
+    const p = finishMediaPrompt(
+      "Photograph of a woman seated facing the camera in a bedroom.",
+      "send me a nude picture of your ass facing me and your pussy showing",
+      { appearance: { age: 33 } },
+    );
+    expect(p).toMatch(/^Rear-view photograph from behind/);
+    expect(p).toContain("back and hips toward the camera");
+  });
+
   it("uses no negation the renderer would draw", async () => {
     const { NUDE_FORCE, IDENTITY_LOCK } = await import("../selfie");
     for (const s of [NUDE_FORCE, IDENTITY_LOCK]) {

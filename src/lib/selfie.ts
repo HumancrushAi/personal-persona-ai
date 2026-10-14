@@ -2100,14 +2100,22 @@ export function finishMediaPrompt(
   const nudeForce = nudeForceFor(opts.anatomy);
   const settingText = settingSentenceFor(opts.setting);
   const wantSetting = Boolean(settingText) && !out.includes(settingText);
+  // Put an unambiguous requested rear camera/pose first, where CLIP gives it
+  // more weight than any generic front-facing composition in a refined prompt.
+  const rearView = requestSetsViewpoint(request);
+  const rearClause = rearView
+    ? "Rear-view photograph from behind, her back and hips toward the camera, bent forward with legs apart, head turned over her shoulder so her face remains visible."
+    : "";
   const tailWords =
     (wantSetting ? settingText.split(/\s+/).length : 0) +
     (forceNude ? nudeForce.split(/\s+/).length : 0) +
     (lockIdentity ? IDENTITY_LOCK.split(/\s+/).length : 0) +
-    FACE_WORDS;
+    FACE_WORDS +
+    (rearView ? rearClause.split(/\s+/).length : 0);
 
   body = capPromptWords(body, PROMPT_WORD_BUDGET - reserve - cueWords - tailWords);
   let capped = wantProp ? withClauseUpFront(body, propText) : body;
+  if (rearView) capped = `${rearClause} ${capped}`;
   // Her face, after the cut and after the prop spec: reserved above, so it
   // never costs the scene a word, and never pushes the spec down the prompt.
   capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${FACE_CLAUSE}`;

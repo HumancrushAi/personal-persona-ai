@@ -427,8 +427,8 @@ describe("IMG2IMG_WORKFLOW", () => {
   });
 
   it("scales her portrait to the render size the checkpoint wants", async () => {
-    const { IMG2IMG_WORKFLOW, comfyWorkflow } = await import("../comfy");
-    const g = comfyWorkflow(vars, IMG2IMG_WORKFLOW) as any;
+    const { IMG2IMG_WORKFLOW, comfySettings, comfyWorkflow } = await import("../comfy");
+    const g = comfyWorkflow({ ...vars, ...comfySettings("p", { template: IMG2IMG_WORKFLOW }) }, IMG2IMG_WORKFLOW) as any;
     expect(g["11"].inputs.width).toBe(704);
     expect(g["11"].inputs.height).toBe(1024);
     expect(typeof g["11"].inputs.width).toBe("number");
@@ -669,6 +669,25 @@ describe("the face swap", () => {
       expect(g["14"].inputs.image).toEqual(["30", 0]);
       expect(withFaceSwap(withFaceSwap(t))).toBe(withFaceSwap(t));
     }
+  });
+
+  it("also locks identity on the low-memory img2img graph", async () => {
+    const { withFaceSwap, IMG2IMG_WORKFLOW } = await import("../comfy");
+    const g = JSON.parse(withFaceSwap(IMG2IMG_WORKFLOW));
+    expect(g["30"].class_type).toBe("HCFaceSwap");
+    expect(g["30"].inputs.image).toEqual(["8", 0]);
+    expect(g["30"].inputs.source).toEqual(["10", 0]);
+    expect(g["9"].inputs.images).toEqual(["30", 0]);
+  });
+
+  it("lets explicit posed requests redraw while face swap restores identity", async () => {
+    const { comfySettings, IMG2IMG_WORKFLOW } = await import("../comfy");
+    const prev = process.env.COMFY_FACESWAP;
+    process.env.COMFY_FACESWAP = "on";
+    expect(comfySettings("p", { template: IMG2IMG_WORKFLOW, promptSetsComposition: true }).denoise).toBe(0.92);
+    expect(comfySettings("p", { template: IMG2IMG_WORKFLOW, mouthAct: true }).denoise).toBe(0.9);
+    if (prev === undefined) delete process.env.COMFY_FACESWAP;
+    else process.env.COMFY_FACESWAP = prev;
   });
 });
 

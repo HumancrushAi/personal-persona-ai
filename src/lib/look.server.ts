@@ -11,7 +11,8 @@
 import { createHash } from "node:crypto";
 
 // "look2": the phrase grew bust size and tattoos, and the cached "look:" phrases have neither.
-const KEY_PREFIX = "look2:";
+// Invalidate descriptions made by the old ambiguous hair-length prompt.
+const KEY_PREFIX = "look3:";
 const MAX_WORDS = 34;
 
 export function lookCacheKey(imageUrl: string): string {
@@ -138,7 +139,7 @@ async function describePortrait(url: string): Promise<string> {
             content: [
               {
                 type: "text",
-                text: "Describe this person's looks for a portrait artist in one comma-separated phrase of at most 24 words: exact hair color, hair length and style, eye color, skin tone, body build and bust size (e.g. very full bust, small bust), and any visible tattoos — say where and roughly what (e.g. full tattoo sleeves on both arms, large chest tattoo). If there are no tattoos, say nothing about tattoos. Only the phrase, no sentence, no names.",
+                text: "Describe this person's looks for a portrait artist in one comma-separated phrase of at most 28 words. State exact hair color, texture and part, and measure its visible length as chin-length, shoulder-length, chest-length, waist-length, or longer. Then state eye color, skin tone, body build, bust size, and visible tattoos with locations. Describe actual features, not clothing. Only the phrase, no sentence, no names.",
               },
               { type: "image_url", image_url: { url } },
             ],

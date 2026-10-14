@@ -14,8 +14,8 @@ describe("a companion's look in words", () => {
   });
 
   it("keys the cache on the portrait, not the name", () => {
-    // "look2": the phrase gained bust size and tattoos; the old "look:" entries lack both.
-    expect(lookCacheKey("https://x/a.png")).toMatch(/^look2:[0-9a-f]{24}$/);
+    // "look3": hair length is measured explicitly; older ambiguous descriptions must not survive.
+    expect(lookCacheKey("https://x/a.png")).toMatch(/^look3:[0-9a-f]{24}$/);
     expect(lookCacheKey("https://x/a.png")).not.toBe(lookCacheKey("https://x/b.png"));
   });
 });

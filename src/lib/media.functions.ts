@@ -722,6 +722,7 @@ export async function startImageJob(
         ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt, {
             hasPenis: anatomyOf(companion.gender).hasPenis,
             toyTags: toy?.tags ?? null,
+            toyKind: toy?.kind ?? null,
             lookTags: inkTags(look),
             startFrame: composedFrame,
             startFromPortrait: mode === "portrait",
@@ -866,6 +867,8 @@ export async function comfyJobInput(
     hasPenis?: boolean;
     /** The chest toy's short tags, so the toy leads the prompt weighted and is drawn at all. */
     toyTags?: string | null;
+    /** The owned toy kind, used to avoid applying dildo insertion tags to a wand or bullet. */
+    toyKind?: string | null;
     /** Her ink, from the look phrase: leads the prompt weighted, or the checkpoint leaves it off. */
     lookTags?: string | null;
     /** A composed frame of this request (compose.server.ts), base64: the pass starts from it. */
@@ -978,8 +981,9 @@ export async function comfyJobInput(
   // insertion out of the frame (both seen on the pod).
   const { propIsInserted, propIsOral } = await import("./props");
   const analToy = /\b(?:ass|anus|butt|asshole|booty)\b/i.test(req) && !/\b(?:pussy|vagina|cunt)\b/i.test(req);
+  const insertableToy = !opts.toyKind || ["dildo", "vibrator", "plug", "beads", "strap-on"].includes(opts.toyKind);
   const toyPlaced = opts.toyTags
-    ? propIsInserted(req)
+    ? propIsInserted(req) && insertableToy
       ? analToy
         ? `${opts.toyTags} inserted in her ass, anal insertion, bent over, ass toward the camera, legs apart`
         : `${opts.toyTags} inserted in her pussy, vaginal insertion, lying back with legs spread wide, knees up, framed from head to knees`
@@ -1576,6 +1580,7 @@ export async function startVideoJob(
             // Keep the owned chest toy in this path too; otherwise the video
             // silently falls back to the checkpoint's generic prop.
             toyTags: toy?.tags ?? null,
+            toyKind: toy?.kind ?? null,
           },
         );
         const { result: still, endpoint: stillSentTo } = await submitImage(supabaseAdmin, comfyEndpoint, stillInput);

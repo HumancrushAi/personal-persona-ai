@@ -71,7 +71,7 @@ export const TOYS: Toy[] = [
   {
     id: "dildo-black",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-black.png",
-    tags: "huge thick matte black dildo",
+    tags: "photorealistic huge thick matte black silicone dildo, rounded glans, smooth shaft, wide flared base",
     name: "Big Black Dildo",
     emoji: "🖤",
     blurb: "Nine inches, thick, matte black silicone with a wide flared base.",
@@ -84,7 +84,7 @@ export const TOYS: Toy[] = [
   {
     id: "dildo-glass",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-glass.png",
-    tags: "clear transparent glass dildo",
+    tags: "photorealistic clear transparent borosilicate glass dildo, three rounded shaft ridges, rounded base",
     name: "Glass Dildo",
     emoji: "💎",
     blurb: "Clear borosilicate glass with a ridged shaft and a rounded tip.",
@@ -97,7 +97,7 @@ export const TOYS: Toy[] = [
   {
     id: "rabbit-tongue",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rabbit-tongue.png",
-    tags: "pink rabbit vibrator with clit tongue",
+    tags: "photorealistic glossy hot-pink silicone rabbit vibrator, curved shaft, clitoral tongue arm, handle",
     name: "Vibrating Rabbit with Tongue",
     emoji: "🐰",
     blurb: "Pink rabbit vibrator — a curved shaft plus a flicking silicone tongue for her clit.",
@@ -110,7 +110,7 @@ export const TOYS: Toy[] = [
   {
     id: "wand",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/wand.png",
-    tags: "white magic wand vibrator",
+    tags: "photorealistic white magic wand vibrator, large soft round silicone head, plastic handle, black cord",
     name: "Magic Wand",
     emoji: "🪄",
     blurb: "The classic white wand with a big soft head and a cord.",
@@ -123,7 +123,7 @@ export const TOYS: Toy[] = [
   {
     id: "bullet",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/bullet.png",
-    tags: "small pink bullet vibrator",
+    tags: "photorealistic small glossy pink metal bullet vibrator, rounded bullet body, thin cord, pink remote",
     name: "Bullet Vibe",
     emoji: "💗",
     blurb: "A small pink bullet vibrator she can press anywhere.",
@@ -136,7 +136,7 @@ export const TOYS: Toy[] = [
   {
     id: "plug-jewel",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/plug-jewel.png",
-    tags: "polished steel butt plug with pink crystal base",
+    tags: "photorealistic polished stainless-steel butt plug, tapered bulb, narrow neck, faceted pink crystal base",
     name: "Jewelled Butt Plug",
     emoji: "💠",
     blurb: "Polished steel plug with a pink crystal base.",
@@ -149,7 +149,7 @@ export const TOYS: Toy[] = [
   {
     id: "beads",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/beads.png",
-    tags: "black silicone anal beads",
+    tags: "photorealistic matte black silicone anal beads, six graduated round beads, clear gaps, pull ring",
     name: "Anal Beads",
     emoji: "⚫",
     blurb: "Black silicone beads that grow bigger down the string, with a pull ring.",
@@ -162,7 +162,7 @@ export const TOYS: Toy[] = [
   {
     id: "strap-on",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/strap-on.png",
-    tags: "black leather strap-on harness with black dildo",
+    tags: "photorealistic black leather strap-on harness, visible straps and silver buckles, matte black silicone shaft",
     name: "Strap-On",
     emoji: "🔗",
     blurb: "Black leather harness with a matte black silicone shaft.",
@@ -175,7 +175,7 @@ export const TOYS: Toy[] = [
   {
     id: "stroker",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/stroker.png",
-    tags: "black fleshlight stroker",
+    tags: "photorealistic matte black stroker sleeve case, soft pink textured silicone opening",
     name: "Stroker",
     emoji: "🔦",
     blurb: "A flashlight-style stroker for him.",
@@ -188,7 +188,7 @@ export const TOYS: Toy[] = [
   {
     id: "flogger",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/flogger.png",
-    tags: "black leather flogger",
+    tags: "photorealistic black leather flogger, braided handle, many separate soft leather tails",
     name: "Leather Flogger",
     emoji: "🪢",
     blurb: "A black leather flogger with a braided handle.",
@@ -202,7 +202,7 @@ export const TOYS: Toy[] = [
   {
     id: "crop",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/crop.png",
-    tags: "black leather riding crop",
+    tags: "photorealistic slim black leather riding crop, stiff shaft, leather keeper loop, grip",
     name: "Riding Crop",
     emoji: "🏇",
     blurb: "A slim black riding crop with a leather keeper.",
@@ -216,7 +216,7 @@ export const TOYS: Toy[] = [
   {
     id: "paddle",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/paddle.png",
-    tags: "black leather spanking paddle",
+    tags: "photorealistic black leather spanking paddle, heart cut-out, short wrapped handle",
     name: "Spanking Paddle",
     emoji: "🏓",
     blurb: "A black leather paddle with a heart cut-out.",
@@ -230,7 +230,7 @@ export const TOYS: Toy[] = [
   {
     id: "cuffs",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/cuffs.png",
-    tags: "silver steel handcuffs with chain",
+    tags: "photorealistic polished silver steel handcuffs, two cuffs, short heavy chain, hinge and keyholes",
     name: "Handcuffs & Chain",
     emoji: "⛓️",
     blurb: "Polished steel handcuffs on a chain.",
@@ -244,7 +244,7 @@ export const TOYS: Toy[] = [
   {
     id: "clamps",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/clamps.png",
-    tags: "silver nipple clamps with chain",
+    tags: "photorealistic adjustable silver nipple clamps, black rubber tips, fine silver connecting chain",
     name: "Nipple Clamps",
     emoji: "🔩",
     blurb: "Silver clamps joined by a fine chain.",
@@ -258,7 +258,7 @@ export const TOYS: Toy[] = [
   {
     id: "collar",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/collar.png",
-    tags: "black leather collar with leash",
+    tags: "photorealistic wide black leather collar, silver studs and D-ring, attached black leather leash",
     name: "Collar & Leash",
     emoji: "🐾",
     blurb: "A black leather collar with a ring and a leash.",
@@ -272,7 +272,7 @@ export const TOYS: Toy[] = [
   {
     id: "gag",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/gag.png",
-    tags: "red ball gag",
+    tags: "photorealistic glossy red rubber ball gag, black leather straps, silver buckle",
     name: "Ball Gag",
     emoji: "🔴",
     blurb: "A red ball gag on black straps.",
@@ -286,7 +286,7 @@ export const TOYS: Toy[] = [
   {
     id: "rope",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rope.png",
-    tags: "red shibari rope chest harness",
+    tags: "photorealistic soft twisted red cotton shibari rope, neat chest harness knots",
     name: "Shibari Rope",
     emoji: "🧶",
     blurb: "Red cotton rope tied in a chest harness.",
@@ -300,7 +300,7 @@ export const TOYS: Toy[] = [
   {
     id: "blindfold",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/blindfold.png",
-    tags: "black satin blindfold",
+    tags: "photorealistic smooth black satin blindfold, wide fabric band, tied bow",
     name: "Satin Blindfold",
     emoji: "🎀",
     blurb: "A black satin blindfold.",
@@ -375,7 +375,22 @@ export type ToyResolution = {
 export function resolveToy(request: string, owned: Set<string> | "all"): ToyResolution {
   const req = request ?? "";
   const has = (t: Toy) => owned === "all" || owned.has(t.id);
-  const named = TOYS.filter((t) => t.match.test(req));
+  // A request can contain more than one toy word ("glass dildo with balls"
+  // matches both the glass and realistic entries). Prefer the toy whose name
+  // has the most words explicitly present, rather than catalogue order, so an
+  // owned generic dildo can never override the exact named toy.
+  const normalized = req.toLowerCase();
+  const named = TOYS
+    .filter((t) => t.match.test(req))
+    .sort((a, b) => {
+      const score = (t: Toy) =>
+        t.name
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter((word) => word.length > 2 && normalized.includes(word))
+          .reduce((sum, word) => sum + word.length, 0);
+      return score(b) - score(a);
+    });
   if (named.length) {
     const mine = named.find(has);
     if (mine) return { toy: mine, needed: null };
@@ -396,7 +411,7 @@ export function resolveToy(request: string, owned: Set<string> | "all"): ToyReso
 // no place, no mouth and no ass in the request goes inside her pussy (his ass
 // for a body without one) — said in the request itself, so the builder, the
 // refiner, the prop clause and the check all read the same thing.
-const INSERTABLE: ToyKind[] = ["dildo", "vibrator", "wand", "plug", "beads"];
+const INSERTABLE: ToyKind[] = ["dildo", "vibrator", "plug", "beads", "strap-on"];
 const PLACED_RE =
   /\b(?:in|into|inside|up|on|against|between|deep|insert\w*|penetrat\w*|ride|riding|suck\w*|lick\w*|blow\w*|mouth|lips|tongue|deep\s*throat\w*|ass|anus|butt|clit\w*|nipples?|tits?|breasts?)\b/i;
 export function withToyPlace(request: string, toy: Toy | null, hasVulva = true): string {

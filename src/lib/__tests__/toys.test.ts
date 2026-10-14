@@ -15,6 +15,7 @@ describe("resolveToy", () => {
     expect(resolveToy("use the rabbit on yourself", new Set()).needed?.id).toBe("rabbit-tongue");
     expect(resolveToy("a vibrating dildo with a tongue on it", "all").toy?.id).toBe("rabbit-tongue");
     expect(resolveToy("put the jewelled plug in your ass", new Set()).needed?.id).toBe("plug-jewel");
+    expect(resolveToy("use the glass dildo with balls", new Set(["dildo-realistic", "dildo-glass"])).toy?.id).toBe("dildo-glass");
   });
 
   it("takes the owned toy of a kind for a generic ask, or the cheapest to buy", () => {
@@ -86,6 +87,21 @@ describe("the toy she owns is the toy in the prompt", () => {
     const c = propClause("press the wand on your clit", { anatomy: anatomyOf("female"), toy: wand });
     expect(c).toMatch(/holds the toy by its handle/);
     expect(c).not.toMatch(/flared base/);
+  });
+
+  it("keeps each owned toy's geometry when it is inserted", () => {
+    const f = anatomyOf("female");
+    const glass = propClause("put the glass dildo in your pussy", { anatomy: f, toy: toyById("dildo-glass") });
+    expect(glass).toMatch(/rounded glass tip leads inside her pussy/);
+    expect(glass).not.toMatch(/wide flat flared base is fully outside/);
+
+    const plug = propClause("put the jewelled plug in your ass", { anatomy: f, toy: toyById("plug-jewel") });
+    expect(plug).toMatch(/tapered steel bulb leads inside her ass/);
+    expect(plug).toMatch(/faceted pink crystal remains fully outside/);
+
+    const beads = propClause("use the anal beads in your ass", { anatomy: f, toy: toyById("beads") });
+    expect(beads).toMatch(/smallest black silicone bead leads inside her ass/);
+    expect(beads).not.toMatch(/glans|flared base/);
   });
 
   it("pushes away the toys she does not have in the negative", () => {

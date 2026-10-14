@@ -31,7 +31,7 @@ const force = args.includes("--force");
 const only = args.find((a) => a.startsWith("--only="))?.slice(7).split(",").map((s) => s.trim().toLowerCase());
 
 const STYLE =
-  "studio product photograph on a dark charcoal velvet surface with soft warm rim light and a gentle reflection, centered, single object, no text, no people, photorealistic, 1:1";
+  "high-end commercial studio product photograph on dark charcoal velvet, soft warm rim light and natural contact shadow, centered single manufactured object, accurate real-world proportions and construction, sharp material texture, no text, no people, no cartoon or illustration, photorealistic, 1:1";
 
 const PROMPTS: Record<string, [string, string]> = {
   "dildo-realistic": [
@@ -39,16 +39,16 @@ const PROMPTS: Record<string, [string, string]> = {
     `A realistic flesh-toned silicone dildo with a rounded head, subtle shaft veins, two distinct attached balls beneath the shaft, and a round suction base, standing upright, ${STYLE}`,
   ],
   "dildo-black": [
-    `A large thick matte black silicone dildo with a wide flared base, standing upright, ${STYLE}`,
-    `A large matte black silicone massager with a rounded tip and a wide flared base, standing upright, ${STYLE}`,
+    `A large thick matte black silicone dildo with a defined rounded glans, smooth shaft and wide flared base, standing upright, ${STYLE}`,
+    `A large matte black silicone dildo with a rounded head, thick shaft and wide flared base, standing upright, ${STYLE}`,
   ],
   "dildo-glass": [
-    `A clear glass dildo with rounded ridges along the shaft, lying on velvet, ${STYLE}`,
-    `An elegant clear borosilicate glass wand with rounded ridges, lying on velvet, ${STYLE}`,
+    `A clear transparent borosilicate glass dildo with three evenly spaced rounded ridges and a rounded base, lying on velvet, ${STYLE}`,
+    `A clear borosilicate glass dildo with a smooth rounded tip, three shaft ridges and a wider rounded base, lying on velvet, ${STYLE}`,
   ],
   "rabbit-tongue": [
-    `A glossy hot-pink rabbit vibrator with a curved shaft and a small silicone tongue stimulator at the base, ${STYLE}`,
-    `A glossy hot-pink silicone massager with a curved shaft and a small second arm, ${STYLE}`,
+    `A glossy hot-pink silicone rabbit vibrator with a curved shaft, a distinct short clitoral arm ending in a soft tongue, and a slim handle, ${STYLE}`,
+    `A hot-pink silicone rabbit vibrator with a curved rounded shaft and a separate small tongue-shaped clitoral arm, ${STYLE}`,
   ],
   wand: [
     `A white magic wand massager with a large round soft head and a black cord, ${STYLE}`,

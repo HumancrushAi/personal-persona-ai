@@ -101,6 +101,61 @@ const analInsertedClause = (a: Anatomy) =>
   }. Sharp focus on the insertion point. ` +
   "The toy angles up between her cheeks. This is real anal penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
 
+/**
+ * The old renderer used INSERTED_CLAUSE for every owned toy. That clause is
+ * deliberately dildo-shaped (glans, shaft and flared base), so it made glass,
+ * plugs, beads and rabbits change shape as soon as they were requested in a
+ * chat. Keep the placement instruction exact for the physical toy being used.
+ */
+function insertedClauseFor(toy: Toy | null, propId: string, a: Anatomy, anal: boolean): string {
+  const target = anal ? "ass" : "pussy";
+  const ownedId = toy?.id ?? propId;
+  if (ownedId === "dildo-glass") {
+    return `Tip-first orientation: the rounded glass tip leads inside her ${target}; the three rounded glass ridges follow the shaft, while the wider rounded glass base remains fully outside her body in her hand. The transparent glass catches the light and stays one coherent manufactured toy, never skin or a random dildo.`;
+  }
+  if (ownedId === "plug-jewel") {
+    return `The tapered steel bulb leads inside her ${target}; its narrow neck sits at the opening and the flat base with its large faceted pink crystal remains fully outside her body and visible. The jewel is the outer handle, never the inserted end.`;
+  }
+  if (ownedId === "beads" || propId === "anal-beads") {
+    return `The smallest black silicone bead leads inside her ${target}; the graduated beads follow in a clear line, with the final bead and black pull ring remaining outside her body and visible. Each bead stays separate with a clean gap.`;
+  }
+  if (ownedId === "rabbit-tongue") {
+    return `The rounded curved shaft tip leads inside her ${target}; the short pink arm and its soft silicone tongue remain outside against her clitoris, with the handle below the toy held in her hand. Both parts stay attached as one rabbit vibrator.`;
+  }
+  if (ownedId === "strap-on") {
+    return `The matte black shaft mounted to the harness leads tip-first inside her ${target}; the black leather harness stays buckled around her hips and fully outside her body, with its straps and silver buckles visible.`;
+  }
+  if (ownedId === "vibrator" || toy?.kind === "vibrator") {
+    return `The rounded silicone vibrator tip leads inside her ${target}; its smooth body and small control button remain outside her body in her hand. It is one small solid vibrator, not a dildo, glass toy or wand.`;
+  }
+  if (ownedId === "wand" || ownedId === "bullet" || ownedId === "stroker") {
+    return `This is an external-use device, not a penetrative dildo: the ${ownedId === "wand" ? "large soft wand head" : ownedId === "bullet" ? "small rounded bullet" : "black stroker case"} stays outside her body against the requested area, clearly separate from her skin and held in her hand.`;
+  }
+  return anal ? analInsertedClause(a) : INSERTED_CLAUSE;
+}
+
+function handleClauseFor(toy: Toy | null, propId: string): string {
+  const id = toy?.id ?? propId;
+  if (id === "dildo-realistic" || id === "dildo-black" || id === "dildo") return HAND_CLAUSE;
+  if (id === "dildo-glass")
+    return "Her hand holds the wider rounded glass base with five separate countable fingers and a clean visible edge between skin and glass.";
+  if (id === "plug-jewel")
+    return "Her hand holds the flat base beneath the steel plug; the faceted pink crystal is visible outside her body with a clean edge against skin.";
+  if (id === "beads" || id === "anal-beads")
+    return "Her hand holds the black pull ring; every graduated silicone bead remains separate and visible with a clean edge against skin.";
+  if (id === "rabbit-tongue")
+    return "Her hand holds the slim rabbit handle; the curved shaft and separate clitoral tongue remain attached and visibly distinct from her fingers.";
+  if (id === "strap-on")
+    return "The black leather harness is visibly buckled around her hips and the matte shaft is mounted at its front; both manufactured parts stay distinct from her skin.";
+  return HELD_CLAUSE;
+}
+
+function twoHandsClauseFor(toy: Toy | null, propId: string): string {
+  const id = toy?.id ?? propId;
+  if (id === "dildo-realistic" || id === "dildo-black" || id === "dildo") return TWO_HANDS;
+  return "Exactly two hands: one hand holds the toy's handle or outer base, the other rests on her lower stomach. She is alone in the frame.";
+}
+
 // Every clause here was written for "her", and a man asking for a toy got
 // "her ass" and "her hand" in his prompt. "her" is both possessive and
 // object in English; "inside her" is the one object use these clauses make.
@@ -143,6 +198,23 @@ const lickClause = (a: Anatomy) => {
   const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
   return `The toy is held just in front of ${a.poss} parted lips, its smooth shaft angled toward ${a.poss} mouth while the tip of ${a.poss} tongue visibly traces along the shaft; ${a.poss} lips are parted in a slow sensual lick, eyes lifted toward the lens, and ${a.poss} wide flared base is held in one hand. Exactly one toy and exactly two hands; ${S} ${a.is} alone in the frame.`;
 };
+
+function oralClauseFor(toy: Toy | null, propId: string, a: Anatomy, licking: boolean): string {
+  const id = toy?.id ?? propId;
+  if (id === "dildo-glass") {
+    const action = licking
+      ? `the tip of ${a.poss} tongue traces along the ridged glass shaft`
+      : `${a.poss} lips close around the rounded glass tip`;
+    return `The clear glass dildo is held directly at ${a.poss} parted lips; ${action}, while the wider rounded glass base stays in one hand. The transparent ridges remain visible and the toy stays outside the throat. Exactly one toy and exactly two hands; ${a.subject} ${a.is} alone in the frame.`;
+  }
+  if (id === "rabbit-tongue") {
+    return `The curved pink rabbit shaft is held at ${a.poss} parted lips, with ${a.poss} lips around the rounded tip and the separate soft tongue arm visible below it. ${a.poss} other hand holds the slim handle; the attached rabbit shape stays clear. Exactly one toy and exactly two hands; ${a.subject} ${a.is} alone in the frame.`;
+  }
+  if (id === "bullet") {
+    return `The small glossy pink bullet vibrator is held just in front of ${a.poss} parted lips, its rounded metal body and thin cord visible, with one hand on the remote. It is a compact bullet, not a dildo. Exactly one toy and exactly two hands; ${a.subject} ${a.is} alone in the frame.`;
+  }
+  return licking ? lickClause(a) : oralClause(a);
+}
 
 const INSERTED_RE =
   /\b(?:insert\w*|in|into|inside|up|deep|penetrat\w*|stuff\w*|slid\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b[^.?!]{0,25}\b(?:pussy|pussies|vagina|vulvas?|cunt|slit|clit\w*|labia|snatch|coochie|cooch|vag|hole|rear|booty|cheeks|ass|asshole|anus|butt)\b/i;
@@ -198,16 +270,15 @@ export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | n
   const oral = !inserted && ORAL_RE.test(text);
   const anal = inserted && ANAL_TARGET_RE.test(text) && !/\b(?:pussy|vagina|cunt|slit)\b/i.test(text);
   const parts = inserted
-    ? [anal ? analInsertedClause(a) : INSERTED_CLAUSE, prop.spec, TWO_HANDS]
+    ? [insertedClauseFor(toy, prop.id, a, anal), prop.spec, twoHandsClauseFor(toy, prop.id)]
     : oral
-      ? [LICK_RE.test(text) ? lickClause(a) : oralClause(a), prop.spec]
+      ? [oralClauseFor(toy, prop.id, a, LICK_RE.test(text)), prop.spec]
       : [prop.spec];
   if (BIG_RE.test(text) && !toy) parts.push(BIG_CLAUSE);
-  // A wand or a bullet has no flared base to close a hand around.
-  parts.push(toy && (toy.kind === "wand" || toy.kind === "vibrator" || toy.kind === "stroker") ? HELD_CLAUSE : HAND_CLAUSE);
+  parts.push(handleClauseFor(toy, prop.id));
   // The vulva sentence places the toy "against her skin"; at her mouth that is
   // the wrong place, and the word pulls the camera to her groin.
-  if (a.hasVulva && !oral) parts.push(vulvaAnatomy(a));
+  if (a.hasVulva && !oral && !anal) parts.push(vulvaAnatomy(a));
   return pronounize(parts.join(" "), a);
 }
 

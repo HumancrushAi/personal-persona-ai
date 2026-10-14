@@ -863,8 +863,8 @@ export async function comfyJobInput(
   opts: {
     /** Render without the pose guide — the retry after a worker that lacks the model. */
     noPose?: boolean;
-    /** Use the built-in low-memory FaceID graph for a GPU-OOM retry. */
-    graph?: "faceid-lite";
+    /** Use the core image-to-image graph for a GPU-OOM retry. */
+    graph?: "faceid-lite" | "img2img";
     /** The companion has a penis: climax tags describe ejaculation, not squirting. */
     hasPenis?: boolean;
     /** The chest toy's short tags, so the toy leads the prompt weighted and is drawn at all. */
@@ -933,10 +933,14 @@ export async function comfyJobInput(
     // describing her appearance in the prompt instead, which is exactly what
     // referenceReachesRenderer already decides. The fix for consistency is a
     // portrait on the row, not a thrown error here.
+    const startFrameReference = opts.graph === "img2img" && opts.startFrame ? opts.startFrame : null;
     const portrait = portraitUrl ? await readPortrait(portraitUrl) : null;
-    if (portrait) {
-      referenceBase64 = portrait;
-      if (fromPortrait) {
+    if (startFrameReference || portrait) {
+      // A memory-safe retry can carry the already-composed frame through the
+      // core I2I graph. That keeps the requested room, pose, and toy instead
+      // of falling back to the companion's original portrait composition.
+      referenceBase64 = startFrameReference ?? portrait ?? undefined;
+      if (fromPortrait && portrait) {
         const { START_NAME } = await import("./compose.server");
         template = template === FACEID_LITE_WORKFLOW ? FACEID_LITE_I2I_WORKFLOW : FACEID_I2I_WORKFLOW;
         extraImages.push({ name: START_NAME, base64: portrait });

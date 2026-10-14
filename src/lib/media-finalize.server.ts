@@ -828,7 +828,7 @@ export async function requeueIfStuck(
 async function resubmitImageJob(
   ctx: JobContext,
   seedSalt: string,
-  opts: { noPose?: boolean } = {},
+  opts: { noPose?: boolean; graph?: "faceid-lite" } = {},
 ): Promise<string> {
   const { anatomyOf } = await import("./anatomy");
   const { comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
@@ -994,6 +994,7 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
 
   const { imageProvider, comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
     await import("./media.functions");
+  const { comfyTemplate, FACEID_WORKFLOW } = await import("./comfy");
   if (imageProvider() !== "comfy") return false;
   const { runpodEndpoint, runpodRun } = await import("./runpod");
   const endpoint = runpodEndpoint("image");
@@ -1049,7 +1050,16 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
     } else {
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
     }
-    const id = await resubmitImageJob(ctx, `retry-${job.id}`, { noPose: poseMissing });
+    // The full FaceID graph contains two IPAdapter passes plus FaceDetailer.
+    // On the 31 GiB worker that combination can fail before sampling starts;
+    // retry the same request with one FaceID pass, retaining the reference and
+    // any composed start frame. Explicit custom workflows are left untouched.
+    const memorySafeGraph =
+      !poseMissing && comfyTemplate() === FACEID_WORKFLOW ? ("faceid-lite" as const) : undefined;
+    const id = await resubmitImageJob(ctx, `retry-${job.id}`, {
+      noPose: poseMissing,
+      graph: memorySafeGraph,
+    });
     console.warn(`media job ${job.id} resubmitted as ${id} after worker error: ${errorMsg.slice(0, 120)}`);
     return true;
   } catch (e: any) {

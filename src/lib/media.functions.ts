@@ -863,6 +863,8 @@ export async function comfyJobInput(
   opts: {
     /** Render without the pose guide — the retry after a worker that lacks the model. */
     noPose?: boolean;
+    /** Use the built-in low-memory FaceID graph for a GPU-OOM retry. */
+    graph?: "faceid-lite";
     /** The companion has a penis: climax tags describe ejaculation, not squirting. */
     hasPenis?: boolean;
     /** The chest toy's short tags, so the toy leads the prompt weighted and is drawn at all. */
@@ -883,26 +885,29 @@ export async function comfyJobInput(
     comfyTemplate,
     wantsReference,
     FACEID_WORKFLOW,
+    FACEID_LITE_WORKFLOW,
     FACEID_POSE_WORKFLOW,
     FACEID_I2I_WORKFLOW,
+    FACEID_LITE_I2I_WORKFLOW,
     DEFAULT_WORKFLOW,
   } = await import("./comfy");
-  let template = comfyTemplate();
+  let template = comfyTemplate(opts.graph);
 
   // A composed frame outranks the pose guide: it carries the pose already,
   // and the whole picture with it.
   const extraImages: { name: string; base64: string }[] = [];
-  const composed = Boolean(opts.startFrame) && template === FACEID_WORKFLOW;
+  const isFaceIdGraph = template === FACEID_WORKFLOW || template === FACEID_LITE_WORKFLOW;
+  const composed = Boolean(opts.startFrame) && isFaceIdGraph;
   if (composed) {
     const { START_NAME } = await import("./compose.server");
-    template = FACEID_I2I_WORKFLOW;
+    template = template === FACEID_LITE_WORKFLOW ? FACEID_LITE_I2I_WORKFLOW : FACEID_I2I_WORKFLOW;
     extraImages.push({ name: START_NAME, base64: opts.startFrame as string });
   }
   // Her portrait as the start latent: the same graph, at the portrait tiers
   // (0.62 plain / 0.73 nude / 0.78 posed / 0.86 mouth act, comfySettings), so
   // her face, skin and light are what the pass starts from and FaceID holds
   // identity through the undress. Resolved after the portrait is read below.
-  const fromPortrait = !composed && Boolean(opts.startFromPortrait) && template === FACEID_WORKFLOW;
+  const fromPortrait = !composed && Boolean(opts.startFromPortrait) && isFaceIdGraph;
 
   // A pose guide, when this request has one and the worker can use it. Only
   // the FaceID graph has the wiring for it.
@@ -933,7 +938,7 @@ export async function comfyJobInput(
       referenceBase64 = portrait;
       if (fromPortrait) {
         const { START_NAME } = await import("./compose.server");
-        template = FACEID_I2I_WORKFLOW;
+        template = template === FACEID_LITE_WORKFLOW ? FACEID_LITE_I2I_WORKFLOW : FACEID_I2I_WORKFLOW;
         extraImages.push({ name: START_NAME, base64: portrait });
       }
     } else {
@@ -1035,7 +1040,8 @@ export async function comfyJobInput(
       prompt: finalPrompt,
       negative,
       poseImage: guide ? extraImages.find((i) => i.name === guide.file)?.name : undefined,
-      startImage: template === FACEID_I2I_WORKFLOW ? "start.png" : undefined,
+      startImage:
+        template === FACEID_I2I_WORKFLOW || template === FACEID_LITE_I2I_WORKFLOW ? "start.png" : undefined,
     },
     { template, referenceBase64, extraImages },
   );

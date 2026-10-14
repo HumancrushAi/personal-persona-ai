@@ -592,6 +592,30 @@ describe("FACEID_LITE_WORKFLOW", () => {
     if (prev === undefined) delete process.env.COMFY_GRAPH;
     else process.env.COMFY_GRAPH = prev;
   });
+
+  it("lets a memory retry override the configured full graph", async () => {
+    const { comfyTemplate, FACEID_LITE_WORKFLOW } = await import("../comfy");
+    const prevGraph = process.env.COMFY_GRAPH;
+    const prevJson = process.env.COMFY_WORKFLOW_JSON;
+    process.env.COMFY_GRAPH = "faceid";
+    process.env.COMFY_WORKFLOW_JSON = '{"1":{"class_type":"custom","inputs":{}}}';
+    expect(comfyTemplate("faceid-lite")).toBe(FACEID_LITE_WORKFLOW);
+    if (prevGraph === undefined) delete process.env.COMFY_GRAPH;
+    else process.env.COMFY_GRAPH = prevGraph;
+    if (prevJson === undefined) delete process.env.COMFY_WORKFLOW_JSON;
+    else process.env.COMFY_WORKFLOW_JSON = prevJson;
+  });
+
+  it("has an I2I lite graph for retries that must keep the requested scene", async () => {
+    const { FACEID_LITE_I2I_WORKFLOW, comfyWorkflow } = await import("../comfy");
+    const graph = comfyWorkflow(
+      { ...VARS, checkpoint: "c.safetensors", referenceImage: "reference.png", startImage: "start.png" },
+      FACEID_LITE_I2I_WORKFLOW,
+    ) as any;
+    expect(graph["3"].inputs.latent_image).toEqual(["22", 0]);
+    expect(graph["9"].inputs.images).toEqual(["8", 0]);
+    expect(JSON.stringify(graph)).not.toMatch(/FaceDetailer|UltralyticsDetectorProvider/);
+  });
 });
 
 describe("realism settings", () => {

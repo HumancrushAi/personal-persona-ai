@@ -412,6 +412,18 @@ export const FACEID_LITE_WORKFLOW = (() => {
   return JSON.stringify(g, null, 2);
 })();
 
+// The same memory-safe graph when the request starts from a composed frame (or
+// the companion portrait) instead of empty noise.  Keeping the I2I latent is
+// important for a retry: switching to the plain lite graph would preserve her
+// face but throw away the requested room and pose.
+export const FACEID_LITE_I2I_WORKFLOW = (() => {
+  const g = JSON.parse(FACEID_I2I_WORKFLOW) as Record<string, any>;
+  delete g["13"];
+  delete g["14"];
+  g["9"].inputs.images = ["8", 0];
+  return JSON.stringify(g, null, 2);
+})();
+
 // The identity graph that needs NOTHING installed.
 //
 // Reported as "no model generates the same character in the chat" — every
@@ -684,10 +696,14 @@ export function usesStartLatent(template = comfyTemplate()): boolean {
   return /"class_type"\s*:\s*"VAEEncode"/.test(template);
 }
 
-export function comfyTemplate(): string {
+export function comfyTemplate(graphOverride?: string): string {
+  // A retry may deliberately choose the built-in memory-safe graph.  That
+  // override must win over the deployment's normal graph setting, but an
+  // ordinary call still gives an explicit COMFY_WORKFLOW_JSON precedence.
+  const hasGraphOverride = typeof graphOverride === "string";
   const override = (process.env.COMFY_WORKFLOW_JSON ?? "").trim();
-  if (override) return override;
-  const named = (process.env.COMFY_GRAPH ?? "").trim().toLowerCase();
+  if (!hasGraphOverride && override) return override;
+  const named = (hasGraphOverride ? graphOverride : process.env.COMFY_GRAPH ?? "").trim().toLowerCase();
   if (named === "faceid") return FACEID_WORKFLOW;
   if (named === "faceid-lite") return FACEID_LITE_WORKFLOW;
   // Explicit stock txt2img only when asked. Identity is the product default —

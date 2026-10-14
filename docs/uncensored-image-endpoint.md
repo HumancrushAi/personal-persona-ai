@@ -16,7 +16,7 @@ frame is kept. That has a ceiling, and the ceiling is what users describe as
 still resolving, and nothing about the prompt can add detail that was never
 rendered.
 
-`comfy` is the fix: a still, rendered as a still, at 832×1216, with the sampler
+`comfy` is the fix: a still, rendered as a still, at 704×1024, with the sampler
 and step count the checkpoint was tuned for.
 
 ## What you have to build
@@ -30,7 +30,8 @@ RunPod does not host an uncensored image model you can just call. You run one.
    keeps cold starts short; baking a 7GB checkpoint into the image does not.
 2. **Create a serverless endpoint** from the `runpod/worker-comfyui` image,
    attached to that volume. Pick a 24GB GPU class (A5000/4090); SDXL at
-   832×1216 fits comfortably. Set min workers 0, max 1–3, idle timeout ~10s.
+   704×1024 leaves VRAM headroom on a 32 GB worker. Set min workers 0, max 1–3,
+   idle timeout ~10s.
 3. **Note the endpoint ID** — the string in its URL, e.g. `abc123xyz`.
 4. **Set the env vars** below in Vercel, and redeploy.
 
@@ -48,8 +49,8 @@ COMFY_WORKFLOW_JSON=""                  # optional — your own graph, see below
 COMFY_GRAPH=""                          # optional — "faceid" for the identity graph
 COMFY_STEPS="30"
 COMFY_CFG="7"                           # 6.5-7.5 follows the prompt; past 8 goes over-baked
-COMFY_WIDTH="832"                       # SDXL's own portrait bucket
-COMFY_HEIGHT="1216"
+COMFY_WIDTH="704"                       # VRAM-safe SDXL portrait bucket
+COMFY_HEIGHT="1024"
 COMFY_SAMPLER="dpmpp_2m_sde"
 COMFY_SCHEDULER="karras"
 COMFY_DENOISE="1"

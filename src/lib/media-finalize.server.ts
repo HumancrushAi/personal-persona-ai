@@ -828,7 +828,7 @@ export async function requeueIfStuck(
 async function resubmitImageJob(
   ctx: JobContext,
   seedSalt: string,
-  opts: { noPose?: boolean; graph?: "faceid-lite" | "img2img" } = {},
+  opts: { noPose?: boolean; graph?: "faceid-lite" | "img2img"; memorySafe?: boolean } = {},
 ): Promise<string> {
   const { anatomyOf } = await import("./anatomy");
   const { comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
@@ -1056,6 +1056,7 @@ async function retryImageJob(job: Job, errorMsg: string, failedRunpodId?: string
     const id = await resubmitImageJob(ctx, `retry-${job.id}`, {
       noPose: poseMissing,
       graph: memorySafeGraph,
+      memorySafe: !poseMissing,
     });
     console.warn(`media job ${job.id} resubmitted as ${id} after worker error: ${errorMsg.slice(0, 120)}`);
     return true;

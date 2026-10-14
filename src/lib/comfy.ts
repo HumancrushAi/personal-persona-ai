@@ -9,7 +9,7 @@
 // frame we keep is the least smeared of fifteen rather than a good one.
 //
 // A ComfyUI worker running an uncensored SDXL checkpoint renders a still at
-// 832x1216 in one pass, with the sampler, the steps and the guidance the
+// 704x1024 in one pass, with the sampler, the steps and the guidance the
 // checkpoint was tuned for. That is the difference in kind.
 //
 // THE WORKFLOW IS DATA, NOT CODE. Which nodes exist depends entirely on what
@@ -166,7 +166,7 @@ export const DEFAULT_WORKFLOW = `{
 // the two text encodes, the latent, the decode — is wired exactly as before.
 //
 // FaceDetailer sits between the decode and the save, so node 9 takes its image
-// from 14 rather than 8. At 832x1216 a full-length body leaves the face a few
+// from 14 rather than 8. At 704x1024 a full-length body leaves the face a few
 // dozen pixels; this crops it, re-renders it at guide_size and composites it
 // back, which is the difference between a likeness and a smudge.
 export const FACEID_WORKFLOW = `{
@@ -716,9 +716,9 @@ export function comfyTemplate(graphOverride?: string): string {
 }
 
 /**
- * 832x1216 is SDXL's own portrait bucket — the aspect it was trained on, and
- * the one place where asking for more pixels costs nothing in coherence. It is
- * also about three times the pixels a WAN frame gave the same body.
+ * 704x1024 keeps the portrait aspect while leaving headroom on the dedicated
+ * pod. The old 832x1216 default exceeded the pod's available VRAM even on the
+ * core I2I graph, so KSampler failed before producing an image.
  */
 /**
  * A seed derived from the prompt, so the same prompt renders the same picture.
@@ -798,11 +798,14 @@ export function comfySettings(
      * request, same prompt, same seed, same composition.
      */
     seedSalt?: string;
+    /** Use reduced dimensions/steps after a provider reports a VRAM failure. */
+    memorySafe?: boolean;
   } = {},
 ): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
+  const memorySafe = Boolean(opts.memorySafe);
   return {
     seed: seedFor(opts.seedSalt ? `${prompt}#${opts.seedSalt}` : prompt),
-    steps: numberSetting("COMFY_STEPS", 30),
+    steps: memorySafe ? numberSetting("COMFY_MEMORY_STEPS", 24) : numberSetting("COMFY_STEPS", 30),
     // 5.5, down from 7. At 7 the FaceID renders read as plastic — waxy skin,
     // over-rendered faces — which is what users reported. 5.5 still follows
     // the prompt on this checkpoint; COMFY_CFG overrides.
@@ -812,8 +815,12 @@ export function comfySettings(
     // "glowing like plastic" was the report — and guidance is the first dial
     // for that. The face pass keeps the full lock, so likeness does not pay.
     cfg: opts.mouthAct ? numberSetting("COMFY_CFG_MOUTH", 5.0) : numberSetting("COMFY_CFG", 5.0),
-    width: numberSetting("COMFY_WIDTH", 832),
-    height: numberSetting("COMFY_HEIGHT", 1216),
+    width: memorySafe
+      ? numberSetting("COMFY_MEMORY_WIDTH", 640)
+      : numberSetting("COMFY_WIDTH", 704),
+    height: memorySafe
+      ? numberSetting("COMFY_MEMORY_HEIGHT", 960)
+      : numberSetting("COMFY_HEIGHT", 1024),
     sampler: process.env.COMFY_SAMPLER || "dpmpp_2m_sde",
     scheduler: process.env.COMFY_SCHEDULER || "karras",
     checkpoint: process.env.COMFY_CHECKPOINT || "",

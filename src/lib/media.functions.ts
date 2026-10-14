@@ -865,6 +865,8 @@ export async function comfyJobInput(
     noPose?: boolean;
     /** Use the core image-to-image graph for a GPU-OOM retry. */
     graph?: "faceid-lite" | "img2img";
+    /** Reduce the render bucket and steps for a GPU-OOM retry. */
+    memorySafe?: boolean;
     /** The companion has a penis: climax tags describe ejaculation, not squirting. */
     hasPenis?: boolean;
     /** The chest toy's short tags, so the toy leads the prompt weighted and is drawn at all. */
@@ -1040,6 +1042,7 @@ export async function comfyJobInput(
         seedSalt,
         mouthAct,
         composed,
+        memorySafe: opts.memorySafe,
       }),
       prompt: finalPrompt,
       negative,

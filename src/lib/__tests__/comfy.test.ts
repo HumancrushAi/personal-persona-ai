@@ -429,9 +429,20 @@ describe("IMG2IMG_WORKFLOW", () => {
   it("scales her portrait to the render size the checkpoint wants", async () => {
     const { IMG2IMG_WORKFLOW, comfyWorkflow } = await import("../comfy");
     const g = comfyWorkflow(vars, IMG2IMG_WORKFLOW) as any;
-    expect(g["11"].inputs.width).toBe(832);
-    expect(g["11"].inputs.height).toBe(1216);
+    expect(g["11"].inputs.width).toBe(704);
+    expect(g["11"].inputs.height).toBe(1024);
     expect(typeof g["11"].inputs.width).toBe("number");
+  });
+
+  it("uses a smaller bucket after a worker reports VRAM exhaustion", async () => {
+    const { comfySettings } = await import("../comfy");
+    delete process.env.COMFY_MEMORY_WIDTH;
+    delete process.env.COMFY_MEMORY_HEIGHT;
+    delete process.env.COMFY_MEMORY_STEPS;
+    const settings = comfySettings("p", { memorySafe: true });
+    expect(settings.width).toBe(640);
+    expect(settings.height).toBe(960);
+    expect(settings.steps).toBe(24);
   });
 
   // At 1.0 the starting latent is erased and this renders the same stranger the

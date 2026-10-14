@@ -70,7 +70,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "dildo-black",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-black.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-black.png?v=20261014-catalog1",
     tags: "photorealistic huge thick matte black silicone dildo, rounded glans, smooth shaft, wide flared base",
     name: "Big Black Dildo",
     emoji: "🖤",
@@ -83,7 +83,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "dildo-glass",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-glass.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-glass.png?v=20261014-catalog1",
     tags: "photorealistic clear transparent borosilicate glass dildo, three rounded shaft ridges, rounded base",
     name: "Glass Dildo",
     emoji: "💎",
@@ -96,7 +96,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "rabbit-tongue",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rabbit-tongue.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rabbit-tongue.png?v=20261014-catalog1",
     tags: "photorealistic glossy hot-pink silicone rabbit vibrator, curved shaft, clitoral tongue arm, handle",
     name: "Vibrating Rabbit with Tongue",
     emoji: "🐰",
@@ -109,7 +109,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "wand",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/wand.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/wand.png?v=20261014-catalog1",
     tags: "photorealistic white magic wand vibrator, large soft round silicone head, plastic handle, black cord",
     name: "Magic Wand",
     emoji: "🪄",
@@ -122,7 +122,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "bullet",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/bullet.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/bullet.png?v=20261014-catalog1",
     tags: "photorealistic small glossy pink metal bullet vibrator, rounded bullet body, thin cord, pink remote",
     name: "Bullet Vibe",
     emoji: "💗",
@@ -135,7 +135,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "plug-jewel",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/plug-jewel.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/plug-jewel.png?v=20261014-catalog1",
     tags: "photorealistic polished stainless-steel butt plug, tapered bulb, narrow neck, faceted pink crystal base",
     name: "Jewelled Butt Plug",
     emoji: "💠",
@@ -148,7 +148,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "beads",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/beads.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/beads.png?v=20261014-catalog1",
     tags: "photorealistic matte black silicone anal beads, six graduated round beads, clear gaps, pull ring",
     name: "Anal Beads",
     emoji: "⚫",
@@ -161,7 +161,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "strap-on",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/strap-on.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/strap-on.png?v=20261014-catalog1",
     tags: "photorealistic black leather strap-on harness, visible straps and silver buckles, matte black silicone shaft",
     name: "Strap-On",
     emoji: "🔗",
@@ -174,7 +174,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "stroker",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/stroker.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/stroker.png?v=20261014-catalog1",
     tags: "photorealistic matte black stroker sleeve case, soft pink textured silicone opening",
     name: "Stroker",
     emoji: "🔦",
@@ -187,7 +187,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "flogger",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/flogger.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/flogger.png?v=20261014-catalog1",
     tags: "photorealistic black leather flogger, braided handle, many separate soft leather tails",
     name: "Leather Flogger",
     emoji: "🪢",
@@ -201,7 +201,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "crop",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/crop.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/crop.png?v=20261014-catalog1",
     tags: "photorealistic slim black leather riding crop, stiff shaft, leather keeper loop, grip",
     name: "Riding Crop",
     emoji: "🏇",
@@ -215,7 +215,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "paddle",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/paddle.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/paddle.png?v=20261014-catalog1",
     tags: "photorealistic black leather spanking paddle, heart cut-out, short wrapped handle",
     name: "Spanking Paddle",
     emoji: "🏓",
@@ -229,7 +229,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "cuffs",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/cuffs.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/cuffs.png?v=20261014-catalog1",
     tags: "photorealistic polished silver steel handcuffs, two cuffs, short heavy chain, hinge and keyholes",
     name: "Handcuffs & Chain",
     emoji: "⛓️",
@@ -243,7 +243,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "clamps",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/clamps.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/clamps.png?v=20261014-catalog1",
     tags: "photorealistic adjustable silver nipple clamps, black rubber tips, fine silver connecting chain",
     name: "Nipple Clamps",
     emoji: "🔩",
@@ -257,7 +257,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "collar",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/collar.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/collar.png?v=20261014-catalog1",
     tags: "photorealistic wide black leather collar, silver studs and D-ring, attached black leather leash",
     name: "Collar & Leash",
     emoji: "🐾",
@@ -271,7 +271,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "gag",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/gag.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/gag.png?v=20261014-catalog1",
     tags: "photorealistic glossy red rubber ball gag, black leather straps, silver buckle",
     name: "Ball Gag",
     emoji: "🔴",
@@ -285,7 +285,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "rope",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rope.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rope.png?v=20261014-catalog1",
     tags: "photorealistic soft twisted red cotton shibari rope, neat chest harness knots",
     name: "Shibari Rope",
     emoji: "🧶",
@@ -299,7 +299,7 @@ export const TOYS: Toy[] = [
   },
   {
     id: "blindfold",
-    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/blindfold.png",
+    image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/blindfold.png?v=20261014-catalog1",
     tags: "photorealistic smooth black satin blindfold, wide fabric band, tied bow",
     name: "Satin Blindfold",
     emoji: "🎀",

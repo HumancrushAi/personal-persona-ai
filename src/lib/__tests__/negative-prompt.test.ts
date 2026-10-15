@@ -46,6 +46,16 @@ describe("negativeFor", () => {
     expect(p).toContain("no identity drift");
   });
 
+  it("keeps the complete identity visible in an explicit video's opening frame", async () => {
+    const { videoOpeningFramePrompt } = await import("../media.functions");
+    const cropped = "Photograph of a woman indoors, framed from her chin down to her knees with her mouth and chin at the top edge of the frame, her hips and groin in the centre of the frame in sharp focus, camera about one metre away at hip height. She is holding the requested pose.";
+    const p = videoOpeningFramePrompt(cropped, "female");
+    expect(p).toContain("top of her hair down to her knees");
+    expect(p).toContain("entire unobstructed face and complete hairstyle");
+    expect(p).toContain("hands, the complete outside portion of the toy and its contact point");
+    expect(p).not.toContain("from her chin down");
+  });
+
   it("turns an inserted-toy video into repeated aligned penetration, not a held pose", async () => {
     const { videoActionLock } = await import("../media.functions");
     const { toyById } = await import("../toys");
@@ -57,6 +67,8 @@ describe("negativeFor", () => {
     expect(p).toMatch(/already visibly inside her pussy in frame one/i);
     expect(p).toMatch(/repeated straight in-and-out fucking strokes/i);
     expect(p).toMatch(/tip always remains inside/i);
+    expect(p).toMatch(/ten to fifteen percent/i);
+    expect(p).toMatch(/never fully withdraws, detaches, reverses ends or rotates/i);
     expect(p).toMatch(/never hovers beside the body/i);
     expect(p).toMatch(/base never enters the body/i);
   });

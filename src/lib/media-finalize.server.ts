@@ -1134,19 +1134,13 @@ export async function advanceVideoFromStill(job: Job, stillUrl: string): Promise
     if (!res.ok) throw new Error(`could not read her still (${res.status})`);
     const still = Buffer.from(await res.arrayBuffer());
 
-    const { squareStillFrame, fitStartFrame } = await import("./start-frame.server");
+    const { squareStillFrame } = await import("./start-frame.server");
     // Keep the opening still in the same portrait aspect ratio as the clip.
     // The old face-locked path always padded it into a square even when the
     // video endpoint was configured for 720x1280, so the worker had to
     // reframe a smaller face before it could animate it. That is exactly where
     // identity drift and the "worst" video results came from.
-    const [videoWidth, videoHeight] = (process.env.RUNPOD_VIDEO_SIZE || "720*1280")
-      .split("*")
-      .map((n) => Number(n));
-    const frameUrl =
-      videoWidth && videoHeight && videoHeight > videoWidth
-        ? await fitStartFrame(stillUrl, `vidstill-${job.id}`, videoWidth, videoHeight)
-        : await squareStillFrame(still, `vidstill-${job.id}`);
+    const frameUrl = await squareStillFrame(still, `vidstill-${job.id}`);
 
     const { runpodRun, runpodEndpoint } = await import("./runpod");
     const endpoint = runpodEndpoint("video");

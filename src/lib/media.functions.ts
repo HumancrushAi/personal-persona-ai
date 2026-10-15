@@ -110,9 +110,9 @@ export function videoActionLock(req: string | undefined, gender?: string | null,
     return (
       `Primary continuous penetration action from first frame to last: the rounded narrow tip and the first part ` +
       `of the ${toy.name} are already visibly inside ${opening} in frame one. ${a.poss} right hand grips only the ` +
-      `outer handle or wider base and completes repeated straight in-and-out fucking strokes on one fixed axis: ` +
-      `pushes most of the insertable length inside, then pulls partway out while the tip always remains inside, ` +
-      `then pushes in again. The toy never fully withdraws. Its outer handle or base never enters the body. ` +
+      `outer handle or wider base and completes repeated straight in-and-out fucking strokes on one fixed axis, kept short and controlled. The movement is small and physically continuous: ` +
+      `the tip always remains inside and the inner half of the shaft stays inside at all times while the hand moves the outer portion only ten to fifteen percent of its length, ` +
+      `then returns along exactly the same axis. The toy never fully withdraws, detaches, reverses ends or rotates. Its outer handle or base never enters the body. ` +
       `The opening stays visibly centered and snug around the shaft during every stroke, naturally occluding its inner edge with no air gap; a stable contact shadow and subtle skin compression track the motion. ${a.poss} left hand stays ` +
       `planted on ${anchor}. The toy never hovers beside the body, slides over the skin, flips direction or points ` +
       `away from the opening. The fixed camera clearly shows the insertion point, gripping hand and repeated stroke.`
@@ -156,6 +156,24 @@ export function videoIdentityLock(look?: string | null): string {
   ]
     .filter(Boolean)
     .join("; ");
+}
+
+/**
+ * An image can crop tightly around the requested anatomy, but that crop is a
+ * bad start frame for animation: WAN cannot preserve a face it never sees.
+ * Keep the full identity and the action inside the worker's square-safe area.
+ */
+export function videoOpeningFramePrompt(prompt: string, gender?: string | null): string {
+  const a = anatomyOf(gender);
+  const article = /^[aeiou]/i.test(a.noun) ? "an" : "a";
+  const identityFrame =
+    `Photograph of ${article} ${a.noun} indoors, square-safe composition framed from the top of ${a.poss} hair down to ${a.poss} knees; ` +
+    `${a.poss} entire unobstructed face and complete hairstyle are clearly visible in the upper third, ${a.poss} torso and hips are centered, ` +
+    `and ${a.poss} hands, the complete outside portion of the toy and its contact point are all visible in the same frame, camera about two metres away at chest height.`;
+  return prompt.replace(
+    /^Photograph of [^.]+framed from (?:her|his|their) chin down to (?:her|his|their) knees[^.]*\./i,
+    identityFrame,
+  );
 }
 
 // Shape words only, for a companion who has breasts, clothed or not. They used
@@ -1620,10 +1638,11 @@ export async function startVideoJob(
   // Same centre-crop problem as photos: hand the endpoint a square that keeps
   // her whole body rather than letting it slice the frame down to a torso.
   const fpsSetting = Number(process.env.RUNPOD_VIDEO_FPS || "16");
-  // 720p portrait, not the endpoint's square default. The clip a tester sent
-  // back was 368 pixels square; nothing about a face is realistic at that size.
+  // The deployed WAN worker returns a square clip even when handed portrait
+  // dimensions. Match that real output so it does not centre-crop a portrait
+  // start frame a second time and remove the face/hair identity anchor.
   // "WIDTH*HEIGHT"; RUNPOD_VIDEO_SIZE=off hands the choice back to the worker.
-  const videoSize = stillKnob("RUNPOD_VIDEO_SIZE", "720*1280");
+  const videoSize = stillKnob("RUNPOD_VIDEO_SIZE", "640*640");
   const [videoWidth, videoHeight] = (videoSize ?? "")
     .split("*")
     .map((n) => Number(n));
@@ -1693,7 +1712,7 @@ export async function startVideoJob(
     try {
       const { comfyTemplate, wantsReference } = await import("./comfy");
       if (wantsReference(comfyTemplate())) {
-        const { prompt: stillPrompt, avoid: stillAvoid } = await photoPromptWithAvoid(
+        const { prompt: rawStillPrompt, avoid: stillAvoid } = await photoPromptWithAvoid(
           {
             name: companion.name,
             age: companion.age ?? 18,
@@ -1710,6 +1729,7 @@ export async function startVideoJob(
           toy,
           setting,
         );
+        const stillPrompt = videoOpeningFramePrompt(rawStillPrompt, companion.gender);
         const stillInput = await comfyJobInput(
           stillPrompt,
           negativeFor(userReq, companion.gender, {
@@ -1771,13 +1791,10 @@ export async function startVideoJob(
   }
   let startFrame = startSource;
   try {
-    const { squareStartFrame, fitStartFrame } = await import("./start-frame.server");
-    const [vw, vh] = (videoSize ?? "").split("*").map((n) => Number(n));
-    // A portrait clip takes the portrait fitted to its frame; a square one is squared.
-    startFrame =
-      vw && vh && vh > vw
-        ? await fitStartFrame(startSource, `vid-${userId}-${Date.now()}`, vw, vh)
-        : await squareStartFrame(startSource, `vid-${userId}-${Date.now()}`);
+    const { squareStartFrame } = await import("./start-frame.server");
+    // WAN currently emits square video. Padding the complete requested frame
+    // into that square preserves the head, hair, hands and action together.
+    startFrame = await squareStartFrame(startSource, `vid-${userId}-${Date.now()}`);
   } catch {
     /* fall back to the raw portrait rather than failing the whole request */
   }

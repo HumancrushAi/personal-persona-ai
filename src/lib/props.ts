@@ -221,6 +221,15 @@ function oralClauseFor(toy: Toy | null, propId: string, a: Anatomy, licking: boo
 
 const INSERTED_RE =
   /\b(?:insert\w*|in|into|inside|up|deep|penetrat\w*|stuff\w*|slid\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b[^.?!]{0,25}\b(?:pussy|pussies|vagina|vulvas?|cunt|slit|clit\w*|labia|snatch|coochie|cooch|vag|hole|rear|booty|cheeks|ass|asshole|anus|butt)\b/i;
+// Natural reflexive wording often omits the anatomy: “fuck yourself with a
+// glass dildo”. It is still unambiguously insertion, and missing this exact
+// form left videoActionLock empty so WAN invented generic movement instead.
+const SELF_INSERTED_RE =
+  /\bfuck\w*\s+(?:yourself|herself|himself|themselves)\s+(?:using|with)\s+(?:an?\s+|the\s+|your\s+)?(?:[\w-]+\s+){0,3}(?:dildo|vibrator|toy\s+(?:cock|dick)|strap[- ]on)\b/i;
+
+function insertedRequest(text: string): boolean {
+  return INSERTED_RE.test(text) || SELF_INSERTED_RE.test(text);
+}
 
 function propFor(req: string): Prop | null {
   return PROPS.find((p) => p.match.test(req)) ?? null;
@@ -232,12 +241,12 @@ export function hasProp(req: string): boolean {
 
 export function propIsInserted(req: string): boolean {
   const text = (req ?? "").trim();
-  return propFor(text) !== null && INSERTED_RE.test(text);
+  return propFor(text) !== null && insertedRequest(text);
 }
 
 export function propIsOral(req: string): boolean {
   const text = (req ?? "").trim();
-  return propFor(text) !== null && !INSERTED_RE.test(text) && ORAL_RE.test(text);
+  return propFor(text) !== null && !insertedRequest(text) && ORAL_RE.test(text);
 }
 
 // Which generic clause a chest toy of each kind is rendered with.
@@ -269,7 +278,7 @@ export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | n
     : generic;
   if (!prop) return "";
 
-  const inserted = INSERTED_RE.test(text);
+  const inserted = insertedRequest(text);
   const oral = !inserted && ORAL_RE.test(text);
   const anal = inserted && ANAL_TARGET_RE.test(text) && !/\b(?:pussy|vagina|cunt|slit)\b/i.test(text);
   const parts = inserted

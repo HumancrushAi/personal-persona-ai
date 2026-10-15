@@ -84,6 +84,13 @@ describe("the toy she owns is the toy in the prompt", () => {
     expect(generic).toMatch(/two attached rounded testicle-shaped balls/);
   });
 
+  it("recognizes reflexive dildo wording as insertion without naming anatomy", async () => {
+    const { propIsInserted } = await import("../props");
+    expect(propIsInserted("fucking yourself with a glass dildo")).toBe(true);
+    expect(propIsInserted("fuck herself with the realistic dildo")).toBe(true);
+    expect(propIsInserted("holding a glass dildo")).toBe(false);
+  });
+
   it("describes a worn toy with where it is on her, and on him", () => {
     const clamps = toyById("clamps")!;
     const hers = propClause("put your nipple clamps on", { anatomy: anatomyOf("female"), toy: clamps });

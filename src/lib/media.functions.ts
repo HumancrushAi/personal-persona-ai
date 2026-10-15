@@ -176,6 +176,33 @@ export function videoOpeningFramePrompt(prompt: string, gender?: string | null):
   );
 }
 
+/** Keep WAN's limited motion-conditioning window focused on motion. */
+export function compactVideoScene(
+  action: string,
+  identity: string,
+  toy: Toy | null,
+  fallback: string,
+): string {
+  const motion = (action || fallback).trim();
+  const toyContinuity = toy
+    ? `Keep the exact single ${toy.name} already visible in frame one unchanged; preserve its material, shape, scale, orientation and the same inserted end.`
+    : "";
+  const identityContinuity = identity
+    .replace(/^IDENTITY LOCK:\s*/i, "")
+    .split(";")
+    .slice(0, 4)
+    .join(";");
+  return [
+    motion,
+    "The requested hand action is the dominant motion; do not substitute posing, sitting up, smiling, breast touching or camera movement.",
+    toyContinuity,
+    identityContinuity,
+    "Fixed camera, continuous natural motion, no frozen hold.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 // Shape words only, for a companion who has breasts, clothed or not. They used
 // to sit in QUALITY_NEGATIVE and go out on every render — a man's included,
 // where "droopy" pushes against the scrotum his own anatomy clause says hangs
@@ -810,7 +837,9 @@ export async function startImageJob(
             hasPenis: anatomyOf(companion.gender).hasPenis,
             toyTags: toy?.tags ?? null,
             toyKind: toy?.kind ?? null,
-            lookTags: inkTags(look),
+            // Video has no later face-restoration pass. Lead with the complete
+            // cached look (hair, skin, eyes and build), not only ink/build.
+            lookTags: look,
             startFrame: composedFrame,
             startFromPortrait: mode === "portrait",
           })
@@ -966,6 +995,8 @@ export async function comfyJobInput(
     startFrame?: string | null;
     /** Start the pass from her portrait instead of from noise (COMFY_COMPOSE=portrait). */
     startFromPortrait?: boolean;
+    /** Video opening frames need the exact portrait face, not only a FaceID likeness. */
+    forceFaceSwap?: boolean;
   } = {},
 ): Promise<Record<string, unknown>> {
   const {
@@ -1109,7 +1140,7 @@ export async function comfyJobInput(
 
   {
     const { withFaceSwap, faceSwapOn, withLora } = await import("./comfy");
-    if (faceSwapOn() && wantsReference(template)) template = withFaceSwap(template);
+    if ((opts.forceFaceSwap || faceSwapOn()) && wantsReference(template)) template = withFaceSwap(template);
     // The insertion LoRA, for a toy inside her (COMFY_LORA_INSERT_PUSSY /
     // _ASS name the files on the volume; unset, nothing changes).
     const { propIsInserted } = await import("./props");
@@ -1598,7 +1629,6 @@ export async function startVideoJob(
   const anatomy = anatomyOf(companion.gender);
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
   const actionLock = videoActionLock(rawReq, companion.gender, toy);
-  const toyLock = videoToyLock(toy);
   const identityLock = videoIdentityLock(look);
   const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) => {
     const locked = actionLock ? `${actionLock} ${p} ${actionLock}` : p;
@@ -1629,8 +1659,11 @@ export async function startVideoJob(
     // Keep the exact catalogue object at both ends of every scene prompt.
     // WAN weighs later tokens in later frames, so a single early description
     // lets a toy disappear or morph as the clip progresses.
-    const withToy = toyLock ? `${toyLock} ${finished} ${toyLock}` : finished;
-    return `${identityLock}. ${withToy} ${identityLock}.`;
+    // The photo prompt can exceed WAN's motion-conditioning window. When the
+    // actual action lands after long identity/toy descriptions, the worker
+    // freezes the start frame and invents a generic sit-up motion. Animation
+    // gets a compact action-first prompt; the opening still carries visuals.
+    return compactVideoScene(actionLock, identityLock, toy, finished);
   });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
@@ -1673,6 +1706,12 @@ export async function startVideoJob(
         "changed body type",
         "changing bust size",
         "changing proportions",
+        "frozen hand",
+        "static toy",
+        "holding still",
+        "sitting up",
+        "torso rising",
+        "generic posing",
         ...(isRubAct(rawReq)
           ? ["hand moving upward", "hand leaving groin", "hand on stomach", "hand on chest", "breast touching", "breast fondling"]
           : []),
@@ -1749,6 +1788,7 @@ export async function startVideoJob(
             toyTags: toy?.tags ?? null,
             toyKind: toy?.kind ?? null,
             lookTags: inkTags(look),
+            forceFaceSwap: true,
           },
         );
         const { result: still, endpoint: stillSentTo } = await submitImage(supabaseAdmin, comfyEndpoint, stillInput);

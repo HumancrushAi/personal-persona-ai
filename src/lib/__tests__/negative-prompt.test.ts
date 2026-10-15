@@ -56,6 +56,18 @@ describe("negativeFor", () => {
     expect(p).not.toContain("from her chin down");
   });
 
+  it("puts requested motion before identity details in WAN's prompt window", async () => {
+    const { compactVideoScene, videoActionLock, videoIdentityLock } = await import("../media.functions");
+    const { toyById } = await import("../toys");
+    const action = videoActionLock("fucking yourself with a glass dildo", "female", toyById("dildo-glass"));
+    const p = compactVideoScene(action, videoIdentityLock("long black hair, curvy build"), toyById("dildo-glass"), "generic scene");
+    expect(p.startsWith("Primary continuous penetration action")).toBe(true);
+    expect(p.indexOf("repeated straight in-and-out")).toBeLessThan(p.indexOf("same facial geometry"));
+    expect(p).toContain("do not substitute posing, sitting up");
+    expect(p).toContain("no frozen hold");
+    expect(p).not.toContain("generic scene");
+  });
+
   it("turns an inserted-toy video into repeated aligned penetration, not a held pose", async () => {
     const { videoActionLock } = await import("../media.functions");
     const { toyById } = await import("../toys");

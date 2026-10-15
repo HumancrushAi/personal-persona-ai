@@ -341,7 +341,7 @@ describe("one person, two hands, and the toy actually held", () => {
   // Positive and countable, like the hand count — "another person" in a
   // negative spends itself on `person`.
   it("states she is the only person in the picture", async () => {
-    expect(await spec()).toMatch(/alone, the only person in the picture/i);
+    expect(await spec()).toMatch(/alone in the frame, the only person in the picture/i);
   });
 
   // Twenty seconds, for a test that does no work.

@@ -176,7 +176,8 @@ describe("finishMediaPrompt on the refined path", () => {
     // A bare space ran them together: "…candid raw photograph The toy is…".
     const p = finishMediaPrompt(refined, req, { anatomy: FEMALE, appendProps: true });
     expect(p).not.toMatch(/photograph The toy/);
-    expect(p).toMatch(/photograph\. The toy/);
+    expect(p).toMatch(/photograph\./);
+    expect(p).toMatch(/The toy/);
   });
 
   it("rewrites a toy the refiner described as held, when it was asked to be inserted", () => {

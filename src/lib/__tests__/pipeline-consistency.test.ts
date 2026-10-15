@@ -142,7 +142,7 @@ describe("a toy clause for a man is about him", () => {
     expect(m).toMatch(/inside his ass/);
     expect(m).not.toMatch(/\bher\b|\bshe\b|pussy/i);
     expect(m).toMatch(/his cock and balls hang in front of it/);
-    expect(m).toMatch(/He is alone in the frame/);
+    expect(m).toMatch(/He is alone in the frame, the only person in the picture/);
     const t = propClause("a dildo up your ass", { anatomy: anatomyOf("trans-female") });
     expect(t).toMatch(/her cock and balls hang in front of it/);
     expect(t).not.toMatch(/pussy stays closed/);

@@ -1685,10 +1685,10 @@ export function settingSentenceFor(setting: Setting): string {
 // 340, up from 300: the adult/face clause added to every render pushed a
 // plain nude builder prompt past 300, and the cap — which cuts from the end —
 // took the back of the anatomy clause with it.
-export const PROMPT_WORD_BUDGET = 340;
+export const PROMPT_WORD_BUDGET = 300;
 
 const REALISM_TAIL =
-  "Clear high-resolution candid photograph on a real camera, unretouched, natural healthy skin with fine pores and fine texture, matte natural finish, clean sharp detail.";
+  "Unretouched natural skin with fine pores, matte finish and clean sharp detail. Candid raw photograph on a real camera.";
 
 const STILL_CUE = "The pose is held completely still and the camera is locked off.";
 const STILL_CUE_WORDS = STILL_CUE.split(/\s+/).length;
@@ -2105,13 +2105,33 @@ export function finishMediaPrompt(
   // Both end up in the same place — third, after the cut.
   const alreadyIn = Boolean(propText) && out.includes(propText);
   const wantProp = Boolean(propText) && (alreadyIn || Boolean(opts.appendProps));
-  const reserve = wantProp ? propText.trim().split(/\s+/).length : 0;
+  const anatomyText = nudeAnatomy(a.kind);
+  // Preserve the builder's complete anatomy block for a plain nude. For an
+  // action or prop request it would consume most of the encoder budget and
+  // evict the requested action itself, so it remains part of the normal body
+  // text and is trimmed only if necessary.
+  const alreadyAnatomy =
+    Boolean(anatomyText) &&
+    out.includes(anatomyText) &&
+    !propText &&
+    !selfActUsesHands(request);
+  const reserve =
+    (wantProp ? propText.trim().split(/\s+/).length : 0) +
+    (alreadyAnatomy ? anatomyText.trim().split(/\s+/).length : 0);
   const cueWords = opts.still ? STILL_CUE_WORDS : opts.moving ? MOTION_CUE_WORDS : 0;
 
   let body = out;
   if (alreadyIn) {
     body = out
       .replace(propText, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.])/g, "$1")
+      .replace(/\.\s*\./g, ".")
+      .trim();
+  }
+  if (alreadyAnatomy) {
+    body = body
+      .replace(anatomyText, "")
       .replace(/\s{2,}/g, " ")
       .replace(/\s+([,.])/g, "$1")
       .replace(/\.\s*\./g, ".")
@@ -2151,8 +2171,14 @@ export function finishMediaPrompt(
     FACE_WORDS +
     (rearView ? rearClause.split(/\s+/).length : 0);
 
-  body = capPromptWords(body, PROMPT_WORD_BUDGET - reserve - cueWords - tailWords);
+  // Sentence normalization during the final joins can split punctuation-bound
+  // tokens differently from this reservation count. Keep a small measured
+  // safety margin so the final prompt, not merely its pre-join body, stays
+  // inside the encoder budget.
+  const joinSlack = 16;
+  body = capPromptWords(body, PROMPT_WORD_BUDGET - reserve - cueWords - tailWords - joinSlack);
   let capped = wantProp ? withClauseUpFront(body, propText) : body;
+  if (alreadyAnatomy) capped = withClauseUpFront(capped, anatomyText);
   if (rearView) capped = `${rearClause} ${capped}`;
   // Her face, after the cut and after the prop spec: reserved above, so it
   // never costs the scene a word, and never pushes the spec down the prompt.

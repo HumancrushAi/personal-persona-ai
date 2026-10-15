@@ -61,7 +61,7 @@ const PROPS: Prop[] = [
     match: kw(
       String.raw`dildos?|sex\s*toys?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo`,
     ),
-    spec: "The dildo is a separate solid realistic flesh-toned silicone anatomical adult toy, with a defined rounded glans, a subtly veined shaft, and two attached rounded testicle-shaped balls beneath the shaft. Two clearly different ends: (1) the firm narrow rounded tip / glans is the insertable end; (2) the wide flat flared base / suction-cup end is the handle end. Real toy scale — about as long as her hand from wrist to fingertip, roughly two fingers thick. Clean hard edges, sharp focus, distinct from skin.",
+    spec: "It is a separate realistic flesh-toned matte silicone dildo, as long as her hand and two fingers thick, with a rounded glans, veined shaft, two attached rounded testicle-shaped balls and a wide flat base. Clean hard edges stay distinct from skin.",
   },
 ];
 
@@ -72,34 +72,28 @@ const BIG_CLAUSE =
   "It is noticeably large for a sex toy while staying a realistic one: at most as long as her forearm and at most as thick as her wrist.";
 
 const HAND_CLAUSE =
-  "Her hand closes around the wide flared base (the outer handle end only) with five separate countable fingers and a clean visible edge between skin and silicone.";
+  "Her hand is closed around the base of the toy and holding it with five separate countable fingers and a clean visible edge between skin and silicone.";
 
 const vulvaAnatomy = (a: Anatomy) =>
   `${a.subject[0].toUpperCase()}${a.subject.slice(1)} has a natural soft vulva; the toy is a separate manufactured object against ${a.poss} skin.`;
 
 const TWO_HANDS =
-  "Exactly two hands: one hand grips only the wide flared base outside her body, the other rests on her lower stomach. She is alone in the frame.";
+  "Exactly two arms and two hands. One hand is closed around the base of the toy and holding it; the other rests on her own stomach. She is alone in the frame, the only person in the picture.";
 
 // Tip-first, base-out — stated three ways so the encoder cannot invert the toy.
 const INSERTED_CLAUSE =
-  "Penetration complete, tip-first orientation only: the narrow rounded tip is deep inside her pussy; the wide flat flared base is fully outside her body and is the only end her fingers touch. " +
-  "Most of the shaft is hidden inside her; a short length of shaft plus the flared base remain visible outside. " +
-  "Her open thighs frame the entry. Her pussy lips stretch around the shaft (the narrow mid-section), not around the wide base. Clear wetness at the rim of entry, sharp focus on the insertion point. " +
-  "The toy is visibly inserted and angles down between her open thighs. This is real penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
+  "The toy is inserted into her pussy tip-first. Its rounded tip is deep inside her pussy and most of the shaft is hidden inside her. Her natural soft vulva overlaps both sides at one fixed entry point. Only a short shaft length and the base angle downward between her open thighs, with five separate countable fingers on it and her wrist against her inner thigh. Wetness shows insertion depth.";
 
 // The same clause for the other hole. The pussy wording was being sent for
 // "a dildo up your ass", and the render put it where the words said.
 const analInsertedClause = (a: Anatomy) =>
-  "Penetration complete, tip-first orientation only: the narrow rounded tip is deep inside her ass, the wide flat flared base is fully outside her body and is the only end her fingers touch. " +
-  "Most of the shaft is hidden inside her; a short length of shaft plus the flared base remain visible outside, between her cheeks. " +
-  `Her hips are tilted up and her thighs apart so the entry is visible; her anus stretches around the shaft (the narrow mid-section), not around the wide base${
-    a.hasVulva
-      ? ", and her pussy stays closed and untouched in front of it"
-      : a.hasPenis
-        ? ", and her cock and balls hang in front of it"
+  `The toy is inserted into her ass tip-first. The rounded tip is deep inside her ass and most of the shaft is hidden inside her. Her anus overlaps both sides of the shaft at one fixed entry point. A short outer length and the flared base angle upward between her cheeks in her fingers. Her hips tilt up and her thighs stay apart, with sharp focus on the insertion depth${
+    a.hasPenis
+      ? ", while her cock and balls hang in front of it"
+      : a.hasVulva
+        ? ", while her pussy stays closed in front of it"
         : ""
-  }. Sharp focus on the insertion point. ` +
-  "The toy angles up between her cheeks. This is real anal penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
+  }.`;
 
 /**
  * The old renderer used INSERTED_CLAUSE for every owned toy. That clause is
@@ -135,7 +129,7 @@ function insertedClauseFor(toy: Toy | null, propId: string, a: Anatomy, anal: bo
 }
 
 const PHYSICAL_CONTACT_CLAUSE =
-  "At the entry point, the body opening naturally occludes the inner edge of the shaft with no visible air gap. A small contact shadow, subtle skin compression and consistent depth make the contact physically believable; the toy remains a separate solid object and never merges with the body.";
+  "The body opening naturally occludes both inner shaft edges. A contact shadow, skin compression and consistent depth make the separate solid toy physically believable.";
 
 function handleClauseFor(toy: Toy | null, propId: string): string {
   const id = toy?.id ?? propId;
@@ -219,8 +213,10 @@ function oralClauseFor(toy: Toy | null, propId: string, a: Anatomy, licking: boo
   return licking ? lickClause(a) : oralClause(a);
 }
 
-const INSERTED_RE =
-  /\b(?:insert\w*|in|into|inside|up|deep|penetrat\w*|stuff\w*|slid\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b[^.?!]{0,25}\b(?:pussy|pussies|vagina|vulvas?|cunt|slit|clit\w*|labia|snatch|coochie|cooch|vag|hole|rear|booty|cheeks|ass|asshole|anus|butt)\b/i;
+const INSERT_ACTION_RE =
+  /\b(?:insert\w*|in|into|inside|up|deep|penetrat\w*|stuff\w*|slid\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b/i;
+const INSERT_TARGET_RE =
+  /\b(?:pussy|pussies|vagina|vulvas?|cunt|slit|clit\w*|labia|snatch|coochie|cooch|vag|hole|rear|booty|cheeks|ass|asshole|anus|butt)\b/i;
 // Natural reflexive wording often omits the anatomy: “fuck yourself with a
 // glass dildo”. It is still unambiguously insertion, and missing this exact
 // form left videoActionLock empty so WAN invented generic movement instead.
@@ -228,7 +224,7 @@ const SELF_INSERTED_RE =
   /\bfuck\w*\s+(?:yourself|herself|himself|themselves)\s+(?:using|with)\s+(?:an?\s+|the\s+|your\s+)?(?:[\w-]+\s+){0,3}(?:dildo|vibrator|toy\s+(?:cock|dick)|strap[- ]on)\b/i;
 
 function insertedRequest(text: string): boolean {
-  return INSERTED_RE.test(text) || SELF_INSERTED_RE.test(text);
+  return (INSERT_ACTION_RE.test(text) && INSERT_TARGET_RE.test(text)) || SELF_INSERTED_RE.test(text);
 }
 
 function propFor(req: string): Prop | null {
@@ -282,15 +278,15 @@ export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | n
   const oral = !inserted && ORAL_RE.test(text);
   const anal = inserted && ANAL_TARGET_RE.test(text) && !/\b(?:pussy|vagina|cunt|slit)\b/i.test(text);
   const parts = inserted
-    ? [insertedClauseFor(toy, prop.id, a, anal), PHYSICAL_CONTACT_CLAUSE, prop.spec, twoHandsClauseFor(toy, prop.id)]
+    ? [insertedClauseFor(toy, prop.id, a, anal), prop.spec, PHYSICAL_CONTACT_CLAUSE, twoHandsClauseFor(toy, prop.id)]
     : oral
       ? [oralClauseFor(toy, prop.id, a, LICK_RE.test(text)), prop.spec]
       : [prop.spec];
   if (BIG_RE.test(text) && !toy) parts.push(BIG_CLAUSE);
-  parts.push(handleClauseFor(toy, prop.id));
+  if (!inserted) parts.push(handleClauseFor(toy, prop.id));
   // The vulva sentence places the toy "against her skin"; at her mouth that is
   // the wrong place, and the word pulls the camera to her groin.
-  if (a.hasVulva && !oral && !anal) parts.push(vulvaAnatomy(a));
+  if (a.hasVulva && !oral && !anal && !inserted) parts.push(vulvaAnatomy(a));
   return pronounize(parts.join(" "), a);
 }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import {
   DEFAULT_WORKFLOW,
+  FACEID_I2I_WORKFLOW,
   REFERENCE_NAME,
   comfyError,
   comfyImageUrl,
@@ -369,6 +370,24 @@ describe("numeric settings", () => {
     const { comfySettings } = await import("../comfy");
     process.env.COMFY_CFG = "7.5";
     expect(comfySettings("p").cfg).toBe(7.5);
+  });
+
+  it("keeps the room canvas and identity portrait as two distinct references", () => {
+    const input = comfyInput(
+      { ...VARS, denoise: 0.68, startImage: "start.png" },
+      {
+        template: FACEID_I2I_WORKFLOW,
+        referenceBase64: "PORTRAIT_BYTES",
+        extraImages: [{ name: "start.png", base64: "ROOM_BYTES" }],
+      },
+    ) as any;
+    expect(input.images).toEqual([
+      { name: REFERENCE_NAME, image: "PORTRAIT_BYTES" },
+      { name: "start.png", image: "ROOM_BYTES" },
+    ]);
+    expect(input.workflow["10"].inputs.image).toBe(REFERENCE_NAME);
+    expect(input.workflow["20"].inputs.image).toBe("start.png");
+    expect(input.workflow["3"].inputs.denoise).toBe(0.68);
   });
 
   it("can render a video opening frame directly in the clip's square canvas", async () => {

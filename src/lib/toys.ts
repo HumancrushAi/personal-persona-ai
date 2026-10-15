@@ -84,15 +84,15 @@ export const TOYS: Toy[] = [
   {
     id: "dildo-glass",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/dildo-glass.png?v=20261014-catalog1",
-    tags: "photorealistic clear transparent borosilicate glass dildo, three rounded shaft ridges, rounded base",
+    tags: "photorealistic clear transparent borosilicate glass dildo, rigid one-piece manufactured sex toy, straight solid cylindrical shaft, smooth rounded tip, three evenly spaced rounded shaft ridges, wider rounded handle base, hard unchanging outline",
     name: "Glass Dildo",
     emoji: "💎",
     blurb: "Clear borosilicate glass with a ridged shaft and a rounded tip.",
     price: 350,
     kind: "dildo",
     match: /\b(?:glass|crystal|transparent|clear)\s+(?:dildo|toy|wand)\b/i,
-    spec: `The dildo is a separate solid object of clear transparent glass: a smooth rounded tip, a shaft with three evenly spaced rounded glass ridges, and a wider rounded base, ${SIZE_HAND} and roughly two fingers thick, catching the light with a glossy reflective surface. Clean hard edges, sharp focus, distinct from skin.`,
-    negative: "purple dildo, pink dildo, silicone dildo, matte dildo, opaque dildo",
+    spec: `The dildo is one rigid solid straight manufactured glass sex toy, never hollow and never flexible: a smooth rounded tip, a cylindrical shaft with three evenly spaced rounded glass ridges, and a wider rounded handle base, ${SIZE_HAND} and roughly two fingers thick, catching the light with a glossy reflective surface. Its hard outline and diameter stay consistent from tip to base. Clean hard edges, sharp focus, distinct from skin.`,
+    negative: "purple dildo, pink dildo, silicone dildo, matte dildo, opaque dildo, bottle-shaped toy, glass bottle, flask, jar, hollow glass, liquid glass, fluid object, bulbous container, drooping toy, flexible glass",
   },
   {
     id: "rabbit-tongue",

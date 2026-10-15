@@ -185,7 +185,7 @@ export function compactVideoScene(
 ): string {
   const motion = (action || fallback).trim();
   const toyContinuity = toy
-    ? `Keep the exact single ${toy.name} already visible in frame one unchanged; preserve its material, shape, scale, orientation and the same inserted end.`
+    ? `PROP LOCK: exactly one ${toy.name}: ${toy.tags}. It is a rigid manufactured object with a hard stable outline. Keep it unchanged from frame one to the last frame: identical material, shape, diameter, scale, orientation and inserted end; no bending, softening, melting, flowing, bulging or redesign.`
     : "";
   const identityContinuity = identity
     .replace(/^IDENTITY LOCK:\s*/i, "")
@@ -835,7 +835,9 @@ export async function startImageJob(
       provider === "comfy"
         ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt, {
             hasPenis: anatomyOf(companion.gender).hasPenis,
-            toyTags: toy?.tags ?? null,
+            // Give the renderer the catalogue geometry as well as the short
+            // tags; otherwise transparent glass is easily read as a bottle.
+            toyTags: toy ? `${toy.tags}. ${toy.spec}` : null,
             toyKind: toy?.kind ?? null,
             // Video has no later face-restoration pass. Lead with the complete
             // cached look (hair, skin, eyes and build), not only ink/build.
@@ -1728,6 +1730,14 @@ export async function startVideoJob(
               "handle entering body",
               "base entering body",
               "sideways penetration",
+              "liquid toy",
+              "melting toy",
+              "bending toy",
+              "changing toy shape",
+              "bottle-shaped toy",
+              "glass bottle",
+              "flask",
+              "hollow container",
             ]
           : []),
       ],
@@ -1788,7 +1798,9 @@ export async function startVideoJob(
             // The opening still is the frame the video actually animates.
             // Keep the owned chest toy in this path too; otherwise the video
             // silently falls back to the checkpoint's generic prop.
-            toyTags: toy?.tags ?? null,
+            // This opening frame determines the physical object WAN animates.
+            // A malformed prop here cannot be repaired by the motion prompt.
+            toyTags: toy ? `${toy.tags}. ${toy.spec}` : null,
             toyKind: toy?.kind ?? null,
             lookTags: inkTags(look),
             forceFaceSwap: true,

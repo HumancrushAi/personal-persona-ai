@@ -64,6 +64,8 @@ describe("negativeFor", () => {
     expect(p.startsWith("Primary continuous penetration action")).toBe(true);
     expect(p.indexOf("repeated straight in-and-out")).toBeLessThan(p.indexOf("same facial geometry"));
     expect(p).toContain("do not substitute posing, sitting up");
+    expect(p).toContain("rigid manufactured object with a hard stable outline");
+    expect(p).toMatch(/no bending, softening, melting, flowing, bulging or redesign/i);
     expect(p).toContain("no frozen hold");
     expect(p).not.toContain("generic scene");
   });

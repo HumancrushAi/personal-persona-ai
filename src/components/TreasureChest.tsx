@@ -119,14 +119,16 @@ export function TreasureChestButton({
         onClick={onClick}
         aria-label="Open the treasure chest"
         title="Treasure chest — toys she can use"
-        className={`hc-chest-btn group fixed bottom-24 right-3 z-30 flex h-16 w-16 items-center justify-center rounded-full border border-amber-200/55 bg-gradient-to-br from-[#42250b] via-[#2b1508] to-[#100803] ring-1 ring-amber-400/20 transition hover:scale-110 sm:right-6 ${
+        className={`hc-chest-btn group fixed bottom-32 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/55 bg-gradient-to-br from-[#42250b] via-[#2b1508] to-[#100803] ring-1 ring-amber-400/20 transition hover:scale-110 sm:bottom-24 sm:right-6 sm:h-16 sm:w-16 ${
           attention ? "hc-attention" : ""
         } ${open ? "hc-open" : ""}`}
       >
         <OrbitStars />
         <span className="absolute inset-1 rounded-full border border-amber-200/15" />
-        <ChestIcon open={Boolean(open)} size={38} />
-        <span className="hc-chest-label absolute -bottom-7 rounded-full border border-amber-300/25 bg-black/85 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.16em] text-amber-100 shadow-lg backdrop-blur">
+        <span className="scale-75 sm:scale-100">
+          <ChestIcon open={Boolean(open)} size={38} />
+        </span>
+        <span className="hc-chest-label absolute -bottom-7 hidden rounded-full border border-amber-300/25 bg-black/85 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.16em] text-amber-100 shadow-lg backdrop-blur sm:block">
           Treasure
         </span>
         {attention && (

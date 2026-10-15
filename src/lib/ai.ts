@@ -112,8 +112,28 @@ export async function chatComplete(
   return sanitizeReply(json.choices?.[0]?.message?.content ?? "");
 }
 
+export type SpeechStyle = {
+  gender?: string | null;
+  intimate?: boolean;
+};
+
+/** Performance direction for the fallback TTS engine, kept separate for tests. */
+export function speechDirection(style: SpeechStyle = {}): string {
+  const masculine = style.gender === "male" || style.gender === "trans-male";
+  const register = masculine
+    ? "Use a warm, low, confident masculine register."
+    : "Use a warm, soft, naturally feminine register with a slightly lower, smoky tone.";
+  return (
+    `${register} You are a real lover recording a private voice note for one person, close to the microphone. ` +
+    "Speak at an unhurried conversational pace, softly and intimately, with subtle breath, tiny hesitations, " +
+    "natural sentence-to-sentence rhythm, and relaxed contractions. Let teasing phrases dip slightly lower and " +
+    "end gently. Sound spontaneous and emotionally present, never like an announcer, assistant, audiobook, " +
+    "customer-service agent, or synthetic character. Do not exaggerate, sing, or turn every line into a whisper."
+  );
+}
+
 // Returns an audio buffer (mp3).
-export async function textToSpeech(text: string, voice: string): Promise<Buffer> {
+export async function textToSpeech(text: string, voice: string, style: SpeechStyle = {}): Promise<Buffer> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("Voice not configured (OPENAI_API_KEY missing)");
 
@@ -125,11 +145,10 @@ export async function textToSpeech(text: string, voice: string): Promise<Buffer>
       input: text,
       voice,
       response_format: "mp3",
-      instructions:
-        "You are a real lover recording a private, intimate voice note for the one person you want. " +
-        "Sultry, seductive and breathy: speak slowly and softly, close to the microphone, with a smile " +
-        "in your voice and little breaths between phrases. Let your voice dip low and teasing on the " +
-        "flirty lines. Real, relaxed speech with natural pauses, like whispering in their ear in bed.",
+      // A slightly slower delivery gives the model room for natural breaths and
+      // removes the brisk, assistant-like cadence without sounding drugged.
+      speed: Number(process.env.OPENAI_TTS_SPEED || "0.9"),
+      instructions: speechDirection(style),
     }),
   });
   if (!res.ok) {

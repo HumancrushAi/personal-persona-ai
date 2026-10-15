@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
-vi.mock("../ai", () => ({
+vi.mock("../ai", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../ai")>()),
   chatComplete: vi.fn(),
   textToSpeech: vi.fn(async (t: string) => Buffer.from(`openai:${t}`)),
 }));
@@ -57,7 +58,26 @@ describe("her voice note", () => {
       openaiVoice: "coral",
     });
     expect(buf.toString()).toBe("openai:Hi there");
-    expect(ai.textToSpeech).toHaveBeenCalledWith("Hi there", "coral");
+    expect(ai.textToSpeech).toHaveBeenCalledWith("Hi there", "coral", {
+      gender: "female",
+      intimate: true,
+    });
+  });
+});
+
+describe("fallback TTS performance", () => {
+  it("directs a feminine voice away from robotic assistant delivery", async () => {
+    const { speechDirection } = await import("../ai");
+    const direction = speechDirection({ gender: "female", intimate: true });
+    expect(direction).toMatch(/soft, naturally feminine/i);
+    expect(direction).toMatch(/slightly lower, smoky tone/i);
+    expect(direction).toMatch(/never like an announcer, assistant/i);
+    expect(direction).toMatch(/natural sentence-to-sentence rhythm/i);
+  });
+
+  it("uses a masculine register for male companions", async () => {
+    const { speechDirection } = await import("../ai");
+    expect(speechDirection({ gender: "male" })).toMatch(/low, confident masculine register/i);
   });
 });
 

@@ -123,7 +123,11 @@ async function orpheusSpeech(endpoint: string, text: string, voice: string, dir:
   const { runpodRunSync } = await import("./runpod");
   // 60s, not longer: on a cold or broken worker the note falls back to the
   // OpenAI voice rather than leaving the user waiting.
-  const res = await runpodRunSync(endpoint, { text, voice }, 60_000);
+  const res = await runpodRunSync(
+    endpoint,
+    { text, voice, temperature: Number(process.env.VOICE_TEMPERATURE || "0.72") },
+    60_000,
+  );
   const b64 = res.output?.audio_base64;
   if (!b64) throw new Error(res.output?.error || res.error || "no audio from the voice worker");
   const { writeFile } = await import("node:fs/promises");
@@ -157,9 +161,9 @@ async function orpheusNote(endpoint: string, script: string, voice: string): Pro
       ...parts.flatMap((p) => ["-i", p]),
       // Slowed a touch: the synthesised read came out brisk and bright, and the
       // note is meant to be murmured, not announced.
-      // …and a shade lower: asetrate drops the pitch (and the pace with it),
-      // atempo settles the pace at about 0.93x. Env-tunable without a deploy.
-      "-filter_complex", `${parts.map((_, i) => `[${i}:a]`).join("")}concat=n=${parts.length}:v=0:a=1,asetrate=24000*${process.env.VOICE_PITCH || "0.965"},aresample=24000,atempo=${process.env.VOICE_TEMPO || "0.965"}[a]`,
+      // …and a shade lower: asetrate drops pitch and pace together; the neutral
+      // atempo preserves that relaxed ~0.95x delivery. Env-tunable without a deploy.
+      "-filter_complex", `${parts.map((_, i) => `[${i}:a]`).join("")}concat=n=${parts.length}:v=0:a=1,asetrate=24000*${process.env.VOICE_PITCH || "0.95"},aresample=24000,atempo=${process.env.VOICE_TEMPO || "1.0"},equalizer=f=180:t=q:w=1:g=2,equalizer=f=3500:t=q:w=1:g=-1.5,acompressor=threshold=-18dB:ratio=2:attack=20:release=180:makeup=1.5[a]`,
       "-map", "[a]", "-codec:a", "libmp3lame", "-b:a", "128k", out,
     ]);
     return await readFile(out);
@@ -187,5 +191,8 @@ export async function companionVoiceNote(opts: {
       console.warn(`[voice] Orpheus failed, using the OpenAI voice: ${e?.message ?? e}`);
     }
   }
-  return textToSpeech(stripPerformance(opts.reply), opts.openaiVoice);
+  return textToSpeech(stripPerformance(opts.reply), opts.openaiVoice, {
+    gender: opts.companion.gender,
+    intimate: true,
+  });
 }

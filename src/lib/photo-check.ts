@@ -12,6 +12,7 @@
 
 import { hasProp } from "./props";
 import { isClimaxAct } from "./selfie";
+import type { Toy } from "./toys";
 
 export const PASS_SCORE = 7;
 export const DEFAULT_RETAKES = 2;
@@ -27,8 +28,8 @@ export type Candidate = { url: string; score: number | null };
 
 // The yes/no the vision model is asked, per act. Null means the act is not
 // one that gets checked.
-export function verifyQuestion(userRequest: string, hasBreasts: boolean, hasVulva = true): string | null {
-  const q = verifyQuestionFor(userRequest, hasBreasts, hasVulva);
+export function verifyQuestion(userRequest: string, hasBreasts: boolean, hasVulva = true, toy: Toy | null = null): string | null {
+  const q = verifyQuestionFor(userRequest, hasBreasts, hasVulva, toy);
   // Every question was written about "the woman"; a man or a trans man is
   // asked about as a person, so the checker is not told to look for someone
   // who is not in the picture.
@@ -40,8 +41,23 @@ export function verifyQuestion(userRequest: string, hasBreasts: boolean, hasVulv
     : q;
 }
 
-function verifyQuestionFor(userRequest: string, hasBreasts: boolean, hasVulva: boolean): string | null {
+function verifyQuestionFor(userRequest: string, hasBreasts: boolean, hasVulva: boolean, toy: Toy | null): string | null {
   const req = userRequest ?? "";
+  // An owned chest toy is a product identity, not merely the generic concept
+  // "sex toy". Reject a render that substitutes, omits, duplicates or changes
+  // it even when the body pose itself is otherwise correct.
+  if (toy) {
+    const placement = /\b(?:suck\w*|lick\w*|blow\w*|mouth|tongue|lips)\b/i.test(req)
+      ? "at the person's mouth in the requested licking or sucking action"
+      : /\b(?:insert\w*|inside|into|up|deep|penetrat\w*|shov\w*|stick\w*|push\w*|ridin?g?)\b/i.test(req)
+        ? "inserted tip-first in the requested body opening with its handle or base remaining outside"
+        : "being worn, held or applied exactly where the request says";
+    return (
+      `Does the image clearly show exactly one ${toy.name} (${toy.tags}), ${placement}? ` +
+      `It must match that color, material, scale, shape and component count, remain visibly separate from skin, ` +
+      `and must not be missing, duplicated, replaced by another toy or rendered as a body part.`
+    );
+  }
   // One definition of a climax request, shared with the prose and the tags.
   const climax = isClimaxAct(req);
   if (climax && !hasVulva)

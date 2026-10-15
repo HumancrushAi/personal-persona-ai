@@ -828,6 +828,7 @@ async function resubmitImageJob(
       ...opts,
       hasPenis: anatomyOf(ctx.companion.gender).hasPenis,
       toyTags: ctx.toy?.tags ?? null,
+      toyKind: ctx.toy?.kind ?? null,
       lookTags: (await import("./media.functions")).inkTags(await (await import("./look.server")).companionLook(ctx.companion.image_url)),
       // The same composed frame the first render started from, when it had one;
       // otherwise her portrait, as the first render did.
@@ -915,7 +916,7 @@ async function verifiedOrRetake(
   const { verifyQuestion, parseCandidates, candidateLine, bestCandidate, shouldRetake, DEFAULT_RETAKES, maxRetakesFor } =
     await import("./photo-check");
   const anat = anatomyOf(ctx.companion.gender);
-  const question = verifyQuestion(ctx.userRequest, anat.hasBreasts, anat.hasVulva);
+  const question = verifyQuestion(ctx.userRequest, anat.hasBreasts, anat.hasVulva, ctx.toy);
   if (!question) return mediaUrl;
 
   const score = await scorePhoto(mediaUrl, question, job.id);

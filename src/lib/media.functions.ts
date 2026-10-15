@@ -111,6 +111,17 @@ export function videoActionLock(req: string | undefined, gender?: string | null)
   return "";
 }
 
+/** Keep an owned chest toy visually stable through every frame of a clip. */
+export function videoToyLock(toy: Toy | null): string {
+  if (!toy) return "";
+  return (
+    `Prop continuity lock from first frame to last: exactly one ${toy.name}, ` +
+    `${toy.tags}. It remains the same manufactured object with identical color, material, scale, ` +
+    `shape and component count throughout the clip; it stays clearly visible and in sharp focus; ` +
+    `it never disappears, duplicates, changes design, melts into skin or becomes a different toy.`
+  );
+}
+
 // Shape words only, for a companion who has breasts, clothed or not. They used
 // to sit in QUALITY_NEGATIVE and go out on every render — a man's included,
 // where "droopy" pushes against the scrotum his own anatomy clause says hangs
@@ -1527,9 +1538,10 @@ export async function startVideoJob(
   const anatomy = anatomyOf(companion.gender);
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
   const actionLock = videoActionLock(rawReq, companion.gender);
+  const toyLock = videoToyLock(toy);
   const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) => {
     const locked = actionLock ? `${actionLock} ${p} ${actionLock}` : p;
-    return finishMediaPrompt(locked, rawReq, {
+    const finished = finishMediaPrompt(locked, rawReq, {
       anatomy,
       toy,
       setting,
@@ -1553,6 +1565,10 @@ export async function startVideoJob(
       // forbade the clip from holding still. Both halves now agree.
       moving: true,
     });
+    // Keep the exact catalogue object at both ends of every scene prompt.
+    // WAN weighs later tokens in later frames, so a single early description
+    // lets a toy disappear or morph as the clip progresses.
+    return toyLock ? `${toyLock} ${finished} ${toyLock}` : finished;
   });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);

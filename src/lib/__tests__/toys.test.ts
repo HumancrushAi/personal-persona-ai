@@ -4,6 +4,7 @@ import { propClause, propNegative } from "../props";
 import { anatomyOf } from "../anatomy";
 import { negativeFor } from "../media.functions";
 import { stillImagePrompt, finishMediaPrompt } from "../selfie";
+import { verifyQuestion } from "../photo-check";
 
 // The treasure chest: which toy a request is about, whether the user has it,
 // and that the toy they bought is the one the renderer is told about.
@@ -59,6 +60,15 @@ describe("resolveToy", () => {
 });
 
 describe("the toy she owns is the toy in the prompt", () => {
+  it("requires the finished render to contain the exact unlocked toy", () => {
+    const glass = toyById("dildo-glass")!;
+    const q = verifyQuestion("lick the glass dildo", true, true, glass)!;
+    expect(q).toContain("exactly one Glass Dildo");
+    expect(q).toContain("clear transparent borosilicate glass dildo");
+    expect(q).toMatch(/mouth.*licking or sucking action/);
+    expect(q).toMatch(/must not be missing, duplicated, replaced/);
+  });
+
   it("puts the exact spec in the prop clause and keeps the insertion logic", () => {
     const f = anatomyOf("female");
     const black = toyById("dildo-black")!;

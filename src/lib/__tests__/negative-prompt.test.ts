@@ -25,6 +25,16 @@ describe("negativeFor", () => {
     expect(p).toContain("left palm stays planted");
     expect(p).not.toMatch(/breast|boob|chest/i);
   });
+
+  it("locks an owned toy's exact appearance through the whole clip", async () => {
+    const { videoToyLock } = await import("../media.functions");
+    const { toyById } = await import("../toys");
+    const p = videoToyLock(toyById("dildo-glass"));
+    expect(p).toContain("exactly one Glass Dildo");
+    expect(p).toContain("clear transparent borosilicate glass dildo");
+    expect(p).toMatch(/first frame to last/);
+    expect(p).toMatch(/never disappears, duplicates, changes design/);
+  });
   describe("what it must never suppress", () => {
     it("does not push her head and face out of the picture", () => {
       const n = negativeFor("send me a nude pic", "female", { moving: false });

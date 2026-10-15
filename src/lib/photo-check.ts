@@ -49,13 +49,14 @@ function verifyQuestionFor(userRequest: string, hasBreasts: boolean, hasVulva: b
   if (toy) {
     const placement = /\b(?:suck\w*|lick\w*|blow\w*|mouth|tongue|lips)\b/i.test(req)
       ? "at the person's mouth in the requested licking or sucking action"
-      : /\b(?:insert\w*|inside|into|up|deep|penetrat\w*|shov\w*|stick\w*|push\w*|ridin?g?)\b/i.test(req)
+      : /\b(?:insert\w*|inside|into|up|deep|penetrat\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b/i.test(req)
         ? "inserted tip-first in the requested body opening with its handle or base remaining outside"
         : "being worn, held or applied exactly where the request says";
     return (
       `Does the image clearly show exactly one ${toy.name} (${toy.tags}), ${placement}? ` +
       `It must match that color, material, scale, shape and component count, remain visibly separate from skin, ` +
-      `and must not be missing, duplicated, replaced by another toy or rendered as a body part.`
+      `and must not be missing, duplicated, replaced by another toy or rendered as a body part. ` +
+      `Exactly two hands total may be visible and both must clearly belong to the person; score 0-2 for any extra, floating or external hand.`
     );
   }
   // One definition of a climax request, shared with the prose and the tags.

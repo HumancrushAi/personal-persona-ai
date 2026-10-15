@@ -547,6 +547,7 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
   const gotVideo =
     /video\//i.test(response.headers.get("content-type") ?? "") ||
     /\.(mp4|webm|mov)(\?|$)/i.test(outputUrl);
+  if (job.kind === "video" && gotVideo && (await retakeBadToyVideo(job, buf))) return null;
   if (job.kind === "video" && gotVideo) buf = await filmGrainVideo(buf);
   if (job.kind === "image" && gotVideo) {
     buf = await extractLastFrame(buf);
@@ -899,6 +900,87 @@ async function scorePhoto(url: string, question: string, jobId = ""): Promise<nu
   }
 }
 
+// WAN can preserve a clean start frame and still invent an external hand or
+// rotate a toy away from its contact point during motion. Check a resolved tail
+// frame before delivery and rerun the same clip with a fresh seed. This gate is
+// shared by every owned toy through verifyQuestion.
+async function retakeBadToyVideo(job: Job, mp4: Buffer): Promise<boolean> {
+  if (job.kind !== "video" || job.provider !== "runpod" || !job.conversation_id) return false;
+  const { data: row } = await supabaseAdmin
+    .from("media_jobs")
+    .select("prompt, provider, status")
+    .eq("id", job.id)
+    .maybeSingle();
+  if (!row || row.provider !== "runpod" || row.status === "completed") return false;
+
+  let parked: {
+    stage: "video";
+    videoInput: Record<string, any>;
+    videoPrompt: string;
+    startFrame: string;
+    attempt?: number;
+  };
+  try {
+    parked = JSON.parse(row.prompt);
+  } catch {
+    return false;
+  }
+  if (parked.stage !== "video" || !parked.startFrame || !parked.videoInput) return false;
+
+  const ctx = await jobContext(job.id);
+  if (!ctx?.toy) return false;
+  const { anatomyOf } = await import("./anatomy");
+  const { verifyQuestion, PASS_SCORE, DEFAULT_RETAKES } = await import("./photo-check");
+  const anatomy = anatomyOf(ctx.companion.gender);
+  const question = verifyQuestion(ctx.userRequest, anatomy.hasBreasts, anatomy.hasVulva, ctx.toy);
+  if (!question) return false;
+
+  const tail = await extractLastFrame(mp4);
+  const score = await scorePhoto(
+    `data:image/png;base64,${tail.toString("base64")}`,
+    question,
+    `${job.id}-video`,
+  );
+  if (score === null || score >= PASS_SCORE) return false;
+  const attempt = parked.attempt ?? 0;
+  const maxRetakes = Number(process.env.MEDIA_VIDEO_RETAKES || DEFAULT_RETAKES);
+  if (attempt >= maxRetakes) {
+    throw new Error(`Video quality check failed after ${attempt + 1} attempts (score ${score})`);
+  }
+
+  const { data: claimed } = await supabaseAdmin
+    .from("media_jobs")
+    .update({ provider: "runpod-video-retrying", updated_at: new Date().toISOString() })
+    .eq("id", job.id)
+    .eq("provider", "runpod")
+    .select("id");
+  if (!claimed?.length) return true;
+
+  const nextAttempt = attempt + 1;
+  const nextInput = {
+    ...parked.videoInput,
+    seed: (Number(parked.videoInput.seed) || Date.now()) + 104729 * nextAttempt,
+    image_url: parked.startFrame,
+  };
+  const { runpodEndpoint, runpodRun } = await import("./runpod");
+  const { webhookFor } = await import("./media.functions");
+  const endpoint = runpodEndpoint("video");
+  if (!endpoint) throw new Error("RUNPOD_VIDEO_ENDPOINT is not configured");
+  const result = await runpodRun(endpoint, nextInput, webhookFor("runpod"));
+  await supabaseAdmin
+    .from("media_jobs")
+    .update({
+      replicate_id: result.id,
+      provider: "runpod",
+      status: "processing",
+      prompt: JSON.stringify({ ...parked, videoInput: nextInput, attempt: nextAttempt }),
+      error: `video retake ${nextAttempt} after score ${score}`,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", job.id);
+  return true;
+}
+
 // For a checked act: the URL she should send (this candidate or a better
 // earlier one), or null when the job has been sent back for another render.
 // Candidates and their scores live in the row's error column as lines; the
@@ -1158,7 +1240,13 @@ export async function advanceVideoFromStill(job: Job, stillUrl: string): Promise
         replicate_id: result.id,
         provider: "runpod",
         status: "processing",
-        prompt: parked.videoPrompt,
+        prompt: JSON.stringify({
+          stage: "video",
+          videoInput: parked.videoInput,
+          videoPrompt: parked.videoPrompt,
+          startFrame: frameUrl,
+          attempt: 0,
+        }),
         updated_at: new Date().toISOString(),
       })
       .eq("id", job.id);

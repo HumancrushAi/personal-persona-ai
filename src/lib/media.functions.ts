@@ -1693,6 +1693,7 @@ export async function startVideoJob(
     .split("*")
     .map((n) => Number(n));
   const videoInput = {
+    seed: (await import("./comfy")).seedFor(`${rawReq}#video-${job.id}`),
     fps: fpsSetting,
     frames_per_scene: Math.round((totalSeconds * fpsSetting) / scenePrompts.length),
     num_scenes: scenePrompts.length,

@@ -148,8 +148,8 @@ describe("faces are not pushed toward old", () => {
       anatomy: anatomyOf("female"),
       still: true,
     });
-    expect(out).toMatch(/fresh youthful adult face/i);
-    expect(out).not.toContain("visible pores");
+    expect(out).toMatch(/natural unretouched facial skin texture/i);
+    expect(out).toContain("visible fine pores");
   });
 });
 

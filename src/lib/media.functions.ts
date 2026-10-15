@@ -25,6 +25,7 @@ import {
   checkCrossGenderRequest,
   finishMediaPrompt,
   isClimaxAct,
+  isRubAct,
 } from "./selfie";
 
 // Negative prompt for the RunPod WAN endpoint, in two halves.
@@ -92,7 +93,23 @@ const QUALITY_NEGATIVE =
 // pickSharpest in media-finalize.server.ts was added to fish for the least
 // smeared frame, which is treating the symptom of this line.
 const MOTION_NEGATIVE =
-  "slow, slow motion, static, still, frozen, stuck, no movement, jittery motion, rubbery movement, unnatural motion";
+  "static pose, frozen frame, motionless, stuck pose, jitter, rubbery movement, random unrelated movement";
+
+// WAN tends to turn any explicit seated clip into its learned generic breast-
+// fondling motion, even when the still begins with the hand correctly placed.
+// State one continuous action at both ends of the prompt and give every hand a
+// fixed job. Repetition is intentional: later tokens steer later video frames.
+export function videoActionLock(req: string | undefined, gender?: string | null): string {
+  if (!isRubAct(req ?? "")) return "";
+  const a = anatomyOf(gender);
+  if (a.hasVulva) {
+    return `Primary continuous action from first frame to last: ${a.poss} right index and middle fingers stay pressed on ${a.poss} own clitoris and complete repeated visible circular rubbing strokes over the same spot; ${a.poss} left palm stays planted on ${a.poss} inner thigh; ${a.poss} torso stays relaxed; the fixed camera keeps ${a.poss} groin and both hands in frame.`;
+  }
+  if (a.hasPenis) {
+    return `Primary continuous action from first frame to last: one hand stays closed around ${a.poss} own penis and completes repeated visible up-and-down stroking cycles; ${a.poss} other palm stays planted on ${a.poss} thigh; ${a.poss} torso stays relaxed; the fixed camera keeps ${a.poss} groin and both hands in frame.`;
+  }
+  return "";
+}
 
 // Shape words only, for a companion who has breasts, clothed or not. They used
 // to sit in QUALITY_NEGATIVE and go out on every render — a man's included,
@@ -1500,15 +1517,19 @@ export async function startVideoJob(
 
   // Now the slow part, with a job row already standing behind it.
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
-  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", companion, sceneCount, toy, setting);
+  const { companionLook } = await import("./look.server");
+  const look = await companionLook(companion.imageUrl);
+  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", { ...companion, look }, sceneCount, toy, setting);
   const videoAvoid = refinedVideo?.avoid ?? [];
   // Same reason as the photo path: a successful refine replaces the builder, so
   // the prop spec is re-appended to every scene rather than lost.
   const rawReq = userReq ?? "";
   const anatomy = anatomyOf(companion.gender);
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
-  const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) =>
-    finishMediaPrompt(p, rawReq, {
+  const actionLock = videoActionLock(rawReq, companion.gender);
+  const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) => {
+    const locked = actionLock ? `${actionLock} ${p} ${actionLock}` : p;
+    return finishMediaPrompt(locked, rawReq, {
       anatomy,
       toy,
       setting,
@@ -1516,17 +1537,23 @@ export async function startVideoJob(
       // Per scene, for the same reason it is per photo: the refiner no longer
       // writes the clause, so a scene that did not get it would be the one part
       // of a clip where the body is whatever the renderer felt like.
-      appendAnatomy: Boolean(refinedScenes),
+      // A generic full-body anatomy block made genital-action clips spend most
+      // of their prompt describing breasts. WAN then replaced the requested
+      // hand motion with its learned breast-fondling motion. The refined scene
+      // already names the requested anatomy precisely; keep it focused.
+      appendAnatomy: false,
       // Her row reaches the adult clause on this path too. appendAppearance
       // stays off — WAN animates her portrait, so the rest of her appearance
       // comes from the picture — but the age assertion is unconditional.
-      appearance: { age: companion.age, ethnicity: companion.ethnicity },
+      appendAppearance: true,
+      lockIdentity: true,
+      appearance: { age: companion.age, ethnicity: companion.ethnicity, look },
       // This is a clip. The fallback builder ended every scene with the motion
       // tail and a refined scene ended with nothing — while the negative prompt
       // forbade the clip from holding still. Both halves now agree.
       moving: true,
-    }),
-  );
+    });
+  });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
 
@@ -1548,7 +1575,12 @@ export async function startVideoJob(
     prompts: scenePrompts,
     negative_prompt: negativeFor(userReq, companion.gender, {
       moving: true,
-      extra: videoAvoid,
+      extra: [
+        ...videoAvoid,
+        ...(isRubAct(rawReq)
+          ? ["hand moving upward", "hand leaving groin", "hand on stomach", "hand on chest", "breast touching", "breast fondling"]
+          : []),
+      ],
       age: companion.age,
       toy,
     }),
@@ -1571,6 +1603,7 @@ export async function startVideoJob(
             age: companion.age ?? 18,
             ethnicity: companion.ethnicity ?? "",
             gender: companion.gender,
+            imageUrl: companion.imageUrl,
           },
           userReq,
           null,

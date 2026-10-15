@@ -239,7 +239,7 @@ ${toySpec
     ? `- the toy is EXACTLY this one and nothing else, already in the position they named, and it is hers alone — no other person, no other hand: ${toySpec}`
     : toyAsked
     ? `- the toy exactly as the user described it, already in the position they named, with material, size and how it interacts with her body stated clearly`
-    : `- what each of her two hands is doing, named plainly (one hand lifting her breast, the other flat on her stomach). A hand with no stated job gets drawn holding something`
+    : `- what each hand is doing, following only the user's requested action. For genital rubbing: the active fingers stay on the clitoris making repeated circles while the other palm stays planted on the inner thigh. For breast touching: name the requested breast contact while the other hand rests on the thigh. For any other act: the active hand performs it and the other hand rests on the thigh. A hand with no stated job gets drawn holding something`
   }
 ${climax
     ? kind === "male" || kind === "trans-female"

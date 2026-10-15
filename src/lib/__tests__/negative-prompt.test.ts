@@ -11,6 +11,20 @@ import { anatomyOf } from "../anatomy";
 // pushes away her head and her face, and a list containing "missing penis"
 // pushes toward one. Both were in there.
 describe("negativeFor", () => {
+  it("does not suppress deliberately slow video motion", async () => {
+    const { negativeFor } = await import("../media.functions");
+    const n = negativeFor("slowly rub your pussy in circles", "female", { moving: true });
+    expect(n).not.toMatch(/\bslow(?: motion)?\b/i);
+    expect(n).toMatch(/static pose/);
+  });
+
+  it("locks genital rubbing to repeated hand motion", async () => {
+    const { videoActionLock } = await import("../media.functions");
+    const p = videoActionLock("rub your pussy", "female");
+    expect(p).toContain("repeated visible circular rubbing strokes");
+    expect(p).toContain("left palm stays planted");
+    expect(p).not.toMatch(/breast|boob|chest/i);
+  });
   describe("what it must never suppress", () => {
     it("does not push her head and face out of the picture", () => {
       const n = negativeFor("send me a nude pic", "female", { moving: false });
@@ -70,7 +84,8 @@ describe("negativeFor", () => {
     it("keeps them on a video, which does have to move", () => {
       const n = negativeFor("dance for me", "female", { moving: true });
       expect(n).toMatch(/\bstatic\b/);
-      expect(n).toMatch(/no movement/);
+      expect(n).toMatch(/motionless/);
+      expect(n).not.toMatch(/\bslow(?: motion)?\b/i);
     });
   });
 

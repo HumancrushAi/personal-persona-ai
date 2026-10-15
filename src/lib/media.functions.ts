@@ -113,7 +113,7 @@ export function videoActionLock(req: string | undefined, gender?: string | null,
       `outer handle or wider base and completes repeated straight in-and-out fucking strokes on one fixed axis: ` +
       `pushes most of the insertable length inside, then pulls partway out while the tip always remains inside, ` +
       `then pushes in again. The toy never fully withdraws. Its outer handle or base never enters the body. ` +
-      `The opening stays visibly centered and snug around the shaft during every stroke. ${a.poss} left hand stays ` +
+      `The opening stays visibly centered and snug around the shaft during every stroke, naturally occluding its inner edge with no air gap; a stable contact shadow and subtle skin compression track the motion. ${a.poss} left hand stays ` +
       `planted on ${anchor}. The toy never hovers beside the body, slides over the skin, flips direction or points ` +
       `away from the opening. The fixed camera clearly shows the insertion point, gripping hand and repeated stroke.`
     );
@@ -1048,7 +1048,7 @@ export async function comfyJobInput(
       ? "tapered bulb already inside, narrow neck centered in the opening, flared base fully outside"
       : opts.toyKind === "beads"
         ? "smallest beads already inside, remaining graduated beads and pull ring outside"
-        : "rounded narrow tip and first half of shaft already visibly inside the opening, outer half and handle or base fully outside";
+        : "rounded narrow tip and first half of shaft already visibly inside the opening, opening naturally occluding the inner shaft edge with no air gap, subtle contact shadow and skin compression, outer half and handle or base fully outside";
   const toyPlaced = opts.toyTags
     ? propIsInserted(req) && insertableToy
       ? analToy

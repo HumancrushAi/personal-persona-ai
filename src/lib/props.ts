@@ -134,6 +134,9 @@ function insertedClauseFor(toy: Toy | null, propId: string, a: Anatomy, anal: bo
   return anal ? analInsertedClause(a) : INSERTED_CLAUSE;
 }
 
+const PHYSICAL_CONTACT_CLAUSE =
+  "At the entry point, the body opening naturally occludes the inner edge of the shaft with no visible air gap. A small contact shadow, subtle skin compression and consistent depth make the contact physically believable; the toy remains a separate solid object and never merges with the body.";
+
 function handleClauseFor(toy: Toy | null, propId: string): string {
   const id = toy?.id ?? propId;
   if (id === "dildo-realistic" || id === "dildo-black" || id === "dildo") return HAND_CLAUSE;
@@ -270,7 +273,7 @@ export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | n
   const oral = !inserted && ORAL_RE.test(text);
   const anal = inserted && ANAL_TARGET_RE.test(text) && !/\b(?:pussy|vagina|cunt|slit)\b/i.test(text);
   const parts = inserted
-    ? [insertedClauseFor(toy, prop.id, a, anal), prop.spec, twoHandsClauseFor(toy, prop.id)]
+    ? [insertedClauseFor(toy, prop.id, a, anal), PHYSICAL_CONTACT_CLAUSE, prop.spec, twoHandsClauseFor(toy, prop.id)]
     : oral
       ? [oralClauseFor(toy, prop.id, a, LICK_RE.test(text)), prop.spec]
       : [prop.spec];

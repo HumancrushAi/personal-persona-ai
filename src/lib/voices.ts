@@ -13,8 +13,11 @@ import { genderKind } from "./anatomy";
 // A companion's own voice_id still wins over any of this — see voiceFor.
 // alloy and ballad are gone from the women's list: both read as a male or
 // neutral voice, and 37 women had one of them stored, so women sounded like men.
-export const FEMALE_VOICES = ["shimmer", "coral", "nova", "sage"];
-export const MALE_VOICES = ["onyx", "ash", "echo", "verse", "fable"];
+// Marin and Cedar are the provider's current highest-quality built-in voices;
+// lead each roster with them so newly-created companions (which have no
+// manually assigned voice_id) do not fall onto an older, flatter default.
+export const FEMALE_VOICES = ["marin", "coral", "shimmer", "nova"];
+export const MALE_VOICES = ["cedar", "onyx", "ash", "echo"];
 
 /**
  * Which voice this companion speaks with.

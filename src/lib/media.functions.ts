@@ -136,6 +136,34 @@ export function videoActionLock(req: string | undefined, gender?: string | null,
   return "";
 }
 
+/** A compound action lock: one owned product and one connected hand per target. */
+export function multiToyVideoActionLock(
+  req: string | undefined,
+  gender: string | null | undefined,
+  toys: Toy[],
+): string {
+  if (toys.length <= 1) return videoActionLock(req, gender, toys[0] ?? null);
+  const request = req ?? "";
+  const a = anatomyOf(gender);
+  const bothTargets = /\b(?:ass|anus|asshole|butt)\b/i.test(request) &&
+    /\b(?:pussy|vagina|vulva|cunt|slit)\b/i.test(request);
+  const placements = toys.map((toy, index) => {
+    const anal = ["plug", "beads"].includes(toy.kind) ||
+      (!a.hasVulva && ["dildo", "vibrator"].includes(toy.kind));
+    const opening = bothTargets ? (anal ? `${a.poss} anus` : `${a.poss} pussy`) :
+      anal ? `${a.poss} anus` : a.hasVulva ? `${a.poss} pussy` : `${a.poss} anus`;
+    const hand = index === 0 ? `${a.poss} right hand` : `${a.poss} left hand`;
+    return `${hand}, visibly connected to ${a.poss} own ${index === 0 ? "right" : "left"} arm, grips only the exposed base or handle of the ${toy.name}; its insertion end is already inside ${opening}, whose rim overlaps both sides at one fixed entry point. The ${toy.name} remains the same rigid manufactured object: ${toy.tags}.`;
+  });
+  return (
+    `Primary compound action from first frame to last: ${placements.join(" ")} ` +
+    `Exactly ${toys.length} separate toys, exactly two arms and exactly two hands total, with no outside person or disembodied hand. ` +
+    `Both connected hands perform short controlled in-and-out strokes on their own fixed axes; each insertion tip remains inside its assigned opening throughout. ` +
+    `Neither toy crosses to the other opening, lies on top of skin, reverses ends, melts, bends, merges, duplicates or changes material. ` +
+    `Fixed camera keeps the subject's complete face, both hands, both product bases and both contact points visible.`
+  );
+}
+
 /** Keep an owned chest toy visually stable through every frame of a clip. */
 export function videoToyLock(toy: Toy | null): string {
   if (!toy) return "";
@@ -190,6 +218,7 @@ export function compactVideoScene(
   identity: string,
   toy: Toy | null,
   fallback: string,
+  requiredContext = "",
 ): string {
   const motion = (action || fallback).trim();
   const materialBehavior =
@@ -210,6 +239,7 @@ export function compactVideoScene(
     motion,
     "The requested hand action is the dominant motion; do not substitute posing, sitting up, smiling, breast touching or camera movement.",
     toyContinuity,
+    requiredContext,
     identityContinuity,
     "Fixed camera, continuous natural motion, no frozen hold.",
   ]
@@ -1703,7 +1733,7 @@ export async function startVideoJob(
   const { propClauses } = await import("./props");
   const multiToyPlan = toys.length > 1 ? propClauses(rawReq, { anatomy, toys }) : null;
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
-  const actionLock = videoActionLock(rawReq, companion.gender, toy);
+  const actionLock = multiToyVideoActionLock(rawReq, companion.gender, toys);
   const identityLock = videoIdentityLock(look);
   const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) => {
     const locked = actionLock ? `${actionLock} ${p} ${actionLock}` : p;
@@ -1739,7 +1769,7 @@ export async function startVideoJob(
     // freezes the start frame and invents a generic sit-up motion. Animation
     // gets a compact action-first prompt; the opening still carries visuals.
     const exactObjects = multiToyPlan ? `${multiToyPlan} ${finished} ${multiToyPlan}` : finished;
-    return compactVideoScene(actionLock, identityLock, toy, exactObjects);
+    return compactVideoScene(actionLock, identityLock, toy, exactObjects, multiToyPlan ?? "");
   });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);

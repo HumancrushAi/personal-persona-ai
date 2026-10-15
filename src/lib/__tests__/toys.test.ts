@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { TOYS, resolveToy, resolveToys, toyById, needsToyReply, mentionsToy } from "../toys";
 import { propClause, propClauses, propNegative } from "../props";
 import { anatomyOf } from "../anatomy";
-import { negativeFor } from "../media.functions";
+import { compactVideoScene, multiToyVideoActionLock, negativeFor } from "../media.functions";
 import { stillImagePrompt, finishMediaPrompt } from "../selfie";
 import { verifyQuestion } from "../photo-check";
 
@@ -82,6 +82,19 @@ describe("the toy she owns is the toy in the prompt", () => {
     expect(c).toMatch(/Exactly 2 toys total/);
     expect(c).toMatch(/Exactly two arms and exactly two hands total/);
     expect(c).toMatch(/No jewellery interpretation/);
+  });
+
+  it("keeps both toys in the animation prompt when an action lock is active", () => {
+    const toys = [toyById("plug-jewel")!, toyById("dildo-realistic")!];
+    const req = "stick the jewelled butt plug up your ass and the dildo in your pussy";
+    const lock = multiToyVideoActionLock(req, "female", toys);
+    expect(lock).toMatch(/Jewelled Butt Plug[\s\S]*her anus/);
+    expect(lock).toMatch(/Realistic Dildo[\s\S]*her pussy/);
+    expect(lock).toMatch(/exactly two arms and exactly two hands total/i);
+    const scene = compactVideoScene(lock, "same face", toys[0], "ignored fallback", "BOTH_PRODUCT_SPECS");
+    expect(scene).toContain("BOTH_PRODUCT_SPECS");
+    expect(scene).toContain("Jewelled Butt Plug");
+    expect(scene).toContain("Realistic Dildo");
   });
   it("requires the finished render to contain the exact unlocked toy", () => {
     const glass = toyById("dildo-glass")!;

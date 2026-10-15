@@ -99,9 +99,26 @@ const MOTION_NEGATIVE =
 // fondling motion, even when the still begins with the hand correctly placed.
 // State one continuous action at both ends of the prompt and give every hand a
 // fixed job. Repetition is intentional: later tokens steer later video frames.
-export function videoActionLock(req: string | undefined, gender?: string | null): string {
-  if (!isRubAct(req ?? "")) return "";
+export function videoActionLock(req: string | undefined, gender?: string | null, toy: Toy | null = null): string {
+  const request = req ?? "";
   const a = anatomyOf(gender);
+  if (toy && propIsInserted(request)) {
+    const anal = /\b(?:ass|anus|butt|booty|rear|back door)\b/i.test(request) &&
+      !/\b(?:pussy|vagina|vulva|cunt|slit)\b/i.test(request);
+    const opening = anal ? `${a.poss} anus` : `${a.poss} pussy`;
+    const anchor = anal ? `${a.poss} buttocks` : `${a.poss} open thighs`;
+    return (
+      `Primary continuous penetration action from first frame to last: the rounded narrow tip and the first part ` +
+      `of the ${toy.name} are already visibly inside ${opening} in frame one. ${a.poss} right hand grips only the ` +
+      `outer handle or wider base and completes repeated straight in-and-out fucking strokes on one fixed axis: ` +
+      `pushes most of the insertable length inside, then pulls partway out while the tip always remains inside, ` +
+      `then pushes in again. The toy never fully withdraws. Its outer handle or base never enters the body. ` +
+      `The opening stays visibly centered and snug around the shaft during every stroke. ${a.poss} left hand stays ` +
+      `planted on ${anchor}. The toy never hovers beside the body, slides over the skin, flips direction or points ` +
+      `away from the opening. The fixed camera clearly shows the insertion point, gripping hand and repeated stroke.`
+    );
+  }
+  if (!isRubAct(request)) return "";
   if (a.hasVulva) {
     return `Primary continuous action from first frame to last: ${a.poss} right index and middle fingers stay pressed on ${a.poss} own clitoris and complete repeated visible circular rubbing strokes over the same spot; ${a.poss} left palm stays planted on ${a.poss} inner thigh; ${a.poss} torso stays relaxed; the fixed camera keeps ${a.poss} groin and both hands in frame.`;
   }
@@ -350,7 +367,7 @@ export function negativeFor(
   );
   return extra.length ? `${base}, ${extra.join(", ")}` : base;
 }
-import { propClause, propNegative, hasProp } from "./props";
+import { propClause, propNegative, hasProp, propIsInserted } from "./props";
 import type { Toy } from "./toys";
 import type { Setting } from "./selfie";
 import { anatomyOf, crossSexNegative, genderKind, mentionsPart } from "./anatomy";
@@ -1026,11 +1043,17 @@ export async function comfyJobInput(
   const { propIsInserted, propIsOral } = await import("./props");
   const analToy = /\b(?:ass|anus|butt|asshole|booty)\b/i.test(req) && !/\b(?:pussy|vagina|cunt)\b/i.test(req);
   const insertableToy = !opts.toyKind || ["dildo", "vibrator", "plug", "beads", "strap-on"].includes(opts.toyKind);
+  const insertedLead =
+    opts.toyKind === "plug"
+      ? "tapered bulb already inside, narrow neck centered in the opening, flared base fully outside"
+      : opts.toyKind === "beads"
+        ? "smallest beads already inside, remaining graduated beads and pull ring outside"
+        : "rounded narrow tip and first half of shaft already visibly inside the opening, outer half and handle or base fully outside";
   const toyPlaced = opts.toyTags
     ? propIsInserted(req) && insertableToy
       ? analToy
-        ? `${opts.toyTags} inserted in her ass, anal insertion, bent over, ass toward the camera, legs apart`
-        : `${opts.toyTags} inserted in her pussy, vaginal insertion, lying back with legs spread wide, knees up, framed from head to knees`
+        ? `${opts.toyTags}, ${insertedLead}, inserted tip-first in her ass, visible anal penetration and contact at the insertion point, bent over, ass toward the camera, legs apart`
+        : `${opts.toyTags}, ${insertedLead}, inserted tip-first in her pussy, visible vaginal penetration and contact at the insertion point, lying back with legs spread wide, knees up, framed from head to knees`
       : propIsOral(req)
         ? `${opts.toyTags} in her mouth, lips around it`
         : opts.toyTags
@@ -1537,7 +1560,7 @@ export async function startVideoJob(
   const rawReq = userReq ?? "";
   const anatomy = anatomyOf(companion.gender);
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
-  const actionLock = videoActionLock(rawReq, companion.gender);
+  const actionLock = videoActionLock(rawReq, companion.gender, toy);
   const toyLock = videoToyLock(toy);
   const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) => {
     const locked = actionLock ? `${actionLock} ${p} ${actionLock}` : p;
@@ -1580,6 +1603,9 @@ export async function startVideoJob(
   // back was 368 pixels square; nothing about a face is realistic at that size.
   // "WIDTH*HEIGHT"; RUNPOD_VIDEO_SIZE=off hands the choice back to the worker.
   const videoSize = stillKnob("RUNPOD_VIDEO_SIZE", "720*1280");
+  const [videoWidth, videoHeight] = (videoSize ?? "")
+    .split("*")
+    .map((n) => Number(n));
   const videoInput = {
     fps: fpsSetting,
     frames_per_scene: Math.round((totalSeconds * fpsSetting) / scenePrompts.length),
@@ -1588,6 +1614,10 @@ export async function startVideoJob(
     // mostly there.
     sampling_steps: Number(process.env.RUNPOD_VIDEO_STEPS || "30"),
     ...(videoSize ? { size: videoSize } : {}),
+    // Endpoint versions differ: newer workers read size, older WAN handlers
+    // read explicit dimensions. Supplying both is backward compatible and
+    // prevents the silent 368x368 fallback seen in production clip 1261901.
+    ...(videoWidth && videoHeight ? { width: videoWidth, height: videoHeight } : {}),
     prompts: scenePrompts,
     negative_prompt: negativeFor(userReq, companion.gender, {
       moving: true,
@@ -1595,6 +1625,18 @@ export async function startVideoJob(
         ...videoAvoid,
         ...(isRubAct(rawReq)
           ? ["hand moving upward", "hand leaving groin", "hand on stomach", "hand on chest", "breast touching", "breast fondling"]
+          : []),
+        ...(toy && propIsInserted(rawReq)
+          ? [
+              "toy hovering outside body",
+              "toy beside opening",
+              "toy sliding over skin",
+              "toy fully withdrawn",
+              "hand gripping middle of shaft",
+              "handle entering body",
+              "base entering body",
+              "sideways penetration",
+            ]
           : []),
       ],
       age: companion.age,

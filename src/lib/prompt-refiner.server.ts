@@ -296,6 +296,8 @@ The clip has ${scenes} scenes that play back to back. Break the requested action
 
 THIS IS A MOVING CLIP, NOT A PHOTOGRAPH. The rules above were written for a still and the worked examples below are stills, so take the DENSITY and the ORDER from them and nothing else: every one of them ends in photograph language, and a clip prompt must not. Instead, say what MOVES — which part of her body, in which direction, how fast, and what stays where it is — and end each scene with smooth natural lifelike motion, her face and body consistent throughout, and where the camera is holding or travelling. A clip prompt that describes a locked-off photograph is the single reason these come back churning: the negative prompt simultaneously forbids the clip from holding still, so the two halves fight and the render resolves it as morphing.
 
+${shape.toyAsked ? `TOY MOTION IS LITERAL, NOT IMPLIED. If the request says she is fucking or penetrating herself with the toy, describe repeated straight in-and-out strokes: the tip begins already inside, most of the insertable length pushes in, it pulls only partway out so the tip remains inside, and the same cycle repeats. The gripping hand moves with the outer base on one fixed axis; the base never enters and the toy never hovers or rubs beside the opening.` : ""}
+
 Output exactly ${scenes} prompts, one per line, each 60-120 words, numbered "1." to "${scenes}.". ${AVOID_RULE}${formatOnly}
 
 Examples of the required style:

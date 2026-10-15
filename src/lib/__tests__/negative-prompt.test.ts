@@ -35,6 +35,21 @@ describe("negativeFor", () => {
     expect(p).toMatch(/first frame to last/);
     expect(p).toMatch(/never disappears, duplicates, changes design/);
   });
+
+  it("turns an inserted-toy video into repeated aligned penetration, not a held pose", async () => {
+    const { videoActionLock } = await import("../media.functions");
+    const { toyById } = await import("../toys");
+    const p = videoActionLock(
+      "fucking yourself with the glass dildo inside your pussy",
+      "female",
+      toyById("dildo-glass"),
+    );
+    expect(p).toMatch(/already visibly inside her pussy in frame one/i);
+    expect(p).toMatch(/repeated straight in-and-out fucking strokes/i);
+    expect(p).toMatch(/tip always remains inside/i);
+    expect(p).toMatch(/never hovers beside the body/i);
+    expect(p).toMatch(/base never enters the body/i);
+  });
   describe("what it must never suppress", () => {
     it("does not push her head and face out of the picture", () => {
       const n = negativeFor("send me a nude pic", "female", { moving: false });

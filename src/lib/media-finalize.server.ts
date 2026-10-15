@@ -328,6 +328,31 @@ export async function extractLastFrame(mp4: Buffer): Promise<Buffer> {
   }
 }
 
+/** Nine evenly sampled timeline panels for checking continuity and motion. */
+export async function extractVideoContactSheet(mp4: Buffer): Promise<Buffer> {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const { writeFile, readFile, mkdtemp, rm } = await import("node:fs/promises");
+  const { join: joinPath } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const dir = await mkdtemp(joinPath(tmpdir(), "video-audit-"));
+  const input = joinPath(dir, "in.mp4");
+  const output = joinPath(dir, "sheet.jpg");
+  try {
+    await writeFile(input, mp4);
+    await promisify(execFile)(await ffmpegBin(), [
+      "-y", "-i", input,
+      "-vf", "fps=2,scale=320:-1,tile=3x3:padding=2:margin=2",
+      "-frames:v", "1", "-q:v", "3", output,
+    ]);
+    return Buffer.from(await readFile(output));
+  } catch {
+    return extractLastFrame(mp4);
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 // The generation endpoint returns video with no audio track at all (confirmed:
 // the mp4 carries a single h264 stream), so sound is added here.
 //
@@ -943,10 +968,10 @@ async function retakeBadToyVideo(job: Job, mp4: Buffer): Promise<boolean> {
   const question = verifyQuestion(ctx.userRequest, anatomy.hasBreasts, anatomy.hasVulva, ctx.toy);
   if (!question) return false;
 
-  const tail = await extractLastFrame(mp4);
+  const tail = await extractVideoContactSheet(mp4);
   const score = await scorePhoto(
-    `data:image/png;base64,${tail.toString("base64")}`,
-    question,
+    `data:image/jpeg;base64,${tail.toString("base64")}`,
+    `This image is a chronological contact sheet covering the entire generated video. Score the requested action across ALL panels, not merely the best panel. The geometry must remain correct and the requested motion must visibly progress across the sequence. If the object stays in one place, remains fully outside, floats over the surface, morphs, or is correct in only some panels, score 0-2. ${question}`,
     `${job.id}-video`,
   );
   if (score === null || score >= PASS_SCORE) return false;
@@ -1219,7 +1244,61 @@ export async function advanceVideoFromStill(job: Job, stillUrl: string): Promise
       stage: "still";
       videoInput: Record<string, unknown>;
       videoPrompt: string;
+      stillInputUrl?: string;
+      stillAttempt?: number;
     };
+
+    // Do not animate a physically invalid opening image. Image-to-video can
+    // preserve motion and identity, but it cannot turn a toy drawn on top of
+    // the body into a genuinely inserted object. Score the still first and,
+    // when its contact geometry is wrong, regenerate the still with a fresh
+    // seed instead of spending another video pass on the same bad source.
+    const ctx = await jobContext(job.id);
+    if (ctx) {
+      const { anatomyOf } = await import("./anatomy");
+      const { verifyQuestion, PASS_SCORE, DEFAULT_RETAKES } = await import("./photo-check");
+      const anatomy = anatomyOf(ctx.companion.gender);
+      const question = verifyQuestion(ctx.userRequest, anatomy.hasBreasts, anatomy.hasVulva, ctx.toy);
+      if (question) {
+        const score = await scorePhoto(stillUrl, question, `${job.id}-opening`);
+        const attempt = parked.stillAttempt ?? 0;
+        const maxRetakes = Number(process.env.MEDIA_VIDEO_STILL_RETAKES || DEFAULT_RETAKES);
+        if (score !== null && score < PASS_SCORE) {
+          const { storedVideoStillInput, storeVideoStillInput } = await import("./compose.server");
+          const stillInput = await storedVideoStillInput(parked.stillInputUrl);
+          if (!stillInput || attempt >= maxRetakes) {
+            throw new Error(`Video opening-frame quality check failed after ${attempt + 1} attempts (score ${score})`);
+          }
+          const nextAttempt = attempt + 1;
+          const nextStillInput = {
+            ...stillInput,
+            seed: (Number(stillInput.seed) || Date.now()) + 104729 * nextAttempt,
+          };
+          const nextStillInputUrl = await storeVideoStillInput(job.id, nextStillInput);
+          const { runpodRun, runpodEndpoint } = await import("./runpod");
+          const endpoint = runpodEndpoint("comfy");
+          if (!endpoint) throw new Error("RUNPOD_COMFY_ENDPOINT is not configured");
+          const site = (process.env.PUBLIC_SITE_URL || "https://www.humancrush.com").replace(/\/$/, "");
+          const retry = await runpodRun(endpoint, nextStillInput, `${site}/api/public/runpod-webhook`);
+          await supabaseAdmin
+            .from("media_jobs")
+            .update({
+              replicate_id: retry.id,
+              provider: "runpod-still",
+              status: "processing",
+              prompt: JSON.stringify({
+                ...parked,
+                stillInputUrl: nextStillInputUrl,
+                stillAttempt: nextAttempt,
+              }),
+              error: `opening-frame retake ${nextAttempt} after score ${score}`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", job.id);
+          return;
+        }
+      }
+    }
     const res = await fetch(stillUrl);
     if (!res.ok) throw new Error(`could not read her still (${res.status})`);
     const still = Buffer.from(await res.arrayBuffer());

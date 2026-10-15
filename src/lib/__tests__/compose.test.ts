@@ -90,4 +90,15 @@ describe("the composed-frame graph", () => {
     expect(g["3"].inputs.denoise).toBe(0.8);
     expect(g["12"].inputs.weight_faceidv2).toBe(1.2);
   });
+
+  it("keeps an uploaded room at the dedicated scene-preservation strength", () => {
+    for (const k of Object.keys(process.env)) if (k.startsWith("COMFY_DENOISE")) delete process.env[k];
+    expect(
+      comfySettings("p", {
+        template: FACEID_I2I_WORKFLOW,
+        preserveScene: true,
+        promptSetsComposition: true,
+      }).denoise,
+    ).toBe(0.68);
+  });
 });

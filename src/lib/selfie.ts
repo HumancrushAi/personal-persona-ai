@@ -1657,11 +1657,18 @@ const FACE_WORDS = FACE_CLAUSE.split(/\s+/).length;
  * otherwise her own place, read off her portrait — so a chat photo is taken
  * where her reel and her card were, not in a renderer's default bedroom.
  */
-export type Setting = string | { text: string; whose: "user" | "her" } | null | undefined;
+export type Setting = string | { text: string; whose: "user" | "her"; url?: string } | null | undefined;
 
 export function settingText(setting: Setting): string {
   if (!setting) return "";
   return (typeof setting === "string" ? setting : setting.text).trim();
+}
+
+/** The uploaded room photograph, when the user supplied the setting. */
+export function settingImageUrl(setting: Setting): string | null {
+  if (!setting || typeof setting !== "object" || setting.whose !== "user") return null;
+  const url = (setting.url ?? "").trim();
+  return /^https?:\/\//i.test(url) ? url : null;
 }
 
 /** The setting as the one sentence every prompt says it with. */

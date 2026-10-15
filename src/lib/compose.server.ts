@@ -210,3 +210,26 @@ export async function storedStartFrame(jobId: string): Promise<string | null> {
     return null;
   }
 }
+
+/** Persist a video opening-still request without putting multi-megabyte base64
+ * reference images in media_jobs.prompt. */
+export async function storeVideoStillInput(jobId: string, input: Record<string, unknown>): Promise<string> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const path = `startframes/video-still-${jobId}.json`;
+  const { error } = await supabaseAdmin.storage
+    .from("avatars")
+    .upload(path, Buffer.from(JSON.stringify(input)), { contentType: "application/json", upsert: true });
+  if (error) throw new Error(`Could not store video still input: ${error.message}`);
+  return supabaseAdmin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+}
+
+export async function storedVideoStillInput(url: string | null | undefined): Promise<Record<string, any> | null> {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return (await res.json()) as Record<string, any>;
+  } catch {
+    return null;
+  }
+}

@@ -660,7 +660,7 @@ export async function mediaJobInFlight(
 async function settingFor(conversationId: string, imageUrl: string | null | undefined): Promise<Setting> {
   const { roomFor } = await import("./rooms.server");
   const room = await roomFor(conversationId);
-  if (room?.description) return { text: room.description, whose: "user" };
+  if (room?.description) return { text: room.description, whose: "user", url: room.url };
   const { companionScene } = await import("./look.server");
   const scene = await companionScene(imageUrl);
   return scene ? { text: scene, whose: "her" } : null;
@@ -827,9 +827,23 @@ export async function startImageJob(
     // request from her portrait, and the uncensored pass starts from it. Kept
     // for the job so a retake starts from the same picture.
     let composedFrame: string | null = null;
+    // Preserve an uploaded room as pixels, not only as a short description.
+    // The I2I latent carries its layout while the portrait remains the
+    // independent FaceID source.
+    const { settingImageUrl } = await import("./selfie");
+    const uploadedRoomUrl = settingImageUrl(setting);
+    if (provider === "comfy" && uploadedRoomUrl) {
+      composedFrame = await readPortrait(uploadedRoomUrl);
+      if (composedFrame) {
+        const { storeStartFrame } = await import("./compose.server");
+        await storeStartFrame(job.id, composedFrame).catch((e) =>
+          console.warn("room start frame not stored:", e?.message ?? e),
+        );
+      }
+    }
     const { composeMode } = await import("./compose.server");
     const mode = composeMode();
-    if (provider === "comfy" && mode === "grok") {
+    if (provider === "comfy" && !composedFrame && mode === "grok") {
       const { composeStartFrame, storeStartFrame } = await import("./compose.server");
       const composed = await composeStartFrame({
         portraitUrl: sourceImage,
@@ -857,6 +871,7 @@ export async function startImageJob(
             // cached look (hair, skin, eyes and build), not only ink/build.
             lookTags: look,
             startFrame: composedFrame,
+            preserveScene: Boolean(uploadedRoomUrl),
             startFromPortrait: mode === "portrait",
           })
         : provider === "kontext"
@@ -1015,6 +1030,8 @@ export async function comfyJobInput(
     forceFaceSwap?: boolean;
     /** Render into this native canvas instead of fitting a portrait into it afterwards. */
     outputSize?: { width: number; height: number };
+    /** Keep an uploaded room's layout while adding the companion. */
+    preserveScene?: boolean;
   } = {},
 ): Promise<Record<string, unknown>> {
   const {
@@ -1187,6 +1204,7 @@ export async function comfyJobInput(
         seedSalt,
         mouthAct,
         composed,
+        preserveScene: opts.preserveScene,
         memorySafe: opts.memorySafe,
         outputSize: opts.outputSize,
       }),
@@ -1573,6 +1591,9 @@ export async function startVideoJob(
 ): Promise<string> {
   const startImage = resolveHostedImage(companion.imageUrl);
   const setting = await settingFor(conversationId, companion.imageUrl);
+  const { settingImageUrl } = await import("./selfie");
+  const uploadedRoomUrl = settingImageUrl(setting);
+  const uploadedRoomFrame = uploadedRoomUrl ? await readPortrait(uploadedRoomUrl) : null;
 
   // The endpoint renders one scene per prompt and joins them, so a clip is cut
   // into ~5s scenes and Grok writes the action as a progression across them.
@@ -1820,7 +1841,9 @@ export async function startVideoJob(
             // A malformed prop here cannot be repaired by the motion prompt.
             toyTags: toy ? `${toy.tags}. ${toy.spec}` : null,
             toyKind: toy?.kind ?? null,
-            lookTags: inkTags(look),
+            lookTags: look,
+            startFrame: uploadedRoomFrame,
+            preserveScene: Boolean(uploadedRoomFrame),
             forceFaceSwap: true,
             // WAN emits a square clip. Render the requested scene as a square
             // photograph from the outset instead of padding a portrait still
@@ -1828,6 +1851,8 @@ export async function startVideoJob(
             outputSize: { width: 768, height: 768 },
           },
         );
+        const { storeVideoStillInput } = await import("./compose.server");
+        const stillInputUrl = await storeVideoStillInput(job.id, stillInput);
         const { result: still, endpoint: stillSentTo } = await submitImage(supabaseAdmin, comfyEndpoint, stillInput);
         await supabaseAdmin
           .from("media_jobs")
@@ -1835,7 +1860,7 @@ export async function startVideoJob(
             replicate_id: tagJobId(still.id, stillSentTo),
             provider: "runpod-still",
             status: "processing",
-            prompt: JSON.stringify({ stage: "still", videoInput, videoPrompt }),
+            prompt: JSON.stringify({ stage: "still", videoInput, videoPrompt, stillInputUrl, stillAttempt: 0 }),
           })
           .eq("id", job.id);
         return job.id;

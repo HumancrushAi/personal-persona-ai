@@ -804,6 +804,8 @@ export function comfySettings(
     template?: string;
     /** The start latent is a composed frame of this very request, not her portrait. */
     composed?: boolean;
+    /** The start latent is the user's uploaded room; keep its geometry intact. */
+    preserveScene?: boolean;
     /**
      * Mixed into the seed so a second photo in the same chat is a new picture.
      * seedFor(prompt) alone made "send another" a copy of the first one: same
@@ -876,6 +878,7 @@ export function comfySettings(
     // Never 0.90+ — that wiped site identity in chat.
     denoise: (() => {
       if (!usesStartLatent(opts.template)) return 1;
+      if (opts.preserveScene) return numberSetting("COMFY_DENOISE_ROOM", 0.68);
       // With the lightweight post-render face swap, the sampler can obey the
       // requested nudity, pose and mouth action without sacrificing identity:
       // the swap restores her face after sampling. These dedicated settings

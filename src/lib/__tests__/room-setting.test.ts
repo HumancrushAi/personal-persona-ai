@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { stillImagePrompt, videoActionPrompt, finishMediaPrompt, settingSentenceFor } from "../selfie";
+import { stillImagePrompt, videoActionPrompt, finishMediaPrompt, settingImageUrl, settingSentenceFor } from "../selfie";
 import { anatomyOf } from "../anatomy";
 import { tidyRoom, settingSentence } from "../rooms.server";
 import { CHEST_EXTRAS, chestItemById } from "../toys";
@@ -27,6 +27,14 @@ describe("her picture in the user's room", () => {
     expect(p.split("user's own room").length - 1).toBe(1);
     const again = finishMediaPrompt(p, "show me your tits", { anatomy: anatomyOf("female"), setting: room });
     expect(again.split("user's own room").length - 1).toBe(1);
+  });
+
+  it("keeps the uploaded room photo as the renderer's scene reference", () => {
+    expect(settingImageUrl({ text: room, whose: "user", url: "https://cdn.example/room.jpg?v=2" })).toBe(
+      "https://cdn.example/room.jpg?v=2",
+    );
+    expect(settingImageUrl({ text: room, whose: "her", url: "https://cdn.example/portrait.jpg" })).toBeNull();
+    expect(settingImageUrl(room)).toBeNull();
   });
 
   it("tidies what the vision model says and refuses a non-answer", () => {

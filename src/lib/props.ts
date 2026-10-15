@@ -61,7 +61,7 @@ const PROPS: Prop[] = [
     match: kw(
       String.raw`dildos?|sex\s*toys?|silicone cock|fake dick|toy cock|fake cock|toy dick|suction dildo`,
     ),
-    spec: "The dildo is a separate solid object of realistic flesh-toned silicone shaped like an erect penis, with a defined rounded glans, a subtly veined shaft, and two attached rounded testicle-shaped balls beneath the shaft. Two clearly different ends: (1) the firm narrow rounded tip / glans is the insertable end; (2) the wide flat flared base / suction-cup end is the handle end. Real toy scale — about as long as her hand from wrist to fingertip, roughly two fingers thick. Clean hard edges, sharp focus, distinct from skin.",
+    spec: "The dildo is a separate solid realistic flesh-toned silicone anatomical adult toy, with a defined rounded glans, a subtly veined shaft, and two attached rounded testicle-shaped balls beneath the shaft. Two clearly different ends: (1) the firm narrow rounded tip / glans is the insertable end; (2) the wide flat flared base / suction-cup end is the handle end. Real toy scale — about as long as her hand from wrist to fingertip, roughly two fingers thick. Clean hard edges, sharp focus, distinct from skin.",
   },
 ];
 
@@ -85,7 +85,7 @@ const INSERTED_CLAUSE =
   "Penetration complete, tip-first orientation only: the narrow rounded tip is deep inside her pussy; the wide flat flared base is fully outside her body and is the only end her fingers touch. " +
   "Most of the shaft is hidden inside her; a short length of shaft plus the flared base remain visible outside. " +
   "Her open thighs frame the entry. Her pussy lips stretch around the shaft (the narrow mid-section), not around the wide base. Clear wetness at the rim of entry, sharp focus on the insertion point. " +
-  "The toy angles down between her thighs. This is real penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
+  "The toy is visibly inserted and angles down between her open thighs. This is real penetration with the tip inside — not a toy resting on her skin, not base-first, not inverted.";
 
 // The same clause for the other hole. The pussy wording was being sent for
 // "a dildo up your ass", and the render put it where the words said.

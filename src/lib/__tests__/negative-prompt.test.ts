@@ -36,6 +36,16 @@ describe("negativeFor", () => {
     expect(p).toMatch(/never disappears, duplicates, changes design/);
   });
 
+  it("locks face, hair and body appearance through every video frame", async () => {
+    const { videoIdentityLock } = await import("../media.functions");
+    const p = videoIdentityLock("long black wavy hair, brown eyes, warm tan skin, curvy build, full bust");
+    expect(p).toContain("same facial geometry");
+    expect(p).toContain("same hair color, hairline, texture, part and length");
+    expect(p).toContain("same body build, bust, waist, hips and proportions");
+    expect(p).toContain("long black wavy hair");
+    expect(p).toContain("no identity drift");
+  });
+
   it("turns an inserted-toy video into repeated aligned penetration, not a held pose", async () => {
     const { videoActionLock } = await import("../media.functions");
     const { toyById } = await import("../toys");

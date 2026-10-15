@@ -139,6 +139,25 @@ export function videoToyLock(toy: Toy | null): string {
   );
 }
 
+/**
+ * WAN follows motion strongly and can redraw the person as a scene progresses.
+ * Repeat the immutable appearance at both ends of every scene so later frames
+ * keep the same subject instead of treating the opening image as pose-only.
+ */
+export function videoIdentityLock(look?: string | null): string {
+  const described = (look ?? "").trim();
+  return [
+    "IDENTITY LOCK: exactly the same single adult person as the identity reference and opening frame",
+    "same facial geometry, eyes, nose, lips, jawline, skin tone and apparent age in every frame",
+    "same hair color, hairline, texture, part and length in every frame",
+    "same body build, bust, waist, hips and proportions in every frame",
+    described ? `immutable appearance: ${described}` : "",
+    "no identity drift, no face morphing, no hairstyle change and no body-shape change",
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
 // Shape words only, for a companion who has breasts, clothed or not. They used
 // to sit in QUALITY_NEGATIVE and go out on every render — a man's included,
 // where "droopy" pushes against the scrotum his own anatomy clause says hangs
@@ -1562,6 +1581,7 @@ export async function startVideoJob(
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
   const actionLock = videoActionLock(rawReq, companion.gender, toy);
   const toyLock = videoToyLock(toy);
+  const identityLock = videoIdentityLock(look);
   const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) => {
     const locked = actionLock ? `${actionLock} ${p} ${actionLock}` : p;
     const finished = finishMediaPrompt(locked, rawReq, {
@@ -1591,7 +1611,8 @@ export async function startVideoJob(
     // Keep the exact catalogue object at both ends of every scene prompt.
     // WAN weighs later tokens in later frames, so a single early description
     // lets a toy disappear or morph as the clip progresses.
-    return toyLock ? `${toyLock} ${finished} ${toyLock}` : finished;
+    const withToy = toyLock ? `${toyLock} ${finished} ${toyLock}` : finished;
+    return `${identityLock}. ${withToy} ${identityLock}.`;
   });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
@@ -1623,6 +1644,16 @@ export async function startVideoJob(
       moving: true,
       extra: [
         ...videoAvoid,
+        "different person",
+        "changed face",
+        "face identity drift",
+        "face morphing",
+        "changed hairstyle",
+        "changed hair color",
+        "changed hair length",
+        "changed body type",
+        "changing bust size",
+        "changing proportions",
         ...(isRubAct(rawReq)
           ? ["hand moving upward", "hand leaving groin", "hand on stomach", "hand on chest", "breast touching", "breast fondling"]
           : []),
@@ -1643,6 +1674,13 @@ export async function startVideoJob(
       toy,
     }),
     lora_strengths: VIDEO_LORA_STRENGTHS,
+    // Newer workers use this as a second, immutable identity source while
+    // image_url remains the posed opening frame. Older workers safely ignore
+    // the extra fields and still benefit from the per-scene identity lock.
+    reference_image_url: startImage,
+    identity_image_url: startImage,
+    preserve_identity: true,
+    identity_strength: Number(process.env.RUNPOD_VIDEO_IDENTITY_STRENGTH || "0.92"),
   };
 
   // Same face as her photos: render the opening frame on the photo graph first
@@ -1690,6 +1728,7 @@ export async function startVideoJob(
             // silently falls back to the checkpoint's generic prop.
             toyTags: toy?.tags ?? null,
             toyKind: toy?.kind ?? null,
+            lookTags: inkTags(look),
           },
         );
         const { result: still, endpoint: stillSentTo } = await submitImage(supabaseAdmin, comfyEndpoint, stillInput);

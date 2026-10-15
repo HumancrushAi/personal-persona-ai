@@ -121,14 +121,17 @@ export type SpeechStyle = {
 export function speechDirection(style: SpeechStyle = {}): string {
   const masculine = style.gender === "male" || style.gender === "trans-male";
   const register = masculine
-    ? "Use a warm, low, confident masculine register."
-    : "Use a warm, soft, naturally feminine register with a slightly lower, smoky tone.";
+    ? "Use a warm, low, confident masculine register, close and gently seductive."
+    : "Use a warm, soft, naturally feminine register with a slightly lower, smoky tone that feels gently seductive.";
+  const intimate = style.intimate
+    ? "Sound like an adult lover speaking privately in bed: relaxed, sensual and emotionally responsive. Use soft breath before an intimate phrase, an occasional quiet smile in the voice, tiny imperfect pauses, and slight changes in pace and volume. Linger lightly on affectionate words without overacting. "
+    : "";
   return (
-    `${register} You are a real lover recording a private voice note for one person, close to the microphone. ` +
-    "Speak at an unhurried conversational pace, softly and intimately, with subtle breath, tiny hesitations, " +
-    "natural sentence-to-sentence rhythm, and relaxed contractions. Let teasing phrases dip slightly lower and " +
-    "end gently. Sound spontaneous and emotionally present, never like an announcer, assistant, audiobook, " +
-    "customer-service agent, or synthetic character. Do not exaggerate, sing, or turn every line into a whisper."
+    `${register} ${intimate}You are a real person recording one spontaneous private voice note close to the microphone. ` +
+    "Speak slowly but conversationally, with natural breaths, tiny hesitations, relaxed contractions, uneven human rhythm, " +
+    "and gentle sentence endings. Let teasing phrases dip slightly lower. Avoid a polished studio read, repeated sing-song " +
+    "intonation, perfect timing, or uniform volume. Never sound like an announcer, assistant, audiobook, customer-service " +
+    "agent, or synthetic character. Do not exaggerate, sing, or whisper the entire line."
   );
 }
 
@@ -147,7 +150,7 @@ export async function textToSpeech(text: string, voice: string, style: SpeechSty
       response_format: "mp3",
       // A slightly slower delivery gives the model room for natural breaths and
       // removes the brisk, assistant-like cadence without sounding drugged.
-      speed: Number(process.env.OPENAI_TTS_SPEED || "0.9"),
+      speed: Number(process.env.OPENAI_TTS_SPEED || "0.86"),
       instructions: speechDirection(style),
     }),
   });

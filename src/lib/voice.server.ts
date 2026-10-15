@@ -125,7 +125,7 @@ async function orpheusSpeech(endpoint: string, text: string, voice: string, dir:
   // OpenAI voice rather than leaving the user waiting.
   const res = await runpodRunSync(
     endpoint,
-    { text, voice, temperature: Number(process.env.VOICE_TEMPERATURE || "0.72") },
+    { text, voice, temperature: Number(process.env.VOICE_TEMPERATURE || "0.76") },
     60_000,
   );
   const b64 = res.output?.audio_base64;
@@ -163,7 +163,7 @@ async function orpheusNote(endpoint: string, script: string, voice: string): Pro
       // note is meant to be murmured, not announced.
       // …and a shade lower: asetrate drops pitch and pace together; the neutral
       // atempo preserves that relaxed ~0.95x delivery. Env-tunable without a deploy.
-      "-filter_complex", `${parts.map((_, i) => `[${i}:a]`).join("")}concat=n=${parts.length}:v=0:a=1,asetrate=24000*${process.env.VOICE_PITCH || "0.95"},aresample=24000,atempo=${process.env.VOICE_TEMPO || "1.0"},equalizer=f=180:t=q:w=1:g=2,equalizer=f=3500:t=q:w=1:g=-1.5,acompressor=threshold=-18dB:ratio=2:attack=20:release=180:makeup=1.5[a]`,
+      "-filter_complex", `${parts.map((_, i) => `[${i}:a]`).join("")}concat=n=${parts.length}:v=0:a=1,asetrate=24000*${process.env.VOICE_PITCH || "0.98"},aresample=24000,atempo=${process.env.VOICE_TEMPO || "0.95"},equalizer=f=180:t=q:w=1:g=1.2,equalizer=f=3500:t=q:w=1:g=-0.6,acompressor=threshold=-20dB:ratio=1.6:attack=35:release=240:makeup=1[a]`,
       "-map", "[a]", "-codec:a", "libmp3lame", "-b:a", "128k", out,
     ]);
     return await readFile(out);

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { FEMALE_VOICES, MALE_VOICES, voiceFor } from "../voices";
 
 vi.mock("../ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../ai")>()),
@@ -71,8 +72,10 @@ describe("fallback TTS performance", () => {
     const direction = speechDirection({ gender: "female", intimate: true });
     expect(direction).toMatch(/soft, naturally feminine/i);
     expect(direction).toMatch(/slightly lower, smoky tone/i);
-    expect(direction).toMatch(/never like an announcer, assistant/i);
-    expect(direction).toMatch(/natural sentence-to-sentence rhythm/i);
+    expect(direction).toMatch(/never sound like an announcer, assistant/i);
+    expect(direction).toMatch(/uneven human rhythm/i);
+    expect(direction).toMatch(/adult lover speaking privately in bed/i);
+    expect(direction).toMatch(/tiny imperfect pauses/i);
   });
 
   it("uses a masculine register for male companions", async () => {
@@ -82,8 +85,7 @@ describe("fallback TTS performance", () => {
 });
 
 describe("the fallback voice matches her gender", () => {
-  it("never gives a woman alloy or ballad", async () => {
-    const { voiceFor, FEMALE_VOICES } = await import("../voices");
+  it("never gives a woman alloy or ballad", () => {
     for (const v of ["alloy", "ballad", "onyx", ""]) {
       for (let order = 0; order < 6; order++) {
         const got = voiceFor({ gender: "female", voice_id: v, sort_order: order });
@@ -94,8 +96,7 @@ describe("the fallback voice matches her gender", () => {
     expect(voiceFor({ gender: "trans-female", voice_id: "ballad" })).not.toBe("ballad");
   });
 
-  it("keeps a man on a male voice", async () => {
-    const { voiceFor, MALE_VOICES } = await import("../voices");
+  it("keeps a man on a male voice", () => {
     expect(MALE_VOICES).toContain(voiceFor({ gender: "male", voice_id: "shimmer", sort_order: 3 }));
     expect(voiceFor({ gender: "male", voice_id: "onyx" })).toBe("onyx");
   });

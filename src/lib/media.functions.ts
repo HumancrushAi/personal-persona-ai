@@ -12,7 +12,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
-import { textToSpeech, chatComplete } from "./ai";
+import { chatComplete } from "./ai";
 import { screenUserMessage, screenAssistantReply, BLOCKED_CONTENT } from "./safety";
 import {
   kontextSelfiePrompt,
@@ -2218,7 +2218,16 @@ export const videoScript = createServerFn({ method: "POST" })
     // model-written text in the app that nothing looked at.
     const spoken = screenAssistantReply(line).allowed ? line : "";
     const voice = voiceFor(c);
-    const buf = await textToSpeech(spoken || `Hey you… I made this just for you.`, voice);
+    // Video speech used to bypass the expressive voice-note path entirely.
+    // Keep one performance pipeline so video receives the same emotion cues,
+    // intimate direction and human pacing as a voice note.
+    const { companionVoiceNote } = await import("./voice.server");
+    const buf = await companionVoiceNote({
+      reply: spoken || `Hey you… I made this just for you.`,
+      userAsk: data.prompt ?? "Make a teasing hello video for me.",
+      companion: c,
+      openaiVoice: voice,
+    });
     const audioUrl = `data:audio/mpeg;base64,${buf.toString("base64")}`;
 
     return { line, audioUrl, imageUrl: c.image_url as string, name: c.name as string };

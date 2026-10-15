@@ -997,6 +997,8 @@ export async function comfyJobInput(
     startFromPortrait?: boolean;
     /** Video opening frames need the exact portrait face, not only a FaceID likeness. */
     forceFaceSwap?: boolean;
+    /** Render into this native canvas instead of fitting a portrait into it afterwards. */
+    outputSize?: { width: number; height: number };
   } = {},
 ): Promise<Record<string, unknown>> {
   const {
@@ -1167,6 +1169,7 @@ export async function comfyJobInput(
         mouthAct,
         composed,
         memorySafe: opts.memorySafe,
+        outputSize: opts.outputSize,
       }),
       prompt: finalPrompt,
       negative,
@@ -1789,6 +1792,10 @@ export async function startVideoJob(
             toyKind: toy?.kind ?? null,
             lookTags: inkTags(look),
             forceFaceSwap: true,
+            // WAN emits a square clip. Render the requested scene as a square
+            // photograph from the outset instead of padding a portrait still
+            // with blurred side copies that remain baked into every frame.
+            outputSize: { width: 768, height: 768 },
           },
         );
         const { result: still, endpoint: stillSentTo } = await submitImage(supabaseAdmin, comfyEndpoint, stillInput);

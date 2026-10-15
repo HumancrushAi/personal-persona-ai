@@ -370,6 +370,13 @@ describe("numeric settings", () => {
     process.env.COMFY_CFG = "7.5";
     expect(comfySettings("p").cfg).toBe(7.5);
   });
+
+  it("can render a video opening frame directly in the clip's square canvas", async () => {
+    const { comfySettings } = await import("../comfy");
+    const settings = comfySettings("p", { outputSize: { width: 768, height: 768 } });
+    expect(settings.width).toBe(768);
+    expect(settings.height).toBe(768);
+  });
 });
 
 // "No model generates the same character in the chat."

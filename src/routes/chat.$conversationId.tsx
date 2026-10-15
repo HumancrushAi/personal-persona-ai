@@ -1044,7 +1044,7 @@ function ChatPage() {
                         playsInline
                         preload="auto"
                         src={m.media_url}
-                        className="block w-full max-h-[32rem] rounded-2xl object-cover"
+                        className="block h-auto max-h-[32rem] w-full rounded-2xl bg-black object-contain"
                         onError={() => toast.error("That clip didn't load — tap to retry")}
                       />
                       <DownloadButton

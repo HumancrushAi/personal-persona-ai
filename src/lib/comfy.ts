@@ -812,6 +812,8 @@ export function comfySettings(
     seedSalt?: string;
     /** Use reduced dimensions/steps after a provider reports a VRAM failure. */
     memorySafe?: boolean;
+    /** Override the normal portrait bucket, for example for a square video opening frame. */
+    outputSize?: { width: number; height: number };
   } = {},
 ): Omit<ComfyVars, "prompt" | "negative" | "referenceImage"> {
   const memorySafe = Boolean(opts.memorySafe);
@@ -827,12 +829,12 @@ export function comfySettings(
     // "glowing like plastic" was the report — and guidance is the first dial
     // for that. The face pass keeps the full lock, so likeness does not pay.
     cfg: opts.mouthAct ? numberSetting("COMFY_CFG_MOUTH", 5.0) : numberSetting("COMFY_CFG", 5.0),
-    width: memorySafe
-      ? numberSetting("COMFY_MEMORY_WIDTH", 640)
-      : numberSetting("COMFY_WIDTH", 704),
-    height: memorySafe
-      ? numberSetting("COMFY_MEMORY_HEIGHT", 960)
-      : numberSetting("COMFY_HEIGHT", 1024),
+    width:
+      opts.outputSize?.width ??
+      (memorySafe ? numberSetting("COMFY_MEMORY_WIDTH", 640) : numberSetting("COMFY_WIDTH", 704)),
+    height:
+      opts.outputSize?.height ??
+      (memorySafe ? numberSetting("COMFY_MEMORY_HEIGHT", 960) : numberSetting("COMFY_HEIGHT", 1024)),
     // The SDE variant deliberately leaves stochastic texture behind. On skin
     // that reads as coarse grain/noise, especially after a face swap. The
     // deterministic 2M sampler is cleaner at the same resolution and steps.

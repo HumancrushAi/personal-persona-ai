@@ -116,6 +116,24 @@ export async function fitStartFrame(
  * fills the square's full height on the same blurred backdrop.
  */
 export async function squareStillFrame(still: Buffer, key: string): Promise<string> {
+  const metadata = await sharp(still).metadata();
+  const alreadySquare =
+    Boolean(metadata.width && metadata.height) &&
+    Math.abs((metadata.width as number) - (metadata.height as number)) <= 2;
+
+  // Video opening stills are now rendered on a square canvas. Preserve that
+  // complete composition directly: adding the old blurred backdrop here would
+  // visibly bake soft side columns into the MP4 for no reason.
+  if (alreadySquare) {
+    const squared = await sharp(still).resize(SIDE, SIDE, { fit: "fill" }).png().toBuffer();
+    const path = `startframes/${key}.png`;
+    const { error } = await supabaseAdmin.storage
+      .from("avatars")
+      .upload(path, squared, { contentType: "image/png", upsert: true });
+    if (error) throw error;
+    return supabaseAdmin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  }
+
   const wash = await sharp(still).resize(12, 12, { fit: "cover" }).toBuffer();
   const backdrop = await sharp(wash)
     .resize(SIDE, SIDE, { fit: "fill", kernel: "cubic" })

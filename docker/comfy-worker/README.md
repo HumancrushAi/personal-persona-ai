@@ -55,6 +55,12 @@ fails at the loader with "model not found".
 
 Vercel → Settings → Environment Variables → `COMFY_GRAPH` → `faceid` → redeploy.
 
+To condition toy renders on the exact treasure-chest product photographs, use
+this worker image (it provisions `ip-adapter-plus_sdxl_vit-h.safetensors`) and
+then set `COMFY_TOY_REFERENCE=1` in Vercel. Do not enable that flag against an
+older volume that only lists `ip-adapter-faceid-plusv2_sdxl.bin`: FaceID locks
+the person but cannot encode an object's silhouette.
+
 ### 5. First render is slow
 
 The first cold start downloads about 2GB of weights to the volume

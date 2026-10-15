@@ -259,7 +259,10 @@ const KIND_PROP: Record<string, string> = {
 const HELD_CLAUSE =
   "Her hand holds the toy by its handle end with five separate countable fingers and a clean visible edge between skin and toy.";
 
-export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | null } = {}): string {
+export function propClause(
+  req: string,
+  opts: { anatomy?: Anatomy; toy?: Toy | null; multiToy?: boolean } = {},
+): string {
   const text = (req ?? "").trim();
   const a = opts.anatomy ?? anatomyOf("female");
   const toy = opts.toy ?? null;
@@ -278,7 +281,12 @@ export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | n
   const oral = !inserted && ORAL_RE.test(text);
   const anal = inserted && ANAL_TARGET_RE.test(text) && !/\b(?:pussy|vagina|cunt|slit)\b/i.test(text);
   const parts = inserted
-    ? [insertedClauseFor(toy, prop.id, a, anal), prop.spec, PHYSICAL_CONTACT_CLAUSE, twoHandsClauseFor(toy, prop.id)]
+    ? [
+        insertedClauseFor(toy, prop.id, a, anal),
+        prop.spec,
+        PHYSICAL_CONTACT_CLAUSE,
+        opts.multiToy ? "" : twoHandsClauseFor(toy, prop.id),
+      ]
     : oral
       ? [oralClauseFor(toy, prop.id, a, LICK_RE.test(text)), prop.spec]
       : [prop.spec];
@@ -288,6 +296,29 @@ export function propClause(req: string, opts: { anatomy?: Anatomy; toy?: Toy | n
   // the wrong place, and the word pulls the camera to her groin.
   if (a.hasVulva && !oral && !anal && !inserted) parts.push(vulvaAnatomy(a));
   return pronounize(parts.join(" "), a);
+}
+
+/**
+ * Describe all chest toys in a compound request without collapsing them into
+ * one generic prop. Insertable toys get a deterministic body target when both
+ * targets are present: plugs/beads are anal and dildo-shaped toys are vaginal.
+ */
+export function propClauses(
+  req: string,
+  opts: { anatomy?: Anatomy; toys?: Toy[] | null } = {},
+): string {
+  const toys = opts.toys ?? [];
+  if (toys.length <= 1) return propClause(req, { anatomy: opts.anatomy, toy: toys[0] ?? null });
+  const a = opts.anatomy ?? anatomyOf("female");
+  const bothTargets = /\b(?:ass|anus|asshole|butt)\b/i.test(req) && /\b(?:pussy|vagina|cunt|slit)\b/i.test(req);
+  const clauses = toys.map((toy) => {
+    let scoped = req;
+    if (bothTargets && ["plug", "beads"].includes(toy.kind)) scoped = `insert the ${toy.name} in your ass`;
+    else if (bothTargets && ["dildo", "vibrator", "strap-on"].includes(toy.kind) && a.hasVulva)
+      scoped = `insert the ${toy.name} in your pussy`;
+    return propClause(scoped, { anatomy: a, toy, multiToy: true });
+  });
+  return `${clauses.join(" ")} Exactly ${toys.length} toys total, each toy remains a separate rigid object at its own named opening. Exactly two arms and exactly two hands total, both hands belong to the subject; one connected hand controls each toy by its exposed base or handle. No jewellery interpretation and no additional person.`;
 }
 
 export function propNegative(req: string, toy?: Toy | null): string {

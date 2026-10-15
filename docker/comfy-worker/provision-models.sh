@@ -90,6 +90,11 @@ FAILED=0
 fetch "https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl.bin" \
       "$MODELS/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin" || FAILED=1
 
+# Regular (non-FaceID) adapter for exact chest-product reference pictures.
+# FaceID encodes faces only and cannot preserve a dildo/plug/wand silhouette.
+fetch "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors" \
+      "$MODELS/ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors" || FAILED=1
+
 fetch "https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl_lora.safetensors" \
       "$MODELS/loras/ip-adapter-faceid-plusv2_sdxl_lora.safetensors" || FAILED=1
 

@@ -362,7 +362,62 @@ export type ToyResolution = {
   toy: Toy | null;
   /** The toy the request needs but the user does not have. */
   needed: Toy | null;
+  /** Every distinct toy requested, in catalogue-resolution order. */
+  toys?: Toy[];
+  /** Every requested toy that is not owned. */
+  neededToys?: Toy[];
 };
+
+function toyNameScore(t: Toy, normalized: string): number {
+  return t.name
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length > 2 && normalized.includes(word))
+    .reduce((sum, word) => sum + word.length, 0);
+}
+
+/** Resolve every different toy kind named in one request. */
+export function resolveToys(request: string, owned: Set<string> | "all"): ToyResolution {
+  const req = request ?? "";
+  const normalized = req.toLowerCase();
+  const has = (t: Toy) => owned === "all" || owned.has(t.id);
+  const exact = TOYS.flatMap((toy) => {
+    const match = toy.match.exec(req);
+    return match?.[0] ? [{ toy, index: match.index, length: match[0].length }] : [];
+  });
+  let unmatched = req;
+  for (const hit of [...exact].sort((a, b) => b.index - a.index)) {
+    unmatched = `${unmatched.slice(0, hit.index)}${" ".repeat(hit.length)}${unmatched.slice(hit.index + hit.length)}`;
+  }
+  const kinds = exact.map(({ toy }) => toy.kind);
+  for (const [, kind] of GENERIC_KIND.filter(([re]) => re.test(unmatched))) kinds.push(kind);
+
+  // Exact catalogue matches introduce their kind. Keeping one selection
+  // per kind prevents "glass dildo with balls" from becoming two dildos, while
+  // still preserving requests such as "a plug and a dildo".
+  for (const { toy } of exact) if (!kinds.includes(toy.kind)) kinds.push(toy.kind);
+
+  const toys: Toy[] = [];
+  const neededToys: Toy[] = [];
+  for (const kind of [...new Set(kinds)]) {
+    const named = TOYS.filter((t) => t.kind === kind && t.match.test(req)).sort(
+      (a, b) => toyNameScore(b, normalized) - toyNameScore(a, normalized),
+    );
+    const candidates = named.length ? named : TOYS.filter((t) => t.kind === kind);
+    const mine = candidates.find(has);
+    if (mine) toys.push(mine);
+    else {
+      const wanted = named[0] ?? [...candidates].sort((a, b) => a.price - b.price)[0];
+      if (wanted) neededToys.push(wanted);
+    }
+  }
+  return {
+    toy: toys[0] ?? null,
+    needed: neededToys[0] ?? null,
+    toys,
+    neededToys,
+  };
+}
 
 /**
  * Which toy a request is about, and whether the user has it.
@@ -374,6 +429,8 @@ export type ToyResolution = {
  */
 export function resolveToy(request: string, owned: Set<string> | "all"): ToyResolution {
   const req = request ?? "";
+  const multiple = resolveToys(req, owned);
+  if ((multiple.toys?.length ?? 0) > 1 || (multiple.neededToys?.length ?? 0) > 1) return multiple;
   const has = (t: Toy) => owned === "all" || owned.has(t.id);
   // A request can contain more than one toy word ("glass dildo with balls"
   // matches both the glass and realistic entries). Prefer the toy whose name
@@ -383,12 +440,7 @@ export function resolveToy(request: string, owned: Set<string> | "all"): ToyReso
   const named = TOYS
     .filter((t) => t.match.test(req))
     .sort((a, b) => {
-      const score = (t: Toy) =>
-        t.name
-          .toLowerCase()
-          .split(/[^a-z0-9]+/)
-          .filter((word) => word.length > 2 && normalized.includes(word))
-          .reduce((sum, word) => sum + word.length, 0);
+      const score = (t: Toy) => toyNameScore(t, normalized);
       return score(b) - score(a);
     });
   if (named.length) {

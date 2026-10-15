@@ -602,6 +602,46 @@ export function wantsReference(template = DEFAULT_WORKFLOW): boolean {
   return template.includes("{{REFERENCE_IMAGE}}");
 }
 
+/**
+ * Add object-reference conditioning without disturbing the FaceID chain.
+ * FaceID is deliberately kept for the person; a regular PLUS adapter reads
+ * the catalogue product photographs and conditions only the main sampler.
+ */
+export function withProductReferences(template: string, imageNames: string[]): string {
+  if (!imageNames.length) return template;
+  const graph = JSON.parse(template) as Record<string, any>;
+  const sampler = graph["3"];
+  if (!sampler?.inputs?.model) return template;
+  const samplerModel = sampler.inputs.model;
+  graph["30"] = {
+    class_type: "IPAdapterUnifiedLoader",
+    inputs: { model: samplerModel, preset: "PLUS (high strength)" },
+  };
+  let model: [string, number] = ["30", 0];
+  imageNames.forEach((name, index) => {
+    const loadId = String(31 + index * 2);
+    const applyId = String(32 + index * 2);
+    graph[loadId] = { class_type: "LoadImage", inputs: { image: name, upload: "image" } };
+    graph[applyId] = {
+      class_type: "IPAdapterAdvanced",
+      inputs: {
+        model,
+        ipadapter: ["30", 1],
+        image: [loadId, 0],
+        weight: imageNames.length > 1 ? 0.48 : 0.62,
+        weight_type: "linear",
+        combine_embeds: "concat",
+        start_at: 0,
+        end_at: 0.82,
+        embeds_scaling: "V only",
+      },
+    };
+    model = [applyId, 0];
+  });
+  sampler.inputs.model = model;
+  return JSON.stringify(graph);
+}
+
 /** The name the reference portrait is saved under in the worker's input folder. */
 export const REFERENCE_NAME = "reference.png";
 

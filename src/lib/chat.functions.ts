@@ -429,9 +429,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // chest opens on the one she asked for. With the toy in hand its exact
     // spec goes to the renderer instead of the checkpoint's own idea of one.
     let mediaToy: Toy | null = null;
+    let mediaToys: Toy[] = [];
     if (askedFor) {
       const { toyForRequest } = await import("./toys.server");
-      const { toy, needed } = await toyForRequest(supabase, userId, email, mediaRequestText);
+      const { toy, needed, toys = [] } = await toyForRequest(supabase, userId, email, mediaRequestText);
       if (needed) {
         const reply = needsToyReply(needed);
         await supabase.from("messages").insert({
@@ -448,6 +449,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         return { reply, needsToy: needed.id };
       }
       mediaToy = toy;
+      mediaToys = toys;
       if (toy) {
         const { withToyPlace } = await import("./toys");
         const { anatomyOf } = await import("./anatomy");
@@ -545,6 +547,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           balAfter,
           undefined,
           mediaToy,
+          mediaToys,
         );
 
         const teaser = teaserFor("video", herVoice, { salt: history?.length, toy: mediaToy?.name ?? null });
@@ -624,6 +627,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           p.style_backstory,
           balAfter,
           mediaToy,
+          mediaToys,
         );
 
         const teaser = teaserFor("photo", herVoice, { salt: history?.length, toy: mediaToy?.name ?? null });

@@ -1,6 +1,6 @@
 // Public companion data for the server-rendered /models pages, the sitemap and
-// llms.txt. System companions only (created_by null) and active ones only:
-// a companion a user made for themselves is never published.
+// llms.txt. Active user-created companions belong here too: /create exposes a
+// Publish switch and the database policy deliberately makes active rows public.
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -11,7 +11,6 @@ async function loadPublicCompanions(): Promise<PublicCompanion[]> {
   const { data, error } = await supabaseAdmin
     .from("companions")
     .select("id, name, age, ethnicity, gender, art_style, short_bio, base_personality, image_url, status")
-    .is("created_by", null)
     .order("sort_order");
   if (error) throw new Error(error.message);
 

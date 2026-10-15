@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { TOYS, resolveToy, toyById, needsToyReply, mentionsToy } from "../toys";
-import { propClause, propNegative } from "../props";
+import { TOYS, resolveToy, resolveToys, toyById, needsToyReply, mentionsToy } from "../toys";
+import { propClause, propClauses, propNegative } from "../props";
 import { anatomyOf } from "../anatomy";
 import { negativeFor } from "../media.functions";
 import { stillImagePrompt, finishMediaPrompt } from "../selfie";
@@ -36,6 +36,15 @@ describe("resolveToy", () => {
     expect(resolveToy("sucking on a dildo", "all").needed).toBeNull();
   });
 
+  it("keeps a plug and dildo as two separate owned toys", () => {
+    const r = resolveToys(
+      "spread your legs and stick the jewelled butt plug up your ass and the dildo in your pussy",
+      new Set(["plug-jewel", "dildo-realistic"]),
+    );
+    expect(r.neededToys).toEqual([]);
+    expect(r.toys?.map((t) => t.id)).toEqual(["plug-jewel", "dildo-realistic"]);
+  });
+
   it("is quiet on requests with no toy in them", () => {
     for (const r of ["show me your tits", "whipped cream on your tits", "lick your nipples", "a necklace and heels"]) {
       const res = resolveToy(r, new Set());
@@ -60,6 +69,20 @@ describe("resolveToy", () => {
 });
 
 describe("the toy she owns is the toy in the prompt", () => {
+  it("locks two toys to separate openings without inventing extra hands", () => {
+    const c = propClauses(
+      "stick the jewelled butt plug up your ass and the dildo in your pussy",
+      {
+        anatomy: anatomyOf("female"),
+        toys: [toyById("dildo-realistic")!, toyById("plug-jewel")!],
+      },
+    );
+    expect(c).toMatch(/inside her pussy[\s\S]*dildo/i);
+    expect(c).toMatch(/steel bulb leads inside her ass/i);
+    expect(c).toMatch(/Exactly 2 toys total/);
+    expect(c).toMatch(/Exactly two arms and exactly two hands total/);
+    expect(c).toMatch(/No jewellery interpretation/);
+  });
   it("requires the finished render to contain the exact unlocked toy", () => {
     const glass = toyById("dildo-glass")!;
     const q = verifyQuestion("lick the glass dildo", true, true, glass)!;

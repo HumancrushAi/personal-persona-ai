@@ -574,7 +574,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
     // A toy she does not have yet: she says so, in chat, and nothing is charged.
     const { toyForRequest } = await import("./toys.server");
     const { data: au } = await supabase.auth.getUser();
-    const { toy, needed } = await toyForRequest(supabase, userId, au?.user?.email, userPrompt ?? "");
+    const { toy, needed, toys = [] } = await toyForRequest(supabase, userId, au?.user?.email, userPrompt ?? "");
     if (toy && userPrompt) {
       const { withToyPlace } = await import("./toys");
       userPrompt = withToyPlace(userPrompt, toy, anatomyOf(c.gender).hasVulva);
@@ -611,6 +611,7 @@ export const generateSelfie = createServerFn({ method: "POST" })
       p.style_backstory,
       balance,
       toy,
+      toys,
     );
 
     return { jobId, status: "pending" as const, balance, toy: toy?.name ?? null };
@@ -706,6 +707,7 @@ export async function startImageJob(
   styleBackstory: string | null | undefined,
   balance: { free: number; paid: number },
   toy: Toy | null = null,
+  toys: Toy[] = toy ? [toy] : [],
 ): Promise<string> {
   // The user's own room, if they gave her one for this chat; else her own
   // place, read off her portrait, so the photo is taken where her reel was.
@@ -749,7 +751,7 @@ export async function startImageJob(
     );
   }
 
-  const { prompt: imagePrompt, avoid, look } = await photoPromptWithAvoid(
+  const { prompt: baseImagePrompt, avoid, look } = await photoPromptWithAvoid(
     companion,
     userRequest,
     styleBackstory,
@@ -757,6 +759,11 @@ export async function startImageJob(
     toy,
     setting,
   );
+  const { propClauses } = await import("./props");
+  const toyPlan = toys.length > 1
+    ? propClauses(userRequest ?? "", { anatomy: anatomyOf(companion.gender), toys })
+    : null;
+  const imagePrompt = toyPlan ? `${baseImagePrompt} ${toyPlan}` : baseImagePrompt;
 
   // The WAN endpoint centre-crops to a square, which decapitated the result.
   // Square it ourselves, keeping the whole figure, before handing it over. An
@@ -865,8 +872,10 @@ export async function startImageJob(
             hasPenis: anatomyOf(companion.gender).hasPenis,
             // Give the renderer the catalogue geometry as well as the short
             // tags; otherwise transparent glass is easily read as a bottle.
-            toyTags: toy ? `${toy.tags}. ${toy.spec}` : null,
+            toyTags: toys.length ? toys.map((t) => `${t.tags}. ${t.spec}`).join(" ") : null,
             toyKind: toy?.kind ?? null,
+            toyPlan,
+            toyReferences: toys.map((t) => ({ id: t.id, url: t.image })).filter((t) => Boolean(t.url)),
             // Video has no later face-restoration pass. Lead with the complete
             // cached look (hair, skin, eyes and build), not only ink/build.
             lookTags: look,
@@ -1020,6 +1029,10 @@ export async function comfyJobInput(
     toyTags?: string | null;
     /** The owned toy kind, used to avoid applying dildo insertion tags to a wand or bullet. */
     toyKind?: string | null;
+    /** Complete placement plan when one request uses more than one chest toy. */
+    toyPlan?: string | null;
+    /** Exact catalogue pictures used as product-reference conditioning. */
+    toyReferences?: { id: string; url?: string | null }[];
     /** Her ink, from the look phrase: leads the prompt weighted, or the checkpoint leaves it off. */
     lookTags?: string | null;
     /** A composed frame of this request (compose.server.ts), base64: the pass starts from it. */
@@ -1111,6 +1124,21 @@ export async function comfyJobInput(
     }
   }
 
+  // Product reference images are distinct from the portrait identity image.
+  // They are uploaded under stable names and, on the product-reference graph,
+  // connected through a regular IP-Adapter (FaceID cannot encode objects).
+  const toyReferenceImages: { name: string; base64: string }[] = [];
+  for (const [index, ref] of (opts.toyReferences ?? []).entries()) {
+    if (!ref.url) continue;
+    const base64 = await readPortrait(ref.url);
+    if (base64) toyReferenceImages.push({ name: `toy-reference-${index}.png`, base64 });
+  }
+  if (toyReferenceImages.length && process.env.COMFY_TOY_REFERENCE === "1") {
+    const { withProductReferences } = await import("./comfy");
+    template = withProductReferences(template, toyReferenceImages.map((r) => r.name));
+    extraImages.push(...toyReferenceImages);
+  }
+
   // Does the REQUEST compose the picture, or does her portrait?
   //
   // A prop, a named posture or a viewpoint all mean the user has said what the
@@ -1154,15 +1182,15 @@ export async function comfyJobInput(
         : "most of the insertable shaft already visibly inside the opening, only a short outer shaft section plus handle or base visible outside, body rim overlapping and hiding both sides of the shaft at one fixed entry point with no air gap, stable contact shadow and skin compression";
   const insertedHands =
     "exactly two arms and exactly two hands total, right hand gripping only the outer handle or base, left hand planted flat on lower stomach and visibly connected to left arm";
-  const toyPlaced = opts.toyTags
+  const toyPlaced = opts.toyPlan || (opts.toyTags
     ? propIsInserted(req) && insertableToy
       ? analToy
         ? `${opts.toyTags}, ${insertedLead}, ${insertedHands}, inserted tip-first in her ass, visible anal penetration and contact at the insertion point, bent over, ass toward the camera, legs apart`
         : `${opts.toyTags}, ${insertedLead}, ${insertedHands}, inserted tip-first in her pussy, visible vaginal penetration and contact at the insertion point, lying back with legs spread wide, knees up, framed from head to knees`
       : propIsOral(req)
         ? `${opts.toyTags} in her mouth, lips around it`
-        : opts.toyTags
-    : null;
+      : opts.toyTags
+    : null);
   const fingerInserted = isFingerInsertAct(req);
   const act = [toyPlaced, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
   const nude = nudeTags(req, Boolean(opts.hasPenis));
@@ -1467,7 +1495,7 @@ export const requestVideo = createServerFn({ method: "POST" })
 
     const { toyForRequest } = await import("./toys.server");
     const { data: au } = await supabase.auth.getUser();
-    const { toy, needed } = await toyForRequest(supabase, userId, au?.user?.email, userPrompt ?? "");
+    const { toy, needed, toys = [] } = await toyForRequest(supabase, userId, au?.user?.email, userPrompt ?? "");
     if (toy && userPrompt) {
       const { withToyPlace } = await import("./toys");
       userPrompt = withToyPlace(userPrompt, toy, anatomyOf(c.gender).hasVulva);
@@ -1503,6 +1531,7 @@ export const requestVideo = createServerFn({ method: "POST" })
       balance,
       data.seconds,
       toy,
+      toys,
     );
 
     return { jobId, status: "pending" as const, balance, toy: toy?.name ?? null };
@@ -1588,6 +1617,7 @@ export async function startVideoJob(
   balance: { free: number; paid: number },
   seconds?: number,
   toy: Toy | null = null,
+  toys: Toy[] = toy ? [toy] : [],
 ): Promise<string> {
   const startImage = resolveHostedImage(companion.imageUrl);
   const setting = await settingFor(conversationId, companion.imageUrl);
@@ -1670,6 +1700,8 @@ export async function startVideoJob(
   // the prop spec is re-appended to every scene rather than lost.
   const rawReq = userReq ?? "";
   const anatomy = anatomyOf(companion.gender);
+  const { propClauses } = await import("./props");
+  const multiToyPlan = toys.length > 1 ? propClauses(rawReq, { anatomy, toys }) : null;
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
   const actionLock = videoActionLock(rawReq, companion.gender, toy);
   const identityLock = videoIdentityLock(look);
@@ -1706,7 +1738,8 @@ export async function startVideoJob(
     // actual action lands after long identity/toy descriptions, the worker
     // freezes the start frame and invents a generic sit-up motion. Animation
     // gets a compact action-first prompt; the opening still carries visuals.
-    return compactVideoScene(actionLock, identityLock, toy, finished);
+    const exactObjects = multiToyPlan ? `${multiToyPlan} ${finished} ${multiToyPlan}` : finished;
+    return compactVideoScene(actionLock, identityLock, toy, exactObjects);
   });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
@@ -1839,8 +1872,10 @@ export async function startVideoJob(
             // silently falls back to the checkpoint's generic prop.
             // This opening frame determines the physical object WAN animates.
             // A malformed prop here cannot be repaired by the motion prompt.
-            toyTags: toy ? `${toy.tags}. ${toy.spec}` : null,
+            toyTags: toys.length ? toys.map((t) => `${t.tags}. ${t.spec}`).join(" ") : null,
             toyKind: toy?.kind ?? null,
+            toyPlan: multiToyPlan,
+            toyReferences: toys.map((t) => ({ id: t.id, url: t.image })).filter((t) => Boolean(t.url)),
             lookTags: look,
             startFrame: uploadedRoomFrame,
             preserveScene: Boolean(uploadedRoomFrame),

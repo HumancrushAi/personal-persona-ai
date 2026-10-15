@@ -6,7 +6,7 @@
 // user-and-toy so a double-tap cannot buy one twice. Testers and admins own
 // everything — the product is tested on those accounts.
 
-import { CHEST_EXTRAS, TOY_PURCHASE_PREFIX, TOYS, resolveToy, type Toy, type ToyResolution } from "./toys";
+import { CHEST_EXTRAS, TOY_PURCHASE_PREFIX, TOYS, resolveToys, type Toy, type ToyResolution } from "./toys";
 
 export type Owned = Set<string> | "all";
 
@@ -70,7 +70,7 @@ export async function toyForRequest(
   request: string,
 ): Promise<ToyResolution> {
   if (!request?.trim()) return { toy: null, needed: null };
-  return resolveToy(request, await ownedToys(client, userId, email));
+  return resolveToys(request, await ownedToys(client, userId, email));
 }
 
 export type { Toy };

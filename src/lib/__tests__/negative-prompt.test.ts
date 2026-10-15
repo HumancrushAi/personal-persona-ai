@@ -26,6 +26,16 @@ describe("negativeFor", () => {
     expect(p).not.toMatch(/breast|boob|chest/i);
   });
 
+  it("treats penetrative fingering as axial insertion rather than surface rubbing", async () => {
+    const { videoActionLock } = await import("../media.functions");
+    const p = videoActionLock("finger yourself inside your pussy", "female");
+    expect(p).toContain("Primary continuous penetrative fingering");
+    expect(p).toMatch(/already visibly inside her vaginal opening/i);
+    expect(p).toMatch(/rim overlaps and occludes both sides/i);
+    expect(p).toMatch(/repeated straight inward-and-partway-out strokes/i);
+    expect(p).not.toMatch(/circular rubbing/i);
+  });
+
   it("locks an owned toy's exact appearance through the whole clip", async () => {
     const { videoToyLock } = await import("../media.functions");
     const { toyById } = await import("../toys");

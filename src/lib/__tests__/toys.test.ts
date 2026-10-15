@@ -72,7 +72,9 @@ describe("the toy she owns is the toy in the prompt", () => {
   it("checks inserted toy frames for placement and external hands", () => {
     const glass = toyById("dildo-glass")!;
     const q = verifyQuestion("fucking yourself with a glass dildo", true, true, glass)!;
-    expect(q).toMatch(/inserted tip-first/i);
+    expect(q).toMatch(/genuinely inserted tip-first/i);
+    expect(q).toMatch(/body-opening edge visibly crosses in front of both sides/i);
+    expect(q).toMatch(/complete tip and shaft outline remain visible lying over/i);
     expect(q).toMatch(/exactly two hands total/i);
     expect(q).toMatch(/extra, floating or external hand/i);
   });

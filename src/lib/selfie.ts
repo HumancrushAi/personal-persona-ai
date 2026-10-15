@@ -958,6 +958,15 @@ export function isRubAct(req: string): boolean {
   return RUB_RE.test(req ?? "");
 }
 
+// Penetrative fingering needs a different still and motion from clitoral
+// rubbing. Keeping both under RUB_RE made "finger yourself" render as fingers
+// sliding over the surface, then videoActionLock reinforced circular rubbing.
+const FINGER_INSERT_RE =
+  /\b(?:finger\w*\s+(?:her|him|them|your|my)?\s*(?:self|pussy|vagina|cunt|slit)|(?:insert|push|slide|stick)\w*\s+(?:one|two|\d+|your|her|his|their)?\s*fingers?\s+(?:in|into|inside|up)|fuck\w*\s+(?:yourself|herself|himself|themselves)\s+(?:with|using)\s+(?:your|her|his|their)?\s*fingers?)\b/i;
+export function isFingerInsertAct(req: string): boolean {
+  return FINGER_INSERT_RE.test(req ?? "");
+}
+
 // Her own hands on her own breasts — squeezing, cupping, pinching. No pose
 // problem, but "She is squeeze her tits" was the whole instruction before.
 const BREAST_HANDS_RE =
@@ -978,6 +987,8 @@ export function mouthActTags(req: string, hasPenis = false): string {
     return /pinch/i.test(t)
       ? "pinching own nipples, fingers on own nipples, both hands on own breasts, looking at the camera"
       : "squeezing own breasts, both hands cupping own breasts, fingers pressing into own breasts, breasts pushed together, looking at the camera";
+  if (!isMouthAct(t) && FINGER_INSERT_RE.test(t))
+    return "penetrative fingering, two fingers visibly inserted inside own pussy, vaginal opening overlapping the fingers at entry, fingertips hidden inside, hand between thighs, legs spread";
   if (!isMouthAct(t) && RUB_RE.test(t))
     return "rubbing own pussy, hand between own thighs, two fingers pressed on own clit, legs spread, looking down at own hand";
   if (SELF_BREAST_ORAL_RE.test(t))

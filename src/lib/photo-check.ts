@@ -47,11 +47,18 @@ function verifyQuestionFor(userRequest: string, hasBreasts: boolean, hasVulva: b
   // "sex toy". Reject a render that substitutes, omits, duplicates or changes
   // it even when the body pose itself is otherwise correct.
   if (toy) {
+    const inserted = /\b(?:insert\w*|inside|into|up|deep|penetrat\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b/i.test(req);
+    if (inserted) {
+      return (
+        `Inspect visible geometry only, not the intended act. Does the image show exactly one ${toy.name} (${toy.tags}) genuinely inserted tip-first? ` +
+        `Rate 9-10 only when a body-opening edge visibly crosses in front of both sides of the shaft at one fixed entry point and hides at least 25 percent of its insertable length, with only the outer shaft and handle or base visible. ` +
+        `Rate 0-2 when the complete tip and shaft outline remain visible lying over pubic hair, skin, the vulva, buttocks or thighs, when the object merely touches the surface, or when there is no body edge visibly occluding the shaft. ` +
+        `It must match the named toy's color, material, scale, shape and component count. Exactly two hands total may be visible and both must clearly belong to the person; rate 0-2 for any extra, floating or external hand.`
+      );
+    }
     const placement = /\b(?:suck\w*|lick\w*|blow\w*|mouth|tongue|lips)\b/i.test(req)
       ? "at the person's mouth in the requested licking or sucking action"
-      : /\b(?:insert\w*|inside|into|up|deep|penetrat\w*|shov\w*|stick\w*|push\w*|ridin?g?|fuck\w*)\b/i.test(req)
-        ? "inserted tip-first in the requested body opening with its handle or base remaining outside"
-        : "being worn, held or applied exactly where the request says";
+      : "being worn, held or applied exactly where the request says";
     return (
       `Does the image clearly show exactly one ${toy.name} (${toy.tags}), ${placement}? ` +
       `It must match that color, material, scale, shape and component count, remain visibly separate from skin, ` +
@@ -75,6 +82,11 @@ function verifyQuestionFor(userRequest: string, hasBreasts: boolean, hasVulva: b
     return "Are the woman's own hands on her own breasts, squeezing, cupping or pinching them?";
   if (hasVulva && /\bmasturbat\w*/i.test(req))
     return "Is one of the woman's own hands between her legs touching her own pussy?";
+  if (
+    hasVulva &&
+    /\b(?:finger\w*\s+(?:her|your|their)?\s*(?:self|pussy|vagina|cunt|slit)|(?:insert|push|slide|stick)\w*\s+(?:one|two|\d+|your|her|their)?\s*fingers?\s+(?:in|into|inside|up)|fuck\w*\s+(?:yourself|herself|themselves)\s+(?:with|using)\s+(?:your|her|their)?\s*fingers?)\b/i.test(req)
+  )
+    return "Are one or two of the woman's own fingers visibly inserted inside her vaginal opening, with the opening rim overlapping both sides of the fingers and the fingertips hidden inside? Score 0-2 if the fingers are only rubbing, resting on top of, or outside the vulva.";
   if (
     hasVulva &&
     /\b(?:rub\w*|finger\w*|touch\w*|play\w*\s+with|stroke\w*|masturbat\w*|pleasur\w*)\b[^.?!]{0,30}\b(?:her|his|their|your|own|)\s*(?:self|pussy|clit\w*|vulva|cunt|slit)\b/i.test(req)

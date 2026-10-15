@@ -26,6 +26,7 @@ import {
   finishMediaPrompt,
   isClimaxAct,
   isRubAct,
+  isFingerInsertAct,
 } from "./selfie";
 
 // Negative prompt for the RunPod WAN endpoint, in two halves.
@@ -116,6 +117,13 @@ export function videoActionLock(req: string | undefined, gender?: string | null,
       `The opening stays visibly centered and snug around the shaft during every stroke, naturally occluding its inner edge with no air gap; a stable contact shadow and subtle skin compression track the motion. ${a.poss} left hand stays ` +
       `planted flat on ${anchor}, fully visible and clearly attached to ${a.poss} left arm. Exactly two arms and exactly two hands total are visible: the right hand on the toy and the left hand on the stomach. The toy never hovers beside the body, slides over the skin, flips direction or points ` +
       `away from the opening. The fixed camera clearly shows the insertion point, gripping hand and repeated stroke.`
+    );
+  }
+  if (a.hasVulva && isFingerInsertAct(request)) {
+    return (
+      `Primary continuous penetrative fingering from first frame to last: ${a.poss} right index and middle fingers are already visibly inside ${a.poss} vaginal opening past the first knuckle. ` +
+      `The vulva rim overlaps and occludes both sides of the fingers at one fixed entry point; the fingertips remain hidden inside at all times. ${a.poss} own right hand, visibly connected to ${a.poss} right arm, completes repeated straight inward-and-partway-out strokes of two to three centimetres on one axis. ` +
+      `The fingers never leave the opening or slide over the outer surface. ${a.poss} left hand stays flat on ${a.poss} lower stomach. Exactly two arms and two hands total. Fixed camera clearly shows the entry point and repeated axial stroke.`
     );
   }
   if (!isRubAct(request)) return "";
@@ -1126,7 +1134,7 @@ export async function comfyJobInput(
       ? "tapered bulb already inside, narrow neck centered in the opening, flared base fully outside"
       : opts.toyKind === "beads"
         ? "smallest beads already inside, remaining graduated beads and pull ring outside"
-        : "rounded narrow tip and first half of shaft already visibly inside the opening, opening naturally occluding the inner shaft edge with no air gap, subtle contact shadow and skin compression, outer half and handle or base fully outside";
+        : "most of the insertable shaft already visibly inside the opening, only a short outer shaft section plus handle or base visible outside, body rim overlapping and hiding both sides of the shaft at one fixed entry point with no air gap, stable contact shadow and skin compression";
   const insertedHands =
     "exactly two arms and exactly two hands total, right hand gripping only the outer handle or base, left hand planted flat on lower stomach and visibly connected to left arm";
   const toyPlaced = opts.toyTags
@@ -1138,11 +1146,12 @@ export async function comfyJobInput(
         ? `${opts.toyTags} in her mouth, lips around it`
         : opts.toyTags
     : null;
+  const fingerInserted = isFingerInsertAct(req);
   const act = [toyPlaced, mouthActTags(req, Boolean(opts.hasPenis))].filter(Boolean).join(", ");
   const nude = nudeTags(req, Boolean(opts.hasPenis));
   let insertTrigger = "";
   const lead = [
-    act ? `(${act}:1.35)` : "",
+    act ? `(${act}:${propIsInserted(req) || fingerInserted ? "1.5" : "1.35"})` : "",
     nude ? `(${nude}:1.25)` : "",
     opts.lookTags ? `(${unsleeve(opts.lookTags)}:1.2)` : "",
   ].filter(Boolean);

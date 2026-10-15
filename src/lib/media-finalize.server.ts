@@ -859,19 +859,27 @@ async function resubmitImageJob(
 // the chat already runs there and its vision models answer about adult
 // images. VISION_VERIFY_MODEL overrides the model.
 async function scorePhoto(url: string, question: string, jobId = ""): Promise<number | null> {
-  const key = process.env.OPENROUTER_API_KEY;
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  const xaiKey = process.env.XAI_API_KEY;
+  const key = openRouterKey || xaiKey;
   if (!key) {
-    console.warn(`photo check ${jobId}: no OPENROUTER_API_KEY, not scored`);
+    console.warn(`photo check ${jobId}: no OPENROUTER_API_KEY or XAI_API_KEY, not scored`);
     return null;
   }
+  const endpoint = openRouterKey
+    ? "https://openrouter.ai/api/v1/chat/completions"
+    : "https://api.x.ai/v1/chat/completions";
+  const model = openRouterKey
+    ? process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct"
+    : process.env.XAI_VISION_MODEL || process.env.XAI_MODEL || "grok-4-1-fast-non-reasoning";
   const { verifyPrompt, parseScore } = await import("./photo-check");
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(25_000),
       body: JSON.stringify({
-        model: process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct",
+        model,
         temperature: 0,
         max_tokens: 8,
         messages: [
@@ -928,7 +936,7 @@ async function retakeBadToyVideo(job: Job, mp4: Buffer): Promise<boolean> {
   if (parked.stage !== "video" || !parked.startFrame || !parked.videoInput) return false;
 
   const ctx = await jobContext(job.id);
-  if (!ctx?.toy) return false;
+  if (!ctx) return false;
   const { anatomyOf } = await import("./anatomy");
   const { verifyQuestion, PASS_SCORE, DEFAULT_RETAKES } = await import("./photo-check");
   const anatomy = anatomyOf(ctx.companion.gender);

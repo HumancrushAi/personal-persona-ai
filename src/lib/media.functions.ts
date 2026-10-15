@@ -106,7 +106,7 @@ export function videoActionLock(req: string | undefined, gender?: string | null,
     const anal = /\b(?:ass|anus|butt|booty|rear|back door)\b/i.test(request) &&
       !/\b(?:pussy|vagina|vulva|cunt|slit)\b/i.test(request);
     const opening = anal ? `${a.poss} anus` : `${a.poss} pussy`;
-    const anchor = anal ? `${a.poss} buttocks` : `${a.poss} open thighs`;
+    const anchor = `${a.poss} lower stomach`;
     return (
       `Primary continuous penetration action from first frame to last: the rounded narrow tip and the first part ` +
       `of the ${toy.name} are already visibly inside ${opening} in frame one. ${a.poss} right hand grips only the ` +
@@ -114,7 +114,7 @@ export function videoActionLock(req: string | undefined, gender?: string | null,
       `the tip always remains inside and the inner half of the shaft stays inside at all times while the hand moves the outer portion only ten to fifteen percent of its length, ` +
       `then returns along exactly the same axis. The toy never fully withdraws, detaches, reverses ends or rotates. Its outer handle or base never enters the body. ` +
       `The opening stays visibly centered and snug around the shaft during every stroke, naturally occluding its inner edge with no air gap; a stable contact shadow and subtle skin compression track the motion. ${a.poss} left hand stays ` +
-      `planted on ${anchor}. The toy never hovers beside the body, slides over the skin, flips direction or points ` +
+      `planted flat on ${anchor}, fully visible and clearly attached to ${a.poss} left arm. Exactly two arms and exactly two hands total are visible: the right hand on the toy and the left hand on the stomach. The toy never hovers beside the body, slides over the skin, flips direction or points ` +
       `away from the opening. The fixed camera clearly shows the insertion point, gripping hand and repeated stroke.`
     );
   }
@@ -184,8 +184,14 @@ export function compactVideoScene(
   fallback: string,
 ): string {
   const motion = (action || fallback).trim();
+  const materialBehavior =
+    toy?.id === "dildo-glass"
+      ? "The glass is transparent, reflective, completely rigid and optically clear in every frame."
+      : toy
+        ? "Its construction and component layout remain physically stable in every frame."
+        : "";
   const toyContinuity = toy
-    ? `PROP LOCK: exactly one ${toy.name}: ${toy.tags}. It is a rigid manufactured object with a hard stable outline. Keep it unchanged from frame one to the last frame: identical material, shape, diameter, scale, orientation and inserted end; no bending, softening, melting, flowing, bulging or redesign.`
+    ? `PROP LOCK: exactly one ${toy.name}: ${toy.tags}. ${materialBehavior} Keep it unchanged from frame one to the last frame: identical material, shape, scale, component count, orientation and placement; no melting, flowing, bulging, duplication or redesign.`
     : "";
   const identityContinuity = identity
     .replace(/^IDENTITY LOCK:\s*/i, "")
@@ -1121,11 +1127,13 @@ export async function comfyJobInput(
       : opts.toyKind === "beads"
         ? "smallest beads already inside, remaining graduated beads and pull ring outside"
         : "rounded narrow tip and first half of shaft already visibly inside the opening, opening naturally occluding the inner shaft edge with no air gap, subtle contact shadow and skin compression, outer half and handle or base fully outside";
+  const insertedHands =
+    "exactly two arms and exactly two hands total, right hand gripping only the outer handle or base, left hand planted flat on lower stomach and visibly connected to left arm";
   const toyPlaced = opts.toyTags
     ? propIsInserted(req) && insertableToy
       ? analToy
-        ? `${opts.toyTags}, ${insertedLead}, inserted tip-first in her ass, visible anal penetration and contact at the insertion point, bent over, ass toward the camera, legs apart`
-        : `${opts.toyTags}, ${insertedLead}, inserted tip-first in her pussy, visible vaginal penetration and contact at the insertion point, lying back with legs spread wide, knees up, framed from head to knees`
+        ? `${opts.toyTags}, ${insertedLead}, ${insertedHands}, inserted tip-first in her ass, visible anal penetration and contact at the insertion point, bent over, ass toward the camera, legs apart`
+        : `${opts.toyTags}, ${insertedLead}, ${insertedHands}, inserted tip-first in her pussy, visible vaginal penetration and contact at the insertion point, lying back with legs spread wide, knees up, framed from head to knees`
       : propIsOral(req)
         ? `${opts.toyTags} in her mouth, lips around it`
         : opts.toyTags
@@ -1735,8 +1743,8 @@ export async function startVideoJob(
               "bending toy",
               "changing toy shape",
               "bottle-shaped toy",
-              "glass bottle",
               "flask",
+              "drinking vessel",
               "hollow container",
             ]
           : []),

@@ -64,10 +64,22 @@ describe("negativeFor", () => {
     expect(p.startsWith("Primary continuous penetration action")).toBe(true);
     expect(p.indexOf("repeated straight in-and-out")).toBeLessThan(p.indexOf("same facial geometry"));
     expect(p).toContain("do not substitute posing, sitting up");
-    expect(p).toContain("rigid manufactured object with a hard stable outline");
-    expect(p).toMatch(/no bending, softening, melting, flowing, bulging or redesign/i);
+    expect(p).toContain("transparent, reflective, completely rigid and optically clear");
+    expect(p).toMatch(/no melting, flowing, bulging, duplication or redesign/i);
     expect(p).toContain("no frozen hold");
     expect(p).not.toContain("generic scene");
+  });
+
+  it("applies exact object continuity to every catalogued toy", async () => {
+    const { compactVideoScene } = await import("../media.functions");
+    const { TOYS } = await import("../toys");
+    for (const toy of TOYS) {
+      const p = compactVideoScene("requested motion", "same adult person", toy, "fallback");
+      expect(p, toy.id).toContain(`exactly one ${toy.name}`);
+      expect(p, toy.id).toContain(toy.tags);
+      expect(p, toy.id).toMatch(/identical material, shape, scale, component count, orientation and placement/i);
+      expect(p, toy.id).toMatch(/no melting, flowing, bulging, duplication or redesign/i);
+    }
   });
 
   it("turns an inserted-toy video into repeated aligned penetration, not a held pose", async () => {
@@ -85,6 +97,8 @@ describe("negativeFor", () => {
     expect(p).toMatch(/never fully withdraws, detaches, reverses ends or rotates/i);
     expect(p).toMatch(/never hovers beside the body/i);
     expect(p).toMatch(/base never enters the body/i);
+    expect(p).toMatch(/exactly two arms and exactly two hands total/i);
+    expect(p).toMatch(/left hand on the stomach/i);
   });
   describe("what it must never suppress", () => {
     it("does not push her head and face out of the picture", () => {

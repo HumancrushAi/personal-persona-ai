@@ -92,7 +92,7 @@ export const TOYS: Toy[] = [
     kind: "dildo",
     match: /\b(?:glass|crystal|transparent|clear)\s+(?:dildo|toy|wand)\b/i,
     spec: `The dildo is one rigid solid straight manufactured glass sex toy, never hollow and never flexible: a smooth rounded tip, a cylindrical shaft with three evenly spaced rounded glass ridges, and a wider rounded handle base, ${SIZE_HAND} and roughly two fingers thick, catching the light with a glossy reflective surface. Its hard outline and diameter stay consistent from tip to base. Clean hard edges, sharp focus, distinct from skin.`,
-    negative: "purple dildo, pink dildo, silicone dildo, matte dildo, opaque dildo, bottle-shaped toy, glass bottle, flask, jar, hollow glass, liquid glass, fluid object, bulbous container, drooping toy, flexible glass",
+    negative: "purple dildo, pink dildo, silicone dildo, matte dildo, opaque dildo, bottle-shaped toy, flask, jar, drinking vessel, hollow container, liquid object, fluid object, bulbous container, drooping toy, flexible toy",
   },
   {
     id: "rabbit-tongue",

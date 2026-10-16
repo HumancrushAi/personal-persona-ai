@@ -1127,10 +1127,12 @@ export async function comfyJobInput(
     // A room upload is a background contract. Use masked inpainting rather
     // than ordinary img2img, which denoises and re-invents the entire room.
     template = opts.preserveScene
-      // The dedicated pod has IP-Adapter and core inpaint nodes but may not
-      // have Impact FaceDetailer. Use the verified lite graph for rooms so a
-      // room upload never fails merely because the optional detailer is absent.
-      ? FACEID_LITE_ROOM_INPAINT_WORKFLOW
+      // Some deployed workers accept the inpaint graph but silently return the
+      // untouched room when its mask nodes are unavailable. Use the verified
+      // lite I2I graph as a safe fallback: it always renders the companion
+      // into the uploaded room instead of presenting the empty room as a
+      // successful result.
+      ? FACEID_LITE_I2I_WORKFLOW
       : template === FACEID_LITE_WORKFLOW
         ? FACEID_LITE_I2I_WORKFLOW
         : FACEID_I2I_WORKFLOW;

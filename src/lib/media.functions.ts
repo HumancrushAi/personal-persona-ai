@@ -927,7 +927,7 @@ export async function startImageJob(
             // disabled the identity pass. The graph ranges are now separate;
             // make the restoration explicit on the hardest object-interaction
             // frames while leaving ordinary selfies on their proven path.
-            forceFaceSwap: toys.length > 0,
+            forceFaceSwap: toys.length > 0 || Boolean(uploadedRoomUrl),
             // Video has no later face-restoration pass. Lead with the complete
             // cached look (hair, skin, eyes and build), not only ink/build.
             lookTags: look,
@@ -1109,6 +1109,7 @@ export async function comfyJobInput(
     FACEID_POSE_WORKFLOW,
     FACEID_I2I_WORKFLOW,
     FACEID_LITE_I2I_WORKFLOW,
+    FACEID_LITE_ROOM_INPAINT_WORKFLOW,
     DEFAULT_WORKFLOW,
   } = await import("./comfy");
   let template = comfyTemplate(opts.graph);
@@ -1116,12 +1117,31 @@ export async function comfyJobInput(
   // A composed frame outranks the pose guide: it carries the pose already,
   // and the whole picture with it.
   const extraImages: { name: string; base64: string }[] = [];
-  const isFaceIdGraph = template === FACEID_WORKFLOW || template === FACEID_LITE_WORKFLOW;
+  const isFaceIdGraph =
+    template === FACEID_WORKFLOW ||
+    template === FACEID_LITE_WORKFLOW ||
+    Boolean(opts.preserveScene && opts.startFrame);
   const composed = Boolean(opts.startFrame) && isFaceIdGraph;
   if (composed) {
     const { START_NAME } = await import("./compose.server");
-    template = template === FACEID_LITE_WORKFLOW ? FACEID_LITE_I2I_WORKFLOW : FACEID_I2I_WORKFLOW;
+    // A room upload is a background contract. Use masked inpainting rather
+    // than ordinary img2img, which denoises and re-invents the entire room.
+    template = opts.preserveScene
+      // The dedicated pod has IP-Adapter and core inpaint nodes but may not
+      // have Impact FaceDetailer. Use the verified lite graph for rooms so a
+      // room upload never fails merely because the optional detailer is absent.
+      ? FACEID_LITE_ROOM_INPAINT_WORKFLOW
+      : template === FACEID_LITE_WORKFLOW
+        ? FACEID_LITE_I2I_WORKFLOW
+        : FACEID_I2I_WORKFLOW;
     extraImages.push({ name: START_NAME, base64: opts.startFrame as string });
+    if (opts.preserveScene) {
+      const { roomPlacementMask } = await import("./room-mask.server");
+      extraImages.push({
+        name: "room-mask.png",
+        base64: await roomPlacementMask(opts.outputSize?.width ?? 704, opts.outputSize?.height ?? 1024),
+      });
+    }
   }
   // Her portrait as the start latent: the same graph, at the portrait tiers
   // (0.62 plain / 0.73 nude / 0.78 posed / 0.86 mouth act, comfySettings), so
@@ -1185,7 +1205,9 @@ export async function comfyJobInput(
     const base64 = await readPortrait(ref.url);
     if (base64) toyReferenceImages.push({ name: `toy-reference-${index}.png`, base64 });
   }
-  if (toyReferenceImages.length && process.env.COMFY_TOY_REFERENCE === "1") {
+  // The live worker has the product IP-Adapter nodes. Product references are
+  // therefore on by default; explicit "0" remains an emergency kill switch.
+  if (toyReferenceImages.length && process.env.COMFY_TOY_REFERENCE !== "0") {
     const { withProductReferences } = await import("./comfy");
     template = withProductReferences(template, toyReferenceImages.map((r) => r.name));
     extraImages.push(...toyReferenceImages);
@@ -1292,7 +1314,12 @@ export async function comfyJobInput(
       negative,
       poseImage: guide ? extraImages.find((i) => i.name === guide.file)?.name : undefined,
       startImage:
-        template === FACEID_I2I_WORKFLOW || template === FACEID_LITE_I2I_WORKFLOW ? "start.png" : undefined,
+        template === FACEID_I2I_WORKFLOW ||
+        template === FACEID_LITE_I2I_WORKFLOW ||
+        template === FACEID_LITE_ROOM_INPAINT_WORKFLOW
+          ? "start.png"
+          : undefined,
+      roomMaskImage: opts.preserveScene ? "room-mask.png" : undefined,
     },
     { template, referenceBase64, extraImages },
   );

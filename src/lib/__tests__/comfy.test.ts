@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import {
   DEFAULT_WORKFLOW,
   FACEID_I2I_WORKFLOW,
+  FACEID_ROOM_INPAINT_WORKFLOW,
   REFERENCE_NAME,
   comfyError,
   comfyImageUrl,
@@ -36,10 +37,10 @@ const VARS: ComfyVars = {
 describe("comfyWorkflow", () => {
   it("chains catalogue product references after identity conditioning", () => {
     const graph = JSON.parse(withProductReferences(DEFAULT_WORKFLOW, ["toy-reference-0.png", "toy-reference-1.png"]));
-    expect(graph["40"].class_type).toBe("IPAdapterUnifiedLoader");
-    expect(graph["41"].inputs.image).toBe("toy-reference-0.png");
-    expect(graph["43"].inputs.image).toBe("toy-reference-1.png");
-    expect(graph["3"].inputs.model).toEqual(["44", 0]);
+    expect(graph["50"].class_type).toBe("IPAdapterUnifiedLoader");
+    expect(graph["51"].inputs.image).toBe("toy-reference-0.png");
+    expect(graph["53"].inputs.image).toBe("toy-reference-1.png");
+    expect(graph["3"].inputs.model).toEqual(["54", 0]);
   });
 
   it("keeps product conditioning and post-render face restoration together", async () => {
@@ -48,9 +49,25 @@ describe("comfyWorkflow", () => {
       withFaceSwap(withProductReferences(FACEID_WORKFLOW, ["toy-reference-0.png"])),
     );
     expect(graph["30"].class_type).toBe("HCFaceSwap");
-    expect(graph["40"].class_type).toBe("IPAdapterUnifiedLoader");
-    expect(graph["42"].class_type).toBe("IPAdapterAdvanced");
-    expect(graph["3"].inputs.model).toEqual(["42", 0]);
+    expect(graph["50"].class_type).toBe("IPAdapterUnifiedLoader");
+    expect(graph["52"].class_type).toBe("IPAdapterAdvanced");
+    expect(graph["3"].inputs.model).toEqual(["52", 0]);
+  });
+  it("keeps product conditioning separate from the interaction LoRA", async () => {
+    const { FACEID_WORKFLOW, withLora } = await import("../comfy");
+    const graph = JSON.parse(
+      withProductReferences(withLora(FACEID_WORKFLOW, "insertion.safetensors", 0.8), ["toy-reference-0.png"]),
+    );
+    expect(graph["40"].class_type).toBe("LoraLoader");
+    expect(graph["50"].class_type).toBe("IPAdapterUnifiedLoader");
+    expect(graph["3"].inputs.model).toEqual(["52", 0]);
+  });
+  it("uses an inpaint mask so an uploaded room is not globally denoised", () => {
+    const graph = comfyWorkflow({ ...VARS, roomMaskImage: "room-mask.png" }, FACEID_ROOM_INPAINT_WORKFLOW) as any;
+    expect(graph["23"].class_type).toBe("LoadImageMask");
+    expect(graph["23"].inputs.image).toBe("room-mask.png");
+    expect(graph["24"].class_type).toBe("VAEEncodeForInpaint");
+    expect(graph["3"].inputs.latent_image).toEqual(["24", 0]);
   });
   it("keeps a numeric placeholder a number", () => {
     const g = comfyWorkflow(VARS) as any;

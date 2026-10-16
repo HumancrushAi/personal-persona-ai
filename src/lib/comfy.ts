@@ -37,6 +37,8 @@ export type ComfyVars = {
   referenceImage?: string;
   /** Filename of the composed start frame (FACEID_I2I_WORKFLOW), uploaded with the job. */
   startImage?: string;
+  /** Filename of the protected-room placement mask, uploaded with the job. */
+  roomMaskImage?: string;
   /**
    * How hard the IP-Adapter pulls the render toward her face. Read by the
    * FaceID graph only; the stock graph has no node to use it.
@@ -361,6 +363,23 @@ export const FACEID_I2I_WORKFLOW = (() => {
   return JSON.stringify(g, null, 2);
 })();
 
+// The uploaded room is the immutable background, not loose inspiration.  This
+// variant only adds diffusion noise inside ROOM_MASK_IMAGE; everything outside
+// that placement area survives from the user's photograph.
+export const FACEID_ROOM_INPAINT_WORKFLOW = (() => {
+  const g = JSON.parse(FACEID_I2I_WORKFLOW) as Record<string, any>;
+  g["23"] = {
+    class_type: "LoadImageMask",
+    inputs: { image: "{{ROOM_MASK_IMAGE}}", channel: "red", upload: "image" },
+  };
+  g["24"] = {
+    class_type: "VAEEncodeForInpaint",
+    inputs: { pixels: ["21", 0], vae: ["4", 2], mask: ["23", 0], grow_mask_by: 12 },
+  };
+  g["3"].inputs.latent_image = ["24", 0];
+  return JSON.stringify(g, null, 2);
+})();
+
 /**
  * Any FaceID-family graph with her portrait's face swapped onto the render
  * (node 30, hc_faceswap in the worker image) before the FaceDetailer pass,
@@ -433,6 +452,21 @@ export const FACEID_LITE_I2I_WORKFLOW = (() => {
   delete g["13"];
   delete g["14"];
   g["9"].inputs.images = ["8", 0];
+  return JSON.stringify(g, null, 2);
+})();
+
+/** The low-memory room inpaint graph for workers without Impact FaceDetailer. */
+export const FACEID_LITE_ROOM_INPAINT_WORKFLOW = (() => {
+  const g = JSON.parse(FACEID_LITE_I2I_WORKFLOW) as Record<string, any>;
+  g["23"] = {
+    class_type: "LoadImageMask",
+    inputs: { image: "{{ROOM_MASK_IMAGE}}", channel: "red", upload: "image" },
+  };
+  g["24"] = {
+    class_type: "VAEEncodeForInpaint",
+    inputs: { pixels: ["21", 0], vae: ["4", 2], mask: ["23", 0], grow_mask_by: 12 },
+  };
+  g["3"].inputs.latent_image = ["24", 0];
   return JSON.stringify(g, null, 2);
 })();
 
@@ -535,6 +569,7 @@ function tokenValues(vars: ComfyVars): Record<string, string | number> {
     CHECKPOINT: vars.checkpoint,
     DENOISE: vars.denoise,
     START_IMAGE: vars.startImage ?? "start.png",
+    ROOM_MASK_IMAGE: vars.roomMaskImage ?? "room-mask.png",
     REFERENCE_IMAGE: vars.referenceImage ?? "",
     IPA_WEIGHT: vars.ipaWeight,
     IPA_FACEID_WEIGHT: vars.ipaV2Weight ?? vars.ipaWeight,
@@ -613,20 +648,18 @@ export function withProductReferences(template: string, imageNames: string[]): s
   const sampler = graph["3"];
   if (!sampler?.inputs?.model) return template;
   const samplerModel = sampler.inputs.model;
-  // Nodes 30-39 are reserved for post-render identity restoration
-  // (withFaceSwap uses node 30). Product references used to claim node 30 too,
-  // which made withFaceSwap silently skip itself whenever a toy was present.
-  // Keep object conditioning in its own range so identity and exact-product
-  // conditioning can coexist in the same graph.
-  const loaderId = "40";
+  // Node 30 is face restoration and node 40 is the optional interaction LoRA.
+  // Keep product conditioning in its own range so an exact toy reference,
+  // identity restoration and an insertion LoRA can coexist in one graph.
+  const loaderId = "50";
   graph[loaderId] = {
     class_type: "IPAdapterUnifiedLoader",
     inputs: { model: samplerModel, preset: "PLUS (high strength)" },
   };
   let model: [string, number] = [loaderId, 0];
   imageNames.forEach((name, index) => {
-    const loadId = String(41 + index * 2);
-    const applyId = String(42 + index * 2);
+    const loadId = String(51 + index * 2);
+    const applyId = String(52 + index * 2);
     graph[loadId] = { class_type: "LoadImage", inputs: { image: name, upload: "image" } };
     graph[applyId] = {
       class_type: "IPAdapterAdvanced",

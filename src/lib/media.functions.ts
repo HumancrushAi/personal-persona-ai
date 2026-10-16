@@ -13,6 +13,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { applyDeduction, hasEnough } from "./credits";
 import { chatComplete } from "./ai";
+import { conversationIdentityAnchor } from "./identity-anchor";
 import { screenUserMessage, screenAssistantReply, BLOCKED_CONTENT } from "./safety";
 import {
   kontextSelfiePrompt,
@@ -746,6 +747,14 @@ export async function startImageJob(
   toy: Toy | null = null,
   toys: Toy[] = toy ? [toy] : [],
 ): Promise<string> {
+  // Re-read the portrait that the outer chat currently displays. This makes
+  // companions.image_url the authoritative identity anchor for stock and
+  // user-created companions, even when a long-lived client submits an older
+  // companion snapshot.
+  companion = {
+    ...companion,
+    imageUrl: await conversationIdentityAnchor(supabase, conversationId, companion.imageUrl),
+  };
   // The user's own room, if they gave her one for this chat; else her own
   // place, read off her portrait, so the photo is taken where her reel was.
   const setting = await settingFor(conversationId, companion.imageUrl);
@@ -1662,6 +1671,12 @@ export async function startVideoJob(
   toy: Toy | null = null,
   toys: Toy[] = toy ? [toy] : [],
 ): Promise<string> {
+  // Video must use the same canonical outer-chat portrait for its opening
+  // still, FaceID pass and immutable worker identity reference.
+  companion = {
+    ...companion,
+    imageUrl: await conversationIdentityAnchor(supabase, conversationId, companion.imageUrl),
+  };
   const startImage = resolveHostedImage(companion.imageUrl);
   const setting = await settingFor(conversationId, companion.imageUrl);
   const { settingImageUrl } = await import("./selfie");

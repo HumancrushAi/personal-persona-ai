@@ -25,6 +25,7 @@ RUN pip install \
       "snac==1.2.1" \
       "soundfile==0.12.1" \
       "runpod==1.7.7" \
+      "hf_transfer==0.1.9" \
       "numpy<2"
 
 ARG ORPHEUS_MODEL=unsloth/orpheus-3b-0.1-ft

@@ -109,14 +109,11 @@ export function videoActionLock(req: string | undefined, gender?: string | null,
     const opening = anal ? `${a.poss} anus` : `${a.poss} pussy`;
     const anchor = `${a.poss} lower stomach`;
     return (
-      `Primary continuous penetration action from first frame to last: the rounded narrow tip and the first part ` +
-      `of the ${toy.name} are already visibly inside ${opening} in frame one. ${a.poss} right hand grips only the ` +
-      `outer handle or wider base and completes repeated straight in-and-out fucking strokes on one fixed axis, kept short and controlled. The movement is small and physically continuous: ` +
-      `the tip always remains inside and the inner half of the shaft stays inside at all times while the hand moves the outer portion only ten to fifteen percent of its length, ` +
-      `then returns along exactly the same axis. The toy never fully withdraws, detaches, reverses ends or rotates. Its outer handle or base never enters the body. ` +
-      `The opening stays visibly centered and snug around the shaft during every stroke, naturally occluding its inner edge with no air gap; a stable contact shadow and subtle skin compression track the motion. ${a.poss} left hand stays ` +
-      `planted flat on ${anchor}, fully visible and clearly attached to ${a.poss} left arm. Exactly two arms and exactly two hands total are visible: the right hand on the toy and the left hand on the stomach. The toy never hovers beside the body, slides over the skin, flips direction or points ` +
-      `away from the opening. The fixed camera clearly shows the insertion point, gripping hand and repeated stroke.`
+      `Primary continuous penetration action from first frame to last: the rounded tip and inner half of the ${toy.name} ` +
+      `are already visibly inside ${opening} in frame one. ${a.poss} right hand, connected to ${a.poss} right arm, grips only the outer handle or base and performs repeated straight in-and-out fucking strokes on one fixed axis. ` +
+      `The tip always remains inside; only ten to fifteen percent of the toy travels, then returns on the same line. The opening remains snug around the shaft with a stable contact shadow. ` +
+      `Exactly two arms and exactly two hands total are visible: the right hand controls the toy and the left hand on the stomach stays planted on ${anchor}, with both hands connected to their arms. The toy remains rigid: it never fully withdraws, detaches, reverses ends or rotates; it never hovers beside the body; its base never enters the body. ` +
+      `Fixed camera clearly shows the face, gripping hand, contact point and repeated stroke.`
     );
   }
   if (a.hasVulva && isFingerInsertAct(request)) {
@@ -220,7 +217,17 @@ export function compactVideoScene(
   fallback: string,
   requiredContext = "",
 ): string {
-  const motion = (action || fallback).trim();
+  const clip = (text: string, max: number) => {
+    const clean = text.replace(/\s+/g, " ").trim();
+    if (clean.length <= max) return clean;
+    const cut = clean.slice(0, max + 1);
+    const boundary = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("; "), cut.lastIndexOf(", "));
+    return `${cut.slice(0, boundary > max * 0.6 ? boundary + 1 : max).trim()}…`;
+  };
+  // WAN's motion encoder follows a short dominant action more reliably than a
+  // multi-thousand-character photo brief. Keep the requested motion first and
+  // budget the immutable identity/object context separately.
+  const motion = clip((action || fallback).trim(), action ? 1050 : 900);
   const materialBehavior =
     toy?.id === "dildo-glass"
       ? "The glass is transparent, reflective, completely rigid and optically clear in every frame."
@@ -239,8 +246,8 @@ export function compactVideoScene(
     motion,
     "The requested hand action is the dominant motion; do not substitute posing, sitting up, smiling, breast touching or camera movement.",
     toyContinuity,
-    requiredContext,
-    identityContinuity,
+    clip(requiredContext, 320),
+    clip(identityContinuity, 420),
     "Fixed camera, continuous natural motion, no frozen hold.",
   ]
     .filter(Boolean)
@@ -906,6 +913,12 @@ export async function startImageJob(
             toyKind: toy?.kind ?? null,
             toyPlan,
             toyReferences: toys.map((t) => ({ id: t.id, url: t.image })).filter((t) => Boolean(t.url)),
+            // Exact-product conditioning used to occupy the same Comfy node as
+            // face restoration, so the presence of a chest toy silently
+            // disabled the identity pass. The graph ranges are now separate;
+            // make the restoration explicit on the hardest object-interaction
+            // frames while leaving ordinary selfies on their proven path.
+            forceFaceSwap: toys.length > 0,
             // Video has no later face-restoration pass. Lead with the complete
             // cached look (hair, skin, eyes and build), not only ink/build.
             lookTags: look,

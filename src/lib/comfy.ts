@@ -613,20 +613,26 @@ export function withProductReferences(template: string, imageNames: string[]): s
   const sampler = graph["3"];
   if (!sampler?.inputs?.model) return template;
   const samplerModel = sampler.inputs.model;
-  graph["30"] = {
+  // Nodes 30-39 are reserved for post-render identity restoration
+  // (withFaceSwap uses node 30). Product references used to claim node 30 too,
+  // which made withFaceSwap silently skip itself whenever a toy was present.
+  // Keep object conditioning in its own range so identity and exact-product
+  // conditioning can coexist in the same graph.
+  const loaderId = "40";
+  graph[loaderId] = {
     class_type: "IPAdapterUnifiedLoader",
     inputs: { model: samplerModel, preset: "PLUS (high strength)" },
   };
-  let model: [string, number] = ["30", 0];
+  let model: [string, number] = [loaderId, 0];
   imageNames.forEach((name, index) => {
-    const loadId = String(31 + index * 2);
-    const applyId = String(32 + index * 2);
+    const loadId = String(41 + index * 2);
+    const applyId = String(42 + index * 2);
     graph[loadId] = { class_type: "LoadImage", inputs: { image: name, upload: "image" } };
     graph[applyId] = {
       class_type: "IPAdapterAdvanced",
       inputs: {
         model,
-        ipadapter: ["30", 1],
+        ipadapter: [loaderId, 1],
         image: [loadId, 0],
         weight: imageNames.length > 1 ? 0.48 : 0.62,
         weight_type: "linear",

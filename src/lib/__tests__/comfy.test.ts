@@ -36,10 +36,21 @@ const VARS: ComfyVars = {
 describe("comfyWorkflow", () => {
   it("chains catalogue product references after identity conditioning", () => {
     const graph = JSON.parse(withProductReferences(DEFAULT_WORKFLOW, ["toy-reference-0.png", "toy-reference-1.png"]));
-    expect(graph["30"].class_type).toBe("IPAdapterUnifiedLoader");
-    expect(graph["31"].inputs.image).toBe("toy-reference-0.png");
-    expect(graph["33"].inputs.image).toBe("toy-reference-1.png");
-    expect(graph["3"].inputs.model).toEqual(["34", 0]);
+    expect(graph["40"].class_type).toBe("IPAdapterUnifiedLoader");
+    expect(graph["41"].inputs.image).toBe("toy-reference-0.png");
+    expect(graph["43"].inputs.image).toBe("toy-reference-1.png");
+    expect(graph["3"].inputs.model).toEqual(["44", 0]);
+  });
+
+  it("keeps product conditioning and post-render face restoration together", async () => {
+    const { FACEID_WORKFLOW, withFaceSwap } = await import("../comfy");
+    const graph = JSON.parse(
+      withFaceSwap(withProductReferences(FACEID_WORKFLOW, ["toy-reference-0.png"])),
+    );
+    expect(graph["30"].class_type).toBe("HCFaceSwap");
+    expect(graph["40"].class_type).toBe("IPAdapterUnifiedLoader");
+    expect(graph["42"].class_type).toBe("IPAdapterAdvanced");
+    expect(graph["3"].inputs.model).toEqual(["42", 0]);
   });
   it("keeps a numeric placeholder a number", () => {
     const g = comfyWorkflow(VARS) as any;

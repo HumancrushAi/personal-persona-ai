@@ -72,6 +72,7 @@ describe("negativeFor", () => {
     const action = videoActionLock("fucking yourself with a glass dildo", "female", toyById("dildo-glass"));
     const p = compactVideoScene(action, videoIdentityLock("long black hair, curvy build"), toyById("dildo-glass"), "generic scene");
     expect(p.startsWith("Primary continuous penetration action")).toBe(true);
+    expect(p.length).toBeLessThan(2200);
     expect(p.indexOf("repeated straight in-and-out")).toBeLessThan(p.indexOf("same facial geometry"));
     expect(p).toContain("do not substitute posing, sitting up");
     expect(p).toContain("transparent, reflective, completely rigid and optically clear");

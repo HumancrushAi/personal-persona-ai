@@ -3,7 +3,13 @@
 # The model weights are baked into the image rather than fetched on a cold
 # start, so a voice note never waits on a 6GB download and the endpoint needs
 # no network volume.
-FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+# Keep this aligned with the current RunPod GPU fleet.  The previous
+# torch-2.4/CUDA-12.4 image could be scheduled on a GPU whose compute
+# capability was not present in that build, causing the first CUDA operation
+# to fail with "no kernel image is available for execution on the device".
+# This is also the base currently running successfully on this account's
+# RunPod workloads.
+FROM runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404
 
 ENV PIP_NO_CACHE_DIR=1 \
     HF_HOME=/models \

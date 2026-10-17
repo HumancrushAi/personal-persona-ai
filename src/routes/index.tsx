@@ -276,6 +276,8 @@ function dealForWindow(list: Companion[], count: number, seed: number): Companio
 }
 
 function Landing() {
+  const [offerTime, setOfferTime] = useState(24 * 60 * 60);
+  useEffect(() => { const timer = window.setInterval(() => setOfferTime((value) => Math.max(0, value - 1)), 1000); return () => window.clearInterval(timer); }, []);
   const { data: companions } = useQuery({
     queryKey: ["companions-home"],
     queryFn: async () => {
@@ -602,6 +604,13 @@ function Landing() {
                 text: "Selfies and albums she only sends you.",
                 cta: "Open",
                 pic: liveNow[5] ?? liveNow[2],
+              },
+              {
+                to: "/done-for-you",
+                title: "Build your AI business",
+                text: `Done-for-you setup · offer ends in ${String(Math.floor(offerTime / 3600)).padStart(2, "0")}:${String(Math.floor((offerTime % 3600) / 60)).padStart(2, "0")}:${String(offerTime % 60).padStart(2, "0")}`,
+                cta: "See offer",
+                pic: liveNow[6] ?? liveNow[0],
               },
             ].map((x) => (
               <Link

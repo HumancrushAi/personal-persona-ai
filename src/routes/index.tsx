@@ -576,6 +576,15 @@ function Landing() {
           </section>
         )}
 
+        <section className="mx-auto mt-6 max-w-7xl px-3 md:px-6">
+          <div className="rounded-3xl border border-pink-400/30 bg-gradient-to-r from-pink-500/20 via-violet-500/10 to-transparent p-5 shadow-[0_0_40px_rgba(236,72,153,.12)] sm:p-7">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div><p className="text-xs font-bold uppercase tracking-[0.25em] text-pink-200">Business opportunity</p><h2 className="mt-2 text-2xl font-black sm:text-3xl">Launch your AI model business</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Choose a creator plan for credit-based image and video generation, or request a done-for-you model brand, website, content library, and social launch setup.</p><div className="mt-4 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-white/10 px-3 py-1.5">Monthly creator</span><span className="rounded-full bg-white/10 px-3 py-1.5">Annual savings</span><span className="rounded-full bg-pink-400/20 px-3 py-1.5 text-pink-100">Done-for-you build</span></div></div>
+              <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end"><div className="rounded-2xl border border-pink-200/25 bg-black/25 px-5 py-3 text-center"><p className="text-[10px] uppercase tracking-widest text-pink-100">Offer ends in</p><p className="font-mono text-2xl font-bold">{String(Math.floor(offerTime / 3600)).padStart(2, "0")}:{String(Math.floor((offerTime % 3600) / 60)).padStart(2, "0")}:{String(offerTime % 60).padStart(2, "0")}</p></div><Link to="/done-for-you" className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground">View plans & request a call</Link></div>
+            </div>
+          </div>
+        </section>
+
         {/* NEW EXPERIENCES — one swipeable row of photo cards rather than a
             stack of three tall gradient panels. */}
         <section className="mx-auto mt-6 max-w-7xl md:px-6">

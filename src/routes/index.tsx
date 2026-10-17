@@ -86,6 +86,13 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
   { id: "3c02cb21-651e-4a4a-8c28-6514857072f1", name: "Ethan", title: "Golden hour", sub: "26 · barista by day, photographer by night 📸", gender: "m" },
 ];
 
+// These companions remain available throughout the site; they are simply not
+// included in the homepage hero slider.
+const HERO_EXCLUDED_IDS = new Set([
+  "eae18174-2e5e-4bc5-8c3f-16e1b5265e50", // Ruby
+  "1baa4bd7-72b7-485a-ad7f-1022fc032ee2", // Lola
+]);
+
 export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
@@ -381,7 +388,7 @@ function Landing() {
       gender: wantGender as "m" | "f",
       companion: comp,
     });
-    const curated = BANNERS.filter((b) => b.gender === wantGender)
+    const curated = BANNERS.filter((b) => b.gender === wantGender && !HERO_EXCLUDED_IDS.has(b.id))
       .map((b) => {
         const comp =
           companions.find((c) => c.id === b.id) ||
@@ -393,7 +400,7 @@ function Landing() {
     // No curated banner for this tab: the first few of that gender still make
     // a slider, which is better than a tab that empties the top of the page.
     return companions
-      .filter(inTab)
+      .filter((c) => inTab(c) && !HERO_EXCLUDED_IDS.has(c.id))
       .slice(0, 5)
       .map((c) => toSlide(c, c.ethnicity));
   }

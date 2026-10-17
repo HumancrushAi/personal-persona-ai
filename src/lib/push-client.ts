@@ -11,6 +11,20 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export type PushResult = "enabled" | "denied" | "unsupported" | "not-configured";
 
+// A VAPID rotation makes an existing browser subscription unusable with the
+// new private key. Drop that stale subscription once, then create a fresh one.
+async function subscriptionForVapid(reg: ServiceWorkerRegistration, vapid: string) {
+  const existing = await reg.pushManager.getSubscription();
+  const marker = "humancrush-vapid-public-key";
+  if (existing && localStorage.getItem(marker) !== vapid) {
+    await existing.unsubscribe().catch(() => {});
+    localStorage.setItem(marker, vapid);
+    return null;
+  }
+  localStorage.setItem(marker, vapid);
+  return existing;
+}
+
 // Register the service worker, ask permission, subscribe, and store it.
 export async function enablePush(): Promise<PushResult> {
   if (typeof window === "undefined") return "unsupported";
@@ -25,7 +39,7 @@ export async function enablePush(): Promise<PushResult> {
   const reg = await navigator.serviceWorker.register("/sw.js");
   await navigator.serviceWorker.ready;
 
-  const existing = await reg.pushManager.getSubscription();
+  const existing = await subscriptionForVapid(reg, vapid);
   const sub =
     existing ??
     (await reg.pushManager.subscribe({
@@ -96,7 +110,7 @@ export async function reRegisterPush(): Promise<PushResult> {
   const reg = await navigator.serviceWorker.register("/sw.js");
   await navigator.serviceWorker.ready;
   const sub =
-    (await reg.pushManager.getSubscription()) ??
+    (await subscriptionForVapid(reg, vapid)) ??
     (await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapid) as BufferSource,
@@ -148,7 +162,7 @@ export async function autoSubscribePushIfGranted(): Promise<void> {
   try {
     const reg = await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
-    const existing = await reg.pushManager.getSubscription();
+    const existing = await subscriptionForVapid(reg, vapid);
     const sub =
       existing ??
       (await reg.pushManager.subscribe({

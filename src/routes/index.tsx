@@ -641,6 +641,20 @@ function Landing() {
           </div>
         </section>
 
+        <section className="mx-auto mt-8 max-w-7xl px-3 md:px-6">
+          <div className="overflow-hidden rounded-3xl border border-pink-400/25 bg-gradient-to-br from-pink-500/15 via-[#1c1620] to-[#141414] p-5 sm:p-7">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-pink-200">HumanCrush for business</p>
+                <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">Launch your AI model business</h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/65">Create with credits, or let our team build one polished model brand, website, content library, and launch system around your vision.</p>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/75"><span className="rounded-full bg-white/10 px-3 py-1.5">Creator monthly</span><span className="rounded-full bg-white/10 px-3 py-1.5">Creator annual</span><span className="rounded-full bg-pink-400/20 px-3 py-1.5 text-pink-100">Done-for-you setup</span></div>
+              </div>
+              <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end"><div className="rounded-2xl border border-pink-300/25 bg-black/20 px-4 py-3 text-center"><p className="text-[10px] uppercase tracking-widest text-pink-200">Launch offer ends in</p><p className="mt-1 font-mono text-2xl font-bold text-white">{String(Math.floor(offerTime / 3600)).padStart(2, "0")}:{String(Math.floor((offerTime % 3600) / 60)).padStart(2, "0")}:{String(offerTime % 60).padStart(2, "0")}</p></div><Link to="/done-for-you" className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">View business offer</Link></div>
+            </div>
+          </div>
+        </section>
+
         {/* LIVE NOW */}
         <section className="mx-auto mt-8 max-w-7xl px-4 md:px-6">
           <SectionTitle

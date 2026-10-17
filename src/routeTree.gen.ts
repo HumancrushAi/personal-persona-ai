@@ -17,6 +17,7 @@ import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as CreateMediaRouteImport } from './routes/create-media'
 import { Route as CreditsRouteImport } from './routes/credits'
+import { Route as DoneForYouRouteImport } from './routes/done-for-you'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -78,6 +79,11 @@ const CreateMediaRoute = CreateMediaRouteImport.update({
 const CreditsRoute = CreditsRouteImport.update({
   id: '/credits',
   path: '/credits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DoneForYouRoute = DoneForYouRouteImport.update({
+  id: '/done-for-you',
+  path: '/done-for-you',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FaqRoute = FaqRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/create-media': typeof CreateMediaRoute
   '/credits': typeof CreditsRoute
+  '/done-for-you': typeof DoneForYouRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
@@ -236,6 +243,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/create-media': typeof CreateMediaRoute
   '/credits': typeof CreditsRoute
+  '/done-for-you': typeof DoneForYouRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/create-media': typeof CreateMediaRoute
   '/credits': typeof CreditsRoute
+  '/done-for-you': typeof DoneForYouRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/create-media'
     | '/credits'
+    | '/done-for-you'
     | '/faq'
     | '/gallery'
     | '/history'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/create-media'
     | '/credits'
+    | '/done-for-you'
     | '/faq'
     | '/gallery'
     | '/history'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/create-media'
     | '/credits'
+    | '/done-for-you'
     | '/faq'
     | '/gallery'
     | '/history'
@@ -403,6 +415,7 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   CreateMediaRoute: typeof CreateMediaRoute
   CreditsRoute: typeof CreditsRoute
+  DoneForYouRoute: typeof DoneForYouRoute
   FaqRoute: typeof FaqRoute
   GalleryRoute: typeof GalleryRoute
   HistoryRoute: typeof HistoryRoute
@@ -482,6 +495,13 @@ declare module '@tanstack/react-router' {
       path: '/credits'
       fullPath: '/credits'
       preLoaderRoute: typeof CreditsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/done-for-you': {
+      id: '/done-for-you'
+      path: '/done-for-you'
+      fullPath: '/done-for-you'
+      preLoaderRoute: typeof DoneForYouRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/faq': {
@@ -670,6 +690,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   CreateMediaRoute: CreateMediaRoute,
   CreditsRoute: CreditsRoute,
+  DoneForYouRoute: DoneForYouRoute,
   FaqRoute: FaqRoute,
   GalleryRoute: GalleryRoute,
   HistoryRoute: HistoryRoute,

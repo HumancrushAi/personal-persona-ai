@@ -363,8 +363,8 @@ export function SiteHeader({
             <Link to="/gallery" className={navLink}>
               Gallery
             </Link>
-            <Link to="/create" className={navLink}>
-              Create
+            <Link to="/create-media" className={navLink}>
+              Create media
             </Link>
             {authed && (
               <Link to="/me" className={navLink}>

@@ -11,7 +11,7 @@ export function BottomNav() {
   const items = [
     { href: "/", label: "Home", icon: Home, active: pathname === "/" },
     { href: "/cams", label: "Private", icon: Lock, active: pathname.startsWith("/cams") || pathname.startsWith("/gallery") },
-    { href: "/create", label: "Create", icon: Sparkles, active: pathname.startsWith("/create"), highlight: true },
+    { href: "/create-media", label: "Create", icon: Sparkles, active: pathname.startsWith("/create-media"), highlight: true },
     { href: "/me", label: "Chat", icon: MessageSquare, active: pathname.startsWith("/me") || pathname.startsWith("/companion") || pathname.startsWith("/chat") },
     { href: "/credits", label: "Premium", icon: Gem, active: pathname.startsWith("/credits"), gold: true },
   ];

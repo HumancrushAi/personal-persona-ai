@@ -25,7 +25,8 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
       .select("id,name,age,ethnicity,gender,short_bio,image_url,base_personality")
       .eq("id", data.companionId).single();
     if (error || !c) throw new Error("Model not found");
-    const cost = data.kind === "video" ? Math.max(10, (data.seconds ?? 5) * 3) : 8;
+    const { data: admin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    const cost = admin ? 0 : data.kind === "video" ? Math.max(10, (data.seconds ?? 5) * 3) : 8;
     const balance = await ensureBalance(context.supabase, context.userId, cost);
     const after = await deductCredits(context.supabase, context.userId, cost, `creator_${data.kind}`, balance.free, balance.paid);
     const admin = (await import("@/integrations/supabase/client.server")).supabaseAdmin;

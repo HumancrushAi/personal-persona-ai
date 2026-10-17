@@ -30,8 +30,10 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
     const balance = await ensureBalance(context.supabase, context.userId, cost);
     const after = await deductCredits(context.supabase, context.userId, cost, `creator_${data.kind}`, balance.free, balance.paid);
     const adminClient = (await import("@/integrations/supabase/client.server")).supabaseAdmin;
-    const { data: p } = await adminClient.from("user_personalities").insert({ user_id: context.userId, companion_id: c.id, nickname: c.name, style_backstory: c.base_personality }).select("id").single();
-    const { data: conv } = await adminClient.from("conversations").insert({ user_id: context.userId, personality_id: p.id, title: "Creator render" }).select("id").single();
+    const { data: p, error: personalityError } = await adminClient.from("user_personalities").insert({ user_id: context.userId, companion_id: c.id, nickname: c.name, style_backstory: c.base_personality }).select("id").single();
+    if (personalityError || !p) throw new Error("Could not prepare the model identity");
+    const { data: conv, error: conversationError } = await adminClient.from("conversations").insert({ user_id: context.userId, personality_id: p.id, title: "Creator render" }).select("id").single();
+    if (conversationError || !conv) throw new Error("Could not prepare the creator workspace");
     try {
       const jobId = data.kind === "image"
         ? await startImageJob(context.supabase, context.userId, conv.id, c, data.prompt, c.base_personality, after)

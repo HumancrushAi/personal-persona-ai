@@ -363,9 +363,12 @@ export function SiteHeader({
             <Link to="/gallery" className={navLink}>
               Gallery
             </Link>
-            <Link to="/create-media" className={navLink}>
-              Create media
-            </Link>
+              <Link to="/create-media" className={navLink}>
+                Create media
+              </Link>
+              <Link to="/done-for-you" className={navLink}>
+                Business setup
+              </Link>
             {authed && (
               <Link to="/me" className={navLink}>
                 My chats

@@ -8,7 +8,9 @@ import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 
 const input = z.object({
   companionId: z.string().uuid(), prompt: z.string().min(3).max(500),
-  kind: z.enum(["image", "video"]), seconds: z.number().int().min(3).max(12).optional(),
+  // Standalone creator supports multi-scene clips up to 30 seconds. Chat keeps
+  // its existing 12-second contract and is not changed by this endpoint.
+  kind: z.enum(["image", "video"]), seconds: z.number().int().min(3).max(30).optional(),
   width: z.number().int().min(512).max(1536).default(768),
   height: z.number().int().min(512).max(1536).default(1024),
 });

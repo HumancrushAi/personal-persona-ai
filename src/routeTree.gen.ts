@@ -15,6 +15,7 @@ import { Route as AffiliateRouteImport } from './routes/affiliate'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as CreateMediaRouteImport } from './routes/create-media'
 import { Route as CreditsRouteImport } from './routes/credits'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as GalleryRouteImport } from './routes/gallery'
@@ -67,6 +68,11 @@ const BrowseRoute = BrowseRouteImport.update({
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateMediaRoute = CreateMediaRouteImport.update({
+  id: '/create-media',
+  path: '/create-media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreditsRoute = CreditsRouteImport.update({
@@ -196,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/create': typeof CreateRoute
+  '/create-media': typeof CreateMediaRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
@@ -227,6 +234,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/create': typeof CreateRoute
+  '/create-media': typeof CreateMediaRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
@@ -260,6 +268,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/create': typeof CreateRoute
+  '/create-media': typeof CreateMediaRoute
   '/credits': typeof CreditsRoute
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
@@ -293,6 +302,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/create'
+    | '/create-media'
     | '/credits'
     | '/faq'
     | '/gallery'
@@ -324,6 +334,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/create'
+    | '/create-media'
     | '/credits'
     | '/faq'
     | '/gallery'
@@ -356,6 +367,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/create'
+    | '/create-media'
     | '/credits'
     | '/faq'
     | '/gallery'
@@ -389,6 +401,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   CreateRoute: typeof CreateRoute
+  CreateMediaRoute: typeof CreateMediaRoute
   CreditsRoute: typeof CreditsRoute
   FaqRoute: typeof FaqRoute
   GalleryRoute: typeof GalleryRoute
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       path: '/create'
       fullPath: '/create'
       preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-media': {
+      id: '/create-media'
+      path: '/create-media'
+      fullPath: '/create-media'
+      preLoaderRoute: typeof CreateMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/credits': {
@@ -648,6 +668,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   CreateRoute: CreateRoute,
+  CreateMediaRoute: CreateMediaRoute,
   CreditsRoute: CreditsRoute,
   FaqRoute: FaqRoute,
   GalleryRoute: GalleryRoute,

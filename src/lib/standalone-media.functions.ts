@@ -29,9 +29,9 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
     const cost = admin ? 0 : data.kind === "video" ? Math.max(10, (data.seconds ?? 5) * 3) : 8;
     const balance = await ensureBalance(context.supabase, context.userId, cost);
     const after = await deductCredits(context.supabase, context.userId, cost, `creator_${data.kind}`, balance.free, balance.paid);
-    const admin = (await import("@/integrations/supabase/client.server")).supabaseAdmin;
-    const { data: p } = await admin.from("user_personalities").insert({ user_id: context.userId, companion_id: c.id, nickname: c.name, style_backstory: c.base_personality }).select("id").single();
-    const { data: conv } = await admin.from("conversations").insert({ user_id: context.userId, personality_id: p.id, title: "Creator render" }).select("id").single();
+    const adminClient = (await import("@/integrations/supabase/client.server")).supabaseAdmin;
+    const { data: p } = await adminClient.from("user_personalities").insert({ user_id: context.userId, companion_id: c.id, nickname: c.name, style_backstory: c.base_personality }).select("id").single();
+    const { data: conv } = await adminClient.from("conversations").insert({ user_id: context.userId, personality_id: p.id, title: "Creator render" }).select("id").single();
     try {
       const jobId = data.kind === "image"
         ? await startImageJob(context.supabase, context.userId, conv.id, c, data.prompt, c.base_personality, after)

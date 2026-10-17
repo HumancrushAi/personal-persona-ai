@@ -277,7 +277,7 @@ function dealForWindow(list: Companion[], count: number, seed: number): Companio
 
 function Landing() {
   const [offerTime, setOfferTime] = useState(24 * 60 * 60);
-  useEffect(() => { const timer = window.setInterval(() => setOfferTime((value) => Math.max(0, value - 1)), 1000); return () => window.clearInterval(timer); }, []);
+  useEffect(() => { const key = "hc:business-offer-deadline"; const saved = Number(window.localStorage.getItem(key)); const deadline = Number.isFinite(saved) && saved > Date.now() ? saved : Date.now() + 24 * 60 * 60 * 1000; window.localStorage.setItem(key, String(deadline)); const tick = () => setOfferTime(Math.max(0, Math.ceil((deadline - Date.now()) / 1000))); tick(); const timer = window.setInterval(tick, 1000); return () => window.clearInterval(timer); }, []);
   const { data: companions } = useQuery({
     queryKey: ["companions-home"],
     queryFn: async () => {

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/done-for-you")({ ssr: false, component: DoneForYou });
 
-const deadline = Date.now() + 24 * 60 * 60 * 1000;
+const OFFER_KEY = "hc:business-offer-deadline";
 const tiers = [
   { name: "Creator", price: "$29", detail: "Monthly", copy: "Generate images and videos with credits, using the standalone creator and your saved models." },
   { name: "Creator annual", price: "$249", detail: "Per year", copy: "The same creator workspace with a lower effective monthly price and a larger included credit balance." },
@@ -13,8 +13,15 @@ const tiers = [
 ];
 
 function DoneForYou() {
-  const [remaining, setRemaining] = useState(deadline - Date.now());
-  useEffect(() => { const timer = window.setInterval(() => setRemaining(Math.max(0, deadline - Date.now())), 1000); return () => window.clearInterval(timer); }, []);
+  const [remaining, setRemaining] = useState(0);
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem(OFFER_KEY));
+    const deadline = Number.isFinite(saved) && saved > Date.now() ? saved : Date.now() + 24 * 60 * 60 * 1000;
+    window.localStorage.setItem(OFFER_KEY, String(deadline));
+    setRemaining(Math.max(0, deadline - Date.now()));
+    const timer = window.setInterval(() => setRemaining(Math.max(0, deadline - Date.now())), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const hours = Math.floor(remaining / 3_600_000).toString().padStart(2, "0");
   const minutes = Math.floor((remaining % 3_600_000) / 60_000).toString().padStart(2, "0");
   const seconds = Math.floor((remaining % 60_000) / 1000).toString().padStart(2, "0");

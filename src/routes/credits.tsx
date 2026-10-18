@@ -102,6 +102,12 @@ function CreditsPage() {
   const [zip, setZip] = useState("");
   const [processing, setProcessing] = useState(false);
 
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("plan");
+    if (requested === "monthly") { setTab("subs"); setSelected("sub-lover"); }
+    if (requested === "annual") { setTab("subs"); setSelected("sub-soulmate"); }
+  }, []);
+
   const { data: payCfg } = useQuery({ queryKey: ["pay-cfg"], queryFn: () => getPaymentConfig() });
   // Server-priced packs (admin overrides applied) so display matches the charge.
   const { data: pricing } = useQuery({ queryKey: ["pricing"], queryFn: () => getPricing() });

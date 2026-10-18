@@ -377,6 +377,8 @@ export function SiteHeader({
           </nav>
         )}
 
+        {home && <Link to="/done-for-you" className="hidden rounded-full px-3 py-2 text-xs font-semibold text-pink-200 transition hover:bg-pink-400/10 hover:text-white md:inline-flex">Business setup</Link>}
+
         <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
           <span className="sm:hidden">
             <LanguageSelect flagOnly />

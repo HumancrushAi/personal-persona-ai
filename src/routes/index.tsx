@@ -91,6 +91,9 @@ const BANNERS: { id: string; name: string; title: string; sub: string; gender: "
 const HERO_EXCLUDED_IDS = new Set([
   "eae18174-2e5e-4bc5-8c3f-16e1b5265e50", // Ruby
   "1baa4bd7-72b7-485a-ad7f-1022fc032ee2", // Lola
+  "b61e09e9-0f45-4515-b95b-3ece814b6c4a", // Diane
+  "b3140655-f382-4b7c-a77d-4258ac6d5ce9", // Keisha
+  "522f76e0-cba6-4767-9118-0bbe1f8abe62", // Carmen
 ]);
 
 export const Route = createFileRoute("/")({
@@ -576,7 +579,7 @@ function Landing() {
           </section>
         )}
 
-        <section className="mx-auto mt-6 max-w-7xl px-3 md:px-6">
+        <section className="hidden mx-auto mt-6 max-w-7xl px-3 md:px-6">
           <div className="rounded-3xl border border-pink-400/30 bg-gradient-to-r from-pink-500/20 via-violet-500/10 to-transparent p-5 shadow-[0_0_40px_rgba(236,72,153,.12)] sm:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div><p className="text-xs font-bold uppercase tracking-[0.25em] text-pink-200">Business opportunity</p><h2 className="mt-2 text-2xl font-black sm:text-3xl">Launch your AI model business</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Choose a creator plan for credit-based image and video generation, or request a done-for-you model brand, website, content library, and social launch setup.</p><div className="mt-4 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-white/10 px-3 py-1.5">Monthly creator</span><span className="rounded-full bg-white/10 px-3 py-1.5">Annual savings</span><span className="rounded-full bg-pink-400/20 px-3 py-1.5 text-pink-100">Done-for-you build</span></div></div>
@@ -650,7 +653,7 @@ function Landing() {
           </div>
         </section>
 
-        <section className="mx-auto mt-8 max-w-7xl px-3 md:px-6">
+        <section className="hidden mx-auto mt-8 max-w-7xl px-3 md:px-6">
           <div className="overflow-hidden rounded-3xl border border-pink-400/25 bg-gradient-to-br from-pink-500/15 via-[#1c1620] to-[#141414] p-5 sm:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-2xl">

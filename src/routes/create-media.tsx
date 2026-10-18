@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { standaloneGenerate } from "@/lib/standalone-media.functions";
+import { standaloneGenerate, unlockCreatorModel } from "@/lib/standalone-media.functions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -10,6 +10,7 @@ export const Route = createFileRoute("/create-media")({ ssr: false, component: C
 
 function Creator() {
   const run = useServerFn(standaloneGenerate);
+  const unlock = useServerFn(unlockCreatorModel);
   const [models, setModels] = useState<any[]>([]);
   const [model, setModel] = useState("");
   const [loading, setLoading] = useState(true);
@@ -19,14 +20,17 @@ function Creator() {
   const [seconds, setSeconds] = useState(5);
   const [size, setSize] = useState("portrait");
   const [busy, setBusy] = useState(false);
+  const [unlocked, setUnlocked] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
-    supabase.from("companions").select("id,name,image_url,gender").order("sort_order").then(({ data, error }) => {
+    supabase.from("companions").select("id,name,image_url,gender").order("sort_order").then(async ({ data, error }) => {
       if (!active) return;
       if (error) setLoadError("Models could not be loaded. Refresh and try again.");
       setModels(data ?? []);
       if (data?.[0]) setModel(data[0].id);
+      const ids = await (supabase as any).from("creator_model_unlocks").select("companion_id");
+      setUnlocked((ids.data ?? []).map((row: any) => row.companion_id));
       setLoading(false);
     });
     return () => { active = false; };
@@ -35,7 +39,8 @@ function Creator() {
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
   const sizes = { portrait: [768, 1024], square: [1024, 1024], landscape: [1024, 768] } as const;
   async function submit() {
-    if (!model || prompt.trim().length < 3) return toast.error("Choose a model and describe the render.");
+    if (!model || (models.find((item) => item.id === model) && models[0]?.id !== model && !unlocked.includes(model))) return toast.error("Unlock this model before generating.");
+    if (prompt.trim().length < 3) return toast.error("Describe the render.");
     setBusy(true);
     try {
       const [width, height] = sizes[size as keyof typeof sizes];
@@ -55,7 +60,7 @@ function Creator() {
         {loading && <p className="rounded-xl border border-white/10 p-3 text-sm text-white/60">Loading models…</p>}
         {loadError && <p className="rounded-xl border border-red-400/30 p-3 text-sm text-red-200">{loadError}</p>}
         {!loading && !loadError && !models.length && <p className="rounded-xl border border-white/10 p-3 text-sm text-white/60">No models are available yet.</p>}
-        {models.map((item) => <button key={item.id} onClick={() => setModel(item.id)} className={`flex w-full items-center gap-3 rounded-2xl border bg-white/[0.04] p-2 text-left transition hover:bg-white/10 ${model === item.id ? "border-pink-400 bg-pink-400/10 shadow-[0_0_24px_rgba(244,114,182,.15)]" : "border-white/10"}`}><img src={item.image_url} className="h-14 w-14 rounded-xl object-cover" /><span><strong className="block">{item.name}</strong><small className="text-white/45">{item.gender === "male" ? "Male model" : "Female model"}</small></span></button>)}
+        {models.map((item, index) => <div key={item.id} className={`flex items-center gap-2 rounded-2xl border bg-white/[0.04] p-2 ${model === item.id ? "border-pink-400 bg-pink-400/10" : "border-white/10"}`}><button onClick={() => setModel(item.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left"><img src={item.image_url} className="h-14 w-14 rounded-xl object-cover" /><span><strong className="block">{item.name}</strong><small className="text-white/45">{item.gender === "male" ? "Male model" : "Female model"}</small></span></button>{(index === 0 || unlocked.includes(item.id)) ? <span className="px-2 text-xs text-emerald-300">Unlocked</span> : <button onClick={async () => { try { await unlock({ data: { companionId: item.id } }); setUnlocked((value) => [...value, item.id]); setModel(item.id); toast.success(`${item.name} unlocked for 50 credits`); } catch (error: any) { toast.error(error?.message ?? "Could not unlock model"); } }} className="rounded-full bg-gradient-to-r from-amber-400 to-pink-500 px-3 py-1.5 text-xs font-bold text-black">Unlock · 50</button>}</div>)}
       </div>
       <section className="rounded-3xl border border-white/10 bg-white/[0.07] p-5 shadow-2xl backdrop-blur sm:p-7">
         <div className="flex gap-2"><Button variant={kind === "image" ? "default" : "outline"} onClick={() => setKind("image")}>Image · 8 credits</Button><Button variant={kind === "video" ? "default" : "outline"} onClick={() => setKind("video")}>Video</Button></div>

@@ -15,6 +15,23 @@ const input = z.object({
   height: z.number().int().min(512).max(1536).default(1024),
 });
 
+export const unlockCreatorModel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ companionId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: admin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    const unlocks = context.supabase as any;
+    const { data: existing } = await unlocks.from("creator_model_unlocks").select("companion_id").eq("user_id", context.userId).eq("companion_id", data.companionId).maybeSingle();
+    if (existing || admin) return { unlocked: true, cost: 0 };
+    const { data: first } = await context.supabase.from("companions").select("id").order("sort_order").limit(1).maybeSingle();
+    if (first?.id === data.companionId) return { unlocked: true, cost: 0 };
+    const balance = await ensureBalance(context.supabase, context.userId, 50);
+    const after = await deductCredits(context.supabase, context.userId, 50, "creator_model_unlock", balance.free, balance.paid);
+    const { error } = await unlocks.from("creator_model_unlocks").insert({ user_id: context.userId, companion_id: data.companionId });
+    if (error) throw new Error("Could not unlock this model");
+    return { unlocked: true, cost: 50, balance: after };
+  });
+
 export const standaloneGenerate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => input.parse(d))
@@ -26,6 +43,11 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
       .eq("id", data.companionId).single();
     if (error || !c) throw new Error("Model not found");
     const { data: admin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    if (!admin) {
+      const { data: first } = await context.supabase.from("companions").select("id").order("sort_order").limit(1).maybeSingle();
+      const { data: unlocked } = await (context.supabase as any).from("creator_model_unlocks").select("companion_id").eq("user_id", context.userId).eq("companion_id", c.id).maybeSingle();
+      if (first?.id !== c.id && !unlocked) throw new Error("Unlock this model for 50 credits before generating.");
+    }
     const cost = admin ? 0 : data.kind === "video" ? Math.max(10, (data.seconds ?? 5) * 3) : 8;
     const balance = await ensureBalance(context.supabase, context.userId, cost);
     const after = await deductCredits(context.supabase, context.userId, cost, `creator_${data.kind}`, balance.free, balance.paid);

@@ -26,6 +26,16 @@ function DoneForYou() {
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => { supabase.auth.getUser().then(async ({ data: { user } }) => { if (!user) return; const { data } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }); setIsAdmin(!!data); }); }, []);
+  useEffect(() => {
+    const openGmail = (event: MouseEvent) => {
+      const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="mailto:lgtopseller@yahoo.com"]');
+      if (!anchor) return;
+      event.preventDefault();
+      window.open("https://mail.google.com/mail/?view=cm&fs=1&to=lgtopseller%40yahoo.com&su=HumanCrush%20done-for-you%20business%20setup&body=Hi%2C%20I%27d%20like%20to%20book%20a%20call%20about%20the%20done-for-you%20AI%20model%20business%20setup.", "_blank", "noopener,noreferrer");
+    };
+    document.addEventListener("click", openGmail);
+    return () => document.removeEventListener("click", openGmail);
+  }, []);
   const hours = Math.floor(remaining / 3_600_000).toString().padStart(2, "0");
   const minutes = Math.floor((remaining % 3_600_000) / 60_000).toString().padStart(2, "0");
   const seconds = Math.floor((remaining % 60_000) / 1000).toString().padStart(2, "0");

@@ -346,6 +346,9 @@ function CreatePage() {
                   onClick={() => setArtStyle("anime")}
                 />
               </div>
+              <button type="button" onClick={() => navigate({ to: "/create-media" })} className="mt-4 flex w-full items-center justify-between rounded-2xl border border-pink-400/30 bg-gradient-to-r from-pink-500/15 to-violet-500/15 px-5 py-4 text-left transition hover:border-pink-300 hover:bg-pink-500/20">
+                <span><strong className="block text-sm text-white">Generate media</strong><small className="text-xs text-white/55">Use a saved model to make an image or video by prompt</small></span><span className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">Open generator →</span>
+              </button>
             </Section>
           </Step>
         )}

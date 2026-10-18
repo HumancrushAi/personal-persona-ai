@@ -152,6 +152,8 @@ function CreditsPage() {
         setZip("");
         qc.invalidateQueries({ queryKey: ["balance"] });
         qc.invalidateQueries({ queryKey: ["profile", userId] });
+        const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+        if (returnTo && returnTo.startsWith("/")) { window.location.assign(returnTo); return; }
       } catch (err: any) {
         toast.error(err.message ?? "Payment failed");
       } finally {

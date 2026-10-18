@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/create-media")({ ssr: false, component: Creator });
 
 function Creator() {
+  const navigate = useNavigate();
   const run = useServerFn(standaloneGenerate);
   const unlock = useServerFn(unlockCreatorModel);
   const [models, setModels] = useState<any[]>([]);
@@ -48,6 +49,7 @@ function Creator() {
       toast.success(`Generation started (${result.cost} credits)`);
       setPrompt("");
     } catch (error: any) {
+      if (String(error?.message ?? error).includes("OUT_OF_CREDITS")) { navigate({ to: "/credits", search: { returnTo: "/create-media" } as never }); return; }
       toast.error(error?.message ?? "Generation failed");
     } finally { setBusy(false); }
   }
@@ -60,7 +62,7 @@ function Creator() {
         {loading && <p className="rounded-xl border border-white/10 p-3 text-sm text-white/60">Loading models…</p>}
         {loadError && <p className="rounded-xl border border-red-400/30 p-3 text-sm text-red-200">{loadError}</p>}
         {!loading && !loadError && !models.length && <p className="rounded-xl border border-white/10 p-3 text-sm text-white/60">No models are available yet.</p>}
-        {models.map((item, index) => <div key={item.id} className={`flex items-center gap-2 rounded-2xl border bg-white/[0.04] p-2 ${model === item.id ? "border-pink-400 bg-pink-400/10" : "border-white/10"}`}><button onClick={() => setModel(item.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left"><img src={item.image_url} className="h-14 w-14 rounded-xl object-cover" /><span><strong className="block">{item.name}</strong><small className="text-white/45">{item.gender === "male" ? "Male model" : "Female model"}</small></span></button>{(index === 0 || unlocked.includes(item.id)) ? <span className="px-2 text-xs text-emerald-300">Unlocked</span> : <button onClick={async () => { try { await unlock({ data: { companionId: item.id } }); setUnlocked((value) => [...value, item.id]); setModel(item.id); toast.success(`${item.name} unlocked for 50 credits`); } catch (error: any) { toast.error(error?.message ?? "Could not unlock model"); } }} className="rounded-full bg-gradient-to-r from-amber-400 to-pink-500 px-3 py-1.5 text-xs font-bold text-black">Unlock · 50</button>}</div>)}
+        {models.map((item, index) => <div key={item.id} className={`flex items-center gap-2 rounded-2xl border bg-white/[0.04] p-2 ${model === item.id ? "border-pink-400 bg-pink-400/10" : "border-white/10"}`}><button onClick={() => setModel(item.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left"><img src={item.image_url} className="h-14 w-14 rounded-xl object-cover" /><span><strong className="block">{item.name}</strong><small className="text-white/45">{item.gender === "male" ? "Male model" : "Female model"}</small></span></button>{(index === 0 || unlocked.includes(item.id)) ? <span className="px-2 text-xs text-emerald-300">Unlocked</span> : <button onClick={async () => { try { await unlock({ data: { companionId: item.id } }); setUnlocked((value) => [...value, item.id]); setModel(item.id); toast.success(`${item.name} unlocked for 50 credits`); } catch (error: any) { if (String(error?.message ?? error).includes("OUT_OF_CREDITS")) { navigate({ to: "/credits", search: { returnTo: "/create-media" } as never }); return; } toast.error(error?.message ?? "Could not unlock model"); } }} className="rounded-full bg-gradient-to-r from-amber-400 to-pink-500 px-3 py-1.5 text-xs font-bold text-black">Unlock · 50</button>}</div>)}
       </div>
       <section className="rounded-3xl border border-white/10 bg-white/[0.07] p-5 shadow-2xl backdrop-blur sm:p-7">
         <div className="flex gap-2"><Button variant={kind === "image" ? "default" : "outline"} onClick={() => setKind("image")}>Image · 8 credits</Button><Button variant={kind === "video" ? "default" : "outline"} onClick={() => setKind("video")}>Video</Button></div>

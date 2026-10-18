@@ -95,6 +95,10 @@ const HERO_EXCLUDED_IDS = new Set([
   "b3140655-f382-4b7c-a77d-4258ac6d5ce9", // Keisha
   "522f76e0-cba6-4767-9118-0bbe1f8abe62", // Carmen
 ]);
+const HERO_EXCLUDED_NAMES = new Set(["ruby", "lola", "diane", "keisha", "carmen"]);
+const isHeroExcluded = (c: { id: string; name: string; short_bio?: string | null }) =>
+  HERO_EXCLUDED_IDS.has(c.id) || HERO_EXCLUDED_NAMES.has(c.name.trim().toLowerCase()) ||
+  /\b(?:plus[- ]size|full[- ]figured|curvy|voluptuous|big girl)\b/i.test(c.short_bio ?? "");
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -398,14 +402,14 @@ function Landing() {
         const comp =
           companions.find((c) => c.id === b.id) ||
           companions.find((c) => c.name.toLowerCase() === b.name.toLowerCase());
-        return comp && inTab(comp) ? toSlide(comp, b.sub) : null;
+        return comp && inTab(comp) && !isHeroExcluded(comp) ? toSlide(comp, b.sub) : null;
       })
       .filter((s): s is NonNullable<typeof s> => s !== null);
     if (curated.length) return curated;
     // No curated banner for this tab: the first few of that gender still make
     // a slider, which is better than a tab that empties the top of the page.
     return companions
-      .filter((c) => inTab(c) && !HERO_EXCLUDED_IDS.has(c.id))
+      .filter((c) => inTab(c) && !isHeroExcluded(c))
       .slice(0, 5)
       .map((c) => toSlide(c, c.ethnicity));
   }

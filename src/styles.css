@@ -151,6 +151,26 @@
 @media (max-width: 767px) {
   .creator-page { padding: 1rem 0.75rem 6rem !important; }
   .creator-page > .mx-auto { width: 100%; }
+  .creator-page > .mx-auto > header { padding: .25rem .25rem .5rem; }
+  .creator-page > .mx-auto > header h1 { font-size: 1.75rem; }
+  .creator-page > .mx-auto > header > div:last-child { padding: .5rem .75rem; font-size: .7rem; }
+  .creator-page > .mx-auto > section:first-of-type { margin-top: .5rem; border-radius: 1.35rem; padding: 2rem 1.15rem; }
+  .creator-page > .mx-auto > section:first-of-type h2 { font-size: 2.05rem; line-height: 1.05; }
+  .creator-page > .mx-auto > section:first-of-type p { font-size: .85rem; }
+  .creator-page > .mx-auto > section:nth-of-type(2) > div:first-child { align-items: flex-end; gap: .5rem; }
+  .creator-page > .mx-auto > section:nth-of-type(2) > div:first-child h2 { font-size: 1.45rem; }
+  .creator-page > .mx-auto > section:nth-of-type(2) > div:first-child span { max-width: 7rem; text-align: right; line-height: 1.2; }
+  .creator-page > .mx-auto > section:nth-of-type(2) > div:last-child { display: flex; grid-template-columns: none; overflow-x: auto; scroll-snap-type: x mandatory; gap: .7rem; padding: .15rem .1rem .65rem; margin-right: -.75rem; }
+  .creator-page > .mx-auto > section:nth-of-type(2) > div:last-child > button { flex: 0 0 42vw; max-width: 11rem; scroll-snap-align: start; }
+  .creator-page > .mx-auto > section:nth-of-type(2) > div:last-child::-webkit-scrollbar { height: 4px; }
+  .creator-page > .mx-auto > section:nth-of-type(2) > div:last-child::-webkit-scrollbar-thumb { background: rgba(236,72,153,.65); border-radius: 99px; }
+  .creator-page .grid.md\:grid-cols-\[220px_1fr\] { display: flex; flex-direction: column; }
+  .creator-page .grid.md\:grid-cols-\[220px_1fr\] > aside { width: 100%; }
+  .creator-page .grid.md\:grid-cols-\[220px_1fr\] > section { width: 100%; padding: 1rem; }
+  .creator-page .creator-model-scroll { display: flex; max-height: none; overflow-x: auto; overflow-y: hidden; gap: .5rem; padding-bottom: .4rem; }
+  .creator-page .creator-model-scroll > div { min-width: 13.5rem; }
+  .creator-page .creator-library { margin-top: 1.25rem; padding: 1rem; }
+  .creator-page .creator-library .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   .creator-page h1 { font-size: 2rem; line-height: 1.05; }
   .creator-page textarea { min-height: 9rem !important; font-size: 1rem; line-height: 1.45; }
   .creator-page section { border-radius: 1.25rem; }

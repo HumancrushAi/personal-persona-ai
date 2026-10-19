@@ -289,7 +289,7 @@ function CreatePage() {
         },
       });
       toast("She's ready 💋");
-      navigate({ to: "/companion/$id", params: { id } });
+      navigate({ to: "/create-media", search: { model: id } as never });
     } catch (e: any) {
       const msg = String(e?.message ?? "");
       // "Failed to fetch" is the browser giving up on the request, not the

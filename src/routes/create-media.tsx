@@ -47,7 +47,8 @@ function Creator() {
       if (!active) return;
       if (error) setLoadError("Models could not be loaded. Refresh and try again.");
       setModels(data ?? []);
-      if (data?.[0]) setModel(data[0].id);
+      const requestedModel = new URLSearchParams(window.location.search).get("model");
+      if (data?.[0]) setModel(requestedModel && data.some((item: any) => item.id === requestedModel) ? requestedModel : data[0].id);
       const ids = await (supabase as any).from("creator_model_unlocks").select("companion_id");
       setUnlocked((ids.data ?? []).map((row: any) => row.companion_id));
       setLoading(false);

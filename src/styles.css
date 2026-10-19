@@ -148,6 +148,13 @@
 .creator-model-scroll::-webkit-scrollbar-track { background: transparent; }
 .creator-model-scroll::-webkit-scrollbar-thumb { background: var(--creator-scroll-thumb); border-radius: 999px; }
 
+/* Inspiration cards read as moving reels on the creator landing screen. */
+.creator-page > .mx-auto > section:nth-of-type(2) button img { animation: creator-reel-drift 7s ease-in-out infinite alternate; transform-origin: center; }
+.creator-page > .mx-auto > section:nth-of-type(2) button:nth-child(2) img { animation-delay: -1.5s; }
+.creator-page > .mx-auto > section:nth-of-type(2) button:nth-child(3) img { animation-delay: -3s; }
+.creator-page > .mx-auto > section:nth-of-type(2) button:nth-child(4) img { animation-delay: -4.5s; }
+@keyframes creator-reel-drift { from { transform: scale(1.02); filter: saturate(.95); } to { transform: scale(1.1) translateY(-2%); filter: saturate(1.15); } }
+
 @media (max-width: 767px) {
   .creator-page { padding: 1rem 0.75rem 6rem !important; }
   .creator-page > .mx-auto { width: 100%; }

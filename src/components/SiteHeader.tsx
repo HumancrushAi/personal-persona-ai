@@ -225,7 +225,7 @@ export function SiteHeader({
               <Link to="/create" onClick={close} className={item}>
                 <Sparkles className="h-4 w-4 text-primary" /> Create Companion
               </Link>
-              <Link to="/create-media-home" onClick={close} className={`${item} border border-pink-400/30 bg-pink-500/10 text-pink-100`}>
+              <Link to="/create-media" onClick={close} className={`${item} border border-pink-400/30 bg-pink-500/10 text-pink-100`}>
                 <Sparkles className="h-4 w-4 text-pink-300" /> Creator Studio
               </Link>
               {authed && (
@@ -366,7 +366,7 @@ export function SiteHeader({
             <Link to="/gallery" className={navLink}>
               Gallery
             </Link>
-              <Link to="/create-media-home" className={navLink}>
+              <Link to="/create-media" className={navLink}>
                 Creator Studio
               </Link>
               <Link to="/done-for-you" className={navLink}>

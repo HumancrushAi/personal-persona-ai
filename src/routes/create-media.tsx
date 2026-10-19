@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { standaloneGenerate, unlockCreatorModel } from "@/lib/standalone-media.functions";
+import { checkMediaJob } from "@/lib/media.functions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -12,6 +13,7 @@ function Creator() {
   const navigate = useNavigate();
   const run = useServerFn(standaloneGenerate);
   const unlock = useServerFn(unlockCreatorModel);
+  const checkJob = useServerFn(checkMediaJob);
   const [models, setModels] = useState<any[]>([]);
   const [model, setModel] = useState("");
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,13 @@ function Creator() {
   const [busy, setBusy] = useState(false);
   const [unlocked, setUnlocked] = useState<string[]>([]);
   const [modelSearch, setModelSearch] = useState("");
+  const [activeJob, setActiveJob] = useState<any>(null);
+  const [library, setLibrary] = useState<any[]>([]);
+
+  async function loadLibrary() {
+    const { data } = await supabase.from("media_jobs").select("id,kind,status,media_url,prompt,created_at,error").order("created_at", { ascending: false }).limit(30);
+    setLibrary((data ?? []).filter((row: any) => row.status === "completed" && row.media_url));
+  }
 
   useEffect(() => {
     let active = true;
@@ -38,6 +47,19 @@ function Creator() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => { loadLibrary(); }, []);
+  useEffect(() => {
+    if (!activeJob || ["completed", "failed"].includes(activeJob.status)) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const result: any = await checkJob({ data: { jobId: activeJob.id } });
+        setActiveJob((old: any) => ({ ...old, ...result }));
+        if (["completed", "failed"].includes(result.status)) { await loadLibrary(); if (result.status === "completed") toast.success("Your render is ready."); }
+      } catch { /* transient polling failure */ }
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [activeJob?.id, activeJob?.status]);
+
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
   const visibleModels = models.filter((item) => item.name.toLowerCase().includes(modelSearch.trim().toLowerCase()));
   const sizes = { portrait: [768, 1024], square: [1024, 1024], landscape: [1024, 768] } as const;
@@ -48,6 +70,7 @@ function Creator() {
     try {
       const [width, height] = sizes[size as keyof typeof sizes];
       const result = await run({ data: { companionId: model, prompt, kind, seconds, width, height } });
+      setActiveJob({ id: result.jobId, kind, status: "pending" });
       toast.success(`Generation started (${result.cost} credits)`);
       setPrompt("");
     } catch (error: any) {
@@ -74,5 +97,7 @@ function Creator() {
         <Button disabled={busy || loading || !model} onClick={submit} className="mt-4 w-full bg-gradient-to-r from-pink-500 to-violet-500">{busy ? "Starting…" : `Generate · ${cost} credits`}</Button>
       </section>
     </div>
+    {activeJob && <section className="mx-auto mt-6 max-w-6xl rounded-3xl border border-pink-300/25 bg-pink-400/10 p-5"><div className="flex items-center justify-between"><h2 className="font-bold">{activeJob.status === "completed" ? "Your render is ready" : activeJob.status === "failed" ? "Render failed" : "Generating your render…"}</h2><span className="text-xs uppercase text-pink-200">{activeJob.kind}</span></div>{!['completed','failed'].includes(activeJob.status) && <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full w-1/2 animate-pulse rounded-full bg-gradient-to-r from-pink-400 to-violet-400" /></div>}{activeJob.error && <p className="mt-2 text-sm text-red-200">{activeJob.error}</p>}{activeJob.mediaUrl && (activeJob.kind === "video" ? <video controls className="mt-4 max-h-[32rem] w-full rounded-xl bg-black" src={activeJob.mediaUrl} /> : <img className="mt-4 max-h-[32rem] w-full rounded-xl object-contain" src={activeJob.mediaUrl} />)}</section>}
+    <section className="mx-auto mt-8 max-w-6xl rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl backdrop-blur sm:p-7"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-pink-300">Your library</p><h2 className="mt-1 text-2xl font-black">Saved renders</h2></div><button onClick={loadLibrary} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70">Refresh</button></div>{library.length === 0 ? <p className="mt-5 text-sm text-white/50">Completed images and videos will appear here.</p> : <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{library.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">{item.kind === "video" ? <video controls className="aspect-[3/4] w-full object-cover" src={item.media_url} /> : <img className="aspect-[3/4] w-full object-cover" src={item.media_url} /> }<div className="p-3"><p className="line-clamp-2 text-xs text-white/65">{item.prompt || "Saved render"}</p><button onClick={() => { setKind(item.kind); setPrompt(item.prompt || ""); setActiveJob(null); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mt-3 w-full rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/15">Edit and regenerate</button></div></article>)}</div>}</section>
     </div></main>;
 }

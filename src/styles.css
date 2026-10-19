@@ -147,3 +147,14 @@
 .creator-model-scroll::-webkit-scrollbar { width: 6px; }
 .creator-model-scroll::-webkit-scrollbar-track { background: transparent; }
 .creator-model-scroll::-webkit-scrollbar-thumb { background: var(--creator-scroll-thumb); border-radius: 999px; }
+
+@media (max-width: 767px) {
+  .creator-page { padding: 1rem 0.75rem 6rem !important; }
+  .creator-page > .mx-auto { width: 100%; }
+  .creator-page h1 { font-size: 2rem; line-height: 1.05; }
+  .creator-page textarea { min-height: 9rem !important; font-size: 1rem; line-height: 1.45; }
+  .creator-page section { border-radius: 1.25rem; }
+  .creator-page .creator-model-scroll { max-height: 15rem; padding-right: 0.25rem; }
+  .creator-page .creator-model-scroll > div { min-height: 4.5rem; }
+  .creator-page button { min-height: 2.75rem; }
+}

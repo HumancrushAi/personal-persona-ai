@@ -30,7 +30,10 @@ function Creator() {
 
   async function loadLibrary() {
     const { data } = await supabase.from("media_jobs").select("id,kind,status,media_url,prompt,created_at,error").order("created_at", { ascending: false }).limit(30);
-    setLibrary((data ?? []).filter((row: any) => row.status === "completed" && row.media_url));
+    const rows = data ?? [];
+    const pending = rows.find((row: any) => ["pending", "processing"].includes(row.status));
+    if (pending) setActiveJob(pending);
+    setLibrary(rows.filter((row: any) => row.status === "completed" && row.media_url));
   }
 
   useEffect(() => {
@@ -82,6 +85,7 @@ function Creator() {
   return <main className="relative isolate min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_right,#7c2856_0,transparent_35%),radial-gradient(circle_at_bottom_left,#182b58_0,transparent_38%),#100f18] px-5 py-10 text-white">
     <div className="pointer-events-none absolute -left-20 top-20 -z-10 h-72 w-72 rounded-full bg-pink-500/15 blur-3xl" />
     <div className="mx-auto max-w-6xl"><div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur sm:p-8"><div className="flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.3em] text-pink-300">Creator studio · 18+</p><h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">Make the scene yours.</h1><p className="mt-3 max-w-xl text-white/65">Choose a locked identity, set the frame, and direct the exact moment. Your selected model stays consistent through the render.</p></div><div className="rounded-2xl border border-pink-300/20 bg-pink-400/10 px-5 py-4"><p className="text-xs text-pink-100/70">Generation wallet</p><p className="mt-1 text-lg font-bold text-white">Pay per render</p></div></div></div>
+    {activeJob && <section className="mx-auto mt-5 max-w-6xl rounded-3xl border border-pink-300/25 bg-pink-400/10 p-5"><div className="flex items-center justify-between"><h2 className="font-bold">{activeJob.status === "completed" ? "Your render is ready" : activeJob.status === "failed" ? "Render failed" : "Generating your render…"}</h2><span className="text-xs uppercase text-pink-200">{activeJob.kind}</span></div>{!["completed", "failed"].includes(activeJob.status) && <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full w-1/2 animate-pulse rounded-full bg-gradient-to-r from-pink-400 to-violet-400" /></div>}</section>}
     <div className="mt-8 grid gap-6 md:grid-cols-[260px_1fr]">
       <div className="space-y-3"><div className="flex items-end justify-between"><p className="text-sm font-semibold text-white/80">1 · Choose your model</p><span className="text-xs text-white/40">Identity lock</span></div><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Search models…" className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-sm outline-none focus:border-pink-400/60" />
         {loading && <p className="rounded-xl border border-white/10 p-3 text-sm text-white/60">Loading models…</p>}

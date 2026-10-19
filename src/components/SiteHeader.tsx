@@ -416,6 +416,9 @@ export function SiteHeader({
                   Explore
                 </Link>
               )}
+              <button type="button" onClick={handleSignOut} className={`${pill} border border-white/20 text-white/75 hover:border-white/40 hover:bg-white/10 hover:text-white`}>
+                Log out
+              </button>
             </>
           )}
           {right && <div className="hidden items-center gap-2 md:flex">{right}</div>}

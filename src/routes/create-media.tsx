@@ -29,7 +29,12 @@ function Creator() {
   const [library, setLibrary] = useState<any[]>([]);
 
   async function loadLibrary() {
-    const { data } = await supabase.from("media_jobs").select("id,kind,status,media_url,prompt,created_at,error").order("created_at", { ascending: false }).limit(30);
+    // Standalone creator renders get their own conversation titled "Creator render".
+    // Restrict the library to those conversations so chat media never leaks into it.
+    const { data: creatorConversations } = await supabase.from("conversations").select("id").eq("title", "Creator render");
+    const creatorIds = (creatorConversations ?? []).map((row: any) => row.id);
+    if (!creatorIds.length) { setLibrary([]); return; }
+    const { data } = await supabase.from("media_jobs").select("id,kind,status,media_url,prompt,created_at,error").in("conversation_id", creatorIds).order("created_at", { ascending: false }).limit(30);
     const rows = data ?? [];
     const pending = rows.find((row: any) => ["pending", "processing"].includes(row.status));
     if (pending) setActiveJob(pending);

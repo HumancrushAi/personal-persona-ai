@@ -700,15 +700,9 @@ async function settingFor(conversationId: string, imageUrl: string | null | unde
   const { roomFor } = await import("./rooms.server");
   const room = await roomFor(conversationId);
   if (room?.description) return { text: room.description, whose: "user", url: room.url };
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: conversation } = await supabaseAdmin.from("conversations").select("title").eq("id", conversationId).maybeSingle();
-  if (conversation?.title === "Creator render") {
-    const { companionScene } = await import("./look.server");
-    const scene = await companionScene(imageUrl);
-    return scene ? { text: scene, whose: "her" } : null;
-  }
-  const { companionRoom } = await import("./rooms.server");
-  return { text: companionRoom(companionName), whose: "her" };
+  const { companionScene } = await import("./look.server");
+  const scene = await companionScene(imageUrl);
+  return scene ? { text: scene, whose: "her" } : null;
 }
 
 
@@ -1479,11 +1473,7 @@ export async function photoPromptWithAvoid(
     toy,
     setting,
   });
-  const roomText = typeof setting === "string" ? setting : setting?.text;
-  const roomLock = roomText
-    ? ` Use this exact same room and background in every frame: ${roomText}. Do not change rooms, walls, bed, furniture, lighting, or camera background.`
-    : "";
-  return { prompt: `${prompt}${roomLock}`, avoid: [...avoid, "different room", "different background", "new furniture", "changed walls", "changed bed", "outdoor setting"], look };
+  return { prompt, avoid, look };
 }
 
 // An env knob that can also be switched off entirely, so the worker falls back
@@ -1837,10 +1827,7 @@ export async function startVideoJob(
     // gets a compact action-first prompt; the opening still carries visuals.
     const exactObjects = multiToyPlan ? `${multiToyPlan} ${finished} ${multiToyPlan}` : finished;
     const scene = compactVideoScene(actionLock, identityLock, toy, exactObjects, multiToyPlan ?? "");
-    const roomText = typeof setting === "string" ? setting : setting?.text;
-    return roomText
-      ? `${scene} EXACT SAME ROOM THROUGHOUT: ${roomText}. No background change, no new furniture, no different walls or bed.`
-      : scene;
+    return scene;
   });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
@@ -1890,7 +1877,6 @@ export async function startVideoJob(
         "sitting up",
         "torso rising",
         "generic posing",
-        ...((typeof setting === "string" ? setting : setting?.text) ? ["different room", "different background", "changed furniture", "changed walls", "changed bed", "outdoor background"] : []),
         ...(isRubAct(rawReq)
           ? ["hand moving upward", "hand leaving groin", "hand on stomach", "hand on chest", "breast touching", "breast fondling"]
           : []),

@@ -1467,7 +1467,6 @@ const HOME_NAV = [
   { label: "Discover", icon: <Compass className="h-5 w-5" />, to: "/cams" },
   { label: "Gallery", icon: <Film className="h-5 w-5" />, to: "/gallery" },
   { label: "Chat", icon: <MessageSquare className="h-5 w-5" />, to: "/me" },
-  { label: "Create Media", icon: <Sparkles className="h-5 w-5" />, to: "/create-media" },
   { label: "Create Character", icon: <UserPlus className="h-5 w-5" />, to: "/create" },
   { label: "My AI", icon: <Heart className="h-5 w-5" />, to: "/me" },
 ];

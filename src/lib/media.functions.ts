@@ -1479,7 +1479,10 @@ export async function photoPromptWithAvoid(
     toy,
     setting,
   });
-  return { prompt, avoid, look };
+  const roomLock = setting?.text
+    ? ` Use this exact same room and background in every frame: ${setting.text}. Do not change rooms, walls, bed, furniture, lighting, or camera background.`
+    : "";
+  return { prompt: `${prompt}${roomLock}`, avoid: [...avoid, "different room", "different background", "new furniture", "changed walls", "changed bed", "outdoor setting"], look };
 }
 
 // An env knob that can also be switched off entirely, so the worker falls back
@@ -1832,7 +1835,10 @@ export async function startVideoJob(
     // freezes the start frame and invents a generic sit-up motion. Animation
     // gets a compact action-first prompt; the opening still carries visuals.
     const exactObjects = multiToyPlan ? `${multiToyPlan} ${finished} ${multiToyPlan}` : finished;
-    return compactVideoScene(actionLock, identityLock, toy, exactObjects, multiToyPlan ?? "");
+    const scene = compactVideoScene(actionLock, identityLock, toy, exactObjects, multiToyPlan ?? "");
+    return setting?.text
+      ? `${scene} EXACT SAME ROOM THROUGHOUT: ${setting.text}. No background change, no new furniture, no different walls or bed.`
+      : scene;
   });
   const videoPrompt = scenePrompts.join("\n\n");
   await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
@@ -1882,6 +1888,7 @@ export async function startVideoJob(
         "sitting up",
         "torso rising",
         "generic posing",
+        ...(setting?.text ? ["different room", "different background", "changed furniture", "changed walls", "changed bed", "outdoor background"] : []),
         ...(isRubAct(rawReq)
           ? ["hand moving upward", "hand leaving groin", "hand on stomach", "hand on chest", "breast touching", "breast fondling"]
           : []),

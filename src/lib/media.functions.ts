@@ -1479,8 +1479,9 @@ export async function photoPromptWithAvoid(
     toy,
     setting,
   });
-  const roomLock = setting?.text
-    ? ` Use this exact same room and background in every frame: ${setting.text}. Do not change rooms, walls, bed, furniture, lighting, or camera background.`
+  const roomText = typeof setting === "string" ? setting : setting?.text;
+  const roomLock = roomText
+    ? ` Use this exact same room and background in every frame: ${roomText}. Do not change rooms, walls, bed, furniture, lighting, or camera background.`
     : "";
   return { prompt: `${prompt}${roomLock}`, avoid: [...avoid, "different room", "different background", "new furniture", "changed walls", "changed bed", "outdoor setting"], look };
 }
@@ -1836,8 +1837,9 @@ export async function startVideoJob(
     // gets a compact action-first prompt; the opening still carries visuals.
     const exactObjects = multiToyPlan ? `${multiToyPlan} ${finished} ${multiToyPlan}` : finished;
     const scene = compactVideoScene(actionLock, identityLock, toy, exactObjects, multiToyPlan ?? "");
-    return setting?.text
-      ? `${scene} EXACT SAME ROOM THROUGHOUT: ${setting.text}. No background change, no new furniture, no different walls or bed.`
+    const roomText = typeof setting === "string" ? setting : setting?.text;
+    return roomText
+      ? `${scene} EXACT SAME ROOM THROUGHOUT: ${roomText}. No background change, no new furniture, no different walls or bed.`
       : scene;
   });
   const videoPrompt = scenePrompts.join("\n\n");
@@ -1888,7 +1890,7 @@ export async function startVideoJob(
         "sitting up",
         "torso rising",
         "generic posing",
-        ...(setting?.text ? ["different room", "different background", "changed furniture", "changed walls", "changed bed", "outdoor background"] : []),
+        ...((typeof setting === "string" ? setting : setting?.text) ? ["different room", "different background", "changed furniture", "changed walls", "changed bed", "outdoor background"] : []),
         ...(isRubAct(rawReq)
           ? ["hand moving upward", "hand leaving groin", "hand on stomach", "hand on chest", "breast touching", "breast fondling"]
           : []),

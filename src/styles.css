@@ -158,3 +158,15 @@
   .creator-page .creator-model-scroll > div { min-height: 4.5rem; }
   .creator-page button { min-height: 2.75rem; }
 }
+
+@media (min-width: 768px) {
+  .creator-page { padding: 2.5rem 2rem 4rem !important; }
+  .creator-page > .mx-auto { max-width: 72rem; }
+  .creator-page h1 { letter-spacing: -0.045em; }
+  .creator-page .grid.md\:grid-cols-\[220px_1fr\] { grid-template-columns: 15rem minmax(0, 1fr); align-items: start; }
+  .creator-page .grid.md\:grid-cols-\[220px_1fr\] > section { min-height: 34rem; }
+  .creator-page textarea { min-height: 12rem !important; font-size: 1rem; line-height: 1.55; }
+  .creator-page .creator-model-scroll { scrollbar-gutter: stable; }
+  .creator-page .creator-model-scroll > div { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+  .creator-page .creator-model-scroll > div:hover { transform: translateX(3px); border-color: rgba(244,114,182,.65); background: rgba(236,72,153,.1); }
+}

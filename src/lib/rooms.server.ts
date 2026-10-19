@@ -140,3 +140,20 @@ export function settingSentence(description: string | null | undefined): string 
   const d = (description ?? "").trim();
   return d ? `The setting is the user's own room, exactly as it is: ${d}.` : "";
 }
+
+// Stable room assignment for chat companions. The standalone Creator does not
+// use this helper and remains fully prompt-driven.
+const COMPANION_ROOMS = [
+  "a warm modern bedroom with a cream upholstered bed, white linen, walnut nightstands, a soft amber bedside lamp, and beige walls",
+  "a cozy loft bedroom with a charcoal bed, rust bedding, exposed brick, plants, and warm window light",
+  "a bright minimalist bedroom with a low oak bed, pale blue linen, white walls, and soft morning light",
+  "a moody velvet bedroom with a deep green bed, brass lamps, dark wood, and candlelit warm light",
+  "a sunlit apartment bedroom with a neutral bed, linen curtains, a woven rug, and terracotta accents",
+];
+
+export function companionRoom(name: string | null | undefined): string {
+  const value = String(name ?? "companion");
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  return COMPANION_ROOMS[hash % COMPANION_ROOMS.length];
+}

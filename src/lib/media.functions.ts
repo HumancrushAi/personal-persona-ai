@@ -696,13 +696,19 @@ export async function mediaJobInFlight(
  * a chat photo rendered in a renderer's default bedroom never looked like
  * them; said as the setting, it is taken where they were.
  */
-async function settingFor(conversationId: string, imageUrl: string | null | undefined): Promise<Setting> {
+async function settingFor(conversationId: string, imageUrl: string | null | undefined, companionName?: string | null): Promise<Setting> {
   const { roomFor } = await import("./rooms.server");
   const room = await roomFor(conversationId);
   if (room?.description) return { text: room.description, whose: "user", url: room.url };
-  const { companionScene } = await import("./look.server");
-  const scene = await companionScene(imageUrl);
-  return scene ? { text: scene, whose: "her" } : null;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: conversation } = await supabaseAdmin.from("conversations").select("title").eq("id", conversationId).maybeSingle();
+  if (conversation?.title === "Creator render") {
+    const { companionScene } = await import("./look.server");
+    const scene = await companionScene(imageUrl);
+    return scene ? { text: scene, whose: "her" } : null;
+  }
+  const { companionRoom } = await import("./rooms.server");
+  return { text: companionRoom(companionName), whose: "her" };
 }
 
 
@@ -757,7 +763,7 @@ export async function startImageJob(
   };
   // The user's own room, if they gave her one for this chat; else her own
   // place, read off her portrait, so the photo is taken where her reel was.
-  const setting = await settingFor(conversationId, companion.imageUrl);
+  const setting = await settingFor(conversationId, companion.imageUrl, companion.name);
   // Which of the three renderers this photo goes to, decided once and then
   // threaded through the prompt, the start frame and the job body — see
   // imageProvider.
@@ -1707,7 +1713,7 @@ export async function startVideoJob(
     imageUrl: await conversationIdentityAnchor(supabase, conversationId, companion.imageUrl),
   };
   const startImage = resolveHostedImage(companion.imageUrl);
-  const setting = await settingFor(conversationId, companion.imageUrl);
+  const setting = await settingFor(conversationId, companion.imageUrl, companion.name);
   const { settingImageUrl } = await import("./selfie");
   const uploadedRoomUrl = settingImageUrl(setting);
   const uploadedRoomFrame = uploadedRoomUrl ? await readPortrait(uploadedRoomUrl) : null;

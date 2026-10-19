@@ -225,6 +225,9 @@ export function SiteHeader({
               <Link to="/create" onClick={close} className={item}>
                 <Sparkles className="h-4 w-4 text-primary" /> Create Companion
               </Link>
+              <Link to="/create-media" onClick={close} className={`${item} border border-pink-400/30 bg-pink-500/10 text-pink-100`}>
+                <Sparkles className="h-4 w-4 text-pink-300" /> Creator Studio
+              </Link>
               {authed && (
                 <Link to="/me" onClick={close} className={item}>
                   <MessageSquare className="h-4 w-4 text-white/60" /> My Chats
@@ -364,7 +367,7 @@ export function SiteHeader({
               Gallery
             </Link>
               <Link to="/create-media" className={navLink}>
-                Create media
+                Creator Studio
               </Link>
               <Link to="/done-for-you" className={navLink}>
                 Business setup

@@ -151,7 +151,7 @@ export function SiteHeader({
   const close = () => setOpen(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.06] bg-[#141414]/95 backdrop-blur-md">
+    <header className="site-header sticky top-0 z-40 w-full border-b border-white/[0.06] bg-[#141414]/95 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-1.5 px-4 sm:gap-2 sm:px-6 md:h-16">
         <div className={`flex min-w-0 shrink-0 items-center ${home ? "lg:hidden" : ""}`}>
           <LogoLink className="h-7 md:h-8" compact />
@@ -382,7 +382,7 @@ export function SiteHeader({
 
         {home && <Link to="/done-for-you" className="hidden rounded-full px-3 py-2 text-xs font-semibold text-pink-200 transition hover:bg-pink-400/10 hover:text-white md:inline-flex">Business setup</Link>}
 
-        <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="site-header-actions ml-auto flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
           <span className="sm:hidden">
             <LanguageSelect flagOnly />
           </span>

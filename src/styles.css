@@ -195,6 +195,10 @@
 /* Inspiration cards read as moving reels on the creator landing screen. */
 
 @media (max-width: 767px) {
+  .site-header > div { padding-inline: .75rem !important; }
+  .site-header-actions { max-width: 52vw; overflow: visible !important; flex-shrink: 0; }
+  .site-header-actions > button:last-child { display: inline-flex; flex-shrink: 0; max-width: 5.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: .65rem !important; font-size: .7rem; }
+  .site-header-actions > a, .site-header-actions > button { flex-shrink: 0; }
   .creator-page { padding: 1rem 0.75rem 6rem !important; }
   .creator-page > .mx-auto { width: 100%; }
   .creator-page, .creator-page * { word-break: normal !important; overflow-wrap: normal !important; hyphens: none; }

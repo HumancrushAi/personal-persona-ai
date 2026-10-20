@@ -5,7 +5,23 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/done-for-you")({ ssr: false, component: DoneForYou });
+export const Route = createFileRoute("/done-for-you")({
+  head: () => ({
+    meta: [
+      { title: "Build Your AI Creator Business | HumanCrush" },
+      {
+        name: "description",
+        content: "Create eligible adult and social content with HumanCrush, or contact us for a done-for-you fictional AI creator business setup.",
+      },
+      { property: "og:title", content: "Build Your AI Creator Business | HumanCrush" },
+      {
+        property: "og:description",
+        content: "Creator plans, identity-consistent media, and a done-for-you AI creator business service from HumanCrush.",
+      },
+    ],
+  }),
+  component: DoneForYou,
+});
 
 // Fixed campaign deadline; all visitors see the same offer window.
 const OFFER_DEADLINE = Date.parse("2026-11-01T23:59:59Z");

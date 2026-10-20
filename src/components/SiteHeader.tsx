@@ -154,7 +154,7 @@ export function SiteHeader({
     <header className="sticky top-0 z-40 w-full border-b border-white/[0.06] bg-[#141414]/95 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-1.5 px-4 sm:gap-2 sm:px-6 md:h-16">
         <div className={`flex min-w-0 shrink-0 items-center ${home ? "lg:hidden" : ""}`}>
-          <LogoLink className="h-7 md:h-8" />
+          <LogoLink className="h-7 md:h-8" compact />
         </div>
 
         <Sheet open={open} onOpenChange={setOpen}>
@@ -177,7 +177,7 @@ export function SiteHeader({
           >
             <SheetHeader className="shrink-0 border-b border-white/10 px-5 pb-4 pt-5 text-left">
               <SheetTitle className="text-white">
-                <LogoLink className="h-8" onClick={close} />
+                <LogoLink className="h-8" onClick={close} compact />
               </SheetTitle>
               {/* What used to be the Girls / Guys row under the bar. */}
               <div className="mt-3 grid grid-cols-2 gap-1 rounded-full bg-white/5 p-1">

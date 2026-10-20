@@ -157,7 +157,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         h: "4. Credits, subscriptions and payment",
         p: [
-          "Features are paid for with credits. Credits can be bought in one-time packs or granted monthly by a subscription. Prices are shown before you pay. Subscriptions renew monthly until cancelled; you can cancel any time from your account page and keep the credits already granted. Our Billing, Refunds & Cancellation policy sets out refunds.",
+          "Features are paid for with credits. Credits can be bought in one-time packs or granted by a monthly or annual subscription. Prices and the billing interval are shown before you pay. Subscriptions renew at the selected interval until cancelled; you can cancel any time from your account page and keep the credits already granted. Our Billing, Refunds & Cancellation policy sets out refunds.",
           "Payments are processed by our payment processor. We never see or store your full card number.",
         ],
       },

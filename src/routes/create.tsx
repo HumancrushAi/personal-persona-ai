@@ -327,6 +327,9 @@ function CreatePage() {
             title={gender === "male" || gender === "trans-male" ? "Create my AI Guy" : gender === "non-binary" ? "Create my AI Crush" : "Create my AI Girl"}
             sub="Pick who and a style. Everything after this is the look."
           >
+            <button type="button" onClick={() => navigate({ to: "/create-media" })} className="mb-5 flex w-full min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/15 bg-[#202020] px-4 py-4 text-left shadow-lg transition hover:border-white/40 hover:bg-[#272727] sm:px-5">
+              <span><strong className="block text-sm font-black text-white">Generate media</strong><small className="text-xs text-white/55">Open the prompt studio for an image or video</small></span><span className="shrink-0 whitespace-nowrap rounded-full bg-white px-3 py-2 text-[11px] font-bold text-black sm:px-4 sm:text-xs">Open generator →</span>
+            </button>
             <GenderPicker gender={gender} onChange={setGender} />
 
             <Section label="Art style">
@@ -346,9 +349,6 @@ function CreatePage() {
                   onClick={() => setArtStyle("anime")}
                 />
               </div>
-              <button type="button" onClick={() => navigate({ to: "/create-media" })} className="group relative mt-5 flex w-full min-w-0 items-center justify-between gap-3 overflow-hidden rounded-2xl border border-pink-400/70 bg-gradient-to-r from-pink-500/25 via-fuchsia-500/15 to-violet-500/25 px-4 py-4 text-left shadow-[0_0_30px_rgba(236,72,153,.18)] transition hover:-translate-y-0.5 hover:border-pink-200 hover:shadow-[0_0_42px_rgba(236,72,153,.3)] sm:px-5 sm:py-5">
-                <span><strong className="block text-sm font-black text-white">Generate media</strong><small className="text-xs text-white/55">Use a saved model to make an image or video by prompt</small></span><span className="shrink-0 whitespace-nowrap rounded-full bg-primary px-3 py-2 text-[11px] font-bold text-primary-foreground sm:px-4 sm:text-xs">Open generator →</span>
-              </button>
             </Section>
           </Step>
         )}

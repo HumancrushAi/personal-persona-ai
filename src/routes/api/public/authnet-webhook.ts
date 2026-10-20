@@ -215,7 +215,7 @@ async function onCharge(db: any, event: any, log: Log): Promise<void> {
   });
 
   const renews = new Date();
-  renews.setMonth(renews.getMonth() + 1);
+  renews.setMonth(renews.getMonth() + (tier.billingMonths ?? 1));
   await db
     .from("profiles")
     .update({ subscription_renews_at: renews.toISOString(), subscription_status: "active" })

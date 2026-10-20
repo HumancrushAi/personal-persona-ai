@@ -76,13 +76,14 @@ export const purchaseCredits = createServerFn({ method: "POST" })
     // ── SUBSCRIPTION: create true recurring ARB subscription ──
     if (tier) {
       const startDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, first charge today
+      const billingMonths = tier.billingMonths ?? 1;
       const arbPayload = {
         ARBCreateSubscriptionRequest: {
           merchantAuthentication,
           subscription: {
             name: `HumanCrush ${tier.name}`,
             paymentSchedule: {
-              interval: { length: 1, unit: "months" },
+              interval: { length: billingMonths, unit: "months" },
               startDate,
               totalOccurrences: 9999, // ongoing until cancelled
             },
@@ -95,7 +96,7 @@ export const purchaseCredits = createServerFn({ method: "POST" })
             },
             order: {
               invoiceNumber: `sub-${Date.now()}`.slice(0, 20),
-              description: `${tier.name} – ${tier.monthlyCredits} msgs / mo`,
+              description: `${tier.name} – ${tier.monthlyCredits} creator credits / ${billingMonths === 1 ? "month" : "year"}`,
             },
             customer: { id: userId.slice(0, 20) },
           },
@@ -134,7 +135,7 @@ export const purchaseCredits = createServerFn({ method: "POST" })
       });
 
       const renews = new Date();
-      renews.setMonth(renews.getMonth() + 1);
+      renews.setMonth(renews.getMonth() + billingMonths);
       await supabase
         .from("profiles")
         .update({

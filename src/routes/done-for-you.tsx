@@ -10,8 +10,8 @@ export const Route = createFileRoute("/done-for-you")({ ssr: false, component: D
 // Fixed campaign deadline; all visitors see the same offer window.
 const OFFER_DEADLINE = Date.parse("2026-11-01T23:59:59Z");
 const tiers = [
-  { name: "Creator", price: "$29", detail: "Monthly", copy: "Generate images and videos with credits, using the standalone creator and your saved models." },
-  { name: "Creator annual", price: "$249", detail: "Per year", copy: "The same creator workspace with a lower effective monthly price and a larger included credit balance." },
+  { name: "Creator", price: "$79", detail: "Monthly", copy: "800 creator credits each month, identity lock, social mode, and the option to unlock adult creator mode." },
+  { name: "Creator annual", price: "$699", detail: "Per year", copy: "9,600 creator credits for the year with the same studio access and a lower effective monthly price." },
   { name: "Done-for-you", price: "Let's talk", detail: "Custom build", copy: "One complete model business: brand, model site, launch-ready image and video library, and social setup guidance." },
 ];
 

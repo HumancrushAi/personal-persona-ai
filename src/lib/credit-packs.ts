@@ -19,6 +19,8 @@ export type SubscriptionTier = {
   tagline: string;
   monthlyCredits: number;
   priceCents: number;
+  /** Number of months covered by one Authorize.Net recurring charge. */
+  billingMonths?: number;
   perks: string[];
   badge?: string;
 };
@@ -26,6 +28,36 @@ export type SubscriptionTier = {
 // One-time charge today; we mark the tier on the user's profile and grant the credits.
 // Renewal is manual on the user's part (re-purchase) until recurring billing is wired.
 export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
+  {
+    id: "sub-creator",
+    name: "Creator",
+    tagline: "Launch a consistent AI model",
+    monthlyCredits: 800,
+    priceCents: 7900,
+    billingMonths: 1,
+    badge: "Creator",
+    perks: [
+      "800 creator credits / month",
+      "Identity lock for one model",
+      "Social and 18+ creator modes",
+      "Photos, short videos, and downloads",
+    ],
+  },
+  {
+    id: "sub-creator-annual",
+    name: "Creator annual",
+    tagline: "Save with yearly billing",
+    monthlyCredits: 9600,
+    priceCents: 69900,
+    billingMonths: 12,
+    badge: "Save 26%",
+    perks: [
+      "9,600 creator credits / year",
+      "Identity lock for one model",
+      "Social and 18+ creator modes",
+      "Photos, short videos, and downloads",
+    ],
+  },
   {
     id: "sub-flirt",
     name: "Flirt",

@@ -10,7 +10,7 @@ const input = z.object({
   companionId: z.string().uuid(), prompt: z.string().min(3).max(500),
   // Standalone creator supports multi-scene clips up to 30 seconds. Chat keeps
   // its existing 12-second contract and is not changed by this endpoint.
-  kind: z.enum(["image", "video"]), seconds: z.number().int().min(3).max(10).optional(),
+  kind: z.enum(["image", "video"]), seconds: z.number().int().min(3).max(10).optional(), adult: z.boolean().default(false),
   width: z.number().int().min(512).max(1536).default(768),
   height: z.number().int().min(512).max(1536).default(1024),
 });
@@ -43,6 +43,17 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
       .eq("id", data.companionId).single();
     if (error || !c) throw new Error("Model not found");
     const { data: admin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    if (data.adult && !admin) {
+      const { data: profile } = await context.supabase
+        .from("profiles")
+        .select("age_confirmed,subscription_tier,subscription_status")
+        .eq("id", context.userId)
+        .maybeSingle();
+      if (!profile?.age_confirmed) throw new Error("AGE_CONFIRMATION_REQUIRED");
+      if (profile.subscription_status !== "active" || !["sub-creator", "sub-creator-annual"].includes(profile.subscription_tier ?? "")) {
+        throw new Error("CREATOR_SUBSCRIPTION_REQUIRED");
+      }
+    }
     if (!admin) {
       const { data: first } = await context.supabase.from("companions").select("id").order("sort_order").limit(1).maybeSingle();
       const { data: unlocked } = await (context.supabase as any).from("creator_model_unlocks").select("companion_id").eq("user_id", context.userId).eq("companion_id", c.id).maybeSingle();

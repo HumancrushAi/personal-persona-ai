@@ -35,7 +35,10 @@ function CreditsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) navigate({ to: "/auth" });
+      if (!data.user) {
+        const query = window.location.search;
+        navigate({ to: "/auth", search: { redirect: `/credits${query}` } as never });
+      }
       else setUserId(data.user.id);
     });
   }, []);
@@ -106,6 +109,8 @@ function CreditsPage() {
     const requested = new URLSearchParams(window.location.search).get("plan");
     if (requested === "monthly") { setTab("subs"); setSelected("sub-lover"); }
     if (requested === "annual") { setTab("subs"); setSelected("sub-soulmate"); }
+    if (requested === "creator") { setTab("subs"); setSelected("sub-creator"); }
+    if (requested === "creator-annual") { setTab("subs"); setSelected("sub-creator-annual"); }
   }, []);
 
   const { data: payCfg } = useQuery({ queryKey: ["pay-cfg"], queryFn: () => getPaymentConfig() });
@@ -226,7 +231,7 @@ function CreditsPage() {
                 <div className="text-xs text-muted-foreground">{t.tagline}</div>
                 <div className="mt-3 text-3xl font-bold">
                   {formatPrice(t.priceCents)}
-                  <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                  <span className="text-sm font-normal text-muted-foreground">/{t.billingMonths === 12 ? "yr" : "mo"}</span>
                 </div>
                 <ul className="mt-3 space-y-1.5 text-sm">
                   {t.perks.map((p) => (

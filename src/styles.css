@@ -165,6 +165,11 @@
 .creator-page .bg-pink-400\/15,
 .creator-page .bg-pink-400\/20,
 .creator-page .bg-pink-500\/10 { background-color: #303030 !important; }
+.creator-identity-pills { scrollbar-width: none; }
+.creator-identity-pills::-webkit-scrollbar { display:none; }
+.creator-identity-pill { display:inline-flex; align-items:center; gap:.45rem; flex:0 0 auto; min-height:2.5rem; padding:.3rem .75rem .3rem .35rem; border:1px solid #444; border-radius:999px; background:#292929; color:#eee; font-size:.75rem; font-weight:600; }
+.creator-identity-pill img,.creator-random-avatar { width:1.9rem; height:1.9rem; border-radius:50%; object-fit:cover; display:grid; place-items:center; background:#3a3a3a; color:#fff; }
+.creator-identity-pill.selected { border-color:#aaa; background:#3a3a3a; }
 .creator-page > .mx-auto { max-width: 56rem !important; }
 .creator-page > .mx-auto > header { padding: .25rem 0 1rem; }
 .creator-page > .mx-auto > header p { color: #f26b9c; letter-spacing: .28em; }

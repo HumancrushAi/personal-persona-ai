@@ -150,6 +150,8 @@
 
 /* Foxy-style creator canvas: neutral charcoal, centered workspace, compact controls. */
 .creator-page { background: #171717 !important; }
+.creator-page .bg-gradient-to-br { background-image: none !important; background: #222 !important; }
+.creator-page .bg-gradient-to-br h2 { color: #f1f1f1 !important; }
 .creator-page,
 .creator-page * { --tw-ring-color: #444 !important; }
 .creator-page .bg-gradient-to-br,

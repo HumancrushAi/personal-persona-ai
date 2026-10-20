@@ -100,6 +100,15 @@ const isHeroExcluded = (c: { id: string; name: string; short_bio?: string | null
   HERO_EXCLUDED_IDS.has(c.id) || HERO_EXCLUDED_NAMES.has(c.name.trim().toLowerCase()) ||
   /\b(?:plus[- ]size|full[- ]figured|curvy|voluptuous|big girl)\b/i.test(c.short_bio ?? "");
 
+// The compact "New experiences" row is a marketing surface, not the full
+// discovery roster. Keep it focused on fictional adult models in the 21–36
+// range so a time-based shuffle cannot put older profiles in the first cards.
+const HOMEPAGE_FEATURED_NAMES = ["vanessa", "sabrina", "bianca", "scarlett", "sofia", "kira", "ruby", "lola"];
+const isHomepageFeaturedModel = (c: Companion) => {
+  const age = Number(c.age);
+  return age >= 21 && age <= 36 && c.art_style !== "anime";
+};
+
 export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
@@ -419,6 +428,18 @@ function Landing() {
     [companions, inTab],
   );
 
+  const experienceModels = useMemo(() => {
+    const eligible = (companions ?? []).filter((c) => inTab(c) && isHomepageFeaturedModel(c));
+    const preferred = eligible
+      .filter((c) => HOMEPAGE_FEATURED_NAMES.includes(c.name.trim().toLowerCase()))
+      .sort((a, b) => HOMEPAGE_FEATURED_NAMES.indexOf(a.name.trim().toLowerCase()) - HOMEPAGE_FEATURED_NAMES.indexOf(b.name.trim().toLowerCase()));
+    const remaining = seededShuffle(
+      eligible.filter((c) => !preferred.includes(c)),
+      windowSeed() + 31,
+    );
+    return [...preferred, ...remaining].slice(0, 8);
+  }, [companions, inTab]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = companions ?? [];
@@ -605,28 +626,28 @@ function Landing() {
                 title: "Create your own",
                 text: "Pick her face, body and personality.",
                 cta: "Create",
-                pic: liveNow[3] ?? liveNow[0],
+                pic: experienceModels[0] ?? liveNow[0],
               },
               {
                 to: "/cams",
                 title: "Live video",
                 text: "Watch her move, then talk to her.",
                 cta: "Watch",
-                pic: liveNow[4] ?? liveNow[1],
+                pic: experienceModels[1] ?? liveNow[1],
               },
               {
                 to: "/gallery",
                 title: "Private photos",
                 text: "Selfies and albums she only sends you.",
                 cta: "Open",
-                pic: liveNow[5] ?? liveNow[2],
+                pic: experienceModels[2] ?? liveNow[2],
               },
               {
                 to: "/done-for-you",
                 title: "Build your AI business",
                 text: `Done-for-you setup · offer ends in ${String(Math.floor(offerTime / 3600)).padStart(2, "0")}:${String(Math.floor((offerTime % 3600) / 60)).padStart(2, "0")}:${String(offerTime % 60).padStart(2, "0")}`,
                 cta: "See offer",
-                pic: liveNow[6] ?? liveNow[0],
+                pic: experienceModels[3] ?? liveNow[0],
               },
             ].map((x) => (
               <Link

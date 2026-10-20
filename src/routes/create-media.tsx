@@ -35,6 +35,11 @@ const sizes = {
   landscape: [1024, 768],
 } as const;
 
+const BOOK_CALL_SUBJECT = "I'm interested in your done-for-you content creator program";
+const BOOK_CALL_BODY = "Hi,\n\nI'm interested in your done-for-you content creator program, please tell me more.\n\nThanks,";
+const BOOK_CALL_MAILTO = `mailto:lgtopseller@yahoo.com?subject=${encodeURIComponent(BOOK_CALL_SUBJECT)}&body=${encodeURIComponent(BOOK_CALL_BODY)}`;
+const BOOK_CALL_GMAIL = `https://mail.google.com/mail/?view=cm&fs=1&to=lgtopseller%40yahoo.com&su=${encodeURIComponent(BOOK_CALL_SUBJECT)}&body=${encodeURIComponent(BOOK_CALL_BODY)}`;
+
 function Creator() {
   const navigate = useNavigate();
   const run = useServerFn(standaloneGenerate);
@@ -54,6 +59,7 @@ function Creator() {
   const [activeJob, setActiveJob] = useState<any>(null);
   const [library, setLibrary] = useState<any[]>([]);
   const [previewModel, setPreviewModel] = useState<any>(null);
+  const [showGallery, setShowGallery] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [creatorSubscription, setCreatorSubscription] = useState(false);
   const [contentMode, setContentMode] = useState<"social" | "adult">("social");
@@ -63,6 +69,11 @@ function Creator() {
     item.name.toLowerCase().includes(modelSearch.trim().toLowerCase()),
   );
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
+  const readyForRender = (item: any) => isAdmin || models[0]?.id === item.id || unlocked.includes(item.id);
+  const openBookingEmail = (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    window.open(BOOK_CALL_GMAIL, "_blank", "noopener,noreferrer");
+  };
 
   async function loadLibrary() {
     const { data: auth } = await supabase.auth.getUser();
@@ -256,21 +267,32 @@ function Creator() {
   );
 
   return (
-    <main className="creator-page min-h-screen bg-[#0e0e0e] px-4 py-5 text-white sm:px-8 sm:py-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <main className="creator-page min-h-screen bg-[#090a0c] px-4 py-5 text-white sm:px-8 sm:py-8">
+      <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_14%_0%,rgba(120,80,255,.14),transparent_34%),radial-gradient(circle_at_88%_18%,rgba(255,80,150,.10),transparent_30%)]" />
+      <div className="relative z-10 mx-auto max-w-6xl">
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-white/10 bg-[#121317]/90 p-5 shadow-2xl shadow-black/25 sm:p-7">
           <div>
-            <button type="button" onClick={() => navigate({ to: "/create" })} className="mb-2 text-xs text-white/50 hover:text-white">
+            <button type="button" onClick={() => navigate({ to: "/create" })} className="mb-4 text-xs font-semibold text-white/45 transition hover:text-white">
               ← Back to model builder
             </button>
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/45">Creator studio</p>
-            <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-5xl">Make the scene yours.</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/55 sm:text-base">
+            <p className="text-[11px] font-black uppercase tracking-[0.34em] text-violet-300">HumanCrush · creator studio</p>
+            <h1 className="mt-2 font-display text-4xl font-black leading-[0.95] tracking-[-0.04em] sm:text-6xl">Make the scene yours.</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/60 sm:text-base">
               Keep one identity consistent while you create campaign-ready photos and short videos for social, Fanvue, or OnlyFans.
             </p>
           </div>
-          <span className="rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-xs text-white/65">Pay per render</span>
+          <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-2 text-xs font-semibold text-white/65"><span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]" />Pay per render</div>
         </header>
+
+        <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#141519] p-4 shadow-xl sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div><p className="text-[11px] font-black uppercase tracking-[0.28em] text-white/40">Choose an identity</p><h2 className="mt-1 font-display text-2xl font-black tracking-tight sm:text-3xl">Start with a face you can keep.</h2></div>
+            <div className="flex items-center gap-2"><span className="hidden rounded-full border border-white/10 bg-black/25 px-3 py-2 text-[11px] font-bold text-white/45 sm:inline-flex">Swipe to explore →</span><button type="button" onClick={() => setShowGallery(true)} className="rounded-full bg-white px-4 py-2 text-xs font-black text-black transition hover:bg-violet-200">Open model gallery</button></div>
+          </div>
+          <div aria-label="Model carousel" className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-color:rgba(255,255,255,.35)_transparent] [scrollbar-width:thin]">
+            {visibleModels.slice(0, 12).map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); }} className={`group relative h-44 w-32 shrink-0 snap-start overflow-hidden rounded-2xl border text-left transition duration-300 hover:-translate-y-1 hover:border-white/60 sm:h-56 sm:w-40 ${model === item.id ? "border-violet-300 ring-2 ring-violet-300/30" : "border-white/10"}`}><img src={item.image_url} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" /><div className="absolute inset-x-3 bottom-3"><p className="text-sm font-black text-white">{item.name}</p><p className="mt-1 text-[10px] font-semibold text-white/60">{model === item.id ? "Selected" : readyForRender(item) ? "Ready to render" : "Unlock · 50 credits"}</p></div></button>)}
+          </div>
+        </section>
 
         <section className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
           <div className="rounded-2xl border border-white/10 bg-[#181818] p-4 sm:p-6">
@@ -305,7 +327,7 @@ function Creator() {
           <div className="rounded-2xl border border-white/10 bg-[#181818] p-4 sm:p-6">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/45">Built for creators</p>
             <p className="mt-2 text-sm leading-relaxed text-white/70">Create a consistent fictional model, then publish the finished library across your social channels and subscription pages.</p>
-            <a href="/done-for-you" className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-black hover:bg-white/85">Need the business built for you?</a>
+            <a href={BOOK_CALL_MAILTO} onClick={openBookingEmail} className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-black hover:bg-white/85">Book a call</a>
           </div>
         </section>
 
@@ -349,12 +371,13 @@ function Creator() {
         <section className="mt-5 grid gap-4 md:grid-cols-3">
           <article className="rounded-2xl border border-white/10 bg-[#181818] p-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">01 · Build</p><h2 className="mt-2 text-lg font-black">Create one consistent AI model.</h2><p className="mt-2 text-sm leading-relaxed text-white/60">Use the identity lock to keep her face, hair, and visual direction consistent across every render.</p></article>
           <article className="rounded-2xl border border-white/10 bg-[#181818] p-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">02 · Publish</p><h2 className="mt-2 text-lg font-black">Turn renders into a content library.</h2><p className="mt-2 text-sm leading-relaxed text-white/60">Download your assets for Instagram, TikTok, Fanvue, OnlyFans, and paid campaigns.</p></article>
-          <article className="rounded-2xl border border-white/10 bg-[#181818] p-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">03 · Done for you</p><h2 className="mt-2 text-lg font-black">CONTACT NOW TO HAVE US CREATE YOUR AI BUSINESS TODAY.</h2><p className="mt-2 text-sm leading-relaxed text-white/60">We can build the model identity, content library, website, and launch guidance around your plan.</p><div className="mt-4 flex flex-wrap gap-2"><a href="/done-for-you" className="inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-black">See business setup</a><a href="mailto:lgtopseller@yahoo.com?subject=HumanCrush%20AI%20business%20setup&body=Hi%2C%20I%27d%20like%20to%20talk%20about%20having%20HumanCrush%20build%20my%20AI%20model%20business." className="inline-flex rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-white/80 hover:bg-white/10">Contact now</a></div></article>
+          <article className="rounded-2xl border border-white/10 bg-[#181818] p-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">03 · Business setup</p><h2 className="mt-2 text-lg font-black">Have us create your AI business.</h2><p className="mt-2 text-sm leading-relaxed text-white/60">We can build the model identity, content library, website, and launch guidance around your plan.</p><div className="mt-4 flex flex-wrap gap-2"><a href="/done-for-you" className="inline-flex rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-white/80 hover:bg-white/10">See business setup</a><a href={BOOK_CALL_MAILTO} onClick={openBookingEmail} className="inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-black hover:bg-violet-200">Book a call</a></div></article>
         </section>
 
         <p className="mt-4 text-center text-[11px] leading-relaxed text-white/40">HumanCrush characters are fictional adults. 18+ mode requires age confirmation and an eligible plan. Results vary by prompt and generation provider; no request is guaranteed to render.</p>
 
-        {previewModel && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-6" onClick={() => setPreviewModel(null)}><div className="relative w-[min(94vw,34rem)] overflow-hidden rounded-3xl border border-white/20 bg-[#222] shadow-2xl" onClick={(event) => event.stopPropagation()}><button type="button" onClick={() => setPreviewModel(null)} className="absolute right-3 top-3 z-10 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold shadow-lg">Close</button><img src={previewModel.image_url} alt={previewModel.name} className="block aspect-[4/5] max-h-[76vh] w-full object-cover" style={{ objectPosition: "center 16%" }} /><div className="p-4"><h2 className="text-xl font-bold">{previewModel.name}</h2><p className="mt-1 text-sm text-white/60">{isAdmin || models[0]?.id === previewModel.id || unlocked.includes(previewModel.id) ? "Identity ready" : "Unlock this identity to keep the face consistent."}</p></div></div></div>}
+        {showGallery && <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 p-4 sm:p-8" onClick={() => setShowGallery(false)}><div className="mx-auto max-w-5xl rounded-[2rem] border border-white/15 bg-[#141519] p-4 shadow-2xl sm:p-6" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between gap-3"><div><p className="text-[11px] font-black uppercase tracking-[0.28em] text-violet-300">Identity library</p><h2 className="mt-1 font-display text-2xl font-black sm:text-3xl">Choose your model</h2></div><button type="button" onClick={() => setShowGallery(false)} className="rounded-full border border-white/15 px-4 py-2 text-xs font-bold text-white/70 hover:bg-white/10">Close</button></div><div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{visibleModels.map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); setShowGallery(false); }} className={`group relative aspect-[4/5] overflow-hidden rounded-2xl border text-left ${model === item.id ? "border-violet-300 ring-2 ring-violet-300/30" : "border-white/10"}`}><img src={item.image_url} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" /><div className="absolute inset-x-3 bottom-3"><p className="text-sm font-black">{item.name}</p><p className="mt-1 text-[10px] text-white/60">{readyForRender(item) ? "Ready" : "Unlock · 50 credits"}</p></div></button>)}</div></div></div>}
+        {previewModel && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-3 sm:p-6" onClick={() => setPreviewModel(null)}><div className="relative w-[min(94vw,34rem)] overflow-hidden rounded-3xl border border-white/20 bg-[#222] shadow-2xl" onClick={(event) => event.stopPropagation()}><button type="button" onClick={() => setPreviewModel(null)} className="absolute right-3 top-3 z-10 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold shadow-lg">Close</button><img src={previewModel.image_url} alt={previewModel.name} className="block aspect-[4/5] max-h-[76vh] w-full object-cover" style={{ objectPosition: "center 16%" }} /><div className="p-4"><h2 className="text-xl font-bold">{previewModel.name}</h2><p className="mt-1 text-sm text-white/60">{readyForRender(previewModel) ? "Identity ready" : "Unlock this identity to keep the face consistent."}</p></div></div></div>}
       </div>
     </main>
   );

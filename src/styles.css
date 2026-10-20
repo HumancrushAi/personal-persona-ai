@@ -231,6 +231,8 @@
   .creator-page .grid.grid-cols-2 { gap: .55rem; }
   .creator-page .grid.grid-cols-2 > button { min-width: 0; }
   .creator-page h1 { font-size: 2rem; line-height: 1.05; }
+  .creator-page > .mx-auto > div.mb-5 h1 { font-size: 1.15rem !important; white-space: nowrap; margin-inline: 1.5rem; }
+  .creator-page > .mx-auto > div.mb-5 { gap: .75rem; padding-inline: .25rem; }
   .creator-page textarea { min-height: 9rem !important; font-size: 1rem; line-height: 1.45; }
   .creator-page section { border-radius: 1.25rem; }
   .creator-page .creator-model-scroll { max-height: 15rem; padding-right: 0.25rem; }

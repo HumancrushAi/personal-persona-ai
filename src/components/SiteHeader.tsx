@@ -152,7 +152,7 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/[0.06] bg-[#141414]/95 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-1.5 px-3 sm:gap-2 sm:px-6 md:h-16">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-1.5 px-4 sm:gap-2 sm:px-6 md:h-16">
         <div className={`flex min-w-0 shrink-0 items-center ${home ? "lg:hidden" : ""}`}>
           <LogoLink className="h-7 md:h-8" />
         </div>
@@ -419,7 +419,7 @@ export function SiteHeader({
                   Explore
                 </Link>
               )}
-              <button type="button" onClick={handleSignOut} className={`${pill} border border-white/20 text-white/75 hover:border-white/40 hover:bg-white/10 hover:text-white`}>
+              <button type="button" onClick={handleSignOut} className={`${pill} ml-1 border border-white/20 text-white/75 hover:border-white/40 hover:bg-white/10 hover:text-white`}>
                 Log out
               </button>
             </>

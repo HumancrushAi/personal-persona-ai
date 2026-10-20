@@ -1168,6 +1168,19 @@ export function requestSetsViewpoint(req: string): boolean {
   return REAR_RE.test(p) || mentionsPart(p, "ass");
 }
 
+// "Legs spread on the bed" is a pose and a setting, not a request for a
+// side/rear glamour angle.  Keeping this as a named intent lets every prompt
+// path (refiner, keyword fallback and final prompt lock) use the same
+// composition instead of relying on a model to infer it from loose words.
+const BED_RE = /\b(?:bed|mattress|sheets?|bedroom)\b/i;
+const LEGS_SPREAD_RE =
+  /\b(?:legs?|thighs?)\s+(?:spread|open|apart|wide)\b|\b(?:spread|open|splay\w*)\s+(?:your|her|his|their|the|my)?\s*(?:legs?|thighs?)\b/i;
+
+export function requestHasBedSpread(req: string): boolean {
+  const p = req ?? "";
+  return BED_RE.test(p) && LEGS_SPREAD_RE.test(p) && !requestSetsViewpoint(p);
+}
+
 // Detects a posture the user named, so the rules stop inferring one over the top
 // of it.
 //
@@ -1253,6 +1266,7 @@ function framingFor(
   isCloseUp?: boolean,
   groinFocus?: boolean,
   shot?: Shot,
+  bedSpread?: boolean,
 ): string {
   // "pussy close to my face" is not a zoom setting, it is a viewpoint: the
   // camera is where the person asking is. Describing that viewpoint as a real
@@ -1266,6 +1280,10 @@ function framingFor(
   // how a picture comes back as an anonymous crop of a torso.
   if (isCloseUp) {
     return `Close-up point-of-view photograph of ${article(noun)} ${noun}, taken from between ${poss} open thighs looking up along ${poss} body, ${poss} groin filling the centre foreground in sharp focus, ${poss} stomach and breasts beyond it and ${poss} face looking down into the lens at the top of the frame, lens about thirty centimetres away.`;
+  }
+
+  if (bedSpread) {
+    return `Front-facing reclining bed photograph of ${article(noun)} ${noun}, camera positioned at the foot of the bed at a slightly elevated eye-level angle, ${poss} face and front of ${poss} body clearly visible from head to knees, ${poss} legs raised and spread wide toward the camera, ${poss} knees apart, bed and pillows filling the background.`;
   }
 
   // A request that is ABOUT her pussy gets a closer camera than one that merely
@@ -1477,6 +1495,7 @@ function buildStillPrompt(
   // render the same act and keep the camera wide.
   const action = normalizeRequest(req, subject) || fallbackAct(req, a, false);
   const isCloseUp = CLOSE_UP_RE.test(req);
+  const bedSpread = requestHasBedSpread(req);
   const Subject = `${subject[0].toUpperCase()}${subject.slice(1)}`;
   const settles = `settle${a.s}`;
 
@@ -1506,7 +1525,9 @@ function buildStillPrompt(
   const freeHands = (text: string) =>
     handsBusy ? text.replace(`, ${poss} hands resting on ${poss} thighs`, "") : text;
   const posture =
-    nude && req && !POSTURE_RE.test(req)
+    bedSpread
+      ? `${Subject} ${a.is} reclining on ${poss} back on the bed against pillows, ${poss} face turned toward the camera, ${poss} legs raised and spread wide with ${poss} knees apart${handsLine}, the bed and pillows clearly visible around ${poss} body.`
+      : nude && req && !POSTURE_RE.test(req)
       ? `${Subject} ${a.is} reclining back against pillows on ${opts.setting ? "the bed" : "a bed with plain white sheets"}, propped up on ${poss} elbows, ${poss} back gently arched and ${poss} knees apart${handsLine}, soft daylight from a window beside ${a.object}.`
       : nude && lyingDown
         ? `${Subject} ${a.is} lying back against a stack of pillows, ${poss} shoulders and upper back raised, ${poss} back gently arched${handsLine}.`
@@ -1525,6 +1546,7 @@ function buildStillPrompt(
         // and only where the renderer actually needs the help.
         a.hasVulva && mentionsPart(req, "vulva") && !rendersAtStillResolution(),
         requestedShot(req),
+        bedSpread,
       ),
     ),
     selfActSentence(action, a) || actionSentence(subject, action),
@@ -1558,6 +1580,7 @@ export function videoActionPrompt(
   const a = anatomyOf(c.gender);
   const opts = { setting };
   const { noun, subject, poss } = a;
+  const Subject = `${subject[0].toUpperCase()}${subject.slice(1)}`;
 
   // Same contradiction as the still builder above, same fix.
   const undress = requestKeepsGarment(req)
@@ -1573,6 +1596,7 @@ export function videoActionPrompt(
   // Same reason as videoStillPrompt: no booru tags for this model.
   const action = normalizeRequest(req, subject) || fallbackAct(req, a, true);
   const isCloseUp = CLOSE_UP_RE.test(req);
+  const bedSpread = requestHasBedSpread(req);
 
   return [
     framingFor(
@@ -1584,9 +1608,13 @@ export function videoActionPrompt(
       isCloseUp,
       false,
       requestedShot(req),
+      bedSpread,
     ),
     selfActSentence(action, a) || actionSentence(subject, action),
     climaxSentence(req, a),
+    bedSpread
+      ? `${Subject} ${a.is} reclining on ${poss} back on the bed against pillows, ${poss} legs raised and spread wide toward the camera, ${poss} knees apart, smooth natural movement while the front-facing camera holds the bed composition.`
+      : "",
     `${undress[0].toUpperCase()}${undress.slice(1)}`,
     propClause(req, { anatomy: a, toy }),
     settingSentenceFor(opts.setting),
@@ -2155,6 +2183,9 @@ export function finishMediaPrompt(
   const nudeForce = nudeForceFor(opts.anatomy);
   const settingText = settingSentenceFor(opts.setting);
   const wantSetting = Boolean(settingText) && !out.includes(settingText);
+  const bedSpread = requestHasBedSpread(request);
+  const bedSpreadClause =
+    `Front-facing reclining bed photograph from the foot of the bed at a slightly elevated eye-level angle, ${a.poss} face and front of ${a.poss} body visible from head to knees, ${a.subject} lying on ${a.poss} back against pillows, both legs raised and spread wide toward the camera, knees apart, bed and pillows filling the background`;
   // Put an unambiguous requested rear camera/pose first, where CLIP gives it
   // more weight than any generic front-facing composition in a refined prompt.
   const rearView = requestSetsViewpoint(request);
@@ -2169,6 +2200,7 @@ export function finishMediaPrompt(
     (forceNude ? nudeForce.split(/\s+/).length : 0) +
     (lockIdentity ? IDENTITY_LOCK.split(/\s+/).length : 0) +
     FACE_WORDS +
+    (bedSpread ? bedSpreadClause.split(/\s+/).length : 0) +
     (rearView ? rearClause.split(/\s+/).length : 0);
 
   // Sentence normalization during the final joins can split punctuation-bound
@@ -2180,6 +2212,7 @@ export function finishMediaPrompt(
   let capped = wantProp ? withClauseUpFront(body, propText) : body;
   if (alreadyAnatomy) capped = withClauseUpFront(capped, anatomyText);
   if (rearView) capped = `${rearClause} ${capped}`;
+  if (bedSpread) capped = `${bedSpreadClause}. ${capped}`;
   // Her face, after the cut and after the prop spec: reserved above, so it
   // never costs the scene a word, and never pushes the spec down the prompt.
   capped = `${capped.replace(/[\s,;:]+$/, "")}${/[.!?]$/.test(capped.trim()) ? "" : "."} ${FACE_CLAUSE}`;

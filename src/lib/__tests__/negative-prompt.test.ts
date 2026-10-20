@@ -26,6 +26,14 @@ describe("negativeFor", () => {
     expect(p).not.toMatch(/breast|boob|chest/i);
   });
 
+  it("steers a legs-spread-on-bed photo away from a rear or side composition", () => {
+    const n = negativeFor("send me a picture with your legs spread on the bed", "female");
+    expect(n).toMatch(/rear view/i);
+    expect(n).toMatch(/side profile/i);
+    expect(n).toMatch(/buttocks-only framing/i);
+    expect(n).toMatch(/legs together/i);
+  });
+
   it("treats penetrative fingering as axial insertion rather than surface rubbing", async () => {
     const { videoActionLock } = await import("../media.functions");
     const p = videoActionLock("finger yourself inside your pussy", "female");

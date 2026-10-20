@@ -128,6 +128,7 @@ type Shape = {
   undress: "nude" | "partial" | "clothed";
   closeUp: boolean;
   rearView: boolean;
+  bedSpread: boolean;
   postureStated: boolean;
   kind: SubjectKind;
   groinFocus: boolean;
@@ -168,6 +169,7 @@ const rules = ({
   undress,
   closeUp,
   rearView,
+  bedSpread,
   postureStated,
   groinFocus,
   toyAsked,
@@ -199,6 +201,8 @@ Every prompt must contain, in this order:
 - "exact same woman as the reference image, identical face, hair and skin"
 - FRAMING, as the second thing in the prompt. ${rearView
     ? `The user set the viewpoint themselves, so write THEIR viewpoint in THEIR words. Frame tightly around the body part they asked for.`
+    : bedSpread
+      ? `Front-facing reclining bed composition: camera at the foot of the bed at a slightly elevated eye-level angle, her face and front of her body visible from head to knees, both legs raised and spread wide toward the camera, knees apart, bed and pillows filling the background.`
     : shot === "face"
       ? `The user asked for a portrait / headshot. Frame a head-and-shoulders portrait: her face fills the upper half of the frame in sharp focus, looking into the lens, cropped at the upper chest.`
       : shot === "back"
@@ -219,6 +223,7 @@ ${postureStated
     ? `- the POSTURE exactly as the user named it, already in that position`
     : `- a natural, stable posture that matches the framing and the act`
   }
+${bedSpread ? `- the bed-spread pose is already set: she is reclining on her back against pillows with both legs raised and spread wide toward the camera, her face turned toward the lens` : ""}
 ${rearView
     ? DEFER_TO_REQUEST
     : undress === "clothed"
@@ -460,6 +465,7 @@ export async function refineMediaPrompt(
     CLOSE_UP_RE,
     settingText,
     requestSetsViewpoint,
+    requestHasBedSpread,
     PARTIAL_UNDRESS_RE,
     STATED_POSTURE_RE,
     requestKeepsGarment,
@@ -489,6 +495,7 @@ export async function refineMediaPrompt(
     !process.env.RUNPOD_COMFY_ENDPOINT;
 
   const rearView = requestSetsViewpoint(req);
+  const bedSpread = requestHasBedSpread(req);
   const postureStated = STATED_POSTURE_RE.test(req);
   const toyAsked = TOY_RE.test(req);
 
@@ -511,6 +518,7 @@ export async function refineMediaPrompt(
     undress,
     closeUp,
     rearView,
+    bedSpread,
     postureStated,
     kind: subjectKind,
     groinFocus,

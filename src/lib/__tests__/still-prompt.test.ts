@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { stillImagePrompt, videoStillPrompt } from "../selfie";
+import { stillImagePrompt, videoStillPrompt, videoActionPrompt } from "../selfie";
 
 // Photos run on the image-to-video endpoint, so the prompt has to drive the
 // clip INTO the explicit state and hold it — the frame shown is near the end.
@@ -46,6 +46,20 @@ describe("videoStillPrompt", () => {
     expect(p).toMatch(/lying back against a stack of pillows/i);
     expect(p).toMatch(/shoulders and upper back raised/i);
     expect(p).toMatch(/hands resting on her thighs/i);
+  });
+
+  it("locks a legs-spread-on-bed request to a front-facing bed composition", () => {
+    const request = "send me a picture with your legs spread on the bed";
+    const still = stillImagePrompt({ gender: "female" }, request);
+    const video = videoActionPrompt({ gender: "female" }, request);
+
+    for (const prompt of [still, video]) {
+      expect(prompt).toMatch(/^Front-facing reclining bed photograph/i);
+      expect(prompt).toMatch(/camera positioned at the foot of the bed/i);
+      expect(prompt).toMatch(/legs raised and spread wide toward the camera/i);
+      expect(prompt).toMatch(/knees apart/i);
+      expect(prompt).not.toMatch(/rear-view|from behind|side profile|butt-only/i);
+    }
   });
 
   // The words that make the render pull her open are gone from every clause.

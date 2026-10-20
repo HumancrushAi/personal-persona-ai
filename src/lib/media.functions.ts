@@ -23,6 +23,7 @@ import {
   requestIsNude,
   requestKeepsGarment,
   requestSetsViewpoint,
+  requestHasBedSpread,
   checkCrossGenderRequest,
   finishMediaPrompt,
   isClimaxAct,
@@ -472,6 +473,9 @@ export function negativeFor(
   if (opts.tattooed && isNude)
     base = `${base}, sleeves, long sleeves, shirt, cardigan, sweater, arm warmers, gloves, holding a flower, real flower, bouquet`;
   if (!opts.tattooed) base = `${base}, tattoo, tattoos, body art, inked skin, tattooed arms, tattooed legs`;
+  if (requestHasBedSpread(req)) {
+    base = `${base}, rear view, side profile, back-facing pose, buttocks-only framing, standing pose, legs together, crossed legs, closed thighs`;
+  }
   if (requestSetsViewpoint(req)) {
     base = `${base}, front view, side view, high camera angle, legs together, crossed legs, closed thighs, butt-only framing`;
   }
@@ -1478,7 +1482,7 @@ export async function photoPromptWithAvoid(
   // example returning a standing portrait when the user asked for a bed pose).
   const requestLock = (userRequest ?? "").trim();
   const prompt = requestLock
-    ? `${promptBase.replace(/[\s.]+$/, "")}. EXACT REQUEST: ${requestLock}. Match this requested pose, setting, framing and action; do not substitute a different scene or add unrelated props.`
+    ? `${promptBase.replace(/[\s.]+$/, "")}. EXACT REQUEST: ${requestLock}. Render this requested pose, setting, framing and action as the complete scene with only the requested props.`
     : promptBase;
   return { prompt, avoid, look };
 }

@@ -258,3 +258,93 @@
   .creator-page .creator-model-scroll > div { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
   .creator-page .creator-model-scroll > div:hover { transform: translateX(3px); border-color: rgba(244,114,182,.65); background: rgba(236,72,153,.1); }
 }
+
+/* Create-media layout contract: keep every card and control inside its own space. */
+.creator-page {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-x: clip;
+  padding: clamp(1.25rem, 3vw, 2.75rem) clamp(1rem, 4vw, 3rem) 5rem !important;
+}
+
+.creator-page *,
+.creator-page *::before,
+.creator-page *::after { box-sizing: border-box; }
+
+.creator-page > .creator-shell {
+  width: min(100%, 74rem);
+  max-width: 74rem !important;
+  min-width: 0;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.creator-shell > * { min-width: 0; }
+.creator-hero { margin: 0 !important; padding: clamp(1.25rem, 2.5vw, 2.25rem) clamp(1.25rem, 3vw, 2.75rem) !important; align-items: center; gap: 1.5rem 2rem !important; }
+.creator-hero > div:first-child { min-width: 0; flex: 1 1 34rem; }
+.creator-hero h1 { margin-top: .6rem; line-height: 1; }
+.creator-hero p { max-width: 42rem; line-height: 1.55; }
+.creator-hero > div:last-child { flex: 0 0 auto; margin-top: .25rem; }
+
+.creator-gallery { margin: 0 !important; padding: clamp(1rem, 2vw, 1.5rem) !important; }
+.creator-section-heading { gap: 1rem 1.5rem !important; }
+.creator-section-heading > div:first-child { min-width: 0; flex: 1 1 22rem; }
+.creator-section-heading > div:last-child { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: .65rem; }
+.creator-model-carousel { margin-top: 1.25rem !important; gap: .85rem !important; padding: .2rem .2rem .85rem !important; scrollbar-width: thin; }
+.creator-model-card { min-width: 10.5rem; height: 15rem !important; }
+
+.creator-options-grid { gap: 1.25rem !important; align-items: stretch; }
+.creator-option-card { min-width: 0; height: 100%; padding: 1.5rem !important; display: flex; flex-direction: column; gap: 1rem; }
+.creator-option-card > * { min-width: 0; }
+.creator-option-card p { line-height: 1.55; }
+.creator-mode-toggle { width: min(100%, 15rem); flex: 0 0 auto; }
+.creator-mode-toggle button { min-width: 0; padding-inline: .9rem !important; }
+
+.creator-prompt-card { margin-top: 0 !important; padding: clamp(1.25rem, 2.5vw, 2rem) !important; }
+.creator-prompt-heading { gap: 1rem 1.5rem !important; margin-bottom: 1.25rem; }
+.creator-prompt-heading > div:first-child { min-width: 0; flex: 1 1 20rem; }
+.creator-render-toggle { width: min(100%, 23rem); flex: 0 1 23rem; min-width: 17rem; }
+.creator-render-toggle-button { min-width: 0; padding: .7rem .8rem !important; line-height: 1.15; }
+.creator-prompt-input { display: block; width: 100%; min-height: 10.5rem !important; margin-top: 0 !important; padding: 1rem 1.1rem !important; resize: vertical; line-height: 1.55; }
+.creator-settings-grid { margin-top: 1.5rem !important; gap: 1.5rem 2rem !important; }
+.creator-setting-group { min-width: 0; }
+.creator-setting-group > div { display: flex; flex-wrap: wrap; gap: .6rem !important; margin-top: .65rem !important; }
+.creator-setting-group button { min-width: 0; padding: .65rem .9rem !important; line-height: 1.15; }
+.creator-identity-lock { margin-top: 1.5rem !important; }
+.creator-identity-lock > div:first-child { gap: .75rem 1rem !important; }
+.creator-identity-lock input { min-width: 12rem; max-width: 100%; }
+.creator-identity-row { margin-top: .75rem !important; gap: .65rem !important; padding: .25rem .1rem .75rem !important; scrollbar-width: thin; }
+.creator-identity-button { min-width: 0; padding: .4rem .7rem .4rem .45rem !important; line-height: 1.15; }
+.creator-identity-button span { min-width: max-content; }
+.creator-generate-button { min-height: 3.1rem !important; margin-top: 1.5rem !important; padding: .85rem 1rem !important; line-height: 1.15; white-space: normal !important; }
+.creator-page section { min-width: 0; }
+.creator-page button,
+.creator-page a { box-sizing: border-box; max-width: 100%; }
+
+@media (max-width: 767px) {
+  .creator-page { padding: 1rem .85rem 5rem !important; }
+  .creator-page > .creator-shell { gap: 1rem; }
+  .creator-hero { padding: 1.2rem !important; gap: 1rem !important; }
+  .creator-hero h1 { font-size: clamp(1.85rem, 8vw, 2.5rem) !important; }
+  .creator-hero > div:last-child { width: 100%; justify-content: center; }
+  .creator-gallery { padding: 1rem !important; }
+  .creator-section-heading { align-items: flex-start !important; }
+  .creator-section-heading > div:last-child { width: 100%; justify-content: space-between; }
+  .creator-model-carousel { margin-right: -.35rem !important; padding-right: .35rem !important; }
+  .creator-model-card { min-width: 42vw; max-width: 11rem; height: 13.5rem !important; }
+  .creator-options-grid { gap: 1rem !important; }
+  .creator-option-card { padding: 1.15rem !important; gap: .85rem; }
+  .creator-mode-toggle { width: 100%; }
+  .creator-mode-toggle button { flex: 1 1 0; }
+  .creator-prompt-card { padding: 1.15rem !important; }
+  .creator-prompt-heading { align-items: flex-start !important; }
+  .creator-render-toggle { width: 100%; min-width: 0; flex: 1 1 100%; }
+  .creator-render-toggle-button { padding-inline: .55rem !important; font-size: .72rem; }
+  .creator-settings-grid { margin-top: 1.25rem !important; gap: 1.15rem !important; }
+  .creator-identity-lock > div:first-child { align-items: stretch !important; }
+  .creator-identity-lock input { width: 100%; }
+  .creator-identity-row { margin-right: -.4rem; overflow-x: auto; }
+  .creator-generate-button { margin-top: 1.25rem !important; }
+}

@@ -68,6 +68,11 @@ function Creator() {
   const visibleModels = models.filter((item) =>
     item.name.toLowerCase().includes(modelSearch.trim().toLowerCase()),
   );
+  // Keep the inspiration strip light: lead with the middle of the catalogue and
+  // place the first profile at the end so the strip does not open on one look.
+  const carouselModels = visibleModels.length > 3
+    ? [...visibleModels.slice(3, 6), ...visibleModels.slice(0, 3)]
+    : visibleModels;
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
   const readyForRender = (item: any) => isAdmin || models[0]?.id === item.id || unlocked.includes(item.id);
   const openBookingEmail = (event: { preventDefault: () => void }) => {
@@ -269,8 +274,8 @@ function Creator() {
   return (
     <main className="creator-page min-h-screen bg-[#090a0c] px-4 py-5 text-white sm:px-8 sm:py-8">
       <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_14%_0%,rgba(120,80,255,.14),transparent_34%),radial-gradient(circle_at_88%_18%,rgba(255,80,150,.10),transparent_30%)]" />
-      <div className="relative z-10 mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-white/10 bg-[#121317]/90 p-5 shadow-2xl shadow-black/25 sm:p-7">
+      <div className="creator-shell relative z-10 mx-auto max-w-6xl">
+        <header className="creator-hero mb-6 flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-white/10 bg-[#121317]/90 p-5 shadow-2xl shadow-black/25 sm:p-7">
           <div>
             <button type="button" onClick={() => navigate({ to: "/create" })} className="mb-4 text-xs font-semibold text-white/45 transition hover:text-white">
               ← Back to model builder
@@ -284,24 +289,24 @@ function Creator() {
           <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-2 text-xs font-semibold text-white/65"><span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]" />Pay per render</div>
         </header>
 
-        <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#141519] p-4 shadow-xl sm:p-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div><p className="text-[11px] font-black uppercase tracking-[0.28em] text-white/40">Choose an identity</p><h2 className="mt-1 font-display text-2xl font-black tracking-tight sm:text-3xl">Start with a face you can keep.</h2></div>
+        <section className="creator-gallery overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#141519] p-4 shadow-xl sm:p-6">
+          <div className="creator-section-heading flex flex-wrap items-end justify-between gap-3">
+            <div><p className="text-[11px] font-black uppercase tracking-[0.28em] text-white/40">Explore models</p><h2 className="mt-1 font-display text-2xl font-black tracking-tight sm:text-3xl">Preview a look before you lock it.</h2></div>
             <div className="flex items-center gap-2"><span className="hidden rounded-full border border-white/10 bg-black/25 px-3 py-2 text-[11px] font-bold text-white/45 sm:inline-flex">Swipe to explore →</span><button type="button" onClick={() => setShowGallery(true)} className="rounded-full bg-white px-4 py-2 text-xs font-black text-black transition hover:bg-violet-200">Open model gallery</button></div>
           </div>
-          <div aria-label="Model carousel" className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-color:rgba(255,255,255,.35)_transparent] [scrollbar-width:thin]">
-            {visibleModels.slice(0, 12).map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); }} className={`group relative h-44 w-32 shrink-0 snap-start overflow-hidden rounded-2xl border text-left transition duration-300 hover:-translate-y-1 hover:border-white/60 sm:h-56 sm:w-40 ${model === item.id ? "border-violet-300 ring-2 ring-violet-300/30" : "border-white/10"}`}><img src={item.image_url} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" /><div className="absolute inset-x-3 bottom-3"><p className="text-sm font-black text-white">{item.name}</p><p className="mt-1 text-[10px] font-semibold text-white/60">{model === item.id ? "Selected" : readyForRender(item) ? "Ready to render" : "Unlock · 50 credits"}</p></div></button>)}
+          <div aria-label="Model carousel" className="creator-model-carousel mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-color:rgba(255,255,255,.35)_transparent] [scrollbar-width:thin]">
+            {carouselModels.map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); }} className={`creator-model-card group relative h-44 w-32 shrink-0 snap-start overflow-hidden rounded-2xl border text-left transition duration-300 hover:-translate-y-1 hover:border-white/60 sm:h-56 sm:w-40 ${model === item.id ? "border-violet-300 ring-2 ring-violet-300/30" : "border-white/10"}`}><img src={item.image_url} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-top transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" /><div className="absolute inset-x-3 bottom-3"><p className="text-sm font-black text-white">{item.name}</p><p className="mt-1 text-[10px] font-semibold text-white/60">{model === item.id ? "Selected" : readyForRender(item) ? "Ready to render" : "Unlock · 50 credits"}</p></div></button>)}
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
-          <div className="rounded-2xl border border-white/10 bg-[#181818] p-4 sm:p-6">
+        <section className="creator-options-grid grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
+          <div className="creator-option-card rounded-2xl border border-white/10 bg-[#181818] p-4 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/45">Content mode</p>
                 <p className="mt-1 text-sm text-white/65">Choose the audience before you generate.</p>
               </div>
-              <div className="inline-flex rounded-full border border-white/15 bg-black/30 p-1">
+              <div className="creator-mode-toggle inline-flex rounded-full border border-white/15 bg-black/30 p-1">
                 {(["social", "adult"] as const).map((value) => (
                   <button
                     type="button"
@@ -324,41 +329,41 @@ function Creator() {
               </div>
             )}
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#181818] p-4 sm:p-6">
+          <div className="creator-option-card rounded-2xl border border-white/10 bg-[#181818] p-4 sm:p-6">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/45">Built for creators</p>
             <p className="mt-2 text-sm leading-relaxed text-white/70">Create a consistent fictional model, then publish the finished library across your social channels and subscription pages.</p>
             <a href={BOOK_CALL_MAILTO} onClick={openBookingEmail} className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-black hover:bg-white/85">Book a call</a>
           </div>
         </section>
 
-        <section className="mt-4 rounded-2xl border border-white/10 bg-[#181818] p-4 shadow-2xl sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <section className="creator-prompt-card mt-4 rounded-2xl border border-white/10 bg-[#181818] p-4 shadow-2xl sm:p-6">
+          <div className="creator-prompt-heading flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/45">Custom prompt</p>
               <h2 className="mt-1 text-xl font-black sm:text-2xl">Describe the exact moment.</h2>
             </div>
-            <div className="grid grid-cols-2 overflow-hidden rounded-full border border-white/15 bg-black/30 p-1 text-xs font-bold">
-              <button type="button" onClick={() => setKind("image")} className={`rounded-full px-5 py-2 ${kind === "image" ? "bg-white text-black" : "text-white/55"}`}>Photo · 8 credits</button>
-              <button type="button" onClick={() => setKind("video")} className={`rounded-full px-5 py-2 ${kind === "video" ? "bg-white text-black" : "text-white/55"}`}>Video · from 10</button>
+            <div className="creator-render-toggle grid grid-cols-2 overflow-hidden rounded-full border border-white/15 bg-black/30 p-1 text-xs font-bold">
+              <button type="button" onClick={() => setKind("image")} className={`creator-render-toggle-button rounded-full px-5 py-2 ${kind === "image" ? "bg-white text-black" : "text-white/55"}`}>Photo · 8 credits</button>
+              <button type="button" onClick={() => setKind("video")} className={`creator-render-toggle-button rounded-full px-5 py-2 ${kind === "video" ? "bg-white text-black" : "text-white/55"}`}>Video · from 10</button>
             </div>
           </div>
 
-          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="e.g. a rooftop portrait at golden hour, wearing a cream linen shirt" className="mt-5 min-h-32 w-full rounded-xl border border-white/15 bg-black/30 p-4 text-sm outline-none placeholder:text-white/30 focus:border-white/50" />
+          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="e.g. a rooftop portrait at golden hour, wearing a cream linen shirt" className="creator-prompt-input mt-5 min-h-32 w-full rounded-xl border border-white/15 bg-black/30 p-4 text-sm outline-none placeholder:text-white/30 focus:border-white/50" />
 
-          <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
-            <div>
+          <div className="creator-settings-grid mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
+            <div className="creator-setting-group">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Frame size</p>
               <div className="mt-2 flex flex-wrap gap-2">{Object.entries(sizes).map(([key, [width, height]]) => <button type="button" key={key} onClick={() => setSize(key as keyof typeof sizes)} className={`rounded-full border px-3 py-2 text-xs font-semibold capitalize ${size === key ? "border-white bg-white text-black" : "border-white/15 text-white/55 hover:border-white/40"}`}>{key} · {width}×{height}</button>)}</div>
             </div>
-            {kind === "video" && <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Duration</p><div className="mt-2 flex flex-wrap gap-2">{[3, 5, 8, 10].map((value) => <button type="button" key={value} onClick={() => setSeconds(value)} className={`rounded-full border px-3 py-2 text-xs font-semibold ${seconds === value ? "border-white bg-white text-black" : "border-white/15 text-white/55 hover:border-white/40"}`}>{value}s</button>)}</div></div>}
+            {kind === "video" && <div className="creator-setting-group"><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Duration</p><div className="mt-2 flex flex-wrap gap-2">{[3, 5, 8, 10].map((value) => <button type="button" key={value} onClick={() => setSeconds(value)} className={`rounded-full border px-3 py-2 text-xs font-semibold ${seconds === value ? "border-white bg-white text-black" : "border-white/15 text-white/55 hover:border-white/40"}`}>{value}s</button>)}</div></div>}
           </div>
 
-          <div className="mt-5">
-            <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Identity lock</p><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Search models" className="w-full rounded-full border border-white/15 bg-black/25 px-3 py-2 text-xs outline-none sm:w-48" /></div>
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-2">{visibleModels.map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); }} className={`flex shrink-0 items-center gap-2 rounded-full border px-2 py-1.5 text-left ${model === item.id ? "border-white bg-white/10" : "border-white/15 bg-black/20"}`}><img src={item.image_url} alt="" className="h-8 w-8 rounded-full object-cover" /><span className="text-xs font-semibold">{item.name}</span><small className="text-[10px] text-white/45">{isAdmin || models[0]?.id === item.id || unlocked.includes(item.id) ? "Ready" : "50 credits"}</small></button>)}</div>
+          <div className="creator-identity-lock mt-5">
+            <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Identity lock</p><p className="mt-1 text-xs leading-relaxed text-white/45">Choose one face to keep consistent across this render.</p></div><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Find a model" aria-label="Find a model to lock" className="w-full rounded-full border border-white/15 bg-black/25 px-3 py-2 text-xs outline-none sm:w-48" /></div>
+            <div className="creator-identity-row mt-3 flex gap-2 overflow-x-auto pb-2">{visibleModels.map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); }} className={`creator-identity-button flex shrink-0 items-center gap-2 rounded-full border px-2 py-1.5 text-left ${model === item.id ? "border-white bg-white/10" : "border-white/15 bg-black/20"}`}><img src={item.image_url} alt="" className="h-8 w-8 rounded-full object-cover" /><span className="text-xs font-semibold">{item.name}</span><small className="text-[10px] text-white/45">{isAdmin || models[0]?.id === item.id || unlocked.includes(item.id) ? "Ready" : "50 credits"}</small></button>)}</div>
             {loadError && <p className="mt-2 text-sm text-red-200">{loadError}</p>}
           </div>
-          <Button disabled={busy || loading || !model} onClick={submit} className="mt-5 w-full rounded-full bg-white text-black hover:bg-white/85">{busy ? "Starting render…" : `Generate · ${cost} credits`}</Button>
+          <Button disabled={busy || loading || !model} onClick={submit} className="creator-generate-button mt-5 w-full rounded-full bg-white text-black hover:bg-white/85">{busy ? "Starting render…" : `Generate · ${cost} credits`}</Button>
         </section>
 
         {jobCard}

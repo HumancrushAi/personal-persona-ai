@@ -1172,7 +1172,7 @@ export function requestSetsViewpoint(req: string): boolean {
 // side/rear glamour angle.  Keeping this as a named intent lets every prompt
 // path (refiner, keyword fallback and final prompt lock) use the same
 // composition instead of relying on a model to infer it from loose words.
-const BED_RE = /\b(?:bed|mattress|sheets?|bedroom)\b/i;
+const BED_RE = /\b(?:bed|mattress|sheets?)\b/i;
 const LEGS_SPREAD_RE =
   /\b(?:legs?|thighs?)\s+(?:spread|open|apart|wide)\b|\b(?:spread|open|splay\w*)\s+(?:your|her|his|their|the|my)?\s*(?:legs?|thighs?)\b/i;
 

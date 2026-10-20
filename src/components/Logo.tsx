@@ -12,7 +12,7 @@ export function Logo({ className = "h-6 md:h-8 text-foreground" }: { className?:
           hidden and the logo read as a tiny icon on its own. They get "HC"
           instead; wider screens get the full name. */}
       <span className="font-display text-lg font-extrabold tracking-tight text-white/95 drop-shadow-sm min-[420px]:hidden">
-        HC
+        HumanCrush
       </span>
       <span className="font-display text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-white/95 truncate drop-shadow-sm hidden min-[420px]:inline-block">
         HumanCrush
@@ -30,4 +30,3 @@ export function LogoLink({ className = "h-6 md:h-8", onClick }: { className?: st
     </Link>
   );
 }
-

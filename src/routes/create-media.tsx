@@ -58,7 +58,8 @@ function Creator() {
   const reelFor = (item: any) => getEffectiveCompanionReel(item);
   const inspirationModes = ["Character swap", "Collab", "Image to video", "Recreate a photo", "Portrait remix", "Scene variation"];
   async function submit() {
-    const selectedModel = model || models[0]?.id;\n    if (!selectedModel) return toast.error("Models are still loading.");
+    const selectedModel = model || models[0]?.id;
+    if (!selectedModel) return toast.error("Models are still loading.");
     if (identityLocked && (models.find((item) => item.id === model) && models[0]?.id !== model && !unlocked.includes(model))) return toast.error("Unlock this model before generating.");
     if (prompt.trim().length < 3) return toast.error("Describe the render.");
     setBusy(true);
@@ -81,6 +82,7 @@ function Creator() {
     <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.06] p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-pink-300">Your library</p><h2 className="mt-1 text-2xl font-black">Saved renders</h2></div><button onClick={loadLibrary} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70">Refresh</button></div>{library.length === 0 ? <p className="mt-5 text-sm text-white/50">Completed images and videos will appear here.</p> : <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{library.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">{item.kind === "video" ? <video controls className="aspect-[3/4] w-full object-cover" src={item.media_url} /> : <img className="aspect-[3/4] w-full object-cover" src={item.media_url} />}</article>)}</div>}</section>
     </>}</div></main>;
 }
+
 
 
 

@@ -173,9 +173,13 @@
 .creator-page > .mx-auto { max-width: 56rem !important; }
 .creator-page > .mx-auto > header { padding: .25rem 0 1rem; }
 .creator-page > .mx-auto > header p { color: #f26b9c; letter-spacing: .28em; }
-.creator-page > .mx-auto > section:first-of-type { background: linear-gradient(135deg,#e3423b 0%,#dd3e68 55%,#642866 100%) !important; border-radius: 1.5rem !important; min-height: 14rem; display:flex; align-items:center; justify-content:center; }
-.creator-page > .mx-auto > section:first-of-type h2 { font-size: clamp(2rem,5vw,3.4rem); letter-spacing: -.05em; }
-.creator-page > .mx-auto > section:first-of-type button { background:#fff !important; color:#bd3566 !important; }
+.creator-page > .mx-auto > section:first-of-type { background: #202020 !important; border-radius: 1.25rem !important; min-height: 0; display:block; }
+.creator-page > .mx-auto > section:first-of-type h2 { font-size: clamp(1.75rem,4vw,2.6rem); letter-spacing: -.04em; }
+.creator-page > .mx-auto > section:first-of-type button { background:#303030 !important; color:#f2f2f2 !important; }
+.creator-page > .mx-auto > section.mt-10 { background: transparent !important; border-radius: 0 !important; }
+.creator-page > .mx-auto > section.mt-10 > div:last-child { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.35rem; }
+.creator-page > .mx-auto > section.mt-10 > div:last-child button { border-radius:.65rem; overflow:hidden; }
+.creator-page > .mx-auto > section.mt-10 > div:last-child img { aspect-ratio:4/5; object-fit:cover; }
 .creator-page > .mx-auto > section:nth-of-type(2) > div:last-child { scrollbar-width:none; }
 .creator-page > .mx-auto > section:nth-of-type(2) > div:last-child::-webkit-scrollbar { display:none; }
 .creator-page > .mx-auto > section:nth-of-type(2) > div:last-child > button { min-width: 10.5rem; border-radius:1.15rem; }
@@ -211,6 +215,8 @@
   .creator-page .creator-model-scroll > div { min-width: 13.5rem; }
   .creator-page .creator-library { margin-top: 1.25rem; padding: 1rem; }
   .creator-page .creator-library .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+  .creator-page > .mx-auto > section.mt-10 > div:last-child { grid-template-columns:repeat(3,minmax(0,1fr)); gap:.3rem; }
+  .creator-page > .mx-auto > section.mt-10 > div:last-child button { border-radius:.5rem; }
   .creator-page h1 { font-size: 2rem; line-height: 1.05; }
   .creator-page textarea { min-height: 9rem !important; font-size: 1rem; line-height: 1.45; }
   .creator-page section { border-radius: 1.25rem; }

@@ -29,6 +29,7 @@ export const Route = createFileRoute("/create-media")({
 });
 
 const CREATOR_PLAN_IDS = ["sub-creator", "sub-creator-annual"];
+const RANDOM_IDENTITY = "__random_identity__";
 const sizes = {
   portrait: [768, 1024],
   square: [1024, 1024],
@@ -68,11 +69,14 @@ function Creator() {
   const visibleModels = models.filter((item) =>
     item.name.toLowerCase().includes(modelSearch.trim().toLowerCase()),
   );
-  // Keep the inspiration strip light: lead with the middle of the catalogue and
-  // place the first profile at the end so the strip does not open on one look.
-  const carouselModels = visibleModels.length > 3
-    ? [...visibleModels.slice(3, 6), ...visibleModels.slice(0, 3)]
-    : visibleModels;
+  // Keep the inspiration strip light: lead with a small feminine set, then
+  // place the requested fuller profiles and male profiles at the end.
+  const carouselTail = visibleModels.filter((item) =>
+    ["scarlett", "vanessa", "sabrina", "bianca"].includes(item.name.trim().toLowerCase()) ||
+    ["male", "trans-male"].includes(String(item.gender ?? "").toLowerCase()),
+  );
+  const carouselLead = visibleModels.filter((item) => !carouselTail.includes(item));
+  const carouselModels = [...carouselLead.slice(0, Math.max(0, 8 - carouselTail.length)), ...carouselTail].slice(0, 8);
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
   const readyForRender = (item: any) => isAdmin || models[0]?.id === item.id || unlocked.includes(item.id);
   const openBookingEmail = (event: { preventDefault: () => void }) => {
@@ -186,7 +190,9 @@ function Creator() {
         return;
       }
     }
-    const selectedModel = model || models[0]?.id;
+    const selectedModel = model === RANDOM_IDENTITY
+      ? models[Math.floor(Math.random() * models.length)]?.id
+      : model || models[0]?.id;
     if (!selectedModel) return toast.error("Models are still loading.");
     if (prompt.trim().length < 3) return toast.error("Describe the render.");
     setBusy(true);
@@ -304,7 +310,7 @@ function Creator() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/45">Content mode</p>
-                <p className="mt-1 text-sm text-white/65">Choose the audience before you generate.</p>
+                <p className="mt-1 text-sm leading-relaxed text-white/65">Choose the audience before you generate. Social mode keeps an opaque swimsuit or bra-and-panties wardrobe on.</p>
               </div>
               <div className="creator-mode-toggle inline-flex rounded-full border border-white/15 bg-black/30 p-1">
                 {(["social", "adult"] as const).map((value) => (
@@ -360,7 +366,7 @@ function Creator() {
 
           <div className="creator-identity-lock mt-5">
             <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Identity lock</p><p className="mt-1 text-xs leading-relaxed text-white/45">Choose one face to keep consistent across this render.</p></div><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Find a model" aria-label="Find a model to lock" className="w-full rounded-full border border-white/15 bg-black/25 px-3 py-2 text-xs outline-none sm:w-48" /></div>
-            <div className="creator-identity-row mt-3 flex gap-2 overflow-x-auto pb-2">{visibleModels.map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); }} className={`creator-identity-button flex shrink-0 items-center gap-2 rounded-full border px-2 py-1.5 text-left ${model === item.id ? "border-white bg-white/10" : "border-white/15 bg-black/20"}`}><img src={item.image_url} alt="" className="h-8 w-8 rounded-full object-cover" /><span className="text-xs font-semibold">{item.name}</span><small className="text-[10px] text-white/45">{isAdmin || models[0]?.id === item.id || unlocked.includes(item.id) ? "Ready" : "50 credits"}</small></button>)}</div>
+            <div className="creator-identity-row mt-3 flex gap-2 overflow-x-auto pb-2"><button type="button" onClick={() => { setPreviewModel(null); setModel(RANDOM_IDENTITY); }} className={`creator-identity-button creator-random-identity flex shrink-0 items-center gap-2 rounded-full border px-2 py-1.5 text-left ${model === RANDOM_IDENTITY ? "border-white bg-white/10" : "border-white/15 bg-black/20"}`}><span className="creator-random-avatar h-8 w-8 text-sm">✦</span><span className="text-xs font-semibold">Random identity</span><small className="text-[10px] text-white/45">New each render</small></button>{visibleModels.map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); }} className={`creator-identity-button flex shrink-0 items-center gap-2 rounded-full border px-2 py-1.5 text-left ${model === item.id ? "border-white bg-white/10" : "border-white/15 bg-black/20"}`}><img src={item.image_url} alt="" className="h-8 w-8 rounded-full object-cover" /><span className="text-xs font-semibold">{item.name}</span><small className="text-[10px] text-white/45">{isAdmin || models[0]?.id === item.id || unlocked.includes(item.id) ? "Ready" : "50 credits"}</small></button>)}</div>
             {loadError && <p className="mt-2 text-sm text-red-200">{loadError}</p>}
           </div>
           <Button disabled={busy || loading || !model} onClick={submit} className="creator-generate-button mt-5 w-full rounded-full bg-white text-black hover:bg-white/85">{busy ? "Starting render…" : `Generate · ${cost} credits`}</Button>

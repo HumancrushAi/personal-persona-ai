@@ -389,7 +389,7 @@ const ORAL_SOLO_NEGATIVE_NO_PENIS = "phallus, phallic object, cylinder, rod, pol
 export function negativeFor(
   userReq: string | undefined,
   gender?: string | null,
-  opts: { moving?: boolean; extra?: string[]; age?: number | null; toy?: Toy | null; tattooed?: boolean } = {},
+  opts: { moving?: boolean; extra?: string[]; age?: number | null; toy?: Toy | null; tattooed?: boolean; socialSafe?: boolean } = {},
 ): string {
   const req = userReq ?? "";
   const isNude = requestIsNude(req);
@@ -401,6 +401,9 @@ export function negativeFor(
   // difference and followed neither half.
   const keepsGarment = requestKeepsGarment(req);
   let base = isNude && !keepsGarment ? `${CLOTHING_NEGATIVE}, ${quality}` : quality;
+  if (opts.socialSafe) {
+    base = `${base}, nude, naked, bare breasts, visible nipples, exposed genitals, exposed groin, transparent clothing, see-through fabric, wardrobe removal`;
+  }
 
   // The two hand-rolled lists that used to live here — one for women, one for
   // men — had no branch for a trans man at all, and the trans-female branch
@@ -750,6 +753,7 @@ export async function startImageJob(
   balance: { free: number; paid: number },
   toy: Toy | null = null,
   toys: Toy[] = toy ? [toy] : [],
+  options: { socialSafe?: boolean } = {},
 ): Promise<string> {
   // Re-read the portrait that the outer chat currently displays. This makes
   // companions.image_url the authoritative identity anchor for stock and
@@ -871,6 +875,7 @@ export async function startImageJob(
       age: companion.age,
       toy,
       tattooed: /tattoo/i.test(look),
+      socialSafe: options.socialSafe,
     });
     // How many photos this chat already has: the Nth photo of a request always
     // renders the same way, but the next one is a new picture, not a copy.
@@ -1710,6 +1715,7 @@ export async function startVideoJob(
   seconds?: number,
   toy: Toy | null = null,
   toys: Toy[] = toy ? [toy] : [],
+  options: { socialSafe?: boolean } = {},
 ): Promise<string> {
   // Video must use the same canonical outer-chat portrait for its opening
   // still, FaceID pass and immutable worker identity reference.
@@ -1914,6 +1920,7 @@ export async function startVideoJob(
       ],
       age: companion.age,
       toy,
+      socialSafe: options.socialSafe,
     }),
     lora_strengths: VIDEO_LORA_STRENGTHS,
     // Newer workers use this as a second, immutable identity source while
@@ -1960,6 +1967,7 @@ export async function startVideoJob(
             extra: stillAvoid,
             age: companion.age,
             toy,
+            socialSafe: options.socialSafe,
           }),
           startImage,
           userReq,

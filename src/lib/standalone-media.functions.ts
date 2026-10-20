@@ -15,6 +15,21 @@ const input = z.object({
   height: z.number().int().min(512).max(1536).default(1024),
 });
 
+// Social mode is intentionally wardrobe-safe. Keep the user's pose and scene
+// direction, but remove words that make the shared prompt builder switch into
+// its explicit anatomy path. The 18+ toggle is the only path that may retain
+// those instructions.
+const SOCIAL_EXPLICIT_TERMS = /\b(?:nude|nudes|naked|nakie|nekkid|unclothed|undress\w*|strip\w*|topless|bottomless|bare|exposed|full\s*frontal|birthday\s*suit|in\s+the\s+buff|tits?|titties|boobs?|boobies|breasts?|nipples?|areolas?|cleavage|rack|knockers|melons|jugs|pussy|vagina|vulva|clit\w*|labia|cunt|snatch|coochie|slit|genital\w*|crotch|dick|cock|penis|balls|testicles?|ass|asshole|butt|booty|butthole|anus|fuck\w*|sex|penetrat\w*|insert\w*|masturbat\w*|finger\w*|lick\w*|suck\w*|blow\s*job|oral|anal|creampie|cum\w*|orgasm\w*|squirt\w*|spread\w*|open\s+legs?|legs?\s+(?:open|apart|up))\b/gi;
+
+function socialRenderPrompt(prompt: string): string {
+  const cleaned = prompt
+    .replace(SOCIAL_EXPLICIT_TERMS, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.])/g, "$1")
+    .trim();
+  return `${cleaned || "A natural, confident portrait"}. Wide-legged seated pose if requested, wearing an opaque one-piece swimsuit or opaque bra and panties, fully clothed with no transparent fabric.`;
+}
+
 export const unlockCreatorModel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ companionId: z.string().uuid() }).parse(d))
@@ -38,6 +53,7 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const screen = screenUserMessage(data.prompt);
     if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
+    const renderPrompt = data.adult ? data.prompt : socialRenderPrompt(data.prompt);
     const { data: c, error } = await context.supabase.from("companions")
       .select("id,name,age,ethnicity,gender,short_bio,image_url,base_personality")
       .eq("id", data.companionId).single();
@@ -69,8 +85,8 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
     if (conversationError || !conv) throw new Error("Could not prepare the creator workspace");
     try {
       const jobId = data.kind === "image"
-        ? await startImageJob(context.supabase, context.userId, conv.id, c, data.prompt, c.base_personality, after)
-        : await startVideoJob(context.supabase, context.userId, conv.id, c, data.prompt, after, data.seconds ?? 5);
+        ? await startImageJob(context.supabase, context.userId, conv.id, c, renderPrompt, c.base_personality, after, null, [], { socialSafe: !data.adult })
+        : await startVideoJob(context.supabase, context.userId, conv.id, c, renderPrompt, after, data.seconds ?? 5, null, [], { socialSafe: !data.adult });
       return { jobId, cost, status: "pending" as const };
     } catch (e) {
       throw e;

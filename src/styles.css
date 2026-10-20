@@ -196,8 +196,8 @@
 
 @media (max-width: 767px) {
   .site-header > div { padding-inline: .75rem !important; }
-  .site-header-actions { margin-left: .5rem !important; max-width: none; overflow: visible !important; flex-shrink: 1; }
-  .site-header-actions > button:last-child { display: inline-flex; flex-shrink: 0; max-width: 5.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: .65rem !important; font-size: .7rem; }
+  .site-header-actions { margin-left: .25rem !important; max-width: none; width: auto; overflow: visible !important; flex: 1 1 auto; flex-shrink: 1; gap: .25rem !important; }
+  .site-header-actions > button:last-child { display: inline-flex !important; flex: 0 0 auto; max-width: 4.5rem; overflow: visible; white-space: nowrap; padding-inline: .5rem !important; font-size: .65rem; }
   .site-header-actions > a, .site-header-actions > button { flex-shrink: 0; }
   .site-header > div { justify-content: flex-start; gap: .35rem !important; }
   .site-header > div > :first-child { flex: 0 0 auto; }

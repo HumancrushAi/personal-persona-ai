@@ -197,6 +197,14 @@
 @media (max-width: 767px) {
   .creator-page { padding: 1rem 0.75rem 6rem !important; }
   .creator-page > .mx-auto { width: 100%; }
+  .creator-page, .creator-page * { word-break: normal !important; overflow-wrap: normal !important; hyphens: none; }
+  .creator-page h1, .creator-page h2, .creator-page h3, .creator-page p, .creator-page label { line-height: 1.35; }
+  .creator-page button, .creator-page select { white-space: nowrap; letter-spacing: 0; }
+  .creator-page button { gap: .5rem; padding-inline: .8rem; }
+  .creator-page .creator-identity-pill { padding-inline: .55rem .8rem; gap: .55rem; }
+  .creator-page .creator-identity-pill span { display: inline-block; min-width: max-content; }
+  .creator-page textarea { padding: 1rem !important; line-height: 1.5; }
+  .creator-page .grid { min-width: 0; }
   .creator-page > .mx-auto > header { padding: .25rem .25rem .5rem; }
   .creator-page > .mx-auto > header h1 { font-size: 1.75rem; }
   .creator-page > .mx-auto > header > div:last-child { padding: .5rem .75rem; font-size: .7rem; }
@@ -219,6 +227,9 @@
   .creator-page .creator-library .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   .creator-page > .mx-auto > section.mt-10 > div:last-child { grid-template-columns:repeat(3,minmax(0,1fr)); gap:.3rem; }
   .creator-page > .mx-auto > section.mt-10 > div:last-child button { border-radius:.5rem; }
+  .creator-page .grid.md\:grid-cols-\[220px_1fr\] > section { padding: 1rem !important; }
+  .creator-page .grid.grid-cols-2 { gap: .55rem; }
+  .creator-page .grid.grid-cols-2 > button { min-width: 0; }
   .creator-page h1 { font-size: 2rem; line-height: 1.05; }
   .creator-page textarea { min-height: 9rem !important; font-size: 1rem; line-height: 1.45; }
   .creator-page section { border-radius: 1.25rem; }

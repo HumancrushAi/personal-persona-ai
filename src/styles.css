@@ -148,6 +148,25 @@
 .creator-model-scroll::-webkit-scrollbar-track { background: transparent; }
 .creator-model-scroll::-webkit-scrollbar-thumb { background: var(--creator-scroll-thumb); border-radius: 999px; }
 
+/* Foxy-style creator canvas: neutral charcoal, centered workspace, compact controls. */
+.creator-page { background: #171717 !important; }
+.creator-page > .mx-auto { max-width: 56rem !important; }
+.creator-page > .mx-auto > header { padding: .25rem 0 1rem; }
+.creator-page > .mx-auto > header p { color: #f26b9c; letter-spacing: .28em; }
+.creator-page > .mx-auto > section:first-of-type { background: linear-gradient(135deg,#e3423b 0%,#dd3e68 55%,#642866 100%) !important; border-radius: 1.5rem !important; min-height: 14rem; display:flex; align-items:center; justify-content:center; }
+.creator-page > .mx-auto > section:first-of-type h2 { font-size: clamp(2rem,5vw,3.4rem); letter-spacing: -.05em; }
+.creator-page > .mx-auto > section:first-of-type button { background:#fff !important; color:#bd3566 !important; }
+.creator-page > .mx-auto > section:nth-of-type(2) > div:last-child { scrollbar-width:none; }
+.creator-page > .mx-auto > section:nth-of-type(2) > div:last-child::-webkit-scrollbar { display:none; }
+.creator-page > .mx-auto > section:nth-of-type(2) > div:last-child > button { min-width: 10.5rem; border-radius:1.15rem; }
+.creator-page .grid.md\:grid-cols-\[220px_1fr\] > section { background:#202020; border-color:#343434; }
+.creator-page .grid.md\:grid-cols-\[220px_1fr\] > section textarea { background:#181818; border-color:#3c3c3c; }
+.creator-page .grid.md\:grid-cols-\[220px_1fr\] > section > .grid button { border-radius:999px; }
+.creator-page .grid.md\:grid-cols-\[220px_1fr\] { grid-template-columns:1fr !important; }
+.creator-page .grid.md\:grid-cols-\[220px_1fr\] > aside { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:.65rem; }
+.creator-page .grid.md\:grid-cols-\[220px_1fr\] > aside > .creator-model-scroll { grid-column:1 / -1; display:flex; max-height:6rem; overflow-x:auto; gap:.5rem; }
+.creator-page .grid.md\:grid-cols-\[220px_1fr\] > aside > .creator-model-scroll > div { min-width:11rem; }
+
 /* Inspiration cards read as moving reels on the creator landing screen. */
 
 @media (max-width: 767px) {

@@ -1449,7 +1449,7 @@ export async function photoPromptWithAvoid(
   const { requestComposesShot } = await import("./selfie");
   const promptLedShot = requestComposesShot(userRequest ?? "");
 
-  const prompt = finishMediaPrompt(refined?.[0] ?? builder, userRequest ?? "", {
+  const promptBase = finishMediaPrompt(refined?.[0] ?? builder, userRequest ?? "", {
     anatomy: anatomyOf(companion.gender),
     appendProps: Boolean(refined?.[0]),
     // Appended for BOTH the refined prompt and the builder: neither of them
@@ -1473,6 +1473,13 @@ export async function photoPromptWithAvoid(
     toy,
     setting,
   });
+  // Keep the user's concrete scene as the final conditioning clause. The
+  // refiner/reference frame can otherwise win over a specific request (for
+  // example returning a standing portrait when the user asked for a bed pose).
+  const requestLock = (userRequest ?? "").trim();
+  const prompt = requestLock
+    ? `${promptBase.replace(/[\s.]+$/, "")}. EXACT REQUEST: ${requestLock}. Match this requested pose, setting, framing and action; do not substitute a different scene or add unrelated props.`
+    : promptBase;
   return { prompt, avoid, look };
 }
 

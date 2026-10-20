@@ -150,6 +150,21 @@
 
 /* Foxy-style creator canvas: neutral charcoal, centered workspace, compact controls. */
 .creator-page { background: #171717 !important; }
+.creator-page,
+.creator-page * { --tw-ring-color: #444 !important; }
+.creator-page .bg-gradient-to-br,
+.creator-page .bg-gradient-to-r { background-image: none !important; background-color: #202020 !important; }
+.creator-page button.bg-pink-500,
+.creator-page button.bg-gradient-to-r { background: #303030 !important; color: #f2f2f2 !important; }
+.creator-page button[class*="border-pink"],
+.creator-page select:focus,
+.creator-page textarea:focus { border-color: #777 !important; }
+.creator-page .text-pink-300,
+.creator-page .text-pink-200,
+.creator-page .text-pink-100 { color: #c8c8c8 !important; }
+.creator-page .bg-pink-400\/15,
+.creator-page .bg-pink-400\/20,
+.creator-page .bg-pink-500\/10 { background-color: #303030 !important; }
 .creator-page > .mx-auto { max-width: 56rem !important; }
 .creator-page > .mx-auto > header { padding: .25rem 0 1rem; }
 .creator-page > .mx-auto > header p { color: #f26b9c; letter-spacing: .28em; }

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { standaloneGenerate } from "@/lib/standalone-media.functions";
+import { standaloneGenerate, unlockCreatorModel } from "@/lib/standalone-media.functions";
 import { checkMediaJob } from "@/lib/media.functions";
 import { confirmAge } from "@/lib/payments.functions";
 import { Button } from "@/components/ui/button";
@@ -45,12 +45,12 @@ const BOOK_CALL_SMS = `sms:${BOOK_CALL_PHONE}?&body=${encodeURIComponent(BOOK_CA
 function Creator() {
   const navigate = useNavigate();
   const run = useServerFn(standaloneGenerate);
+  const unlock = useServerFn(unlockCreatorModel);
   const checkJob = useServerFn(checkMediaJob);
   const saveAge = useServerFn(confirmAge);
   const [models, setModels] = useState<any[]>([]);
   const [model, setModel] = useState("");
   const [unlocked, setUnlocked] = useState<string[]>([]);
-  const [modelSearch, setModelSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [kind, setKind] = useState<"image" | "video">("image");
@@ -65,10 +65,9 @@ function Creator() {
   const [creatorSubscription, setCreatorSubscription] = useState(false);
   const [contentMode, setContentMode] = useState<"social" | "adult">("social");
   const [ageAgreed, setAgeAgreed] = useState(false);
+  const [unlockingModel, setUnlockingModel] = useState(false);
 
-  const visibleModels = models.filter((item) =>
-    item.name.toLowerCase().includes(modelSearch.trim().toLowerCase()),
-  );
+  const visibleModels = models;
   // Keep the strip easy to scan: lead with varied profiles, then place the
   // requested fuller profiles and male profiles at the end.
   const carouselTail = visibleModels.filter((item) =>
@@ -82,10 +81,33 @@ function Creator() {
   const carouselModels = [...carouselLead, ...carouselTail];
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
   const readyForRender = (item: any) => isAdmin || models[0]?.id === item.id || unlocked.includes(item.id);
+  const selectedIdentity = models.find((item) => item.id === model);
   const openBookingSms = (event: { preventDefault: () => void }) => {
     event.preventDefault();
     window.location.href = BOOK_CALL_SMS;
   };
+
+  async function unlockModel(item: any) {
+    setUnlockingModel(true);
+    try {
+      const result = await unlock({ data: { companionId: item.id } });
+      setUnlocked((current) => current.includes(item.id) ? current : [...current, item.id]);
+      setModel(item.id);
+      setPreviewModel(item);
+      toast.success(result.cost ? `${item.name} unlocked for ${result.cost} credits.` : `${item.name} is ready to use.`);
+    } catch (error: any) {
+      const message = String(error?.message ?? error);
+      if (/not authenticated|unauthorized|sign in/i.test(message)) {
+        navigate({ to: "/auth", search: { redirect: "/create-media" } as never });
+      } else if (/balance|credit|out_of_credits/i.test(message)) {
+        navigate({ to: "/credits", search: { returnTo: "/create-media" } as never });
+      } else {
+        toast.error(message || "Could not unlock this model.");
+      }
+    } finally {
+      setUnlockingModel(false);
+    }
+  }
 
   async function loadLibrary() {
     const { data: auth } = await supabase.auth.getUser();
@@ -367,11 +389,14 @@ function Creator() {
             {kind === "video" && <div className="creator-setting-group"><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Duration</p><div className="mt-2 flex flex-wrap gap-2">{[3, 5, 8, 10].map((value) => <button type="button" key={value} onClick={() => setSeconds(value)} className={`rounded-full border px-3 py-2 text-xs font-semibold ${seconds === value ? "border-white bg-white text-black" : "border-white/15 text-white/55 hover:border-white/40"}`}>{value}s</button>)}</div></div>}
           </div>
 
-          <div className="creator-identity-lock mt-5">
-            <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Identity lock</p><p className="mt-1 text-xs leading-relaxed text-white/45">Choose one face to keep consistent across this render.</p></div><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Find a model" aria-label="Find a model to lock" className="w-full rounded-full border border-white/15 bg-black/25 px-3 py-2 text-xs outline-none sm:w-48" /></div>
-            <div className="creator-identity-row mt-3 flex gap-2 overflow-x-auto pb-2"><button type="button" onClick={() => { setPreviewModel(null); setModel(RANDOM_IDENTITY); }} className={`creator-identity-button creator-random-identity flex shrink-0 items-center gap-2 rounded-full border px-2 py-1.5 text-left ${model === RANDOM_IDENTITY ? "border-white bg-white/10" : "border-white/15 bg-black/20"}`}><span className="creator-random-avatar h-8 w-8 text-sm">✦</span><span className="text-xs font-semibold">Random identity</span><small className="text-[10px] text-white/45">New each render</small></button>{visibleModels.map((item) => <button type="button" key={item.id} onClick={() => { setPreviewModel(item); setModel(item.id); }} className={`creator-identity-button flex shrink-0 items-center gap-2 rounded-full border px-2 py-1.5 text-left ${model === item.id ? "border-white bg-white/10" : "border-white/15 bg-black/20"}`}><img src={item.image_url} alt="" className="h-8 w-8 rounded-full object-cover" /><span className="text-xs font-semibold">{item.name}</span><small className="text-[10px] text-white/45">{isAdmin || models[0]?.id === item.id || unlocked.includes(item.id) ? "Ready" : "50 credits"}</small></button>)}</div>
-            {loadError && <p className="mt-2 text-sm text-red-200">{loadError}</p>}
-          </div>
+           <div className="creator-identity-lock mt-5">
+             <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-white/45">Identity lock</p><p className="mt-1 text-xs leading-relaxed text-white/45">Choose a face in the strip above, or let each render use a new identity.</p></div>
+             <div className="creator-identity-row mt-3 flex flex-wrap gap-2">
+               <button type="button" onClick={() => { setPreviewModel(null); setModel(RANDOM_IDENTITY); }} className={`creator-identity-button creator-random-identity flex items-center gap-2 rounded-full border px-3 py-2 text-left ${model === RANDOM_IDENTITY ? "border-white bg-white/10" : "border-white/15 bg-black/20"}`}><span className="creator-random-avatar h-8 w-8 text-sm">✦</span><span><span className="block text-xs font-semibold">Random identity</span><small className="text-[10px] text-white/45">New face each render</small></span></button>
+               {selectedIdentity && <div className="creator-identity-button flex items-center gap-3 rounded-full border border-white bg-white/10 px-3 py-2 text-left"><img src={selectedIdentity.image_url} alt="" className="h-8 w-8 rounded-full object-cover" /><span><span className="block text-xs font-semibold">{readyForRender(selectedIdentity) ? "Locked" : "Selected"}: {selectedIdentity.name}</span><small className="text-[10px] text-white/45">{readyForRender(selectedIdentity) ? "Face stays consistent" : "Unlock this model to render it"}</small></span>{!readyForRender(selectedIdentity) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(selectedIdentity)} className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black text-black disabled:opacity-50">{unlockingModel ? "Unlocking..." : "Unlock · 50 credits"}</button>}</div>}
+             </div>
+             {loadError && <p className="mt-2 text-sm text-red-200">{loadError}</p>}
+           </div>
           <Button disabled={busy || loading || !model} onClick={submit} className="creator-generate-button mt-5 w-full rounded-full bg-white text-black hover:bg-white/85">{busy ? "Starting render…" : `Generate · ${cost} credits`}</Button>
         </section>
 

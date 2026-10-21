@@ -327,9 +327,6 @@ function CreatePage() {
             title={gender === "male" || gender === "trans-male" ? "Create my AI Guy" : gender === "non-binary" ? "Create my AI Crush" : "Create my AI Girl"}
             sub="Pick who and a style. Everything after this is the look."
           >
-            <button type="button" onClick={() => navigate({ to: "/create-media" })} className="mb-5 flex w-full min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/15 bg-[#202020] px-4 py-4 text-left shadow-lg transition hover:border-white/40 hover:bg-[#272727] sm:px-5">
-              <span><strong className="block text-sm font-black text-white">Generate media</strong><small className="text-xs text-white/55">Open the prompt studio for an image or video</small></span><span className="shrink-0 whitespace-nowrap rounded-full bg-white px-3 py-2 text-[11px] font-bold text-black sm:px-4 sm:text-xs">Open generator →</span>
-            </button>
             <GenderPicker gender={gender} onChange={setGender} />
 
             <Section label="Art style">
@@ -350,6 +347,17 @@ function CreatePage() {
                 />
               </div>
             </Section>
+
+            <section className="mt-6 rounded-2xl border border-white/12 bg-[#202020] p-4 shadow-lg sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-[0.25em] text-white/45">Create without a companion</p>
+                  <h2 className="mt-1 text-lg font-black text-white sm:text-xl">Make model photos and short videos.</h2>
+                  <p className="mt-1 max-w-xl text-sm leading-relaxed text-white/55">Skip the builder and describe a model for creator work or personal use, or lock one of the models above for a consistent face.</p>
+                </div>
+                <button type="button" onClick={() => navigate({ to: "/create-media" })} className="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-4 py-2.5 text-xs font-black text-black transition hover:bg-white/85 sm:px-5 sm:text-sm">Open creator studio -&gt;</button>
+              </div>
+            </section>
           </Step>
         )}
 

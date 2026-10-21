@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Heart, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { toast } from "sonner";
+import { LogoLink } from "@/components/Logo";
 
 const authSearchSchema = z.object({ companion: z.string().optional(), redirect: z.string().optional(), mode: z.enum(["signin", "signup"]).optional() });
 
@@ -96,7 +97,7 @@ function AuthPage() {
       </section>
       <main className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8 lg:min-h-0 lg:px-12">
         <div className="w-full max-w-[400px]">
-          <Link to="/" className="flex items-center gap-2 text-[#F5EFF2]"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#FF4D6A] text-[#1A0A0F]"><Heart className="h-5 w-5 fill-current" /></span><span className="font-display text-xl font-extrabold tracking-tight">HumanCrush</span></Link>
+          <LogoLink className="h-9" />
           <div className="mt-9"><h1 className="font-display text-4xl font-extrabold leading-tight tracking-[-.035em]">{title}</h1><p className="mt-2 text-sm text-[#B3A9B0]">{subtitle}</p></div>
           <div role="tablist" aria-label="Account" className="mt-7 flex rounded-full bg-white/[0.06] p-1"><button type="button" role="tab" aria-selected={mode === "signup"} onClick={() => { setMode("signup"); setFormError(""); }} className={`min-h-11 flex-1 rounded-full text-sm font-semibold ${mode === "signup" ? "bg-white text-[#121014]" : "text-[#B3A9B0]"}`}>Sign up</button><button type="button" role="tab" aria-selected={mode === "signin"} onClick={() => { setMode("signin"); setFormError(""); }} className={`min-h-11 flex-1 rounded-full text-sm font-semibold ${mode === "signin" ? "bg-white text-[#121014]" : "text-[#B3A9B0]"}`}>Log in</button></div>
           {googleEnabled && <><button type="button" onClick={() => void handleGoogle()} disabled={loading} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[#F5EFF2] text-sm font-semibold text-[#121014] disabled:opacity-50"><Sparkles className="h-4 w-4 text-[#4285F4]" /> Continue with Google</button><div className="my-5 flex items-center gap-3 text-xs text-[#8E858C]"><span className="h-px flex-1 bg-white/[0.1]" />or with email<span className="h-px flex-1 bg-white/[0.1]" /></div></>}

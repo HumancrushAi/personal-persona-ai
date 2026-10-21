@@ -834,7 +834,7 @@ async function resubmitImageJob(
   } = {},
 ): Promise<string> {
   const { anatomyOf } = await import("./anatomy");
-  const { comfyJobInput, negativeFor, resolveHostedImage, webhookFor } =
+  const { comfyJobInput, negativeFor, isExplicitMediaRequest, resolveHostedImage, webhookFor } =
     await import("./media.functions");
   const { runpodEndpoint, runpodRun, pickImageTarget, tagJobId } = await import("./runpod");
   const endpoint = runpodEndpoint("image");
@@ -843,6 +843,7 @@ async function resubmitImageJob(
     moving: false,
     age: ctx.companion.age,
     toy: ctx.toy,
+    socialSafe: !isExplicitMediaRequest(ctx.userRequest),
   });
   const input = await comfyJobInput(
     ctx.row.prompt,
@@ -860,6 +861,7 @@ async function resubmitImageJob(
       // otherwise her portrait, as the first render did.
       startFrame: await (await import("./compose.server")).storedStartFrame(ctx.row.id),
       startFromPortrait: (await import("./compose.server")).composeMode() === "portrait",
+      socialSafe: !isExplicitMediaRequest(ctx.userRequest),
     },
   );
   const target = await pickImageTarget(supabaseAdmin, endpoint);

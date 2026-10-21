@@ -9,6 +9,7 @@ import { checkMediaJob } from "@/lib/media.functions";
 import { confirmAge } from "@/lib/payments.functions";
 import { totalCredits } from "@/lib/credits";
 import { toast } from "sonner";
+import { LogoLink } from "@/components/Logo";
 
 const creatorSearchSchema = z.object({
   model: z.string().optional(),
@@ -58,25 +59,38 @@ const sceneIdeas = [
   { name: "Studio editorial", prompt: "A clean fashion editorial against a warm studio backdrop, confident posture." },
 ] as const;
 
+// Keep the first impression of the creator studio editorial and varied. The
+// database order is still preserved for entitlement checks (the first catalog
+// model is the free identity), but the visual rail leads with the slimmer,
+// fashion-forward identities and leaves larger-bust and male profiles for the
+// end of the rail.
+const LEADING_CREATOR_MODELS = ["Lilith", "Putri", "Airi", "Raven", "Esmé", "Mina", "Naomi", "Hana"];
+const TRAILING_CREATOR_MODELS = ["Vanessa", "Sabrina", "Bianca", "Scarlett"];
+function creatorModelRank(model: CreatorModel) {
+  const name = model.name.trim().toLowerCase();
+  const preferred = LEADING_CREATOR_MODELS.findIndex((item) => item.toLowerCase() === name);
+  if (preferred >= 0) return preferred;
+  if (/male|man|boy/i.test(model.gender ?? "")) return 900;
+  if (TRAILING_CREATOR_MODELS.some((item) => item.toLowerCase() === name)) return 700;
+  return 100 + name.charCodeAt(0);
+}
+
 function CreatorNav({ credits }: { credits: number | null }) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#121014]/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-3 px-4 sm:px-6">
-        <Link to="/create-media" className="flex shrink-0 items-center gap-2 text-[#F5EFF2]" aria-label="HumanCrush creator studio">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-[#FF4D6A] text-[#1A0A0F]"><Sparkles className="h-4 w-4" /></span>
-          <span className="hidden font-display text-lg font-extrabold tracking-tight sm:inline">HumanCrush</span>
-        </Link>
-        <nav aria-label="Creator studio" className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-2 px-3 sm:gap-3 sm:px-6">
+        <LogoLink className="h-8 shrink-0" />
+        <nav aria-label="Creator studio" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-1">
           <Link to="/create-media" className="rounded-full bg-white/[0.08] px-3 py-2 text-xs font-semibold text-white sm:px-4 sm:text-sm">Create</Link>
           <Link to="/library" className="rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] transition hover:bg-white/[0.06] hover:text-white sm:px-4 sm:text-sm">Library</Link>
-          <Link to="/models" className="rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] transition hover:bg-white/[0.06] hover:text-white sm:px-4 sm:text-sm">Models</Link>
+          <Link to="/models" className="hidden rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] transition hover:bg-white/[0.06] hover:text-white sm:inline-flex sm:px-4 sm:text-sm">Models</Link>
         </nav>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Link to="/credits" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/[0.12] px-3 text-xs font-semibold text-white sm:px-4 sm:text-sm">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <Link to="/credits" className="inline-flex min-h-9 items-center gap-1 rounded-full border border-white/[0.12] px-2.5 text-xs font-semibold text-white sm:min-h-10 sm:gap-1.5 sm:px-4 sm:text-sm">
             <Bolt className="h-4 w-4 text-[#FF4D6A]" />
             <span>{credits === null ? "--" : credits}</span><span className="hidden text-[#B3A9B0] sm:inline">credits</span>
           </Link>
-          <Link to="/me" aria-label="Open account" className="grid h-10 w-10 place-items-center rounded-full bg-[#2E2730] text-sm font-bold text-white">G</Link>
+          <Link to="/me" aria-label="Open account" className="grid h-9 w-9 place-items-center rounded-full bg-[#2E2730] text-sm font-bold text-white sm:h-10 sm:w-10">G</Link>
         </div>
       </div>
     </header>
@@ -128,8 +142,9 @@ function Creator() {
   const selectedIdentity = models.find((item) => item.id === model) ?? null;
   const selectedName = model === RANDOM_IDENTITY ? "Random identity" : selectedIdentity?.name ?? "Random identity";
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
-  const cast = useMemo(() => [...models].sort((a, b) => Number(readyForRender(b)) - Number(readyForRender(a))), [models, isAdmin, unlocked]);
-  const scenes = useMemo(() => sceneIdeas.map((scene, index) => ({ ...scene, image: models[index]?.image_url ?? "" })).filter((scene) => scene.image), [models]);
+  const displayModels = useMemo(() => [...models].sort((a, b) => creatorModelRank(a) - creatorModelRank(b)), [models]);
+  const cast = displayModels;
+  const scenes = useMemo(() => sceneIdeas.map((scene, index) => ({ ...scene, image: displayModels[index]?.image_url ?? "" })).filter((scene) => scene.image), [displayModels]);
 
   async function loadLibrary() {
     const { data: auth } = await supabase.auth.getUser();
@@ -156,7 +171,8 @@ function Creator() {
       const companionRows = (data ?? []) as CreatorModel[];
       setModels(companionRows);
       const requested = search.model;
-      if (companionRows[0]) setModel(requested && companionRows.some((item) => item.id === requested) ? requested : companionRows[0].id);
+      const visualFirst = [...companionRows].sort((a, b) => creatorModelRank(a) - creatorModelRank(b))[0];
+      if (visualFirst) setModel(requested && companionRows.some((item) => item.id === requested) ? requested : visualFirst.id);
       if (auth.user) {
         const [{ data: unlockRows }, { data: role }, { data: profile }, { data: balance }] = await Promise.all([
           (supabase as any).from("creator_model_unlocks").select("companion_id").eq("user_id", auth.user.id),

@@ -46,6 +46,16 @@ export function isExplicitMediaRequest(request: string | undefined): boolean {
 }
 
 export function socialSafePrompt(request: string | undefined): string {
+  return socialSafeRenderPrompt(request);
+}
+
+/**
+ * Last-mile social-mode guard. Prompt refinement can add its own wardrobe or
+ * pose language, so sanitising only the user's sentence is not sufficient.
+ * Apply the same clothing contract to the final renderer prompt immediately
+ * before it is submitted to RunPod.
+ */
+export function socialSafeRenderPrompt(request: string | undefined): string {
   const cleaned = (request ?? "")
     .replace(SOCIAL_EXPLICIT_TERMS_GLOBAL, "")
     .replace(/\bspread(?:ing)?\s+(?:your|her|their)?\s*legs?\b|\blegs?\s+(?:spread|open|apart)\b/gi, "knees comfortably apart")
@@ -427,7 +437,7 @@ export function negativeFor(
   const keepsGarment = requestKeepsGarment(req);
   let base = isNude && !keepsGarment ? `${CLOTHING_NEGATIVE}, ${quality}` : quality;
   if (opts.socialSafe) {
-    base = `${base}, nude, naked, bare breasts, visible nipples, exposed genitals, exposed groin, transparent clothing, see-through fabric, wardrobe removal`;
+    base = `${base}, nude, naked, fully nude, completely nude, no clothes, no underwear, bare breasts, visible nipples, exposed genitals, exposed groin, transparent clothing, see-through fabric, wardrobe removal, explicit nudity, pornographic pose`;
   }
 
   // The two hand-rolled lists that used to live here — one for women, one for
@@ -848,7 +858,8 @@ export async function startImageJob(
   const toyPlan = toys.length > 1
     ? propClauses(promptRequest ?? "", { anatomy: anatomyOf(companion.gender), toys })
     : null;
-  const imagePrompt = toyPlan ? `${baseImagePrompt} ${toyPlan}` : baseImagePrompt;
+  const safeImagePrompt = socialMode ? socialSafeRenderPrompt(baseImagePrompt) : baseImagePrompt;
+  const imagePrompt = toyPlan ? `${safeImagePrompt} ${toyPlan}` : safeImagePrompt;
 
   // The WAN endpoint centre-crops to a square, which decapitated the result.
   // Square it ourselves, keeping the whole figure, before handing it over. An
@@ -974,11 +985,13 @@ export async function startImageJob(
             startFrame: composedFrame,
             preserveScene: Boolean(uploadedRoomUrl),
             startFromPortrait: mode === "portrait",
+            socialSafe: socialMode,
           })
         : provider === "kontext"
           ? {
               prompt: imagePrompt,
               negative_prompt: [
+                negative,
                 "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
                 propNegative(promptRequest ?? ""),
               ]
@@ -1137,6 +1150,8 @@ export async function comfyJobInput(
     outputSize?: { width: number; height: number };
     /** Keep an uploaded room's layout while adding the companion. */
     preserveScene?: boolean;
+    /** Do not inherit exposed clothing from a nude source portrait in social mode. */
+    socialSafe?: boolean;
   } = {},
 ): Promise<Record<string, unknown>> {
   const {
@@ -1189,7 +1204,12 @@ export async function comfyJobInput(
   // (0.62 plain / 0.73 nude / 0.78 posed / 0.86 mouth act, comfySettings), so
   // her face, skin and light are what the pass starts from and FaceID holds
   // identity through the undress. Resolved after the portrait is read below.
-  const fromPortrait = !composed && Boolean(opts.startFromPortrait) && isFaceIdGraph;
+  // Social renders must not encode a source portrait's wardrobe into the
+  // starting latent. A nude companion portrait otherwise survives the i2i
+  // pass even when the text prompt asks for everyday clothing. FaceID still
+  // receives the portrait as an identity reference; only the latent start is
+  // removed for this mode.
+  const fromPortrait = !opts.socialSafe && !composed && Boolean(opts.startFromPortrait) && isFaceIdGraph;
 
   // A pose guide, when this request has one and the worker can use it. Only
   // the FaceID graph has the wiring for it.
@@ -1319,6 +1339,9 @@ export async function comfyJobInput(
   // "Sleeve" is a garment to the checkpoint: "tattoo sleeves" rendered white
   // knit sleeves on a nude body. Every mention is said as tattooed arms.
   let finalPrompt = unsleeve(lead.length ? `${lead.join(", ")}, ${prompt}` : prompt);
+  if (opts.socialSafe) {
+    finalPrompt = `${socialSafeRenderPrompt(finalPrompt)} Fully dressed in an opaque one-piece swimsuit or opaque bra and panties; the outfit remains on throughout.`;
+  }
 
   {
     const { withFaceSwap, faceSwapOn, withLora } = await import("./comfy");
@@ -1876,7 +1899,8 @@ export async function startVideoJob(
     // freezes the start frame and invents a generic sit-up motion. Animation
     // gets a compact action-first prompt; the opening still carries visuals.
     const exactObjects = multiToyPlan ? `${multiToyPlan} ${finished} ${multiToyPlan}` : finished;
-    const scene = compactVideoScene(actionLock, identityLock, toy, exactObjects, multiToyPlan ?? "");
+    const safeScene = socialMode ? socialSafeRenderPrompt(exactObjects) : exactObjects;
+    const scene = compactVideoScene(actionLock, identityLock, toy, safeScene, multiToyPlan ?? "");
     return scene;
   });
   const videoPrompt = scenePrompts.join("\n\n");
@@ -1993,8 +2017,9 @@ export async function startVideoJob(
           setting,
         );
         const stillPrompt = videoOpeningFramePrompt(rawStillPrompt, companion.gender);
+        const safeStillPrompt = socialMode ? socialSafeRenderPrompt(stillPrompt) : stillPrompt;
         const stillInput = await comfyJobInput(
-          stillPrompt,
+          safeStillPrompt,
           negativeFor(promptRequest, companion.gender, {
             moving: false,
             extra: stillAvoid,
@@ -2020,6 +2045,7 @@ export async function startVideoJob(
             startFrame: uploadedRoomFrame,
             preserveScene: Boolean(uploadedRoomFrame),
             forceFaceSwap: true,
+            socialSafe: socialMode,
             // WAN emits a square clip. Render the requested scene as a square
             // photograph from the outset instead of padding a portrait still
             // with blurred side copies that remain baked into every frame.

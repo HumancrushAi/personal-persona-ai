@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Heart, Image as ImageIcon, Play, RefreshCw, Trash2, Video, X } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { LogoLink } from "@/components/Logo";
 
 const librarySearchSchema = z.object({
   type: z.enum(["all", "photos", "videos", "favourites"]).optional(),
@@ -57,10 +58,10 @@ function formatDate(date: string) {
 function LibraryNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#121014]/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-3 px-4 sm:px-6">
-        <Link to="/create-media" className="flex shrink-0 items-center gap-2 text-[#F5EFF2]"><span className="grid h-8 w-8 place-items-center rounded-full bg-[#FF4D6A] text-[#1A0A0F]">✦</span><span className="hidden font-display text-lg font-extrabold sm:inline">HumanCrush</span></Link>
-        <nav aria-label="Creator studio" className="flex items-center gap-1"><Link to="/create-media" className="rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] hover:bg-white/[0.06] hover:text-white sm:px-4 sm:text-sm">Create</Link><Link to="/library" className="rounded-full bg-white/[0.08] px-3 py-2 text-xs font-semibold text-white sm:px-4 sm:text-sm">Library</Link><Link to="/models" className="rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] hover:bg-white/[0.06] hover:text-white sm:px-4 sm:text-sm">Models</Link></nav>
-        <Link to="/create-media" className="ml-auto inline-flex min-h-10 items-center rounded-full bg-[#FF4D6A] px-4 text-xs font-bold text-[#1A0A0F] sm:text-sm">New render</Link>
+      <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-2 px-3 sm:gap-3 sm:px-6">
+        <LogoLink className="h-8 shrink-0" />
+        <nav aria-label="Creator studio" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-1"><Link to="/create-media" className="rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] hover:bg-white/[0.06] hover:text-white sm:px-4 sm:text-sm">Create</Link><Link to="/library" className="rounded-full bg-white/[0.08] px-3 py-2 text-xs font-semibold text-white sm:px-4 sm:text-sm">Library</Link><Link to="/models" className="hidden rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] hover:bg-white/[0.06] hover:text-white sm:inline-flex sm:px-4 sm:text-sm">Models</Link></nav>
+        <Link to="/create-media" className="ml-auto inline-flex min-h-9 items-center rounded-full bg-[#FF4D6A] px-3 text-xs font-bold text-[#1A0A0F] sm:min-h-10 sm:px-4 sm:text-sm">New render</Link>
       </div>
     </header>
   );

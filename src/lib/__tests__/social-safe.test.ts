@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isExplicitMediaRequest, socialSafePrompt } from "../media.functions";
+import { isExplicitMediaRequest, socialSafePrompt, socialSafeRenderPrompt } from "../media.functions";
 
 describe("social-safe media requests", () => {
   it("keeps an ordinary scene clothed", () => {
@@ -19,5 +19,14 @@ describe("social-safe media requests", () => {
   it("keeps explicit adult requests on the adult path", () => {
     expect(isExplicitMediaRequest("send a nude photo")).toBe(true);
     expect(isExplicitMediaRequest("fuck yourself with the glass dildo")).toBe(true);
+  });
+
+  it("re-applies the clothing contract after prompt refinement", () => {
+    const refined = socialSafeRenderPrompt(
+      "photorealistic woman on a red couch, naked, visible nipples, legs spread, cinematic lighting",
+    );
+    expect(refined).not.toMatch(/naked|visible nipples|legs spread/i);
+    expect(refined).toMatch(/opaque one-piece swimsuit|opaque bra and panties/i);
+    expect(refined).toMatch(/outfit on throughout/i);
   });
 });

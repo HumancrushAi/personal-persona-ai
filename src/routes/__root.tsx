@@ -149,7 +149,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700;800&display=swap",
       },
     ],
   }),
@@ -183,7 +183,7 @@ import { Analytics } from "@vercel/analytics/react";
 
 const SUPPORT_BUBBLE_PATHS = ["/", "/auth"];
 const NO_SUPPORT_PREFIXES = ["/chat/", "/admin", "/studio"];
-const NO_FOOTER_PREFIXES = ["/chat/", "/admin", "/studio"];
+const NO_FOOTER_PREFIXES = ["/chat/", "/admin", "/studio", "/create-media", "/library", "/auth"];
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -258,4 +258,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-

@@ -280,6 +280,62 @@ export const cancelSubscription = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const changeSubscriptionSchema = z.object({ tierId: z.string() });
+
+/**
+ * Change the amount/plan of an active ARB subscription without creating a
+ * second subscription. Authorize.Net allows amount changes in-place, but does
+ * not allow the billing interval to change, so monthly↔yearly changes remain
+ * an explicit cancel-then-checkout flow in the UI.
+ */
+export const changeSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => changeSubscriptionSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertNotSuspended(supabase, userId);
+    const apiLoginId = process.env.AUTHORIZE_NET_API_LOGIN_ID;
+    const transactionKey = process.env.AUTHORIZE_NET_TRANSACTION_KEY;
+    if (!apiLoginId || !transactionKey) throw new Error("Payment provider not configured");
+
+    const [{ data: profile }, tiers] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("subscription_tier, subscription_renews_at, subscription_status, authnet_subscription_id")
+        .eq("id", userId)
+        .maybeSingle(),
+      getEffectiveTiers(),
+    ]);
+    if (profile?.subscription_status !== "active" || !profile.authnet_subscription_id) {
+      throw new Error("No active subscription to change");
+    }
+    const current = tiers.find((tier) => tier.id === profile.subscription_tier);
+    const next = tiers.find((tier) => tier.id === data.tierId);
+    if (!current || !next) throw new Error("That plan is no longer available");
+    if ((current.billingMonths ?? 1) !== (next.billingMonths ?? 1)) {
+      throw new Error("Billing interval changes require cancelling the current plan before checkout");
+    }
+    if (current.id === next.id) return { ok: true, changed: false as const };
+
+    const json = await authnetCall({
+      ARBUpdateSubscriptionRequest: {
+        merchantAuthentication: { name: apiLoginId, transactionKey },
+        subscriptionId: profile.authnet_subscription_id,
+        subscription: { amount: (next.priceCents / 100).toFixed(2) },
+      },
+    });
+    if (json?.messages?.resultCode !== "Ok") {
+      throw new Error(json?.messages?.message?.[0]?.text || "Plan change failed");
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ subscription_tier: next.id })
+      .eq("id", userId);
+    if (error) throw error;
+    return { ok: true, changed: true as const, tierId: next.id, renewsAt: profile.subscription_renews_at };
+  });
+
 export const confirmAge = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {

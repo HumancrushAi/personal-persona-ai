@@ -216,6 +216,9 @@ export function SiteHeader({
               <Link to="/gallery" onClick={close} className={item}>
                 <ImageIcon className="h-4 w-4 text-white/60" /> Gallery
               </Link>
+              <Link to="/library" onClick={close} className={item}>
+                <ImageIcon className="h-4 w-4 text-primary" /> Creator Library
+              </Link>
               <Link to="/browse" onClick={close} className={item}>
                 <Compass className="h-4 w-4 text-white/60" /> Browse Companions
               </Link>
@@ -365,6 +368,9 @@ export function SiteHeader({
             </Link>
             <Link to="/gallery" className={navLink}>
               Gallery
+            </Link>
+            <Link to="/library" className={navLink}>
+              Library
             </Link>
               <Link to="/create-media" className={navLink}>
                 Creator Studio

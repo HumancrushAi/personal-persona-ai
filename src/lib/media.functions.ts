@@ -31,6 +31,31 @@ import {
   isFingerInsertAct,
 } from "./selfie";
 
+// A request with no adult language should never inherit the nude default from
+// the adults-only chat renderer. This is shared by the standalone creator and
+// the chat media path so a social-safe request cannot depend on which button
+// submitted it.
+const SOCIAL_EXPLICIT_TERMS = /\b(?:nude|nudes|naked|nakie|nekkid|unclothed|undress\w*|strip\w*|topless|bottomless|bare|exposed|full\s*frontal|birthday\s*suit|in\s+the\s+buff|tits?|titties|boobs?|boobies|breasts?|nipples?|areolas?|cleavage|rack|knockers|melons|jugs|pussy|vagina|vulva|clit\w*|labia|cunt|snatch|coochie|slit|genital\w*|crotch|dick|cock|penis|balls|testicles?|asshole|butthole|anus|fuck\w*|sex|penetrat\w*|insert\w*|masturbat\w*|finger\w*|lick\w*|suck\w*|blow\s*job|oral|anal|creampie|cum\w*|orgasm\w*|squirt\w*)\b/i;
+const SOCIAL_EXPLICIT_TERMS_GLOBAL = new RegExp(SOCIAL_EXPLICIT_TERMS.source, "gi");
+
+export function isExplicitMediaRequest(request: string | undefined): boolean {
+  const text = (request ?? "").trim();
+  // An empty request intentionally retains the adult chat default. A named,
+  // ordinary scene is social-safe unless it asks for adult anatomy or action.
+  return text.length === 0 || requestIsNude(text) || SOCIAL_EXPLICIT_TERMS.test(text);
+}
+
+export function socialSafePrompt(request: string | undefined): string {
+  const cleaned = (request ?? "")
+    .replace(SOCIAL_EXPLICIT_TERMS_GLOBAL, "")
+    .replace(/\bspread(?:ing)?\s+(?:your|her|their)?\s*legs?\b|\blegs?\s+(?:spread|open|apart)\b/gi, "knees comfortably apart")
+    .replace(/\bspread\b/gi, "wide")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.])/g, "$1")
+    .trim();
+  return `${cleaned || "A natural, confident portrait"}. Keep the requested pose and scene in an opaque one-piece swimsuit or opaque bra and panties; keep the outfit on throughout for a public social post.`;
+}
+
 // Negative prompt for the RunPod WAN endpoint, in two halves.
 //
 // QUALITY_NEGATIVE is what a generated picture looks like when it goes wrong,
@@ -763,6 +788,12 @@ export async function startImageJob(
     ...companion,
     imageUrl: await conversationIdentityAnchor(supabase, conversationId, companion.imageUrl),
   };
+  // Chat is adults-only, but a named everyday scene (for example, sitting on
+  // a park bench with a drink) must remain clothed. Standalone social mode
+  // passes this flag explicitly; chat derives it only when the request has no
+  // adult intent, preserving explicit adult requests.
+  const socialMode = options.socialSafe ?? !isExplicitMediaRequest(userRequest);
+  const promptRequest = socialMode ? socialSafePrompt(userRequest) : userRequest;
   // The user's own room, if they gave her one for this chat; else her own
   // place, read off her portrait, so the photo is taken where her reel was.
   const setting = await settingFor(conversationId, companion.imageUrl, companion.name);
@@ -807,7 +838,7 @@ export async function startImageJob(
 
   const { prompt: baseImagePrompt, avoid, look } = await photoPromptWithAvoid(
     companion,
-    userRequest,
+    promptRequest,
     styleBackstory,
     provider,
     toy,
@@ -815,7 +846,7 @@ export async function startImageJob(
   );
   const { propClauses } = await import("./props");
   const toyPlan = toys.length > 1
-    ? propClauses(userRequest ?? "", { anatomy: anatomyOf(companion.gender), toys })
+    ? propClauses(promptRequest ?? "", { anatomy: anatomyOf(companion.gender), toys })
     : null;
   const imagePrompt = toyPlan ? `${baseImagePrompt} ${toyPlan}` : baseImagePrompt;
 
@@ -869,13 +900,13 @@ export async function startImageJob(
     // mid-movement. And the companion's own gender is passed, without which
     // negativeFor defaulted to female and a male companion's nude photo was
     // rendered with "penis, cock, male genitalia" in its negative prompt.
-    const negative = negativeFor(userRequest, companion.gender, {
+    const negative = negativeFor(promptRequest, companion.gender, {
       moving: false,
       extra: avoid,
       age: companion.age,
       toy,
       tattooed: /tattoo/i.test(look),
-      socialSafe: options.socialSafe,
+      socialSafe: socialMode,
     });
     // How many photos this chat already has: the Nth photo of a request always
     // renders the same way, but the next one is a new picture, not a copy.
@@ -909,7 +940,7 @@ export async function startImageJob(
       const { composeStartFrame, storeStartFrame } = await import("./compose.server");
       const composed = await composeStartFrame({
         portraitUrl: sourceImage,
-        request: userRequest ?? "",
+        request: promptRequest ?? "",
         setting: setting ? (typeof setting === "string" ? setting : setting.text) : null,
         toy,
         noun: anatomyOf(companion.gender).noun,
@@ -923,7 +954,7 @@ export async function startImageJob(
     }
     const input =
       provider === "comfy"
-        ? await comfyJobInput(imagePrompt, negative, sourceImage, userRequest, seedSalt, {
+        ? await comfyJobInput(imagePrompt, negative, sourceImage, promptRequest, seedSalt, {
             hasPenis: anatomyOf(companion.gender).hasPenis,
             // Give the renderer the catalogue geometry as well as the short
             // tags; otherwise transparent glass is easily read as a bottle.
@@ -949,7 +980,7 @@ export async function startImageJob(
               prompt: imagePrompt,
               negative_prompt: [
                 "different person, different face, changed identity, deformed, extra limbs, bad anatomy, blurry, cartoon, anime, watermark, text",
-                propNegative(userRequest ?? ""),
+                propNegative(promptRequest ?? ""),
               ]
                 .filter(Boolean)
                 .join(", "),
@@ -1723,6 +1754,8 @@ export async function startVideoJob(
     ...companion,
     imageUrl: await conversationIdentityAnchor(supabase, conversationId, companion.imageUrl),
   };
+  const socialMode = options.socialSafe ?? !isExplicitMediaRequest(userReq);
+  const promptRequest = socialMode ? socialSafePrompt(userReq) : userReq;
   const startImage = resolveHostedImage(companion.imageUrl);
   const setting = await settingFor(conversationId, companion.imageUrl, companion.name);
   const { settingImageUrl } = await import("./selfie");
@@ -1798,18 +1831,18 @@ export async function startVideoJob(
   const { refineMediaPrompt } = await import("./prompt-refiner.server");
   const { companionLook } = await import("./look.server");
   const look = await companionLook(companion.imageUrl);
-  const refinedVideo = await refineMediaPrompt("video", userReq ?? "", { ...companion, look }, sceneCount, toy, setting);
+  const refinedVideo = await refineMediaPrompt("video", promptRequest ?? "", { ...companion, look }, sceneCount, toy, setting);
   const videoAvoid = refinedVideo?.avoid ?? [];
   // Same reason as the photo path: a successful refine replaces the builder, so
   // the prop spec is re-appended to every scene rather than lost.
-  const rawReq = userReq ?? "";
+  const rawReq = promptRequest ?? "";
   const anatomy = anatomyOf(companion.gender);
   const { propClauses } = await import("./props");
   const multiToyPlan = toys.length > 1 ? propClauses(rawReq, { anatomy, toys }) : null;
   const refinedScenes = refinedVideo?.prompts.length ? refinedVideo.prompts : null;
   const actionLock = multiToyVideoActionLock(rawReq, companion.gender, toys);
   const identityLock = videoIdentityLock(look);
-  const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, userReq, toy, setting)]).map((p) => {
+  const scenePrompts = (refinedScenes ?? [videoActionPrompt(companion, promptRequest, toy, setting)]).map((p) => {
     const locked = actionLock ? `${actionLock} ${p} ${actionLock}` : p;
     const finished = finishMediaPrompt(locked, rawReq, {
       anatomy,
@@ -1874,7 +1907,7 @@ export async function startVideoJob(
     // prevents the silent 368x368 fallback seen in production clip 1261901.
     ...(videoWidth && videoHeight ? { width: videoWidth, height: videoHeight } : {}),
     prompts: scenePrompts,
-    negative_prompt: negativeFor(userReq, companion.gender, {
+    negative_prompt: negativeFor(promptRequest, companion.gender, {
       moving: true,
       extra: [
         ...videoAvoid,
@@ -1920,7 +1953,7 @@ export async function startVideoJob(
       ],
       age: companion.age,
       toy,
-      socialSafe: options.socialSafe,
+      socialSafe: socialMode,
     }),
     lora_strengths: VIDEO_LORA_STRENGTHS,
     // Newer workers use this as a second, immutable identity source while
@@ -1950,7 +1983,7 @@ export async function startVideoJob(
             gender: companion.gender,
             imageUrl: companion.imageUrl,
           },
-          userReq,
+          promptRequest,
           null,
           "comfy",
           // The opening frame is the image the video actually animates. If the
@@ -1962,15 +1995,15 @@ export async function startVideoJob(
         const stillPrompt = videoOpeningFramePrompt(rawStillPrompt, companion.gender);
         const stillInput = await comfyJobInput(
           stillPrompt,
-          negativeFor(userReq, companion.gender, {
+          negativeFor(promptRequest, companion.gender, {
             moving: false,
             extra: stillAvoid,
             age: companion.age,
             toy,
-            socialSafe: options.socialSafe,
+            socialSafe: socialMode,
           }),
           startImage,
-          userReq,
+          promptRequest,
           `video-${job.id}`,
           {
             hasPenis: anatomyOf(companion.gender).hasPenis,
@@ -2020,7 +2053,7 @@ export async function startVideoJob(
     const { composeStartFrame, storeStartFrame } = await import("./compose.server");
     const composed = await composeStartFrame({
       portraitUrl: startImage,
-      request: userReq ?? "",
+      request: promptRequest ?? "",
       setting: setting ? (typeof setting === "string" ? setting : setting.text) : null,
       toy,
       noun: anatomy.noun,

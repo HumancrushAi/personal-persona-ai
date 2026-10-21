@@ -21,6 +21,7 @@ import { Route as DoneForYouRouteImport } from './routes/done-for-you'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -99,6 +100,11 @@ const GalleryRoute = GalleryRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
+  '/library': typeof LibraryRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -247,6 +254,7 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
+  '/library': typeof LibraryRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/gallery': typeof GalleryRoute
   '/history': typeof HistoryRoute
+  '/library': typeof LibraryRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/gallery'
     | '/history'
+    | '/library'
     | '/llms.txt'
     | '/me'
     | '/reset-password'
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/gallery'
     | '/history'
+    | '/library'
     | '/llms.txt'
     | '/me'
     | '/reset-password'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/gallery'
     | '/history'
+    | '/library'
     | '/llms.txt'
     | '/me'
     | '/reset-password'
@@ -419,6 +431,7 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   GalleryRoute: typeof GalleryRoute
   HistoryRoute: typeof HistoryRoute
+  LibraryRoute: typeof LibraryRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   MeRoute: typeof MeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms.txt': {
@@ -694,6 +714,7 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   GalleryRoute: GalleryRoute,
   HistoryRoute: HistoryRoute,
+  LibraryRoute: LibraryRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   MeRoute: MeRoute,
   ResetPasswordRoute: ResetPasswordRoute,

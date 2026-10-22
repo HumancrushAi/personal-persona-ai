@@ -2189,7 +2189,7 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     const { data: job } = await supabase
       .from("media_jobs")
       .select(
-        "id, user_id, conversation_id, kind, cost, status, provider, prompt, replicate_id, media_url, error, created_at",
+        "id, user_id, conversation_id, kind, cost, status, provider, content_mode, prompt, replicate_id, media_url, error, created_at",
       )
       .eq("id", data.jobId)
       .eq("user_id", userId)

@@ -5,7 +5,7 @@ import { ensureBalance } from "./credit-wallet";
 import { deductCredits } from "./credit-wallet";
 import { socialSafePrompt, startImageJob, startVideoJob } from "./media.functions";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
-import { assertAdultGenerationEntitlement } from "./content-mode.server";
+import { resolveCreatorContentModeForUser } from "./content-mode.server";
 
 const input = z.object({
   companionId: z.string().uuid(), prompt: z.string().min(3).max(500),
@@ -39,25 +39,15 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const screen = screenUserMessage(data.prompt);
     if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
-    const renderPrompt = data.adult ? data.prompt : socialSafePrompt(data.prompt);
+    // Resolve content mode from the server-side role/profile state before any
+    // provider work. The client flag is only an intent, never an entitlement.
+    const contentMode = await resolveCreatorContentModeForUser(context.supabase, context.userId, data.adult);
+    const renderPrompt = contentMode === "adult" ? data.prompt : socialSafePrompt(data.prompt);
     const { data: c, error } = await context.supabase.from("companions")
       .select("id,name,age,ethnicity,gender,short_bio,image_url,base_personality")
       .eq("id", data.companionId).single();
     if (error || !c) throw new Error("Model not found");
     const { data: admin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-    if (data.adult && !admin) {
-      const { data: profile } = await context.supabase
-        .from("profiles")
-        .select("age_confirmed,subscription_tier,subscription_status")
-        .eq("id", context.userId)
-        .maybeSingle();
-      assertAdultGenerationEntitlement({
-        isAdmin: false,
-        ageConfirmed: profile?.age_confirmed,
-        subscriptionTier: profile?.subscription_tier,
-        subscriptionStatus: profile?.subscription_status,
-      });
-    }
     if (!admin) {
       const { data: first } = await context.supabase.from("companions").select("id").order("sort_order").limit(1).maybeSingle();
       const { data: unlocked } = await (context.supabase as any).from("creator_model_unlocks").select("companion_id").eq("user_id", context.userId).eq("companion_id", c.id).maybeSingle();
@@ -73,8 +63,8 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
     if (conversationError || !conv) throw new Error("Could not prepare the creator workspace");
     try {
       const jobId = data.kind === "image"
-        ? await startImageJob(context.supabase, context.userId, conv.id, c, renderPrompt, c.base_personality, after, null, [], { socialSafe: !data.adult })
-        : await startVideoJob(context.supabase, context.userId, conv.id, c, renderPrompt, after, data.seconds ?? 5, null, [], { socialSafe: !data.adult });
+        ? await startImageJob(context.supabase, context.userId, conv.id, c, renderPrompt, c.base_personality, after, null, [], { socialSafe: contentMode === "social" })
+        : await startVideoJob(context.supabase, context.userId, conv.id, c, renderPrompt, after, data.seconds ?? 5, null, [], { socialSafe: contentMode === "social" });
       return { jobId, cost, status: "pending" as const };
     } catch (e) {
       throw e;

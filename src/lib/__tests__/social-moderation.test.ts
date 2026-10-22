@@ -5,7 +5,12 @@ import {
   moderateBuffers,
   providerSafetyVerdict,
 } from "../social-moderation.server";
-import { assertAdultGenerationEntitlement, AdultAccessError } from "../content-mode.server";
+import {
+  assertAdultGenerationEntitlement,
+  assertCreatorGenerationEntitlement,
+  AdultAccessError,
+  CreatorPlanAccessError,
+} from "../content-mode.server";
 
 describe("social output moderation", () => {
   it("blocks an explicit provider safety verdict before classifier fallback", async () => {
@@ -29,12 +34,34 @@ describe("social output moderation", () => {
     expect(decision.reason).toBe("provider-blocked");
   });
 
+  it("does not let a provider safe=true flag bypass pixel moderation", async () => {
+    let classified = false;
+    const decision = await evaluateSocialOutput({
+      providerOutput: { safety_checker_passed: true },
+      samples: [Buffer.from("sampled frame")],
+      classify: async () => {
+        classified = true;
+        return { allowed: false, classifier: "test", score: 0.91, reason: "sexual" };
+      },
+    });
+    expect(classified).toBe(true);
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe("sexual");
+  });
+
   it("blocks sexual scores at the configured threshold", () => {
     const decision = interpretModerationResult({
       results: [{ flagged: false, category_scores: { sexual: 0.46, "sexual/minors": 0 } }],
     });
     expect(decision.allowed).toBe(false);
     expect(decision.score).toBe(0.46);
+  });
+
+  it("blocks borderline sexual scores in Social mode", () => {
+    const decision = interpretModerationResult({
+      results: [{ flagged: false, category_scores: { sexual: 0.21, "sexual/minors": 0 } }],
+    });
+    expect(decision.allowed).toBe(false);
   });
 
   it("fails closed when the classifier returns an unsafe result, so storage is skipped and refund runs", async () => {
@@ -68,6 +95,13 @@ describe("social output moderation", () => {
 });
 
 describe("adult server entitlement", () => {
+  it("rejects Creator renders without an active Creator plan", () => {
+    expect(() => assertCreatorGenerationEntitlement({
+      subscriptionTier: "sub-flirt",
+      subscriptionStatus: "active",
+    })).toThrowError(new CreatorPlanAccessError());
+  });
+
   it("rejects adult generation without age confirmation", () => {
     expect(() => assertAdultGenerationEntitlement({
       ageConfirmed: false,

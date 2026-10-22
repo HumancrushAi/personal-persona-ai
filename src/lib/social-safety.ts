@@ -61,7 +61,12 @@ export function contentModeFromPrompt(prompt: string | null | undefined): "socia
 
 /** Chosen conservatively: sexual content is blocked before it can reach users. */
 export const SOCIAL_MODERATION_THRESHOLDS = {
-  sexual: 0.45,
+  // Social mode must reject visible nudity as well as explicit acts. The
+  // moderation API's `sexual` score is the available image-safety signal, so
+  // use a conservative threshold and keep the prompt guard as a second line
+  // of defence. This intentionally favours a refund/retry over returning a
+  // nude result to a social-mode user.
+  sexual: 0.2,
   sexualMinors: 0.02,
 } as const;
 

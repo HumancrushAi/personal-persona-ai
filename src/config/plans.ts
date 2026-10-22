@@ -1,107 +1,70 @@
+import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@/lib/credit-packs";
+
 /**
- * Creator pricing and render costs used by the creator UI.
- *
- * Authorize.Net remains the source of truth for the actual charge. `priceId`
- * values are intentionally nullable until the corresponding production
- * products are confirmed; the UI can still render the plan without inventing
- * a checkout identifier.
+ * The creator screen must use the same costs as standalone-media.functions.
+ * These are not marketing estimates: they are the debit amounts enforced by
+ * the server (8 credits per photo, 10 credits minimum plus 3 per video second).
  */
 export const creatorBilling = {
-  yearlyDiscountLabel: "-33%",
+  yearlyDiscountLabel: "Save 26%",
   creditCosts: {
-    image: 1,
-    video: 10,
-    adultMultiplier: 2,
-  },
-  legacyServerCosts: {
     image: 8,
+    video: 10,
     videoPerSecond: 3,
   },
 } as const;
 
 export type BillingPeriod = "monthly" | "yearly";
-export type PlanId = "starter" | "creator" | "pro";
-
-export type ProTier = {
-  monthly: number;
-  credits: number | null;
-  priceId: Record<BillingPeriod, string | null>;
-};
 
 export type CreatorPlan = {
-  id: PlanId;
+  /** Stable UI key; for checkout always use tierId. */
+  id: string;
+  tierId: string;
   name: string;
-  monthly: number | null;
-  yearly: number | null;
-  credits: number | null;
+  billingMonths: number;
+  period: BillingPeriod;
+  priceCents: number;
+  credits: number;
   adult: boolean;
   featured?: boolean;
-  imagesAtOnce: number;
-  videosAtOnce: number;
   features: readonly string[];
-  footnote?: string;
-  priceId: Record<BillingPeriod, string | null>;
-  tiers?: readonly ProTier[];
 };
 
-export const creatorPlans: readonly CreatorPlan[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    monthly: 9,
-    yearly: null,
-    credits: 80,
-    adult: false,
-    imagesAtOnce: 2,
-    videosAtOnce: 1,
-    features: ["Create 80 images or 8 videos", "Generate 2 images at a time", "Generate 1 video at a time", "Cancel anytime"],
-    priceId: { monthly: null, yearly: null },
-  },
-  {
-    id: "creator",
-    name: "Creator",
-    monthly: 39,
-    yearly: null,
-    credits: 350,
-    adult: false,
-    imagesAtOnce: 5,
-    videosAtOnce: 3,
-    features: ["Create 350 images or 35 videos", "Generate 5 images at a time", "Generate 3 videos at a time", "Priority support", "Cancel anytime"],
-    priceId: { monthly: null, yearly: null },
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    monthly: null,
-    yearly: null,
-    credits: null,
-    adult: true,
-    featured: true,
-    imagesAtOnce: 10,
-    videosAtOnce: 5,
-    features: ["18+ content available*", "Generate 10 images at a time", "Generate 5 videos at a time", "Dedicated 1-1 support", "Cancel anytime"],
-    footnote: "*18+ content uses 2x credits.",
-    priceId: { monthly: null, yearly: null },
-    tiers: [
-      { monthly: 79, credits: null, priceId: { monthly: null, yearly: null } },
-      { monthly: 149, credits: 1500, priceId: { monthly: null, yearly: null } },
-      { monthly: 249, credits: null, priceId: { monthly: null, yearly: null } },
-      { monthly: 499, credits: null, priceId: { monthly: null, yearly: null } },
-      { monthly: 999, credits: null, priceId: { monthly: null, yearly: null } },
-    ],
-  },
-] as const;
-
-export function formatCredits(value: number | null): string {
-  return value === null ? "Credits to be confirmed" : `${value.toLocaleString()} credits/month`;
+/**
+ * Build creator cards from the live server pricing response. Keeping this
+ * mapping in one place prevents the creator page from advertising plans that
+ * Authorize.Net cannot actually purchase.
+ */
+export function creatorPlansFromTiers(tiers: readonly SubscriptionTier[]): readonly CreatorPlan[] {
+  return tiers
+    .filter((tier) => tier.id === "sub-creator" || tier.id === "sub-creator-annual")
+    .map((tier) => ({
+      id: tier.id === "sub-creator-annual" ? "creator-annual" : "creator",
+      tierId: tier.id,
+      name: tier.billingMonths === 12 ? "Creator annual" : "Creator monthly",
+      billingMonths: tier.billingMonths ?? 1,
+      period: tier.billingMonths === 12 ? "yearly" : "monthly",
+      priceCents: tier.priceCents,
+      credits: tier.monthlyCredits,
+      adult: true,
+      featured: tier.billingMonths === 12,
+      features: tier.perks,
+    }));
 }
 
-export function estimatedPlanMedia(plan: CreatorPlan, kind: "image" | "video"): number | null {
-  if (plan.credits === null) return null;
+// Synchronous fallback for the first paint/offline preview. The route replaces
+// this with getPricing() as soon as the server responds.
+export const creatorPlans: readonly CreatorPlan[] = creatorPlansFromTiers(SUBSCRIPTION_TIERS);
+
+export function formatCredits(value: number | null): string {
+  return value === null ? "Credits to be confirmed" : `${value.toLocaleString()} credits`;
+}
+
+export function estimatedPlanMedia(plan: CreatorPlan, kind: "image" | "video"): number {
   const cost = kind === "image" ? creatorBilling.creditCosts.image : creatorBilling.creditCosts.video;
   return Math.floor(plan.credits / cost);
 }
 
-export function formatPlanYearlyPrice(plan: CreatorPlan): string {
-  return plan.yearly === null ? "Yearly price to be confirmed" : `$${plan.yearly}/year`;
+export function formatPlanPrice(plan: CreatorPlan): string {
+  return `$${(plan.priceCents / 100).toFixed(plan.priceCents % 100 === 0 ? 0 : 2)}`;
 }

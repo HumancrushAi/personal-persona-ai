@@ -41,6 +41,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
       "Identity lock for one model",
       "Social and 18+ creator modes",
       "Photos, short videos, and downloads",
+      "Cancel any time from your account",
     ],
   },
   {
@@ -56,6 +57,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
       "Identity lock for one model",
       "Social and 18+ creator modes",
       "Photos, short videos, and downloads",
+      "Cancel any time from your account",
     ],
   },
   {

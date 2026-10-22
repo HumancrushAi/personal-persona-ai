@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/runpod-webhook")({
 
         const { data: job } = await supabaseAdmin
           .from("media_jobs")
-          .select("id, user_id, conversation_id, kind, cost, status, provider, prompt")
+          .select("id, user_id, conversation_id, kind, cost, status, provider, content_mode, prompt")
           .eq("replicate_id", jobId)
           .maybeSingle();
 

@@ -147,10 +147,17 @@ export async function evaluateSocialOutput(args: {
   if (providerVerdict === "block") {
     return { allowed: false, classifier: "provider-safety", score: 1, reason: "provider-blocked" };
   }
-  if (providerVerdict === "allow") {
-    return { allowed: true, classifier: "provider-safety", score: 0, reason: "provider-cleared" };
-  }
-  return (args.classify ?? ((buffers) => moderateBuffers(buffers)))(args.samples);
+  // A provider's positive flag is only a first-line signal. It is not a
+  // guarantee that the returned pixels are safe (and several RunPod workers
+  // report `safety_checker_passed` for a technically valid but visibly nude
+  // image). Always run our server-side classifier over the actual output.
+  // This also makes the policy consistent across providers that do not expose
+  // a safety flag at all. A provider block still short-circuits immediately.
+  const decision = await (args.classify ?? ((buffers) => moderateBuffers(buffers)))(args.samples);
+  if (!decision.allowed) return decision;
+  return providerVerdict === "allow"
+    ? { ...decision, reason: decision.reason === "clear" ? "provider-cleared-and-classified" : decision.reason }
+    : decision;
 }
 
 export function promptHash(prompt: string | null | undefined): string {

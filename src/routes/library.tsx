@@ -99,6 +99,7 @@ function LibraryPage() {
     const personalityMap = new Map((personalities ?? []).map((row) => [row.id, row]));
     const companionIds = [...new Set((personalities ?? []).map((row) => row.companion_id))];
     const { data: companions } = companionIds.length ? await supabase.from("companions").select("id,name").in("id", companionIds) : { data: [] };
+    setModels((companions ?? []) as { id: string; name: string }[]);
     const companionMap = new Map((companions ?? []).map((row) => [row.id, row.name]));
     const conversationMap = new Map(conversations.map((row) => { const personality = personalityMap.get(row.personality_id); return [row.id, { companionId: personality?.companion_id ?? "", modelName: companionMap.get(personality?.companion_id ?? "") ?? personality?.nickname ?? "Model" }]; }));
     let query = supabase.from("media_jobs").select("id,kind,status,media_url,prompt,created_at,error,conversation_id").in("conversation_id", conversations.map((row) => row.id)).eq("status", "completed").not("media_url", "is", null).order("created_at", { ascending: false }).limit(PAGE_SIZE);

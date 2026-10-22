@@ -67,6 +67,31 @@
   --shadow-glow: 0 4px 14px -6px oklch(0 0 0 / 0.5);
 }
 
+/* Reversible creator-canvas theme. Set ?theme=noir or localStorage
+   `hc-theme=noir`; the existing site theme remains the default. */
+html[data-theme="noir"] {
+  --background: #101012;
+  --foreground: #f4f4f5;
+  --card: #19191c;
+  --card-foreground: #f4f4f5;
+  --popover: #19191c;
+  --popover-foreground: #f4f4f5;
+  --primary: #ffffff;
+  --primary-foreground: #101012;
+  --secondary: #232327;
+  --secondary-foreground: #f4f4f5;
+  --muted: #232327;
+  --muted-foreground: #a1a1aa;
+  --accent: #e5484d;
+  --accent-foreground: #ffffff;
+  --destructive: #ff8c8c;
+  --destructive-foreground: #101012;
+  --border: rgb(255 255 255 / 8%);
+  --input: rgb(255 255 255 / 12%);
+  --ring: #ffffff;
+  --radius: 12px;
+}
+
 @layer base {
   * { border-color: var(--color-border); }
   html {
@@ -84,6 +109,36 @@
     min-height: 100dvh;
   }
   h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+}
+
+.creator-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 70%);
+}
+.creator-sheet-panel {
+  width: min(100%, 34rem);
+  max-height: 90dvh;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 20px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+  outline: none;
+}
+.creator-sheet-handle { display: none; }
+@media (max-width: 639px) {
+  .creator-sheet-backdrop { align-items: end; padding: 0; }
+  .creator-sheet-panel { width: 100%; max-height: 90dvh; border-radius: 20px 20px 0 0; }
+  .creator-sheet-handle { display: block; width: 3rem; height: .25rem; margin: .6rem auto 0; border-radius: 999px; background: rgb(255 255 255 / 25%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
 
 @utility glass {

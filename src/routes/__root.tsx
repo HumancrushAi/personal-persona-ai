@@ -212,6 +212,15 @@ function RootComponent() {
     }
   }, [pathname]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("theme");
+    if (requested === "noir") window.localStorage.setItem("hc-theme", "noir");
+    if (requested === "default") window.localStorage.removeItem("hc-theme");
+    const theme = requested ?? window.localStorage.getItem("hc-theme") ?? import.meta.env.VITE_THEME;
+    document.documentElement.dataset.theme = theme === "noir" ? "noir" : "default";
+  }, [pathname]);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Hide native Google Translate banner frame cleanly */}

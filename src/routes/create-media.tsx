@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { Bolt, Check, ChevronRight, Download, ImageIcon, LockKeyhole, Sparkles, Video, X } from "lucide-react";
+import { Bolt, Check, ChevronRight, Menu, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { standaloneGenerate, unlockCreatorModel } from "@/lib/standalone-media.functions";
 import { checkMediaJob } from "@/lib/media.functions";
@@ -10,6 +10,10 @@ import { confirmAge } from "@/lib/payments.functions";
 import { totalCredits } from "@/lib/credits";
 import { toast } from "sonner";
 import { LogoLink } from "@/components/Logo";
+import { CreatorSheet } from "@/components/creator/CreatorSheet";
+import { creatorBilling, creatorPlans, estimatedPlanMedia, formatCredits, type BillingPeriod, type CreatorPlan } from "@/config/plans";
+import { getNextGate } from "@/lib/creator-gates";
+import { showcaseConfig } from "@/config/showcase";
 
 const creatorSearchSchema = z.object({
   model: z.string().optional(),
@@ -76,23 +80,27 @@ function creatorModelRank(model: CreatorModel) {
 }
 
 function CreatorNav({ credits }: { credits: number | null }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#121014]/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#101012]/95 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-2 px-3 sm:gap-3 sm:px-6">
         <LogoLink className="h-8 shrink-0" />
         <nav aria-label="Creator studio" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-1">
           <Link to="/create-media" className="rounded-full bg-white/[0.08] px-3 py-2 text-xs font-semibold text-white sm:px-4 sm:text-sm">Create</Link>
           <Link to="/library" className="rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] transition hover:bg-white/[0.06] hover:text-white sm:px-4 sm:text-sm">Library</Link>
           <Link to="/models" className="hidden rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] transition hover:bg-white/[0.06] hover:text-white sm:inline-flex sm:px-4 sm:text-sm">Models</Link>
+          <a href="#plans" className="hidden rounded-full px-3 py-2 text-xs font-semibold text-[#B3A9B0] transition hover:bg-white/[0.06] hover:text-white sm:inline-flex sm:px-4 sm:text-sm">Plans</a>
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <Link to="/credits" className="inline-flex min-h-9 items-center gap-1 rounded-full border border-white/[0.12] px-2.5 text-xs font-semibold text-white sm:min-h-10 sm:gap-1.5 sm:px-4 sm:text-sm">
+          {credits === null ? <Link to="/auth" search={{ redirect: "/create-media" } as never} className="hidden min-h-10 items-center rounded-full border border-white/[0.12] px-3 text-xs font-semibold text-white sm:inline-flex">Sign in</Link> : <Link to="/credits" className="inline-flex min-h-9 items-center gap-1 rounded-full border border-white/[0.12] px-2.5 text-xs font-semibold text-white sm:min-h-10 sm:gap-1.5 sm:px-4 sm:text-sm">
             <Bolt className="h-4 w-4 text-[#FF4D6A]" />
             <span>{credits === null ? "--" : credits}</span><span className="hidden text-[#B3A9B0] sm:inline">credits</span>
-          </Link>
+          </Link>}
           <Link to="/me" aria-label="Open account" className="grid h-9 w-9 place-items-center rounded-full bg-[#2E2730] text-sm font-bold text-white sm:h-10 sm:w-10">G</Link>
+          <button type="button" aria-label="Open creator menu" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center rounded-full border border-white/[0.12] text-white sm:hidden"><Menu className="h-5 w-5" /></button>
         </div>
       </div>
+      <CreatorSheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Creator studio"><nav className="grid gap-2" aria-label="Creator menu"><Link onClick={() => setMenuOpen(false)} to="/create-media" className="flex min-h-12 items-center rounded-xl border border-white/[0.1] px-4 font-semibold">Create</Link><Link onClick={() => setMenuOpen(false)} to="/library" className="flex min-h-12 items-center rounded-xl border border-white/[0.1] px-4 font-semibold">Library</Link><Link onClick={() => setMenuOpen(false)} to="/models" className="flex min-h-12 items-center rounded-xl border border-white/[0.1] px-4 font-semibold">Models</Link><a onClick={() => setMenuOpen(false)} href="#plans" className="flex min-h-12 items-center rounded-xl border border-white/[0.1] px-4 font-semibold">Plans</a><Link onClick={() => setMenuOpen(false)} to="/me" className="flex min-h-12 items-center rounded-xl border border-white/[0.1] px-4 font-semibold">Account</Link></nav></CreatorSheet>
     </header>
   );
 }
@@ -109,6 +117,41 @@ function CreatorFooter() {
       </nav>
     </footer>
   );
+}
+
+function PlanCard({ plan, period, selectedTier, onTierChange, currentPlan, isAdmin, onChoose }: {
+  plan: CreatorPlan;
+  period: BillingPeriod;
+  selectedTier: number;
+  onTierChange: (index: number) => void;
+  currentPlan: string | null;
+  isAdmin: boolean;
+  onChoose: (plan: CreatorPlan) => void;
+}) {
+  const tier = plan.tiers?.[selectedTier];
+  const monthly = tier?.monthly ?? plan.monthly;
+  const credits = tier?.credits ?? plan.credits;
+  const isCurrent = currentPlan === plan.id;
+  const media = plan.id === "pro" ? credits === null ? null : Math.floor(credits / creatorBilling.creditCosts.image) : estimatedPlanMedia(plan, "image");
+  const buttonLabel = isCurrent ? "Current plan" : isAdmin ? "Open creator studio" : currentPlan ? `Upgrade to ${plan.name}` : `Get ${plan.name}`;
+  return (
+    <article className={`flex h-full flex-col rounded-2xl border p-5 ${plan.featured ? "border-[#E5484D] bg-[#19191C]" : "border-white/[0.1] bg-[#19191C]"}`}>
+      <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">{plan.name}</p><p className="mt-2 font-display text-3xl font-extrabold">{monthly === null ? "Custom" : `$${period === "yearly" && plan.yearly !== null ? plan.yearly : monthly}`}<span className="ml-1 text-sm font-medium text-[#A1A1AA]">/{period === "yearly" ? "year" : "month"}</span></p></div>{plan.featured && <span className="rounded-full bg-[#E5484D] px-2.5 py-1 text-[11px] font-bold text-white">18+</span>}</div>
+      <p className="mt-1 text-sm text-[#A1A1AA]">{formatCredits(credits)}</p>
+      {plan.id === "pro" && plan.tiers && <div className="mt-4 rounded-xl bg-[#232327] p-3"><div className="flex items-center justify-between text-xs font-semibold"><span>Scale your credits</span><span>{formatCredits(credits)}</span></div><input aria-label="Pro credit tier" type="range" min={0} max={plan.tiers.length - 1} value={selectedTier} onChange={(event) => onTierChange(Number(event.target.value))} className="mt-3 h-2 w-full accent-white" /><div className="mt-2 grid grid-cols-5 gap-1 text-center text-[10px] text-[#A1A1AA]">{plan.tiers.map((item, index) => <button type="button" key={item.monthly} onClick={() => onTierChange(index)} className={`min-h-9 rounded-lg ${index === selectedTier ? "bg-white font-bold text-[#101012]" : "hover:bg-white/[0.08]"}`}>${item.monthly}</button>)}</div></div>}
+      <div className="mt-4 flex-1 rounded-xl bg-[#232327] p-4"><p className="text-sm font-semibold">{media === null ? "Flexible credit balance" : `Create ${media} images or ${Math.floor((credits ?? 0) / creatorBilling.creditCosts.video)} videos`}</p><ul className="mt-3 space-y-2 text-xs text-[#A1A1AA]">{plan.features.map((feature) => <li key={feature} className="flex gap-2"><Check className="h-3.5 w-3.5 shrink-0 text-[#7FE0B0]" />{feature}</li>)}</ul></div>
+      {plan.footnote && <p className="mt-3 text-[11px] leading-relaxed text-[#A1A1AA]">{plan.footnote}</p>}
+      <button type="button" disabled={isCurrent} onClick={() => onChoose(plan)} className={`mt-5 min-h-11 rounded-xl px-4 text-sm font-bold ${isCurrent ? "bg-[#232327] text-[#A1A1AA]" : plan.featured ? "bg-white text-[#101012]" : "border border-white/[0.16] text-white hover:bg-white/[0.08]"}`}>{buttonLabel}</button>
+    </article>
+  );
+}
+
+function PlansSection({ currentPlan, isAdmin, onChoose }: { currentPlan: string | null; isAdmin: boolean; onChoose: (plan: CreatorPlan) => void }) {
+  const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  const [selectedTier, setSelectedTier] = useState(1);
+  const pro = creatorPlans.find((plan) => plan.id === "pro")!;
+  const otherPlans = creatorPlans.filter((plan) => plan.id !== "pro");
+  return <section id="plans" className="mt-12 scroll-mt-24"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold text-[#A1A1AA]">Plans</p><h2 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">Choose how you create.</h2><p className="mt-2 max-w-xl text-sm text-[#A1A1AA]">Start small, then scale your image and video credits when your library grows.</p></div><div className="flex items-center gap-2 rounded-full border border-white/[0.12] bg-[#19191C] p-1 text-xs font-semibold"><button type="button" onClick={() => setPeriod("monthly")} className={`min-h-10 rounded-full px-3 ${period === "monthly" ? "bg-white text-[#101012]" : "text-[#A1A1AA]"}`}>Monthly</button><button type="button" onClick={() => setPeriod("yearly")} className={`min-h-10 rounded-full px-3 ${period === "yearly" ? "bg-white text-[#101012]" : "text-[#A1A1AA]"}`}>Yearly</button><span className="rounded-full bg-[#E5484D] px-2 py-1 text-[10px] font-bold text-white">{creatorBilling.yearlyDiscountLabel}</span></div></div><div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,.92fr)]"><PlanCard plan={pro} period={period} selectedTier={selectedTier} onTierChange={setSelectedTier} currentPlan={currentPlan} isAdmin={isAdmin} onChoose={onChoose} /><div className="grid gap-4 sm:grid-cols-2">{otherPlans.map((plan) => <PlanCard key={plan.id} plan={plan} period={period} selectedTier={0} onTierChange={() => undefined} currentPlan={currentPlan} isAdmin={isAdmin} onChoose={onChoose} />)}</div></div></section>;
 }
 
 function Creator() {
@@ -133,18 +176,21 @@ function Creator() {
   const [previewModel, setPreviewModel] = useState<CreatorModel | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [creatorSubscription, setCreatorSubscription] = useState(false);
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [contentMode, setContentMode] = useState<"social" | "adult">(search.mode ?? "social");
   const [ageAgreed, setAgeAgreed] = useState(false);
   const [unlockingModel, setUnlockingModel] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
+  const [sheet, setSheet] = useState<"auth" | "age" | "plan" | "gallery" | null>(null);
 
   const readyForRender = (item: CreatorModel) => isAdmin || models[0]?.id === item.id || unlocked.includes(item.id);
   const selectedIdentity = models.find((item) => item.id === model) ?? null;
   const selectedName = model === RANDOM_IDENTITY ? "Random identity" : selectedIdentity?.name ?? "Random identity";
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
   const displayModels = useMemo(() => [...models].sort((a, b) => creatorModelRank(a) - creatorModelRank(b)), [models]);
-  const cast = displayModels;
-  const scenes = useMemo(() => sceneIdeas.map((scene, index) => ({ ...scene, image: displayModels[index]?.image_url ?? "" })).filter((scene) => scene.image), [displayModels]);
+  const showcaseItems = useMemo(() => showcaseConfig.map((item, index) => ({ ...item, src: displayModels[index % Math.max(displayModels.length, 1)]?.image_url ?? "" })).filter((item) => item.src), [displayModels]);
+  const ownedModels = useMemo(() => displayModels.filter((item) => readyForRender(item)), [displayModels, unlocked, isAdmin]);
+  const lockedModels = useMemo(() => displayModels.filter((item) => !readyForRender(item)), [displayModels, unlocked, isAdmin]);
 
   async function loadLibrary() {
     const { data: auth } = await supabase.auth.getUser();
@@ -185,6 +231,7 @@ function Creator() {
         setIsAdmin(!!role);
         setAgeAgreed(!!profile?.age_confirmed);
         setCreatorSubscription(profile?.subscription_status === "active" && CREATOR_PLAN_IDS.includes(profile?.subscription_tier ?? ""));
+        setSubscriptionTier(profile?.subscription_tier ?? null);
         setCredits(totalCredits(balance));
       }
       setLoading(false);
@@ -226,9 +273,14 @@ function Creator() {
   }
 
   async function submit() {
-    if (contentMode === "adult") {
-      if (!ageAgreed) { toast.error("Confirm that you are 18 or older to use adult mode."); return; }
-      if (!isAdmin && !creatorSubscription) { navigate({ to: "/credits", search: { plan: "creator", returnTo: "/create-media" } as never }); return; }
+    const gate = getNextGate({ signedIn: credits !== null, isAdmin, ageConfirmed: ageAgreed, hasAdultPlan: creatorSubscription, hasActivePlan: creatorSubscription, credits }, "generate", cost);
+    if (contentMode === "adult" && !ageAgreed) { setSheet("age"); return; }
+    if (gate.kind !== "allow") {
+      sessionStorage.setItem("hc_creator_intent", JSON.stringify({ model, contentMode, prompt, kind, seconds, size }));
+      if (gate.kind === "auth") setSheet("auth");
+      else if (gate.kind === "age") setSheet("age");
+      else setSheet("plan");
+      return;
     }
     const selectedModel = model === RANDOM_IDENTITY ? models[Math.floor(Math.random() * models.length)]?.id : model || models[0]?.id;
     if (!selectedModel) { toast.error("Models are still loading."); return; }
@@ -256,6 +308,20 @@ function Creator() {
     try { await saveAge(); } catch { toast.error("Sign in again before enabling adult mode."); setAgeAgreed(false); }
   }
 
+  function selectMode(next: "social" | "adult") {
+    if (next === "social") { setContentMode(next); return; }
+    const gate = getNextGate({ signedIn: credits !== null, isAdmin, ageConfirmed: ageAgreed, hasAdultPlan: creatorSubscription, hasActivePlan: creatorSubscription, credits }, "select_adult");
+    if (gate.kind === "allow") setContentMode("adult");
+    else if (gate.kind === "auth") setSheet("auth");
+    else if (gate.kind === "age") setSheet("age");
+    else setSheet("plan");
+  }
+
+  function choosePlan(plan: CreatorPlan) {
+    if (isAdmin) { toast.success(`${plan.name} is available to your admin account.`); return; }
+    navigate({ to: "/credits", search: { plan: plan.id === "pro" ? "creator" : plan.id, returnTo: "/create-media" } as never });
+  }
+
   async function downloadMedia(item: CreatorJob) {
     if (!item.media_url) return;
     try {
@@ -275,57 +341,37 @@ function Creator() {
   );
 
   return (
-    <div className="min-h-screen bg-[#121014] text-[#F5EFF2]">
+    <div className="min-h-screen bg-[#101012] text-[#F4F4F5]">
       <CreatorNav credits={credits} />
-      <main className="mx-auto max-w-[1240px] px-4 pb-12 sm:px-6">
-        <section className="relative py-10 sm:py-16">
-          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[-180px] h-[540px] w-[min(900px,100vw)] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(255,77,106,.28),rgba(255,138,91,.09)_55%,transparent)]" />
-          <div className="relative mx-auto max-w-[880px]">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-              <div><p className="mb-2 text-sm font-semibold text-[#FF7A90]">Create</p><h1 className="font-display text-[clamp(2.2rem,6vw,3.6rem)] font-extrabold leading-[1.03] tracking-[-.035em]">What are we shooting today?</h1></div>
-              <div role="tablist" aria-label="Output type" className="flex rounded-full border border-white/[0.1] bg-white/[0.06] p-1">
-                {(["image", "video"] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={kind === value} onClick={() => setKind(value)} className={`min-h-10 rounded-full px-4 text-xs font-semibold sm:px-5 sm:text-sm ${kind === value ? "bg-white text-[#121014]" : "text-[#B3A9B0] hover:text-white"}`}>{value === "image" ? "Photo" : "Video"}</button>)}
-              </div>
-            </div>
-            <section className="rounded-[24px] border border-white/[0.1] bg-[#1C191E] p-4 shadow-[0_24px_70px_rgba(0,0,0,.28)] sm:p-6">
-              <button type="button" onClick={() => selectedIdentity && setPreviewModel(selectedIdentity)} className="mb-4 flex min-h-12 items-center gap-3 text-left">
-                {selectedIdentity ? <img src={selectedIdentity.image_url} alt="" className="h-12 w-12 rounded-2xl object-cover" /> : <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#26222A]"><Sparkles className="h-5 w-5 text-[#FF7A90]" /></span>}
-                <span><span className="block text-sm font-semibold">{selectedName}, identity locked</span><span className="block text-xs text-[#8E858C]">Tap the identity below to change the face.</span></span>
-              </button>
-              <label htmlFor="creator-prompt" className="sr-only">Describe your scene</label>
-              <textarea id="creator-prompt" value={prompt} maxLength={2000} onChange={(event) => setPrompt(event.target.value)} placeholder="Describe the scene, outfit, pose, lighting, and camera..." className="min-h-[180px] w-full resize-y border-0 bg-transparent p-0 text-lg leading-relaxed text-[#F5EFF2] outline-none placeholder:text-[#8E858C] focus:ring-0" />
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-[#8E858C]"><span>{prompt.length} / 2000</span><div className="flex flex-wrap gap-2"><button type="button" onClick={surpriseMe} className="min-h-10 rounded-full border border-white/[0.12] px-3 font-semibold text-[#B3A9B0] hover:bg-white/[0.06] hover:text-white">Surprise me</button></div></div>
-              <div className="my-5 h-px bg-white/[0.08]" />
-              <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div><p className="mb-2 text-xs font-semibold text-[#8E858C]">Audience</p><div className="flex rounded-full bg-[#26222A] p-1"><button type="button" onClick={() => setContentMode("social")} className={`min-h-10 flex-1 rounded-full px-3 text-xs font-semibold ${contentMode === "social" ? "bg-white text-[#121014]" : "text-[#B3A9B0]"}`}>Social</button><button type="button" onClick={() => setContentMode("adult")} className={`min-h-10 flex-1 rounded-full px-3 text-xs font-semibold ${contentMode === "adult" ? "bg-white text-[#121014]" : "text-[#B3A9B0]"}`}>18+</button></div></div>
-                  <div><p className="mb-2 text-xs font-semibold text-[#8E858C]">Frame</p><div className="flex flex-wrap gap-1.5">{Object.entries(sizes).map(([key, [width, height]]) => <button type="button" key={key} onClick={() => setSize(key as keyof typeof sizes)} className={`min-h-10 rounded-full border px-3 text-[11px] font-semibold capitalize ${size === key ? "border-[#FF4D6A] bg-[#FF4D6A]/15 text-white" : "border-white/[0.12] text-[#B3A9B0] hover:text-white"}`}>{key} {width}x{height}</button>)}</div></div>
-                </div>
-                <button type="button" disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-[#FF4D6A] px-5 text-sm font-bold text-[#1A0A0F] transition hover:bg-[#FF7A90] disabled:cursor-not-allowed disabled:opacity-35"><span>{busy ? "Queuing..." : "Generate"}</span><span className="h-4 w-px bg-[#1A0A0F]/30" /><Bolt className="h-4 w-4" /><span>{cost}</span></button>
-              </div>
-              {kind === "video" && <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#B3A9B0]"><span>Duration</span>{[3, 5, 8, 10].map((value) => <button type="button" key={value} onClick={() => setSeconds(value)} className={`min-h-9 rounded-full border px-3 ${seconds === value ? "border-white bg-white text-[#121014]" : "border-white/[0.12]"}`}>{value}s</button>)}</div>}
-              {contentMode === "adult" && <div className="mt-4 rounded-2xl border border-white/[0.1] bg-[#26222A] p-4"><label className="flex items-start gap-3 text-sm text-[#B3A9B0]"><input type="checkbox" checked={ageAgreed} onChange={(event) => event.target.checked ? void agreeToAdultMode() : setAgeAgreed(false)} className="mt-1 h-4 w-4 accent-[#FF4D6A]" /><span>I confirm I am 18 or older. Adult renders require age confirmation and an eligible Creator plan.</span></label>{!creatorSubscription && !isAdmin && <Link to="/credits" search={{ plan: "creator", returnTo: "/create-media" } as never} className="mt-3 inline-flex text-sm font-semibold text-[#FF7A90]">View Creator plans <ChevronRight className="h-4 w-4" /></Link>}</div>}
-            </section>
-            {renderStatus}
-            {loadError && <p className="mt-3 text-sm text-[#FF8C8C]">{loadError}</p>}
+      <main className="mx-auto max-w-[1200px] px-4 pb-16 sm:px-6">
+        <section id="showcase" className="scroll-mt-24 py-8 sm:py-12">
+          <div className="grid gap-6 rounded-2xl border border-white/[0.1] bg-[#19191C] p-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] sm:items-center sm:p-8">
+            <div><p className="text-xs font-semibold text-[#A1A1AA]">Creator studio</p><h1 className="mt-3 max-w-[18ch] font-display text-[clamp(2rem,6vw,3.8rem)] font-extrabold leading-[1.02] tracking-[-.04em]">Bring your next scene to life.</h1><p className="mt-4 max-w-md text-sm leading-relaxed text-[#A1A1AA]">Describe a photo or short video, choose a fictional adult identity when you want consistency, and keep the result in your library.</p><div className="mt-6 flex flex-wrap gap-2"><button type="button" onClick={() => document.getElementById("models")?.scrollIntoView({ behavior: "smooth" })} className="min-h-11 rounded-xl bg-white px-4 text-sm font-bold text-[#101012]">Choose your model</button><button type="button" onClick={() => setSheet("gallery")} className="min-h-11 rounded-xl border border-white/[0.16] px-4 text-sm font-semibold text-white hover:bg-white/[0.08]">See gallery</button></div></div>
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:thin]" aria-label="Social-safe creator showcase">{showcaseItems.map((item, index) => <article key={`${item.label}-${index}`} className="relative aspect-[3/4] w-[130px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/[0.1] bg-[#232327] sm:w-[170px] lg:w-[200px]"><img src={item.src} alt={item.alt} loading={index < 3 ? "eager" : "lazy"} className="h-full w-full object-cover" /><div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8 text-xs font-semibold">{item.label}</div></article>)}</div>
           </div>
         </section>
 
-        <section aria-labelledby="scene-title" className="mt-2">
-          <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-semibold text-[#FF7A90]">Start from a scene</p><h2 id="scene-title" className="mt-1 font-display text-2xl font-extrabold tracking-tight sm:text-3xl">A strong first frame, ready to remix.</h2></div><span className="hidden text-xs text-[#8E858C] sm:inline">Swipe to explore</span></div>
-          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{scenes.map((scene) => <article key={scene.name} className="group relative h-[300px] w-[205px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#1C191E] sm:h-[340px] sm:w-[220px]"><img src={scene.image} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#121014] via-transparent to-transparent" /><div className="absolute inset-x-4 bottom-4"><h3 className="font-display text-lg font-bold">{scene.name}</h3><p className="mt-1 line-clamp-2 text-xs text-white/70">{scene.prompt}</p><button type="button" onClick={() => { setPrompt(scene.prompt); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mt-3 min-h-10 rounded-full bg-white px-3 text-xs font-bold text-[#121014]">Use this scene</button></div></article>)}</div>
-        </section>
+        <section id="models" className="scroll-mt-24"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">Step 1</p><h2 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">Choose your model</h2><p className="mt-2 text-sm text-[#A1A1AA]">Select a face to keep consistent, or start with a random identity.</p></div><Link to="/models" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">Browse all</Link></div><div className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [scrollbar-width:thin]">
+          <button type="button" aria-pressed={model === RANDOM_IDENTITY} onClick={() => { setModel(RANDOM_IDENTITY); setPreviewModel(null); }} className={`relative flex w-[148px] shrink-0 snap-start flex-col justify-end overflow-hidden rounded-xl border bg-[#19191C] p-4 text-left sm:w-[220px] ${model === RANDOM_IDENTITY ? "border-white ring-2 ring-white/20" : "border-white/[0.1]"}`}><span className="grid aspect-[3/4] place-items-center rounded-lg bg-[#232327]"><Sparkles className="h-8 w-8 text-white" /></span><span className="mt-3 text-sm font-bold">Create your own model</span><span className="mt-1 text-xs text-[#A1A1AA]">Use a random identity or describe anyone</span></button>
+          {[...ownedModels, ...lockedModels].map((item) => <article key={item.id} className={`w-[148px] shrink-0 snap-start overflow-hidden rounded-xl border bg-[#19191C] sm:w-[220px] ${model === item.id ? "border-[#E5484D] ring-2 ring-[#E5484D]/30" : "border-white/[0.1]"}`}><button type="button" aria-pressed={model === item.id} onClick={() => { if (readyForRender(item)) setModel(item.id); setPreviewModel(item); }} className="block w-full text-left"><img src={item.image_url} alt={item.name} loading="lazy" className="aspect-[3/4] w-full object-cover" /><div className="p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-[#A1A1AA]">{model === item.id ? "Selected" : readyForRender(item) ? "Owned" : "Unlock for 50 credits"}</p></div></button>{!readyForRender(item) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(item)} className="mx-3 mb-3 min-h-10 w-[calc(100%-1.5rem)] rounded-lg border border-white/[0.14] px-2 text-xs font-semibold text-white hover:bg-white/[0.08]">{unlockingModel ? "Unlocking..." : "Unlock"}</button>}</article>)}
+        </div>{selectedIdentity && <div className="mt-2 grid grid-cols-3 gap-2" aria-label={`${selectedIdentity.name} sample images`}>{[0, 1, 2].map((offset) => <img key={offset} src={displayModels[(displayModels.findIndex((item) => item.id === selectedIdentity.id) + offset) % Math.max(displayModels.length, 1)]?.image_url} alt="" loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" />)}</div>}</section>
 
-        <section className="mt-12" aria-labelledby="ways-title"><div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-semibold text-[#FF7A90]">More ways to create</p><h2 id="ways-title" className="mt-1 font-display text-2xl font-extrabold">Pick a starting point.</h2></div></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><button type="button" onClick={() => setKind("video")} className="rounded-[18px] border border-white/[0.08] bg-[#1C191E] p-4 text-left transition hover:bg-[#26222A]"><Video className="h-5 w-5 text-[#FF7A90]" /><h3 className="mt-5 font-semibold">Photo to video</h3><p className="mt-1 text-xs leading-relaxed text-[#8E858C]">Turn the next prompt into a short motion clip.</p></button><button type="button" onClick={() => setKind("image")} className="rounded-[18px] border border-white/[0.08] bg-[#1C191E] p-4 text-left transition hover:bg-[#26222A]"><ImageIcon className="h-5 w-5 text-[#FF7A90]" /><h3 className="mt-5 font-semibold">Create a photo</h3><p className="mt-1 text-xs leading-relaxed text-[#8E858C]">Start with a clean, campaign-ready still.</p></button><Link to="/models" className="rounded-[18px] border border-white/[0.08] bg-[#1C191E] p-4 text-left transition hover:bg-[#26222A]"><Sparkles className="h-5 w-5 text-[#FF7A90]" /><h3 className="mt-5 font-semibold">Browse models</h3><p className="mt-1 text-xs leading-relaxed text-[#8E858C]">Find an identity to lock before you write.</p></Link><Link to="/done-for-you" className="rounded-[18px] border border-white/[0.08] bg-[#1C191E] p-4 text-left transition hover:bg-[#26222A]"><LockKeyhole className="h-5 w-5 text-[#FF7A90]" /><h3 className="mt-5 font-semibold">Build a creator brand</h3><p className="mt-1 text-xs leading-relaxed text-[#8E858C]">Have our team build the launch system.</p></Link></div></section>
+        <section id="mode" className="mt-8 scroll-mt-24"><div className="rounded-xl border border-white/[0.1] bg-[#19191C] p-4 sm:flex sm:items-center sm:justify-between sm:gap-6"><div><p className="text-xs font-semibold text-[#A1A1AA]">Step 2</p><h2 className="mt-1 text-lg font-bold">Choose your mode</h2><p className="mt-1 text-sm text-[#A1A1AA]">Social keeps prompts and outputs suitable for public feeds. 18+ requires age confirmation and an eligible Pro plan.</p></div><div role="radiogroup" aria-label="Content mode" className="mt-4 flex w-full rounded-xl border border-white/[0.12] bg-[#232327] p-1 sm:mt-0 sm:w-auto"><button type="button" role="radio" aria-checked={contentMode === "social"} onClick={() => selectMode("social")} className={`min-h-11 flex-1 rounded-lg px-5 text-sm font-semibold sm:flex-none ${contentMode === "social" ? "bg-white text-[#101012]" : "text-[#A1A1AA]"}`}>Social</button><button type="button" role="radio" aria-checked={contentMode === "adult"} onClick={() => selectMode("adult")} className={`min-h-11 flex-1 rounded-lg px-5 text-sm font-semibold sm:flex-none ${contentMode === "adult" ? "bg-[#E5484D] text-white" : "text-[#A1A1AA]"}`}>18+ <span className="ml-1 text-[10px]">Pro</span></button></div></div></section>
 
-        <section className="mt-12" aria-labelledby="recent-title"><div className="mb-4 flex items-center justify-between gap-4"><div><p className="text-xs font-semibold text-[#FF7A90]">Recent renders</p><h2 id="recent-title" className="mt-1 font-display text-2xl font-extrabold">Your latest work.</h2></div><Link to="/library" className="text-sm font-semibold text-[#FF7A90] hover:text-white">See all {library.length} <ChevronRight className="inline h-4 w-4" /></Link></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{activeJob && activeJob.status !== "completed" && <div className="flex aspect-[4/5] animate-pulse items-end rounded-[14px] border border-dashed border-[#FF4D6A]/70 bg-[#1C191E] p-3 text-xs font-semibold">Rendering...</div>}{library.slice(0, activeJob && activeJob.status !== "completed" ? 5 : 6).map((item) => <button type="button" key={item.id} onClick={() => item.media_url && window.open(item.media_url, "_blank", "noopener,noreferrer")} className="group relative aspect-[4/5] overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#1C191E] text-left">{item.kind === "video" ? <video muted preload="metadata" className="h-full w-full object-cover" src={item.media_url ?? undefined} /> : <img src={item.media_url ?? ""} alt="Saved render" className="h-full w-full object-cover transition group-hover:scale-105" />}<span className="absolute left-2 top-2 rounded-full bg-[#121014]/80 px-2 py-1 text-[10px] font-semibold">{item.kind === "video" ? "Video" : "Photo"}</span></button>)}</div>{library.length === 0 && !activeJob && <p className="rounded-[18px] border border-dashed border-white/[0.12] p-8 text-center text-sm text-[#8E858C]">Your completed renders will appear here.</p>}</section>
+        <section id="create" className="mt-8 scroll-mt-24"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">Step 3</p><h2 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">Describe the scene</h2></div><span className="rounded-full border border-white/[0.12] px-3 py-2 text-xs font-semibold text-[#A1A1AA]">{selectedName}</span></div><section className="mt-4 rounded-2xl border border-white/[0.1] bg-[#19191C] p-4 sm:p-6"><div className="flex rounded-xl border border-white/[0.12] bg-[#232327] p-1" role="tablist" aria-label="Output type">{(["image", "video"] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={kind === value} onClick={() => setKind(value)} className={`min-h-11 flex-1 rounded-lg text-sm font-semibold ${kind === value ? "bg-white text-[#101012]" : "text-[#A1A1AA]"}`}>{value === "image" ? "Photo" : "Video"}</button>)}</div><label htmlFor="creator-prompt" className="sr-only">Describe your scene</label><textarea id="creator-prompt" value={prompt} maxLength={2000} onChange={(event) => setPrompt(event.target.value)} placeholder="Describe the pose, outfit, setting, lighting, and action..." className="mt-4 min-h-[120px] w-full resize-y rounded-xl border border-white/[0.12] bg-[#101012] p-4 text-base leading-relaxed text-white outline-none placeholder:text-[#71717A] focus:border-white focus:ring-2 focus:ring-white/20 sm:min-h-[180px]" /><div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[#A1A1AA]"><span>{prompt.length} / 2000</span><button type="button" onClick={surpriseMe} className="min-h-10 rounded-lg border border-white/[0.14] px-3 font-semibold text-white hover:bg-white/[0.08]">Surprise me</button></div><div className="mt-5 flex flex-col gap-4 border-t border-white/[0.08] pt-5"><div><p className="text-xs font-semibold text-[#A1A1AA]">Frame size</p><div className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1">{Object.entries(sizes).map(([key, [width, height]]) => <button type="button" key={key} onClick={() => setSize(key as keyof typeof sizes)} className={`min-h-10 shrink-0 rounded-lg border px-3 text-xs font-semibold capitalize ${size === key ? "border-white bg-white text-[#101012]" : "border-white/[0.14] text-[#A1A1AA] hover:text-white"}`}>{key} · {width}×{height}</button>)}</div></div>{kind === "video" && <div><p className="text-xs font-semibold text-[#A1A1AA]">Duration</p><div className="mt-2 flex gap-2 overflow-x-auto pb-1">{[3, 5, 8, 10].map((value) => <button type="button" key={value} onClick={() => setSeconds(value)} className={`min-h-10 shrink-0 rounded-lg border px-3 text-xs font-semibold ${seconds === value ? "border-white bg-white text-[#101012]" : "border-white/[0.14] text-[#A1A1AA]"}`}>{value}s</button>)}</div></div>}<div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-[#A1A1AA]">Estimated cost <span className="font-bold text-white">{cost} credits</span>{contentMode === "adult" && <span className="ml-2 text-xs text-[#E5484D]">18+ rate</span>}</p><button type="button" aria-disabled={busy || prompt.trim().length < 3} disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="min-h-12 w-full rounded-xl bg-white px-5 text-sm font-bold text-[#101012] transition hover:bg-[#E4E4E7] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto">{busy ? "Queuing…" : `Generate · ${cost} credits`}</button></div></div>{renderStatus}{loadError && <p className="mt-3 text-sm text-[#FF8C8C]">{loadError}</p>}</section></section>
 
-        <section className="mt-12" aria-labelledby="cast-title"><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-semibold text-[#FF7A90]">Your cast</p><h2 id="cast-title" className="mt-1 font-display text-2xl font-extrabold">Lock one face, then keep creating.</h2></div><Link to="/models" className="text-sm font-semibold text-[#FF7A90] hover:text-white">Browse all models <ChevronRight className="inline h-4 w-4" /></Link></div><div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{cast.map((item) => <article key={item.id} className={`w-[168px] shrink-0 overflow-hidden rounded-[18px] border bg-[#1C191E] ${model === item.id ? "border-[#FF4D6A] ring-2 ring-[#FF4D6A]/20" : "border-white/[0.08]"}`}><button type="button" onClick={() => { setModel(item.id); setPreviewModel(item); }} className="block w-full text-left"><img src={item.image_url} alt={item.name} className="aspect-[4/5] w-full object-cover" /><div className="p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-[#8E858C]">{model === item.id ? "Selected" : readyForRender(item) ? "Ready" : "Locked"}</p></div></button>{!readyForRender(item) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(item)} className="mx-3 mb-3 min-h-9 w-[calc(100%-1.5rem)] rounded-full border border-white/[0.12] px-2 text-[11px] font-semibold text-[#B3A9B0] hover:bg-white/[0.06]">Unlock for 50 credits</button>}</article>)}</div></section>
+        <PlansSection currentPlan={subscriptionTier} isAdmin={isAdmin} onChoose={choosePlan} />
 
-        <section className="mt-12 flex flex-col items-start justify-between gap-4 rounded-[18px] border border-white/[0.08] bg-[#1C191E] p-5 sm:flex-row sm:items-center sm:p-6"><div><p className="font-display text-xl font-bold">Want the whole AI creator business built for you?</p><p className="mt-1 text-sm text-[#8E858C]">One model identity, a launch-ready library, and a handoff you can operate.</p></div><a href={BOOK_CALL_SMS} className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-white/[0.16] px-5 text-sm font-semibold transition hover:bg-white hover:text-[#121014]">Book a call</a></section>
+        <section id="book-call" className="mt-12 scroll-mt-24 rounded-2xl border border-white/[0.1] bg-[#19191C] p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-7"><div><p className="text-xs font-semibold text-[#A1A1AA]">Done-for-you</p><h2 className="mt-1 font-display text-2xl font-extrabold">Want the whole AI creator business built for you?</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#A1A1AA]">One model identity, a launch-ready library, and a handoff you can operate. We’ll reply with next steps.</p></div><a href={BOOK_CALL_SMS} className="mt-5 inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-white px-5 text-sm font-bold text-[#101012] sm:mt-0">Book a call</a></section>
+
+        {credits !== null && <section id="renders" className="mt-12 scroll-mt-24"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">Your renders</p><h2 className="mt-1 font-display text-2xl font-extrabold">Recent work</h2></div><Link to="/library" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">View all <ChevronRight className="inline h-4 w-4" /></Link></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{activeJob && activeJob.status !== "completed" && <div className="flex aspect-[4/5] animate-pulse items-end rounded-xl border border-dashed border-white/[0.18] bg-[#19191C] p-3 text-xs font-semibold">Rendering…</div>}{library.slice(0, activeJob && activeJob.status !== "completed" ? 5 : 6).map((item) => <button type="button" key={item.id} onClick={() => item.media_url && window.open(item.media_url, "_blank", "noopener,noreferrer")} className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] text-left">{item.kind === "video" ? <video muted preload="metadata" className="h-full w-full object-cover" src={item.media_url ?? undefined} /> : <img src={item.media_url ?? ""} alt="Saved render" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />}<span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold">{item.kind === "video" ? "Video" : "Photo"}</span></button>)}</div>{library.length === 0 && !activeJob && <p className="mt-4 rounded-xl border border-dashed border-white/[0.12] p-8 text-center text-sm text-[#A1A1AA]">Your completed renders will appear here.</p>}</section>}
       </main>
       <CreatorFooter />
-      {previewModel && <div role="dialog" aria-modal="true" aria-label={`${previewModel.name} preview`} className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4" onClick={() => setPreviewModel(null)}><div className="relative w-full max-w-md overflow-hidden rounded-[20px] border border-white/[0.12] bg-[#1C191E]" onClick={(event) => event.stopPropagation()}><button type="button" aria-label="Close preview" onClick={() => setPreviewModel(null)} className="absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/60"><X className="h-4 w-4" /></button><img src={previewModel.image_url} alt={previewModel.name} className="aspect-[4/5] max-h-[70vh] w-full object-cover object-top" /><div className="p-5"><h2 className="font-display text-2xl font-extrabold">{previewModel.name}</h2><p className="mt-1 text-sm text-[#B3A9B0]">{readyForRender(previewModel) ? "Identity ready. This face will stay consistent." : "Unlock this identity to keep the face consistent."}</p>{!readyForRender(previewModel) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(previewModel)} className="mt-4 min-h-11 w-full rounded-[14px] bg-[#FF4D6A] text-sm font-bold text-[#1A0A0F] disabled:opacity-50">{unlockingModel ? "Unlocking..." : "Unlock for 50 credits"}</button>}</div></div></div>}
+      {previewModel && <CreatorSheet open onClose={() => setPreviewModel(null)} title={`${previewModel.name} preview`}><img src={previewModel.image_url} alt={previewModel.name} className="max-h-[60dvh] w-full rounded-xl object-cover object-top" /><p className="mt-4 text-sm text-[#A1A1AA]">{readyForRender(previewModel) ? "Owned identity. This face will stay consistent." : "Unlock this identity to keep the face consistent in your renders."}</p>{!readyForRender(previewModel) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(previewModel)} className="mt-4 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-50">{unlockingModel ? "Unlocking…" : "Unlock for 50 credits"}</button>}</CreatorSheet>}
+      <CreatorSheet open={sheet === "auth"} onClose={() => setSheet(null)} title="Sign in to continue"><p className="text-sm leading-relaxed text-[#A1A1AA]">Create an account or sign in to save renders, use your credits, and keep an identity consistent.</p><Link to="/auth" search={{ redirect: "/create-media" } as never} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-bold text-[#101012]">Open sign in</Link></CreatorSheet>
+      <CreatorSheet open={sheet === "age"} onClose={() => setSheet(null)} title="Confirm your age"><label className="flex items-start gap-3 text-sm leading-relaxed text-[#A1A1AA]"><input type="checkbox" checked={ageAgreed} onChange={(event) => setAgeAgreed(event.target.checked)} className="mt-1 h-4 w-4 accent-[#E5484D]" /><span>I confirm that I am 18 or older and agree to the Terms and Privacy Policy.</span></label><button type="button" disabled={!ageAgreed} onClick={() => { void agreeToAdultMode(); setSheet(null); setContentMode("adult"); }} className="mt-5 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-40">Continue to 18+</button></CreatorSheet>
+      <CreatorSheet open={sheet === "plan"} onClose={() => setSheet(null)} title="Choose a plan"><p className="text-sm leading-relaxed text-[#A1A1AA]">A plan is required for creator renders. 18+ mode requires Pro and age confirmation.</p><div className="mt-4 grid gap-3">{creatorPlans.map((plan) => <button type="button" key={plan.id} onClick={() => choosePlan(plan)} className="flex min-h-14 items-center justify-between rounded-xl border border-white/[0.12] px-4 text-left hover:bg-white/[0.08]"><span><span className="block font-semibold">{plan.name}</span><span className="block text-xs text-[#A1A1AA]">{plan.id === "pro" ? "18+ eligible" : "Social creator plan"}</span></span><ChevronRight className="h-4 w-4" /></button>)}</div></CreatorSheet>
+      <CreatorSheet open={sheet === "gallery"} onClose={() => setSheet(null)} title="Creator gallery"><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{showcaseItems.map((item, index) => <figure key={`${item.label}-${index}`}><img src={item.src} alt={item.alt} loading="lazy" className="aspect-[3/4] w-full rounded-xl object-cover" /><figcaption className="mt-1 text-xs text-[#A1A1AA]">{item.label}</figcaption></figure>)}</div><Link to="/library" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/[0.14] text-sm font-semibold">View library</Link></CreatorSheet>
     </div>
   );
 }

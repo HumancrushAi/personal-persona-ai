@@ -64,7 +64,10 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
     try {
       const jobId = data.kind === "image"
         ? await startImageJob(context.supabase, context.userId, conv.id, c, renderPrompt, c.base_personality, after, null, [], { socialSafe: contentMode === "social" })
-        : await startVideoJob(context.supabase, context.userId, conv.id, c, renderPrompt, after, data.seconds ?? 5, null, [], { socialSafe: contentMode === "social" });
+        : await startVideoJob(context.supabase, context.userId, conv.id, c, renderPrompt, after, data.seconds ?? 5, null, [], {
+            socialSafe: contentMode === "social",
+            cost,
+          });
       return { jobId, cost, status: "pending" as const };
     } catch (e) {
       throw e;

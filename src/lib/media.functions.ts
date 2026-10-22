@@ -1809,7 +1809,7 @@ export async function startVideoJob(
   seconds?: number,
   toy: Toy | null = null,
   toys: Toy[] = toy ? [toy] : [],
-  options: { socialSafe?: boolean } = {},
+  options: { socialSafe?: boolean; cost?: number } = {},
 ): Promise<string> {
   // Video must use the same canonical outer-chat portrait for its opening
   // still, FaceID pass and immutable worker identity reference.
@@ -1823,11 +1823,15 @@ export async function startVideoJob(
   const explicitRequest = isExplicitMediaRequest(userReq);
   const requestedAdult = options.socialSafe === false || explicitRequest;
   const socialMode = !requestedAdult;
+  // Chat keeps its fixed 15-credit video price. The standalone creator sets
+  // the exact duration-based debit here so the job record and every refund
+  // match the amount the user actually paid.
+  const cost = options.cost ?? VIDEO_COST;
   if (!socialMode) {
     try {
       await assertAdultGenerationForUser(supabase, userId);
     } catch (error) {
-      await refundCredits(supabase, userId, VIDEO_COST, `refund-adult-access-${userId}-${Date.now()}`, balance);
+      await refundCredits(supabase, userId, cost, `refund-adult-access-${userId}-${Date.now()}`, balance);
       throw error;
     }
   }
@@ -1844,8 +1848,6 @@ export async function startVideoJob(
   // single held pose.
   const totalSeconds = seconds ?? 5;
   const sceneCount = Math.max(1, Math.min(4, Math.round(totalSeconds / 5)));
-
-  const cost = VIDEO_COST;
 
   const runpodVideo = runpodEndpoint("video");
   if (!runpodVideo) {

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { viewerCount, getCompanionReel, companionReelUrl, getEffectiveCompanionReel } from "@/lib/reels";
 import { companionImage } from "@/lib/companion-images";
+import { displayModelRank } from "@/lib/display-models";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Circle } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -37,6 +38,8 @@ function CamsPage() {
   const sortedModels = useMemo(() => {
     if (!models) return [];
     return [...models].sort((a, b) => {
+      const visualRank = displayModelRank(a) - displayModelRank(b);
+      if (visualRank) return visualRank;
       const hasA = getEffectiveCompanionReel(a) ? 1 : 0;
       const hasB = getEffectiveCompanionReel(b) ? 1 : 0;
       return hasB - hasA;

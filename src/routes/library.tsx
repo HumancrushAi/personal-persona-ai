@@ -8,6 +8,7 @@ import { LogoLink } from "@/components/Logo";
 const librarySearchSchema = z.object({
   type: z.enum(["all", "photos", "videos", "favourites"]).optional(),
   model: z.string().optional(),
+  item: z.string().uuid().optional(),
 });
 
 export const Route = createFileRoute("/library")({
@@ -115,10 +116,20 @@ function LibraryPage() {
 
   useEffect(() => { void loadPage(true); }, []);
 
+  // Recent work on /create-media deliberately stays compact (six cards). A
+  // click always comes here, where the selected render opens inside the app
+  // instead of navigating to its raw Supabase Storage URL.
+  useEffect(() => {
+    if (!search.item) return;
+    const selectedItem = items.find((item) => item.id === search.item);
+    if (selectedItem) setDetail(selectedItem);
+  }, [items, search.item]);
+
   useEffect(() => {
     const params = new URLSearchParams();
     if (filter !== "all") params.set("type", filter);
     if (modelFilter !== "all") params.set("model", modelFilter);
+    if (search.item) params.set("item", search.item);
     window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
   }, [filter, modelFilter]);
 

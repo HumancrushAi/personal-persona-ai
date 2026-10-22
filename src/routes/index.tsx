@@ -31,6 +31,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { companionImage } from "@/lib/companion-images";
+import { displayModelRank, orderModelsForDisplay } from "@/lib/display-models";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { SiteHeader, readGender, type Gender } from "@/components/SiteHeader";
 import { openSupport } from "@/components/SupportWidget";
@@ -103,7 +104,7 @@ const isHeroExcluded = (c: { id: string; name: string; short_bio?: string | null
 // The compact "New experiences" row is a marketing surface, not the full
 // discovery roster. Keep it focused on fictional adult models in the 21–36
 // range so a time-based shuffle cannot put older profiles in the first cards.
-const HOMEPAGE_FEATURED_NAMES = ["vanessa", "sabrina", "bianca", "scarlett", "sofia", "kira", "ruby", "lola"];
+const HOMEPAGE_FEATURED_NAMES = ["raven", "skye", "aria", "sofia", "kira", "harley", "vex", "chloe"];
 const isHomepageFeaturedModel = (c: Companion) => {
   const age = Number(c.age);
   return age >= 21 && age <= 36 && c.art_style !== "anime";
@@ -389,12 +390,7 @@ function Landing() {
     }
   }, []);
 
-  const bannerSlides = useMemo(() => {
-    const slides = buildBannerSlides();
-    if (slides.length < 2) return slides;
-    const k = heroVisit % slides.length;
-    return [...slides.slice(k), ...slides.slice(0, k)];
-  }, [companions, topTab, inTab, heroVisit]);
+  const bannerSlides = useMemo(() => buildBannerSlides(), [companions, topTab, inTab]);
 
   function buildBannerSlides() {
     if (!companions || companions.length === 0) return [];
@@ -414,22 +410,22 @@ function Landing() {
         return comp && inTab(comp) && !isHeroExcluded(comp) ? toSlide(comp, b.sub) : null;
       })
       .filter((s): s is NonNullable<typeof s> => s !== null);
-    if (curated.length) return curated;
+    if (curated.length) return curated.sort((a, b) => displayModelRank(a.companion) - displayModelRank(b.companion));
     // No curated banner for this tab: the first few of that gender still make
     // a slider, which is better than a tab that empties the top of the page.
-    return companions
-      .filter((c) => inTab(c) && !isHeroExcluded(c))
+    return orderModelsForDisplay(companions
+      .filter((c) => inTab(c) && !isHeroExcluded(c)))
       .slice(0, 5)
       .map((c) => toSlide(c, c.ethnicity));
   }
 
   const liveNow = useMemo(
-    () => dealForWindow((companions ?? []).filter(inTab), 14, windowSeed()),
+    () => orderModelsForDisplay(dealForWindow((companions ?? []).filter(inTab), 14, windowSeed())),
     [companions, inTab],
   );
 
   const experienceModels = useMemo(() => {
-    const eligible = (companions ?? []).filter((c) => inTab(c) && isHomepageFeaturedModel(c));
+    const eligible = orderModelsForDisplay((companions ?? []).filter((c) => inTab(c) && isHomepageFeaturedModel(c)));
     const preferred = eligible
       .filter((c) => HOMEPAGE_FEATURED_NAMES.includes(c.name.trim().toLowerCase()))
       .sort((a, b) => HOMEPAGE_FEATURED_NAMES.indexOf(a.name.trim().toLowerCase()) - HOMEPAGE_FEATURED_NAMES.indexOf(b.name.trim().toLowerCase()));

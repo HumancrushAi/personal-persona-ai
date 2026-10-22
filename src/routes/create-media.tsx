@@ -14,6 +14,7 @@ import { CreatorSheet } from "@/components/creator/CreatorSheet";
 import { creatorBilling, creatorPlans, creatorPlansFromTiers, estimatedPlanMedia, formatCredits, formatPlanPrice, type BillingPeriod, type CreatorPlan } from "@/config/plans";
 import { getNextGate } from "@/lib/creator-gates";
 import { showcaseConfig } from "@/config/showcase";
+import { orderModelsForDisplay } from "@/lib/display-models";
 
 const creatorSearchSchema = z.object({
   model: z.string().optional(),
@@ -185,7 +186,7 @@ function Creator() {
   const selectedIdentity = models.find((item) => item.id === model) ?? null;
   const selectedName = model === RANDOM_IDENTITY ? "Random identity" : selectedIdentity?.name ?? "Random identity";
   const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
-  const displayModels = useMemo(() => [...models].sort((a, b) => creatorModelRank(a) - creatorModelRank(b)), [models]);
+  const displayModels = useMemo(() => orderModelsForDisplay(models), [models]);
   const showcaseModels = useMemo(() => {
     const seen = new Set<string>();
     return displayModels.filter((item) => {
@@ -238,7 +239,7 @@ function Creator() {
       setModels(companionRows);
       if (pricing?.tiers?.length) setPlans(creatorPlansFromTiers(pricing.tiers));
       const requested = search.model;
-      const visualFirst = [...companionRows].sort((a, b) => creatorModelRank(a) - creatorModelRank(b))[0];
+      const visualFirst = orderModelsForDisplay(companionRows)[0];
       if (visualFirst) setModel(requested && companionRows.some((item) => item.id === requested) ? requested : visualFirst.id);
       if (auth.user) {
         const [{ data: unlockRows }, { data: role }, { data: profile }, { data: balance }] = await Promise.all([
@@ -387,7 +388,7 @@ function Creator() {
 
         <section id="book-call" className="mt-12 scroll-mt-24 rounded-2xl border border-white/[0.1] bg-[#19191C] p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-7"><div><p className="text-xs font-semibold text-[#A1A1AA]">Done-for-you</p><h2 className="mt-1 font-display text-2xl font-extrabold">Want the whole AI creator business built for you?</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#A1A1AA]">One model identity, a launch-ready library, and a handoff you can operate. We’ll reply with next steps.</p></div><a href={BOOK_CALL_SMS} className="mt-5 inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-white px-5 text-sm font-bold text-[#101012] sm:mt-0">Book a call</a></section>
 
-        {credits !== null && <section id="renders" className="mt-12 scroll-mt-24"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">Your renders</p><h2 className="mt-1 font-display text-2xl font-extrabold">Recent work</h2></div><Link to="/library" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">View all <ChevronRight className="inline h-4 w-4" /></Link></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{activeJob && activeJob.status !== "completed" && <div className="flex aspect-[4/5] animate-pulse items-end rounded-xl border border-dashed border-white/[0.18] bg-[#19191C] p-3 text-xs font-semibold">Rendering…</div>}{library.slice(0, activeJob && activeJob.status !== "completed" ? 5 : 6).map((item) => <button type="button" key={item.id} onClick={() => item.media_url && window.open(item.media_url, "_blank", "noopener,noreferrer")} className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] text-left">{item.kind === "video" ? <video muted preload="metadata" className="h-full w-full object-cover" src={item.media_url ?? undefined} /> : <img src={item.media_url ?? ""} alt="Saved render" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />}<span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold">{item.kind === "video" ? "Video" : "Photo"}</span></button>)}</div>{library.length === 0 && !activeJob && <p className="mt-4 rounded-xl border border-dashed border-white/[0.12] p-8 text-center text-sm text-[#A1A1AA]">Your completed renders will appear here.</p>}</section>}
+        {credits !== null && <section id="renders" className="mt-12 scroll-mt-24"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">Your renders</p><h2 className="mt-1 font-display text-2xl font-extrabold">Recent work</h2></div><Link to="/library" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">See more <ChevronRight className="inline h-4 w-4" /></Link></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{activeJob && activeJob.status !== "completed" && <div className="flex aspect-[4/5] animate-pulse items-end rounded-xl border border-dashed border-white/[0.18] bg-[#19191C] p-3 text-xs font-semibold">Rendering…</div>}{library.slice(0, activeJob && activeJob.status !== "completed" ? 5 : 6).map((item) => <Link to="/library" search={{ item: item.id } as never} key={item.id} className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] text-left">{item.kind === "video" ? <video muted preload="metadata" className="pointer-events-none h-full w-full object-cover" src={item.media_url ?? undefined} /> : <img src={item.media_url ?? ""} alt="Saved render" loading="lazy" draggable={false} className="pointer-events-none h-full w-full object-cover transition group-hover:scale-105" />}<span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold">{item.kind === "video" ? "Video" : "Photo"}</span></Link>)}</div>{library.length === 0 && !activeJob && <p className="mt-4 rounded-xl border border-dashed border-white/[0.12] p-8 text-center text-sm text-[#A1A1AA]">Your completed renders will appear here.</p>}</section>}
       </main>
       <CreatorFooter />
       <style>{`@media (max-width:639px){button[aria-label^="Scroll recent looks"],button[aria-label^="Scroll models"]{display:none!important}}`}</style>

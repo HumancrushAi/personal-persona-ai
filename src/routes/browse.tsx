@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
+import { orderModelsForDisplay } from "@/lib/display-models";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const Route = createFileRoute("/browse")({
@@ -16,10 +17,10 @@ function Browse() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companions")
-        .select("id, name, ethnicity, age, image_url, short_bio")
+        .select("id, name, ethnicity, age, image_url, short_bio, gender")
         .order("sort_order");
       if (error) throw error;
-      return data;
+      return orderModelsForDisplay(data ?? []);
     },
   });
 

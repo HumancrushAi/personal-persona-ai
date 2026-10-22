@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getPublicCompanions } from "@/lib/seo.functions";
 import { companionImage } from "@/lib/companion-images";
+import { orderModelsForDisplay } from "@/lib/display-models";
 import { SITE_NAME, SITE_URL, absolute, companionKind, jsonLd, pageMeta, type PublicCompanion } from "@/lib/seo";
 
 // The model directory. Server-rendered (no ssr: false) so search engines and AI
@@ -41,9 +42,9 @@ export const Route = createFileRoute("/models/")({
 
 function ModelsPage() {
   const list = Route.useLoaderData() ?? [];
-  const women = list.filter((c) => c.gender === "female" || c.gender === "trans-female");
-  const men = list.filter((c) => c.gender === "male" || c.gender === "trans-male");
-  const others = list.filter((c) => !women.includes(c) && !men.includes(c));
+  const women = orderModelsForDisplay(list.filter((c) => c.gender === "female" || c.gender === "trans-female"));
+  const men = orderModelsForDisplay(list.filter((c) => c.gender === "male" || c.gender === "trans-male"));
+  const others = orderModelsForDisplay(list.filter((c) => !women.includes(c) && !men.includes(c)));
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-24 pt-8 md:px-6 md:pt-12">

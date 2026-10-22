@@ -543,7 +543,12 @@ const VIDEO_COST = 15;
 // How long a job may sit unfinished before it is written off and refunded.
 // A 10s clip plus queue time runs past four minutes, so this has to be well
 // clear of a slow-but-healthy job while still not leaving a hung one open.
-const STALE_JOB_MS = 15 * 60_000;
+const STALE_IMAGE_JOB_MS = Number(process.env.MEDIA_IMAGE_TIMEOUT_MS || 10 * 60_000);
+const STALE_VIDEO_JOB_MS = Number(process.env.MEDIA_VIDEO_TIMEOUT_MS || 15 * 60_000);
+
+function isMissingRunPodJob(error: unknown) {
+  return /RunPod status error:\s*404\b|job not found/i.test(String((error as Error)?.message ?? error));
+}
 
 export { voiceFor } from "./voices";
 import { voiceFor } from "./voices";
@@ -2218,7 +2223,8 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     // whether a job is dead, and that is true whether or not it was ever
     // launched.
     const ageMs = Date.now() - new Date((job as any).created_at).getTime();
-    if (ageMs > STALE_JOB_MS) {
+    const jobTimeoutMs = job.kind === "image" ? STALE_IMAGE_JOB_MS : STALE_VIDEO_JOB_MS;
+    if (ageMs > jobTimeoutMs) {
       await fail(job as any, "Generation timed out — the provider never finished this job.");
       return { status: "failed" };
     }
@@ -2238,7 +2244,14 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     if ((job as any).provider === "runpod-still") {
       const stillTarget = targetFor(runpodEndpoint("comfy"), (job as any).replicate_id);
       const endpoint = stillTarget.endpoint;
-      if (!endpoint) return { status: "processing" };
+      // A job created against a previous dedicated pod cannot be polled once
+      // that pod URL has been retired. Keeping it in processing would strand
+      // both the render and its credits indefinitely.
+      if (!endpoint) {
+        const message = "Generation provider is no longer available for this job. Your credits were refunded.";
+        await fail(job as any, message, (job as any).replicate_id);
+        return { status: "failed", error: message };
+      }
       const { runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } =
         await import("./runpod");
       let res: { status: string; output?: any; error?: any };
@@ -2269,14 +2282,29 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     if ((job as any).provider === "runpod") {
       const target = targetFor(runpodEndpoint(job.kind), (job as any).replicate_id);
       const endpoint = target.endpoint;
-      if (!endpoint) return { status: job.status };
+      // This also covers rows left over from the old dedicated-pod route. A
+      // new submission cannot reach this point without an endpoint, so it is
+      // safe to resolve these orphaned rows through the normal refund path.
+      if (!endpoint) {
+        const message = "Generation provider is no longer available for this job. Your credits were refunded.";
+        await fail(job as any, message, (job as any).replicate_id);
+        return { status: "failed", error: message };
+      }
 
       const { runpodGet, runpodStatusOf, runpodOutputUrl, runpodOutputError } =
         await import("./runpod");
       let res: { status: string; output?: any; error?: any };
       try {
         res = await runpodGet(endpoint, target.id);
-      } catch {
+      } catch (error) {
+        // A 404 means this provider job no longer exists. Retrying the same
+        // status request cannot recover it, so close it through the normal
+        // failure/refund path rather than showing an endless spinner.
+        if (isMissingRunPodJob(error)) {
+          const message = "Generation provider lost this job. Your credits were refunded.";
+          await fail(job as any, message, (job as any).replicate_id);
+          return { status: "failed", error: message };
+        }
         return { status: job.status }; // transient — keep polling
       }
 

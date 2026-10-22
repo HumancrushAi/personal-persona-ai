@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
+import { orderModelsForDisplay } from "@/lib/display-models";
 import { SiteHeader } from "@/components/SiteHeader";
 import { MessageCircle } from "lucide-react";
 import { useState } from "react";
@@ -54,7 +55,7 @@ function GalleryPage() {
     },
   });
 
-  const items = (data ?? []).filter((c) => {
+  const items = orderModelsForDisplay((data ?? []).filter((c) => {
     if (tab === "All") return true;
     if (tab === "Realistic") return c.art_style !== "anime";
     if (tab === "Anime") return c.art_style === "anime";
@@ -63,7 +64,7 @@ function GalleryPage() {
     if (tab === "Trans") return c.gender === "trans-female" || c.gender === "trans-male";
     if (tab === "Non-binary") return c.gender === "non-binary";
     return true;
-  });
+  }));
 
   return (
     <div className="min-h-screen pb-20">

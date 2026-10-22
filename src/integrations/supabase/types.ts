@@ -515,6 +515,7 @@ export type Database = {
           conversation_id: string | null;
           kind: "image" | "video" | "voice";
           status: "pending" | "processing" | "completed" | "failed";
+          content_mode: "social" | "adult";
           prompt: string;
           provider: string;
           replicate_id: string | null;
@@ -530,6 +531,7 @@ export type Database = {
           conversation_id?: string | null;
           kind: "image" | "video" | "voice";
           status?: "pending" | "processing" | "completed" | "failed";
+          content_mode?: "social" | "adult";
           prompt: string;
           provider: string;
           replicate_id?: string | null;
@@ -545,6 +547,7 @@ export type Database = {
           conversation_id?: string | null;
           kind?: "image" | "video" | "voice";
           status?: "pending" | "processing" | "completed" | "failed";
+          content_mode?: "social" | "adult";
           prompt?: string;
           provider?: string;
           replicate_id?: string | null;

@@ -30,19 +30,23 @@ import {
   isRubAct,
   isFingerInsertAct,
 } from "./selfie";
+import {
+  hasSocialExplicitTerms,
+  markContentMode,
+  SOCIAL_SAFETY_NEGATIVE,
+  stripSocialExplicitTerms,
+} from "./social-safety";
+import { assertAdultGenerationForUser } from "./content-mode.server";
 
 // A request with no adult language should never inherit the nude default from
 // the adults-only chat renderer. This is shared by the standalone creator and
 // the chat media path so a social-safe request cannot depend on which button
 // submitted it.
-const SOCIAL_EXPLICIT_TERMS = /\b(?:nude|nudes|naked|nakie|nekkid|unclothed|undress\w*|strip\w*|topless|bottomless|bare|exposed|full\s*frontal|birthday\s*suit|in\s+the\s+buff|tits?|titties|boobs?|boobies|breasts?|nipples?|areolas?|cleavage|rack|knockers|melons|jugs|pussy|vagina|vulva|clit\w*|labia|cunt|snatch|coochie|slit|genital\w*|crotch|dick|cock|penis|balls|testicles?|asshole|butthole|anus|fuck\w*|sex|penetrat\w*|insert\w*|masturbat\w*|finger\w*|lick\w*|suck\w*|blow\s*job|oral|anal|creampie|cum\w*|orgasm\w*|squirt\w*)\b/i;
-const SOCIAL_EXPLICIT_TERMS_GLOBAL = new RegExp(SOCIAL_EXPLICIT_TERMS.source, "gi");
-
 export function isExplicitMediaRequest(request: string | undefined): boolean {
   const text = (request ?? "").trim();
   // An empty request intentionally retains the adult chat default. A named,
   // ordinary scene is social-safe unless it asks for adult anatomy or action.
-  return text.length === 0 || requestIsNude(text) || SOCIAL_EXPLICIT_TERMS.test(text);
+  return text.length === 0 || requestIsNude(text) || hasSocialExplicitTerms(text);
 }
 
 export function socialSafePrompt(request: string | undefined): string {
@@ -56,8 +60,7 @@ export function socialSafePrompt(request: string | undefined): string {
  * before it is submitted to RunPod.
  */
 export function socialSafeRenderPrompt(request: string | undefined): string {
-  const cleaned = (request ?? "")
-    .replace(SOCIAL_EXPLICIT_TERMS_GLOBAL, "")
+  const cleaned = stripSocialExplicitTerms(request ?? "")
     .replace(/\bspread(?:ing)?\s+(?:your|her|their)?\s*legs?\b|\blegs?\s+(?:spread|open|apart)\b/gi, "knees comfortably apart")
     .replace(/\bspread\b/gi, "wide")
     .replace(/\s{2,}/g, " ")
@@ -437,7 +440,7 @@ export function negativeFor(
   const keepsGarment = requestKeepsGarment(req);
   let base = isNude && !keepsGarment ? `${CLOTHING_NEGATIVE}, ${quality}` : quality;
   if (opts.socialSafe) {
-    base = `${base}, nude, naked, fully nude, completely nude, no clothes, no underwear, bare breasts, visible nipples, exposed genitals, exposed groin, transparent clothing, see-through fabric, wardrobe removal, explicit nudity, pornographic pose`;
+    base = `${base}, ${SOCIAL_SAFETY_NEGATIVE}`;
   }
 
   // The two hand-rolled lists that used to live here — one for women, one for
@@ -771,6 +774,28 @@ async function submitImage(
   return { result, endpoint: serverlessEndpoint };
 }
 
+/**
+ * Persist the server-derived mode when the migration is present, while
+ * remaining compatible with older production databases. The marker in the
+ * prompt is still written by the caller and is the fallback until Supabase
+ * refreshes its schema cache.
+ */
+async function insertMediaJobWithMode(
+  supabaseAdmin: any,
+  payload: Record<string, unknown>,
+  contentMode: "social" | "adult",
+) {
+  const withMode = await supabaseAdmin
+    .from("media_jobs")
+    .insert({ ...payload, content_mode: contentMode })
+    .select("id")
+    .single();
+  if (!withMode.error || !/content[_ ]?mode/i.test(withMode.error.message ?? "")) return withMode;
+  // Older live schemas reject the optional column. Retry only for that known
+  // compatibility error; all other insert failures remain fatal.
+  return supabaseAdmin.from("media_jobs").insert(payload).select("id").single();
+}
+
 export async function startImageJob(
   supabase: any,
   userId: string,
@@ -802,7 +827,21 @@ export async function startImageJob(
   // a park bench with a drink) must remain clothed. Standalone social mode
   // passes this flag explicitly; chat derives it only when the request has no
   // adult intent, preserving explicit adult requests.
-  const socialMode = options.socialSafe ?? !isExplicitMediaRequest(userRequest);
+  // `socialSafe` is only a request from the caller. The server derives the
+  // effective mode from the request as well: an explicit request cannot be
+  // smuggled through as Social by setting the flag to true, and an adult
+  // request must pass the entitlement check below before provider I/O.
+  const explicitRequest = isExplicitMediaRequest(userRequest);
+  const requestedAdult = options.socialSafe === false || explicitRequest;
+  const socialMode = !requestedAdult;
+  if (!socialMode) {
+    try {
+      await assertAdultGenerationForUser(supabase, userId);
+    } catch (error) {
+      await refundCredits(supabase, userId, SELFIE_COST, `refund-adult-access-${userId}-${Date.now()}`, balance);
+      throw error;
+    }
+  }
   const promptRequest = socialMode ? socialSafePrompt(userRequest) : userRequest;
   // The user's own room, if they gave her one for this chat; else her own
   // place, read off her portrait, so the photo is taken where her reel was.
@@ -878,19 +917,19 @@ export async function startImageJob(
   // their own rows), so job bookkeeping goes through the admin client.
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const { data: job, error: jobErr } = await supabaseAdmin
-    .from("media_jobs")
-    .insert({
+  const { data: job, error: jobErr } = await insertMediaJobWithMode(
+    supabaseAdmin,
+    {
       user_id: userId,
       conversation_id: conversationId,
       kind: "image",
       status: "pending",
-      prompt: imagePrompt,
+      prompt: markContentMode(imagePrompt, socialMode ? "social" : "adult"),
       provider: "runpod",
       cost: SELFIE_COST,
-    })
-    .select("id")
-    .single();
+    },
+    socialMode ? "social" : "adult",
+  );
 
   if (jobErr || !job) {
     await refundCredits(
@@ -1006,9 +1045,10 @@ export async function startImageJob(
               image: sourceImage,
               size: process.env.RUNPOD_IMAGE_SIZE || "1024*1024",
               output_format: "png",
-              // This app's whole purpose is explicit; the safety checker would blank
-              // the output. screenUserMessage already blocked the illegal requests.
-              enable_safety_checker: false,
+              // Social renders use the provider's strict safety checker. Adult
+              // renders retain the existing adult endpoint behavior; all output
+              // still passes the server-side moderation gate before storage.
+              enable_safety_checker: socialMode,
             }
           : stillJobInput(startFrame, imagePrompt, negative);
 
@@ -1777,7 +1817,20 @@ export async function startVideoJob(
     ...companion,
     imageUrl: await conversationIdentityAnchor(supabase, conversationId, companion.imageUrl),
   };
-  const socialMode = options.socialSafe ?? !isExplicitMediaRequest(userReq);
+  // Never let a client-only mode flag grant an adult render. Explicit prompt
+  // intent and an explicit adult request both select the adult path; the
+  // entitlement check below is authoritative for that path.
+  const explicitRequest = isExplicitMediaRequest(userReq);
+  const requestedAdult = options.socialSafe === false || explicitRequest;
+  const socialMode = !requestedAdult;
+  if (!socialMode) {
+    try {
+      await assertAdultGenerationForUser(supabase, userId);
+    } catch (error) {
+      await refundCredits(supabase, userId, VIDEO_COST, `refund-adult-access-${userId}-${Date.now()}`, balance);
+      throw error;
+    }
+  }
   const promptRequest = socialMode ? socialSafePrompt(userReq) : userReq;
   const startImage = resolveHostedImage(companion.imageUrl);
   const setting = await settingFor(conversationId, companion.imageUrl, companion.name);
@@ -1816,9 +1869,9 @@ export async function startVideoJob(
   // With the row written up front, an interrupted request leaves a pending job
   // that checkMediaJob's stale sweep can fail and refund, and the prompt is
   // filled in below once it exists.
-  const { data: job, error: jobErr } = await supabaseAdmin
-    .from("media_jobs")
-    .insert({
+  const { data: job, error: jobErr } = await insertMediaJobWithMode(
+    supabaseAdmin,
+    {
       user_id: userId,
       conversation_id: conversationId,
       kind: "video",
@@ -1826,9 +1879,9 @@ export async function startVideoJob(
       prompt: "",
       provider: "runpod",
       cost,
-    })
-    .select("id")
-    .single();
+    },
+    socialMode ? "social" : "adult",
+  );
 
   if (jobErr || !job) {
     await refundCredits(supabase, userId, cost, `refund-nojob-${userId}-${Date.now()}`, balance);
@@ -1904,7 +1957,7 @@ export async function startVideoJob(
     return scene;
   });
   const videoPrompt = scenePrompts.join("\n\n");
-  await supabaseAdmin.from("media_jobs").update({ prompt: videoPrompt }).eq("id", job.id);
+  await supabaseAdmin.from("media_jobs").update({ prompt: markContentMode(videoPrompt, socialMode ? "social" : "adult") }).eq("id", job.id);
 
   // Same centre-crop problem as photos: hand the endpoint a square that keeps
   // her whole body rather than letting it slice the frame down to a torso.
@@ -2061,7 +2114,7 @@ export async function startVideoJob(
             replicate_id: tagJobId(still.id, stillSentTo),
             provider: "runpod-still",
             status: "processing",
-            prompt: JSON.stringify({ stage: "still", videoInput, videoPrompt, stillInputUrl, stillAttempt: 0 }),
+            prompt: JSON.stringify({ stage: "still", contentMode: socialMode ? "social" : "adult", videoInput, videoPrompt, stillInputUrl, stillAttempt: 0 }),
           })
           .eq("id", job.id);
         return job.id;
@@ -2136,7 +2189,7 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     const { data: job } = await supabase
       .from("media_jobs")
       .select(
-        "id, user_id, conversation_id, kind, cost, status, provider, replicate_id, media_url, error, created_at",
+        "id, user_id, conversation_id, kind, cost, status, provider, prompt, replicate_id, media_url, error, created_at",
       )
       .eq("id", data.jobId)
       .eq("user_id", userId)
@@ -2265,12 +2318,17 @@ export const checkMediaJob = createServerFn({ method: "POST" })
         return { status: "failed" };
       }
       try {
-        const mediaUrl = await complete(job as any, url);
+        const mediaUrl = await complete(job as any, url, res.output);
         // null: the picture failed its check and is being rendered again.
         if (!mediaUrl) return { status: "processing" };
         return { status: "completed", mediaUrl };
       } catch (e: any) {
-        await fail(job as any, `Storage failed: ${e.message}`);
+        const { isSocialModerationBlockedError } = await import("./social-moderation.server");
+        if (isSocialModerationBlockedError(e)) {
+          await fail(job as any, e.message, undefined, { retry: false, userMessage: e.message });
+        } else {
+          await fail(job as any, `Storage failed: ${e.message}`);
+        }
         return { status: "failed" };
       }
     }

@@ -5,6 +5,7 @@ import { ensureBalance } from "./credit-wallet";
 import { deductCredits } from "./credit-wallet";
 import { socialSafePrompt, startImageJob, startVideoJob } from "./media.functions";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
+import { assertAdultGenerationEntitlement } from "./content-mode.server";
 
 const input = z.object({
   companionId: z.string().uuid(), prompt: z.string().min(3).max(500),
@@ -50,10 +51,12 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
         .select("age_confirmed,subscription_tier,subscription_status")
         .eq("id", context.userId)
         .maybeSingle();
-      if (!profile?.age_confirmed) throw new Error("AGE_CONFIRMATION_REQUIRED");
-      if (profile.subscription_status !== "active" || !["sub-creator", "sub-creator-annual"].includes(profile.subscription_tier ?? "")) {
-        throw new Error("CREATOR_SUBSCRIPTION_REQUIRED");
-      }
+      assertAdultGenerationEntitlement({
+        isAdmin: false,
+        ageConfirmed: profile?.age_confirmed,
+        subscriptionTier: profile?.subscription_tier,
+        subscriptionStatus: profile?.subscription_status,
+      });
     }
     if (!admin) {
       const { data: first } = await context.supabase.from("companions").select("id").order("sort_order").limit(1).maybeSingle();

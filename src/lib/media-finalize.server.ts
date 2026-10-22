@@ -3,6 +3,12 @@
 // Completion must not depend on the webhook landing, so this lives in one place.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  evaluateSocialOutput,
+  logSocialModerationBlock,
+  SocialModerationBlockedError,
+} from "./social-moderation.server";
+import { contentModeFromPrompt } from "./social-safety";
 
 type Job = {
   id: string;
@@ -12,6 +18,8 @@ type Job = {
   cost: number;
   /** Which renderer ran it (runpod, runpod-still, …); the retry only touches a plain runpod photo. */
   provider?: string | null;
+  content_mode?: "social" | "adult" | null;
+  prompt?: string | null;
 };
 
 // In the deployed function the ffmpeg binary sits at bin/ffmpeg, put there by
@@ -353,6 +361,37 @@ export async function extractVideoContactSheet(mp4: Buffer): Promise<Buffer> {
   }
 }
 
+/** Sample visual frames before a video is stored. No frame is persisted. */
+export async function extractVideoFrames(mp4: Buffer, count = 6): Promise<Buffer[]> {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const { writeFile, readFile, readdir, mkdtemp, rm } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const dir = await mkdtemp(join(tmpdir(), "video-safety-"));
+  const input = join(dir, "in.mp4");
+  try {
+    await writeFile(input, mp4);
+    await promisify(execFile)(await ffmpegBin(), [
+      "-y", "-i", input,
+      "-vf", `fps=${Math.max(0.2, count / 10)},scale=512:-1:force_original_aspect_ratio=decrease`,
+      "-frames:v", String(count),
+      join(dir, "frame-%02d.png"),
+    ]);
+    const names = (await readdir(dir)).filter((name) => /^frame-\d+\.png$/.test(name)).sort();
+    const frames = await Promise.all(names.map((name) => readFile(join(dir, name))));
+    return frames.map((frame) => Buffer.from(frame));
+  } catch {
+    try {
+      return [await extractLastFrame(mp4)];
+    } catch {
+      return [];
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 // The generation endpoint returns video with no audio track at all (confirmed:
 // the mp4 carries a single h264 stream), so sound is added here.
 //
@@ -558,10 +597,20 @@ async function shouldAddAudio(job: Job): Promise<boolean> {
   return gender === "female" || gender === "trans-female";
 }
 
-// Download a finished Replicate output, store it in the avatars bucket, mark the
+function providerModelFor(job: Job): string {
+  if (job.provider === "runpod-still" || job.provider === "runpod-advancing") {
+    return process.env.COMFY_CHECKPOINT || "comfy-workflow";
+  }
+  if (job.kind === "video") return process.env.RUNPOD_VIDEO_MODEL || process.env.RUNPOD_VIDEO_ENDPOINT || "runpod-wan";
+  if (process.env.RUNPOD_COMFY_ENDPOINT) return process.env.COMFY_CHECKPOINT || "comfy-workflow";
+  if (process.env.RUNPOD_KONTEXT_ENDPOINT) return process.env.RUNPOD_KONTEXT_ENDPOINT;
+  return process.env.RUNPOD_IMAGE_ENDPOINT || process.env.RUNPOD_VIDEO_ENDPOINT || "runpod-image";
+}
+
+// Download a finished RunPod output, moderate it, store it in the avatars bucket, mark the
 // job completed, and post the media message. Throws on storage failure so the
 // caller can mark the job failed + refund.
-export async function completeMediaJob(job: Job, outputUrl: string): Promise<string | null> {
+export async function completeMediaJob(job: Job, outputUrl: string, providerOutput?: unknown): Promise<string | null> {
   const response = await fetch(outputUrl);
   if (!response.ok) throw new Error("Could not fetch generation output");
   let buf: Buffer = Buffer.from(await response.arrayBuffer());
@@ -578,6 +627,29 @@ export async function completeMediaJob(job: Job, outputUrl: string): Promise<str
     buf = await extractLastFrame(buf);
   } else if (job.kind === "video" && gotVideo && (await shouldAddAudio(job))) {
     buf = await muxAudio(buf);
+  }
+
+  // This is deliberately before any bucket upload. A social render that fails
+  // moderation never obtains a public URL and is therefore never returned or
+  // retained as a library asset.
+  const socialJob = job.content_mode === "social" || contentModeFromPrompt(job.prompt) === "social";
+  if (socialJob) {
+    // A provider may omit or mislabel the response content type. The job kind
+    // is authoritative here: videos are always sampled as videos, and a
+    // missing frame is a fail-closed moderation result rather than an MP4
+    // being mislabeled as a PNG input.
+    const samples = job.kind === "video" ? await extractVideoFrames(buf, 6) : [buf];
+    const decision = await evaluateSocialOutput({ providerOutput, samples });
+    if (!decision.allowed) {
+      logSocialModerationBlock({
+        userId: job.user_id,
+        prompt: job.prompt,
+        model: providerModelFor(job),
+        provider: job.provider || "runpod",
+        decision,
+      });
+      throw new SocialModerationBlockedError(decision);
+    }
   }
 
   // Chat photos only. A studio job has no conversation, and its plate goes on to
@@ -836,6 +908,7 @@ async function resubmitImageJob(
   const { anatomyOf } = await import("./anatomy");
   const { comfyJobInput, negativeFor, isExplicitMediaRequest, resolveHostedImage, webhookFor } =
     await import("./media.functions");
+  const { stripContentModeMarker } = await import("./social-safety");
   const { runpodEndpoint, runpodRun, pickImageTarget, tagJobId } = await import("./runpod");
   const endpoint = runpodEndpoint("image");
   if (!endpoint) throw new Error("no image endpoint");
@@ -846,7 +919,7 @@ async function resubmitImageJob(
     socialSafe: !isExplicitMediaRequest(ctx.userRequest),
   });
   const input = await comfyJobInput(
-    ctx.row.prompt,
+    stripContentModeMarker(ctx.row.prompt),
     negative,
     resolveHostedImage(ctx.companion.image_url),
     ctx.userRequest,
@@ -950,6 +1023,7 @@ async function retakeBadToyVideo(job: Job, mp4: Buffer): Promise<boolean> {
 
   let parked: {
     stage: "video";
+    contentMode?: "social" | "adult";
     videoInput: Record<string, any>;
     videoPrompt: string;
     startFrame: string;
@@ -1169,8 +1243,9 @@ export async function failMediaJob(
   job: Job,
   errorMsg: string,
   failedRunpodId?: string,
+  options: { retry?: boolean; userMessage?: string } = {},
 ): Promise<void> {
-  if (await retryImageJob(job, errorMsg, failedRunpodId)) return;
+  if (options.retry !== false && await retryImageJob(job, errorMsg, failedRunpodId)) return;
   await supabaseAdmin
     .from("media_jobs")
     .update({ status: "failed", error: errorMsg, updated_at: new Date().toISOString() })
@@ -1204,13 +1279,23 @@ export async function failMediaJob(
 
     if (job.conversation_id) {
       const kindStr = job.kind === "video" ? "video" : "photo";
-      await supabaseAdmin.from("messages").insert({
-        conversation_id: job.conversation_id,
-        user_id: job.user_id,
-        role: "assistant",
-        content: `Sorry, I had trouble generating that ${kindStr}. Your credits have been refunded! 🥺❤️`,
-        kind: "text",
-      });
+      if (options.userMessage) {
+        await supabaseAdmin.from("messages").insert({
+          conversation_id: job.conversation_id,
+          user_id: job.user_id,
+          role: "assistant",
+          content: options.userMessage,
+          kind: "text",
+        });
+      } else {
+        await supabaseAdmin.from("messages").insert({
+          conversation_id: job.conversation_id,
+          user_id: job.user_id,
+          role: "assistant",
+          content: `Sorry, I had trouble generating that ${kindStr}. Your credits have been refunded! 🥺❤️`,
+          kind: "text",
+        });
+      }
     }
   } catch (e: any) {
     console.error("Refund failed in media finalize", e);
@@ -1244,6 +1329,7 @@ export async function advanceVideoFromStill(job: Job, stillUrl: string): Promise
   try {
     const parked = JSON.parse(row.prompt) as {
       stage: "still";
+      contentMode?: "social" | "adult";
       videoInput: Record<string, unknown>;
       videoPrompt: string;
       stillInputUrl?: string;
@@ -1331,6 +1417,7 @@ export async function advanceVideoFromStill(job: Job, stillUrl: string): Promise
         status: "processing",
         prompt: JSON.stringify({
           stage: "video",
+          contentMode: parked.contentMode ?? "adult",
           videoInput: parked.videoInput,
           videoPrompt: parked.videoPrompt,
           startFrame: frameUrl,

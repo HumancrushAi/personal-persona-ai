@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/runpod-webhook")({
 
         const { data: job } = await supabaseAdmin
           .from("media_jobs")
-          .select("id, user_id, conversation_id, kind, cost, status, provider")
+          .select("id, user_id, conversation_id, kind, cost, status, provider, prompt")
           .eq("replicate_id", jobId)
           .maybeSingle();
 
@@ -37,6 +37,7 @@ export const Route = createFileRoute("/api/public/runpod-webhook")({
 
         const { runpodStatusOf, runpodOutputUrl, runpodOutputError } = await import("@/lib/runpod");
         const { completeMediaJob, failMediaJob } = await import("@/lib/media-finalize.server");
+        const { isSocialModerationBlockedError } = await import("@/lib/social-moderation.server");
         const state = runpodStatusOf(body.status);
 
         if (state === "processing") {
@@ -68,10 +69,17 @@ export const Route = createFileRoute("/api/public/runpod-webhook")({
         }
 
         try {
-          await completeMediaJob(job, url);
+          await completeMediaJob(job, url, body.output);
           return new Response("Success", { status: 200 });
         } catch (e: any) {
-          await failMediaJob(job, `Storage upload failed: ${e.message}`);
+          if (isSocialModerationBlockedError(e)) {
+            await failMediaJob(job, e.message, undefined, {
+              retry: false,
+              userMessage: e.message,
+            });
+          } else {
+            await failMediaJob(job, `Storage upload failed: ${e.message}`);
+          }
           return new Response("Failed status processed", { status: 200 });
         }
       },

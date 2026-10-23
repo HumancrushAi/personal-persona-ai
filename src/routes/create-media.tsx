@@ -15,6 +15,7 @@ import { creatorBilling, creatorPlans, creatorPlansFromTiers, estimatedPlanMedia
 import { getNextGate } from "@/lib/creator-gates";
 import { showcaseConfig } from "@/config/showcase";
 import { orderModelsForDisplay } from "@/lib/display-models";
+import { getEffectiveCompanionReel } from "@/lib/reels";
 
 const creatorSearchSchema = z.object({
   model: z.string().optional(),
@@ -45,6 +46,11 @@ const sizes = {
 const BOOK_CALL_SMS = "sms:7082537082?&body=Hi%2C%20I%27m%20interested%20in%20your%20done-for-you%20content%20creator%20program.%20Please%20tell%20me%20more%20and%20let%20me%20know%20how%20to%20schedule%20a%20call.";
 
 type CreatorModel = { id: string; name: string; image_url: string; gender?: string | null };
+type ShowcaseItem = (typeof showcaseConfig)[number] & {
+  id: string;
+  src: string;
+  poster: string;
+};
 type CreatorJob = {
   id: string;
   kind: "image" | "video" | "voice";
@@ -120,6 +126,63 @@ function CreatorFooter() {
   );
 }
 
+function ShowcaseCard({ item, index, onOpen }: { item: ShowcaseItem; index: number; onOpen: (index: number) => void }) {
+  const mediaRef = useRef<HTMLVideoElement>(null);
+  const [inView, setInView] = useState(false);
+  const [shouldPlay, setShouldPlay] = useState(false);
+
+  useEffect(() => {
+    if (item.type !== "video" || !mediaRef.current) return;
+    const video = mediaRef.current;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (connection?.saveData || reducedMotion) return;
+    if (!("IntersectionObserver" in window)) {
+      setInView(true);
+      setShouldPlay(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      const visible = entry?.isIntersecting ?? false;
+      setInView(visible);
+      if (visible) {
+        setShouldPlay(true);
+        void video.play().catch(() => undefined);
+      } else {
+        video.pause();
+      }
+    }, { threshold: 0.55 });
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [item.type]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(index)}
+      className="group relative aspect-[3/4] w-[130px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/[0.1] bg-[#232327] text-left shadow-[0_10px_25px_rgba(0,0,0,.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-[145px]"
+      aria-label={`Open ${item.label} in the gallery`}
+    >
+      {item.type === "video" ? (
+        <video
+          ref={mediaRef}
+          muted
+          loop
+          playsInline
+          autoPlay={shouldPlay && inView}
+          preload="none"
+          poster={item.poster}
+          src={shouldPlay && inView ? item.src : undefined}
+          className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.03]"
+        />
+      ) : (
+        <img src={item.src} alt={item.alt} loading={index < 3 ? "eager" : "lazy"} className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.03]" />
+      )}
+      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent px-3 pb-3 pt-10 text-xs font-semibold text-white">{item.label}</span>
+    </button>
+  );
+}
+
 function PlanCard({ plan, currentPlan, isAdmin, onChoose }: {
   plan: CreatorPlan;
   currentPlan: string | null;
@@ -181,6 +244,8 @@ function Creator() {
   const [credits, setCredits] = useState<number | null>(null);
   const [plans, setPlans] = useState<readonly CreatorPlan[]>(creatorPlans);
   const [sheet, setSheet] = useState<"auth" | "age" | "plan" | "gallery" | null>(null);
+  const [galleryStartIndex, setGalleryStartIndex] = useState(0);
+  const [showcasePaused, setShowcasePaused] = useState(false);
 
   const readyForRender = (item: CreatorModel) => isAdmin || models[0]?.id === item.id || unlocked.includes(item.id);
   const selectedIdentity = models.find((item) => item.id === model) ?? null;
@@ -196,21 +261,53 @@ function Creator() {
       return true;
     }).slice(0, showcaseConfig.length);
   }, [displayModels]);
-  const showcaseItems = useMemo(() => showcaseModels.map((model, index) => ({
-    ...(showcaseConfig[index] ?? showcaseConfig[0]),
-    src: model.image_url,
-    alt: `${model.name} creator reference`,
-    label: model.name,
-  })), [showcaseModels]);
+  const showcaseItems = useMemo<ShowcaseItem[]>(() => showcaseModels.map((model, index) => {
+    const configured = showcaseConfig[index] ?? showcaseConfig[0];
+    const reel = getEffectiveCompanionReel(model);
+    return {
+      ...configured,
+      id: model.id,
+      type: reel && index % 3 === 1 ? "video" : configured.type,
+      src: reel && index % 3 === 1 ? reel : model.image_url,
+      poster: model.image_url,
+      alt: `${model.name} creator reference`,
+      label: model.name,
+    };
+  }), [showcaseModels]);
   const showcaseRailRef = useRef<HTMLDivElement>(null);
+  const showcasePauseTimerRef = useRef<number | null>(null);
   const modelsRailRef = useRef<HTMLDivElement>(null);
   const sampleModels = useMemo(() => displayModels.filter((item) => item.id !== selectedIdentity?.id).slice(0, 6), [displayModels, selectedIdentity?.id]);
   const sampleRailRef = useRef<HTMLDivElement>(null);
   const scrollRail = (rail: RefObject<HTMLDivElement | null>, direction: number) => {
     rail.current?.scrollBy({ left: direction * Math.max(260, rail.current.clientWidth * 0.72), behavior: "smooth" });
   };
+  const pauseShowcase = () => {
+    if (showcasePauseTimerRef.current) window.clearTimeout(showcasePauseTimerRef.current);
+    setShowcasePaused(true);
+  };
+  const resumeShowcase = () => {
+    if (showcasePauseTimerRef.current) window.clearTimeout(showcasePauseTimerRef.current);
+    showcasePauseTimerRef.current = window.setTimeout(() => setShowcasePaused(false), 2600);
+  };
   const ownedModels = useMemo(() => displayModels.filter((item) => readyForRender(item)), [displayModels, unlocked, isAdmin]);
   const lockedModels = useMemo(() => displayModels.filter((item) => !readyForRender(item)), [displayModels, unlocked, isAdmin]);
+
+  useEffect(() => {
+    if (showcasePaused || showcaseItems.length < 2) return;
+    const timer = window.setInterval(() => {
+      const rail = showcaseRailRef.current;
+      if (!rail) return;
+      const atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 20;
+      if (atEnd) rail.scrollTo({ left: 0, behavior: "smooth" });
+      else scrollRail(showcaseRailRef, 1);
+    }, 4600);
+    return () => window.clearInterval(timer);
+  }, [showcaseItems.length, showcasePaused]);
+
+  useEffect(() => () => {
+    if (showcasePauseTimerRef.current) window.clearTimeout(showcasePauseTimerRef.current);
+  }, []);
 
   async function loadLibrary() {
     const { data: auth } = await supabase.auth.getUser();
@@ -366,17 +463,29 @@ function Creator() {
     <div className="min-h-screen bg-[#101012] text-[#F4F4F5]">
       <CreatorNav credits={credits} />
       <main className="mx-auto max-w-[1200px] px-4 pb-16 sm:px-6">
-        <section id="showcase" className="scroll-mt-24 py-7 sm:py-12">
-          <div className="overflow-hidden rounded-3xl border border-white/[0.1] bg-[#18181B] shadow-[0_24px_80px_rgba(0,0,0,.25)]">
-            <div className="grid gap-7 p-5 sm:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] sm:items-center sm:p-8 lg:p-10">
-              <div><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#A1A1AA]">Creator studio</p><span className="rounded-full border border-[#7FE0B0]/30 bg-[#7FE0B0]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#B9F5D4]">Live identity lock</span></div><h1 className="mt-4 max-w-[15ch] font-display text-[clamp(2.4rem,6vw,4.5rem)] font-extrabold leading-[.96] tracking-[-.055em]">Make the scene feel real.</h1><p className="mt-5 max-w-md text-sm leading-7 text-[#B3A9B0]">One prompt for a photo or a short video. Choose a model only when you want a consistent face, then keep every finished render in your private library.</p><div className="mt-7 flex flex-wrap gap-2"><button type="button" onClick={() => document.getElementById("models")?.scrollIntoView({ behavior: "smooth" })} className="min-h-11 rounded-xl bg-white px-4 text-sm font-bold text-[#101012] transition hover:bg-[#E4E4E7]">Start creating</button><button type="button" onClick={() => setSheet("gallery")} className="min-h-11 rounded-xl border border-white/[0.16] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.08]">Preview gallery</button></div><div className="mt-7 grid max-w-md grid-cols-3 gap-2 border-t border-white/[0.1] pt-5"><div><p className="text-lg font-bold">Photo</p><p className="mt-1 text-[11px] text-[#8E858C]">8 credits</p></div><div><p className="text-lg font-bold">Video</p><p className="mt-1 text-[11px] text-[#8E858C]">10 credits minimum</p></div><div><p className="text-lg font-bold">Library</p><p className="mt-1 text-[11px] text-[#8E858C]">Download anytime</p></div></div></div>
-              <div className="relative min-w-0"><div className="mb-3 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#A1A1AA]">Recent looks</p><span className="text-xs text-[#8E858C]">Swipe or use arrows</span></div><button type="button" aria-label="Scroll recent looks left" onClick={() => scrollRail(showcaseRailRef, -1)} className="absolute left-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowLeft className="h-4 w-4" /></button><div ref={showcaseRailRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Social-safe creator showcase">{showcaseItems.map((item, index) => <article key={`${item.label}-${index}`} className="relative aspect-[3/4] w-[145px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/[0.1] bg-[#232327] sm:w-[175px] lg:w-[200px]"><img src={item.src} alt={item.alt} loading={index < 3 ? "eager" : "lazy"} className="h-full w-full object-cover object-top" /><div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent p-3 pt-10 text-xs font-semibold">{item.label}</div></article>)}</div><button type="button" aria-label="Scroll recent looks right" onClick={() => scrollRail(showcaseRailRef, 1)} className="absolute right-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowRight className="h-4 w-4" /></button></div>
+        <section id="showcase" className="scroll-mt-24 pt-4 sm:pt-8">
+          <div className="rounded-2xl border border-white/[0.1] bg-[#18181B] px-4 py-4 shadow-[0_18px_55px_rgba(0,0,0,.18)] sm:px-6 sm:py-5">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <h1 className="font-display text-[22px] font-extrabold leading-tight tracking-[-0.03em] text-white sm:text-3xl">Make the scene yours.</h1>
+              <button type="button" onClick={() => { setGalleryStartIndex(0); setSheet("gallery"); }} className="hidden min-h-11 shrink-0 items-center rounded-full border border-white/[0.16] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.08] sm:inline-flex">View gallery</button>
             </div>
+            <div
+              ref={showcaseRailRef}
+              onPointerDown={pauseShowcase}
+              onPointerUp={resumeShowcase}
+              onPointerCancel={resumeShowcase}
+              onPointerLeave={resumeShowcase}
+              className="flex max-h-[175px] snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-h-[188px]"
+              aria-label="Social-safe creator showcase"
+            >
+              {showcaseItems.map((item, index) => <ShowcaseCard key={item.id} item={item} index={index} onOpen={(selectedIndex) => { setGalleryStartIndex(selectedIndex); setSheet("gallery"); }} />)}
+            </div>
+            <div className="mt-3 flex justify-end sm:hidden"><button type="button" onClick={() => { setGalleryStartIndex(0); setSheet("gallery"); }} className="min-h-11 rounded-full border border-white/[0.16] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.08]">View gallery</button></div>
           </div>
         </section>
 
-        <section id="models" className="scroll-mt-24"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#A1A1AA]">Step 1</p><h2 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">Choose your model</h2><p className="mt-2 text-sm text-[#A1A1AA]">Select a face to keep consistent, or start with a random identity.</p></div><Link to="/models" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">Browse all</Link></div><div className="relative mt-5"><button type="button" aria-label="Scroll models left" onClick={() => scrollRail(modelsRailRef, -1)} className="absolute left-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowLeft className="h-4 w-4" /></button><div ref={modelsRailRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <button type="button" aria-pressed={model === RANDOM_IDENTITY} onClick={() => { setModel(RANDOM_IDENTITY); setPreviewModel(null); }} className={`relative flex w-[148px] shrink-0 snap-start flex-col justify-end overflow-hidden rounded-xl border bg-[#19191C] p-4 text-left sm:w-[220px] ${model === RANDOM_IDENTITY ? "border-white ring-2 ring-white/20" : "border-white/[0.1]"}`}><span className="grid aspect-[3/4] place-items-center rounded-lg bg-[#232327]"><Sparkles className="h-8 w-8 text-white" /></span><span className="mt-3 text-sm font-bold">Create your own model</span><span className="mt-1 text-xs text-[#A1A1AA]">Use a random identity or describe anyone</span></button>
+        <section id="models" className="scroll-mt-24 pt-4 sm:pt-7"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-display text-2xl font-extrabold sm:text-3xl">Choose your model</h2><p className="mt-1 text-sm text-[#A1A1AA]">Select a face to keep consistent in your render.</p></div><Link to="/models" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">Browse all</Link></div><div className="relative mt-4"><button type="button" aria-label="Scroll models left" onClick={() => scrollRail(modelsRailRef, -1)} className="absolute left-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowLeft className="h-4 w-4" /></button><div ref={modelsRailRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Link to="/create" className="relative flex w-[148px] shrink-0 snap-start flex-col justify-end overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] p-4 text-left transition hover:border-white/[0.25] sm:w-[220px]"><span className="grid aspect-[3/4] place-items-center rounded-lg bg-[#232327]"><Sparkles className="h-8 w-8 text-white" /></span><span className="mt-3 text-sm font-bold">Create your own</span><span className="mt-1 text-xs text-[#A1A1AA]">Build a new character</span></Link>
           {[...ownedModels, ...lockedModels].map((item) => <article key={item.id} className={`w-[148px] shrink-0 snap-start overflow-hidden rounded-xl border bg-[#19191C] sm:w-[220px] ${model === item.id ? "border-[#E5484D] ring-2 ring-[#E5484D]/30" : "border-white/[0.1]"}`}><button type="button" aria-pressed={model === item.id} onClick={() => { if (readyForRender(item)) setModel(item.id); setPreviewModel(item); }} className="block w-full text-left"><img src={item.image_url} alt={item.name} loading="lazy" className="aspect-[3/4] w-full object-cover object-top" /><div className="p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-[#A1A1AA]">{model === item.id ? "Selected" : readyForRender(item) ? "Owned" : "Unlock for 50 credits"}</p></div></button>{!readyForRender(item) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(item)} className="mx-3 mb-3 min-h-10 w-[calc(100%-1.5rem)] rounded-lg border border-white/[0.14] px-2 text-xs font-semibold text-white hover:bg-white/[0.08]">{unlockingModel ? "Unlocking..." : "Unlock"}</button>}</article>)}
         </div><button type="button" aria-label="Scroll models right" onClick={() => scrollRail(modelsRailRef, 1)} className="absolute right-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowRight className="h-4 w-4" /></button></div>{selectedIdentity && sampleModels.length > 0 && <div className="mt-5"><div className="mb-2 flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#A1A1AA]">More faces</p><p className="mt-1 text-xs text-[#8E858C]">Different references, no repeats</p></div><div className="flex gap-2"><button type="button" aria-label="Scroll more faces left" onClick={() => scrollRail(sampleRailRef, -1)} className="grid h-8 w-8 place-items-center rounded-full border border-white/[0.15] bg-[#19191C] text-white"><ArrowLeft className="h-3.5 w-3.5" /></button><button type="button" aria-label="Scroll more faces right" onClick={() => scrollRail(sampleRailRef, 1)} className="grid h-8 w-8 place-items-center rounded-full border border-white/[0.15] bg-[#19191C] text-white"><ArrowRight className="h-3.5 w-3.5" /></button></div></div><div ref={sampleRailRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={`${selectedIdentity.name} related models`}>{sampleModels.map((item) => <figure key={item.id} className="w-[150px] shrink-0 snap-start"><img src={item.image_url} alt={item.name} loading="lazy" className="aspect-[4/3] w-full rounded-xl object-cover object-top" /><figcaption className="mt-2 text-xs font-semibold text-[#D4D4D8]">{item.name}</figcaption></figure>)}</div></div>}</section>
 
@@ -391,12 +500,12 @@ function Creator() {
         {credits !== null && <section id="renders" className="mt-12 scroll-mt-24"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">Your renders</p><h2 className="mt-1 font-display text-2xl font-extrabold">Recent work</h2></div><Link to="/library" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">See more <ChevronRight className="inline h-4 w-4" /></Link></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{activeJob && activeJob.status !== "completed" && <div className="flex aspect-[4/5] animate-pulse items-end rounded-xl border border-dashed border-white/[0.18] bg-[#19191C] p-3 text-xs font-semibold">Rendering…</div>}{library.slice(0, activeJob && activeJob.status !== "completed" ? 5 : 6).map((item) => <Link to="/library" search={{ item: item.id } as never} key={item.id} className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] text-left">{item.kind === "video" ? <video muted preload="metadata" className="pointer-events-none h-full w-full object-cover" src={item.media_url ?? undefined} /> : <img src={item.media_url ?? ""} alt="Saved render" loading="lazy" draggable={false} className="pointer-events-none h-full w-full object-cover transition group-hover:scale-105" />}<span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold">{item.kind === "video" ? "Video" : "Photo"}</span></Link>)}</div>{library.length === 0 && !activeJob && <p className="mt-4 rounded-xl border border-dashed border-white/[0.12] p-8 text-center text-sm text-[#A1A1AA]">Your completed renders will appear here.</p>}</section>}
       </main>
       <CreatorFooter />
-      <style>{`@media (max-width:639px){button[aria-label^="Scroll recent looks"],button[aria-label^="Scroll models"]{display:none!important}}`}</style>
+      <style>{`@media (max-width:639px){button[aria-label^="Scroll models"]{display:none!important}}`}</style>
       {previewModel && <CreatorSheet open onClose={() => setPreviewModel(null)} title={`${previewModel.name} preview`}><img src={previewModel.image_url} alt={previewModel.name} className="max-h-[60dvh] w-full rounded-xl object-cover object-top" /><p className="mt-4 text-sm text-[#A1A1AA]">{readyForRender(previewModel) ? "Owned identity. This face will stay consistent." : "Unlock this identity to keep the face consistent in your renders."}</p>{!readyForRender(previewModel) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(previewModel)} className="mt-4 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-50">{unlockingModel ? "Unlocking…" : "Unlock for 50 credits"}</button>}</CreatorSheet>}
       <CreatorSheet open={sheet === "auth"} onClose={() => setSheet(null)} title="Sign in to continue"><p className="text-sm leading-relaxed text-[#A1A1AA]">Create an account or sign in to save renders, use your credits, and keep an identity consistent.</p><Link to="/auth" search={{ redirect: "/create-media" } as never} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-bold text-[#101012]">Open sign in</Link></CreatorSheet>
       <CreatorSheet open={sheet === "age"} onClose={() => setSheet(null)} title="Confirm your age"><label className="flex items-start gap-3 text-sm leading-relaxed text-[#A1A1AA]"><input type="checkbox" checked={ageAgreed} onChange={(event) => setAgeAgreed(event.target.checked)} className="mt-1 h-4 w-4 accent-[#E5484D]" /><span>I confirm that I am 18 or older and agree to the Terms and Privacy Policy.</span></label><button type="button" disabled={!ageAgreed} onClick={() => { void agreeToAdultMode(); setSheet(null); setContentMode("adult"); }} className="mt-5 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-40">Continue to 18+</button></CreatorSheet>
       <CreatorSheet open={sheet === "plan"} onClose={() => setSheet(null)} title="Choose a plan"><p className="text-sm leading-relaxed text-[#A1A1AA]">A creator plan unlocks the render wallet. Social is available for eligible credits; 18+ also requires age confirmation. Checkout uses these exact live tiers.</p><div className="mt-4 grid gap-3">{plans.map((plan) => <button type="button" key={plan.tierId} onClick={() => choosePlan(plan)} className="flex min-h-14 items-center justify-between rounded-xl border border-white/[0.12] px-4 text-left hover:bg-white/[0.08]"><span><span className="block font-semibold">{plan.name}</span><span className="block text-xs text-[#A1A1AA]">{formatPlanPrice(plan)} · {formatCredits(plan.credits)}</span></span><ChevronRight className="h-4 w-4" /></button>)}</div></CreatorSheet>
-      <CreatorSheet open={sheet === "gallery"} onClose={() => setSheet(null)} title="Creator gallery"><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{showcaseItems.map((item, index) => <figure key={`${item.label}-${index}`}><img src={item.src} alt={item.alt} loading="lazy" className="aspect-[3/4] w-full rounded-xl object-cover" /><figcaption className="mt-1 text-xs text-[#A1A1AA]">{item.label}</figcaption></figure>)}</div><Link to="/library" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/[0.14] text-sm font-semibold">View library</Link></CreatorSheet>
+      <CreatorSheet open={sheet === "gallery"} onClose={() => setSheet(null)} title="Creator gallery"><p className="mb-4 text-sm text-[#A1A1AA]">Viewing {showcaseItems[galleryStartIndex]?.label ?? "the creator showcase"}</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{showcaseItems.map((item, index) => <button type="button" key={item.id} onClick={() => setGalleryStartIndex(index)} aria-pressed={index === galleryStartIndex} className={`overflow-hidden rounded-xl border text-left transition ${index === galleryStartIndex ? "border-white ring-2 ring-white/25" : "border-white/[0.1]"}`}><img src={item.poster} alt={item.alt} loading="lazy" className="aspect-[3/4] w-full object-cover" /><span className="block p-2 text-xs font-semibold text-white">{item.label}</span></button>)}</div><Link to="/gallery" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/[0.14] text-sm font-semibold">View more</Link></CreatorSheet>
     </div>
   );
 }

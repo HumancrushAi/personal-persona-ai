@@ -16,6 +16,7 @@ import { getNextGate } from "@/lib/creator-gates";
 import { showcaseConfig } from "@/config/showcase";
 import { orderModelsForDisplay } from "@/lib/display-models";
 import { getEffectiveCompanionReel } from "@/lib/reels";
+import { goBackOrExplore } from "@/lib/back-navigation";
 
 const creatorSearchSchema = z.object({
   model: z.string().optional(),
@@ -91,6 +92,7 @@ function CreatorNav({ credits }: { credits: number | null }) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#101012]/95 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-2 px-3 sm:gap-3 sm:px-6">
+        <button type="button" aria-label="Back" onClick={() => goBackOrExplore()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/[0.12] text-white transition hover:bg-white/[0.08] lg:hidden"><ArrowLeft className="h-5 w-5" /></button>
         <LogoLink className="h-8 shrink-0" />
         <nav aria-label="Primary" className="ml-2 hidden min-w-0 flex-1 items-center gap-0.5 lg:flex">
           <Link to="/browse" className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-[#B3A9B0] transition hover:bg-white/[0.06] hover:text-white"><Compass className="h-4 w-4" /> Explore</Link>

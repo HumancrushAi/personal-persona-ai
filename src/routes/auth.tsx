@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Eye, EyeOff, Sparkles } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Sparkles } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { orderModelsForDisplay } from "@/lib/display-models";
 import { toast } from "sonner";
 import { LogoLink } from "@/components/Logo";
+import { goBackOrExplore } from "@/lib/back-navigation";
 
 const authSearchSchema = z.object({ companion: z.string().optional(), redirect: z.string().optional(), mode: z.enum(["signin", "signup"]).optional() });
 
@@ -111,6 +112,7 @@ function AuthPage() {
 
   return (
     <div className="min-h-screen bg-[#121014] text-[#F5EFF2] lg:flex">
+      <button type="button" aria-label="Back" onClick={() => goBackOrExplore()} className="fixed left-4 top-4 z-20 grid h-11 w-11 place-items-center rounded-full border border-white/[0.16] bg-[#121014]/85 text-white backdrop-blur transition hover:bg-white/[0.1] sm:left-6 sm:top-6"><ArrowLeft className="h-5 w-5" /></button>
       <section aria-hidden="true" className="relative min-h-[340px] flex-[1_1_520px] overflow-hidden bg-[#0E0C10] sm:min-h-[420px]">
         <div className="absolute inset-[-40px] grid grid-cols-3 gap-3 px-5 [transform:rotate(-4deg)] sm:gap-3.5 sm:px-7">
           {[0, 1, 2].map((column) => <div key={column} className="overflow-hidden"><div className="flex flex-col gap-3 animate-[hc-auth-drift_65s_linear_infinite] sm:gap-3.5" style={{ animationDelay: `${column * -18}s`, animationDuration: `${58 + column * 9}s` }}>{tileModels.slice(column * 4, column * 4 + 8).map((item, index) => <figure key={`${item.id}-${column}-${index}`} className="relative m-0 h-[190px] overflow-hidden rounded-[16px] bg-[#26222A] sm:h-[290px] sm:rounded-[18px]"><img src={companionImage(item.image_url)} alt="" className="h-full w-full object-cover object-top" /><figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0E0C10]/95 to-transparent p-3 pt-10 text-[10px] text-[#EDE5EA] sm:text-xs">{["Rooftop at golden hour", "Soft bedroom light", "Editorial city night", "Poolside portrait"][index % 4]}</figcaption></figure>)}</div></div>)}

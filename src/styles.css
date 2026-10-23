@@ -137,6 +137,16 @@ html[data-theme="noir"] {
   .creator-sheet-panel { width: 100%; max-height: 90dvh; border-radius: 20px 20px 0 0; }
   .creator-sheet-handle { display: block; width: 3rem; height: .25rem; margin: .6rem auto 0; border-radius: 999px; background: rgb(255 255 255 / 25%); }
 }
+
+/* The global mobile navigation is fixed. Keeping this clearance on the body
+   means a long route without its own footer never loses its final control
+   behind the tab bar. The component clears the variable while a textarea is
+   focused or while the active chat composer owns the bottom edge. */
+@media (max-width: 1023px) {
+  body {
+    padding-bottom: var(--hc-mobile-nav-offset, 0px);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }

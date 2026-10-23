@@ -4,12 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
-  Circle,
   Sparkles,
-  Home,
-  Image as ImageIcon,
   Compass,
   MessageSquare,
+  SquarePlus,
+  Copy,
   Gem,
   History,
   DollarSign,
@@ -23,7 +22,6 @@ import {
   ChevronDown,
   Venus,
   Mars,
-  Users,
 } from "lucide-react";
 import { enablePush } from "@/lib/push-client";
 import { toast } from "sonner";
@@ -153,7 +151,7 @@ export function SiteHeader({
   return (
     <header className="site-header sticky top-0 z-40 w-full border-b border-white/[0.06] bg-[#141414]/95 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-1.5 px-4 sm:gap-2 sm:px-6 md:h-16">
-        <div className={`flex min-w-0 shrink-0 items-center ${home ? "lg:hidden" : ""}`}>
+        <div className="flex min-w-0 shrink-0 items-center">
           <LogoLink className="h-7 md:h-8" compact />
         </div>
 
@@ -207,35 +205,21 @@ export function SiteHeader({
                 scrolling the page underneath; the safe-area padding clears
                 the phone's home indicator. */}
             <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3">
-              <Link to="/" onClick={close} className={item}>
-                <Home className="h-4 w-4 text-white/60" /> Home
-              </Link>
-              <Link to="/cams" onClick={close} className={item}>
-                <Circle className="h-2 w-2 fill-red-500 text-red-500" /> Live Cams
-              </Link>
-              <Link to="/gallery" onClick={close} className={item}>
-                <ImageIcon className="h-4 w-4 text-white/60" /> Gallery
-              </Link>
-              <Link to="/library" onClick={close} className={item}>
-                <ImageIcon className="h-4 w-4 text-primary" /> Creator Library
-              </Link>
               <Link to="/browse" onClick={close} className={item}>
-                <Compass className="h-4 w-4 text-white/60" /> Browse Companions
+                <Compass className="h-4 w-4 text-white/60" /> Explore
               </Link>
-              <Link to="/models" onClick={close} className={item}>
-                <Users className="h-4 w-4 text-white/60" /> All AI Companions
+              <Link to="/me" onClick={close} className={item}>
+                <MessageSquare className="h-4 w-4 text-white/60" /> Chat
               </Link>
               <Link to="/create" onClick={close} className={item}>
-                <Sparkles className="h-4 w-4 text-primary" /> Create Companion
+                <SquarePlus className="h-4 w-4 text-white/60" /> Create
               </Link>
-              <Link to="/create-media" onClick={close} className={`${item} border border-pink-400/30 bg-pink-500/10 text-pink-100`}>
-                <Sparkles className="h-4 w-4 text-pink-300" /> Creator Studio
+              <Link to="/create-media" onClick={close} className={item}>
+                <Sparkles className="h-4 w-4 text-white/60" /> Generate
               </Link>
-              {authed && (
-                <Link to="/me" onClick={close} className={item}>
-                  <MessageSquare className="h-4 w-4 text-white/60" /> My Chats
-                </Link>
-              )}
+              <Link to="/library" onClick={close} className={item}>
+                <Copy className="h-4 w-4 text-white/60" /> My AI
+              </Link>
               <Link to="/credits" onClick={close} className={item}>
                 <Gem className="h-4 w-4 text-amber-400" /> Buy Credits / Premium
               </Link>
@@ -335,58 +319,14 @@ export function SiteHeader({
 
         {/* Home on a large screen: the sidebar has the links, so the bar holds
             the Girls / Guys tabs instead. */}
-        {home && (
-          <div className="hidden items-center gap-1 rounded-full bg-white/5 p-1 lg:flex">
-            {(
-              [
-                { id: "girls", label: "Girls", Icon: Venus },
-                { id: "guys", label: "Guys", Icon: Mars },
-              ] as const
-            ).map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => pickGender(id)}
-                className={`tap-exempt flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-                  gender === id ? "bg-primary text-primary-foreground" : "text-white/65 hover:text-white"
-                }`}
-              >
-                <Icon className="h-4 w-4" /> {label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Desktop links */}
-        {!home && (
-          <nav className="ml-2 hidden items-center gap-0.5 md:flex">
-            <Link to="/cams" className={`${navLink} inline-flex items-center`}>
-              <Circle className="mr-1.5 h-2 w-2 fill-red-500 text-red-500" /> Live
-            </Link>
-            <Link to="/browse" className={navLink}>
-              Browse
-            </Link>
-            <Link to="/gallery" className={navLink}>
-              Gallery
-            </Link>
-            <Link to="/library" className={navLink}>
-              Library
-            </Link>
-              <Link to="/create-media" className={navLink}>
-                Creator Studio
-              </Link>
-              <Link to="/done-for-you" className={navLink}>
-                Business setup
-              </Link>
-            {authed && (
-              <Link to="/me" className={navLink}>
-                My chats
-              </Link>
-            )}
-          </nav>
-        )}
-
-        {home && <Link to="/done-for-you" className="hidden rounded-full px-3 py-2 text-xs font-semibold text-pink-200 transition hover:bg-pink-400/10 hover:text-white md:inline-flex">Business setup</Link>}
+        {/* Desktop uses the same five destinations as the mobile tab bar. */}
+        <nav aria-label="Primary" className="ml-2 hidden min-w-0 items-center gap-0.5 lg:flex">
+          <Link to="/browse" className={`${navLink} inline-flex items-center gap-1.5`}><Compass className="h-4 w-4" /> Explore</Link>
+          <Link to="/me" className={`${navLink} inline-flex items-center gap-1.5`}><MessageSquare className="h-4 w-4" /> Chat</Link>
+          <Link to="/create" className={`${navLink} inline-flex items-center gap-1.5`}><SquarePlus className="h-4 w-4" /> Create</Link>
+          <Link to="/create-media" className={`${navLink} inline-flex items-center gap-1.5`}><Sparkles className="h-4 w-4" /> Generate</Link>
+          <Link to="/library" className={`${navLink} inline-flex items-center gap-1.5`}><Copy className="h-4 w-4" /> My AI</Link>
+        </nav>
 
         <div className="site-header-actions ml-auto flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
           <span className="sm:hidden">
@@ -418,11 +358,6 @@ export function SiteHeader({
                   className={`${pill} border border-white/25 text-white hover:bg-white/5 ${home ? "" : "md:hidden"}`}
                 >
                   My chats
-                </Link>
-              )}
-              {home && (
-                <Link to="/browse" className={`${pill} bg-primary text-primary-foreground hover:bg-primary/90`}>
-                  Explore
                 </Link>
               )}
               <button type="button" onClick={handleSignOut} className={`${pill} ml-1 border border-white/20 text-white/75 hover:border-white/40 hover:bg-white/10 hover:text-white`}>

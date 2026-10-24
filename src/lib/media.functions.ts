@@ -544,7 +544,10 @@ const VIDEO_COST = 15;
 // A 10s clip plus queue time runs past four minutes, so this has to be well
 // clear of a slow-but-healthy job while still not leaving a hung one open.
 const STALE_IMAGE_JOB_MS = Number(process.env.MEDIA_IMAGE_TIMEOUT_MS || 10 * 60_000);
-const STALE_VIDEO_JOB_MS = Number(process.env.MEDIA_VIDEO_TIMEOUT_MS || 15 * 60_000);
+// A 10-second clip measured 12.4 min end to end on 2026-10-24 (28 s queue,
+// 9.6 min of generation); 15 min left no room for a cold start, and a job
+// failed for age is refunded even if the video then arrives.
+const STALE_VIDEO_JOB_MS = Number(process.env.MEDIA_VIDEO_TIMEOUT_MS || 25 * 60_000);
 
 function isMissingRunPodJob(error: unknown) {
   return /RunPod status error:\s*404\b|job not found/i.test(String((error as Error)?.message ?? error));

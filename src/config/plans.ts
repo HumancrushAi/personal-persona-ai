@@ -11,6 +11,8 @@ export const creatorBilling = {
     image: 8,
     video: 10,
     videoPerSecond: 3,
+    /** Every model after the first free one (standalone-media.functions). */
+    modelUnlock: 50,
   },
 } as const;
 
@@ -63,6 +65,15 @@ export function formatCredits(value: number | null): string {
 export function estimatedPlanMedia(plan: CreatorPlan, kind: "image" | "video"): number {
   const cost = kind === "image" ? creatorBilling.creditCosts.image : creatorBilling.creditCosts.video;
   return Math.floor(plan.credits / cost);
+}
+
+/** "Save 26%", worked out from the live monthly and yearly prices, or null. */
+export function yearlySavingsLabel(plans: readonly CreatorPlan[]): string | null {
+  const monthly = plans.find((plan) => plan.period === "monthly");
+  const yearly = plans.find((plan) => plan.period === "yearly");
+  if (!monthly || !yearly || monthly.priceCents <= 0) return null;
+  const percent = Math.round((1 - yearly.priceCents / (monthly.priceCents * yearly.billingMonths)) * 100);
+  return percent > 0 ? `Save ${percent}%` : null;
 }
 
 export function formatPlanPrice(plan: CreatorPlan): string {

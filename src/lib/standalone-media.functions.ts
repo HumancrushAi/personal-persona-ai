@@ -3,9 +3,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { ensureBalance } from "./credit-wallet";
 import { deductCredits } from "./credit-wallet";
-import { socialSafePrompt, startImageJob, startVideoJob } from "./media.functions";
+import { isExplicitMediaRequest, socialSafePrompt, startImageJob, startVideoJob } from "./media.functions";
+import { hasSocialExplicitTerms } from "./social-safety";
 import { screenUserMessage, BLOCKED_CONTENT } from "./safety";
 import { resolveCreatorContentModeForUser } from "./content-mode.server";
+import { creatorBilling } from "@/config/plans";
+
+const MODEL_UNLOCK_COST = creatorBilling.creditCosts.modelUnlock;
 
 const input = z.object({
   companionId: z.string().uuid(), prompt: z.string().min(3).max(500),
@@ -26,11 +30,11 @@ export const unlockCreatorModel = createServerFn({ method: "POST" })
     if (existing || admin) return { unlocked: true, cost: 0 };
     const { data: first } = await context.supabase.from("companions").select("id").order("sort_order").limit(1).maybeSingle();
     if (first?.id === data.companionId) return { unlocked: true, cost: 0 };
-    const balance = await ensureBalance(context.supabase, context.userId, 50);
-    const after = await deductCredits(context.supabase, context.userId, 50, "creator_model_unlock", balance.free, balance.paid);
+    const balance = await ensureBalance(context.supabase, context.userId, MODEL_UNLOCK_COST);
+    const after = await deductCredits(context.supabase, context.userId, MODEL_UNLOCK_COST, "creator_model_unlock", balance.free, balance.paid);
     const { error } = await unlocks.from("creator_model_unlocks").insert({ user_id: context.userId, companion_id: data.companionId });
     if (error) throw new Error("Could not unlock this model");
-    return { unlocked: true, cost: 50, balance: after };
+    return { unlocked: true, cost: MODEL_UNLOCK_COST, balance: after };
   });
 
 export const standaloneGenerate = createServerFn({ method: "POST" })
@@ -42,6 +46,14 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
     // Resolve content mode from the server-side role/profile state before any
     // provider work. The client flag is only an intent, never an entitlement.
     const contentMode = await resolveCreatorContentModeForUser(context.supabase, context.userId, data.adult);
+    // Social never renders nudity: a nude request is refused before anything
+    // is charged. Reaching this line already proves an active Creator plan
+    // (the resolver above throws without one), so the way out is always to
+    // switch to 18+, which then asks for age confirmation if it is missing.
+    // The page answers SOCIAL_EXPLICIT_PLAN itself for users without the plan.
+    if (contentMode === "social" && (isExplicitMediaRequest(data.prompt) || hasSocialExplicitTerms(data.prompt))) {
+      throw new Error("SOCIAL_EXPLICIT_SWITCH");
+    }
     const renderPrompt = contentMode === "adult" ? data.prompt : socialSafePrompt(data.prompt);
     const { data: c, error } = await context.supabase.from("companions")
       .select("id,name,age,ethnicity,gender,short_bio,image_url,base_personality")
@@ -51,7 +63,7 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
     if (!admin) {
       const { data: first } = await context.supabase.from("companions").select("id").order("sort_order").limit(1).maybeSingle();
       const { data: unlocked } = await (context.supabase as any).from("creator_model_unlocks").select("companion_id").eq("user_id", context.userId).eq("companion_id", c.id).maybeSingle();
-      if (first?.id !== c.id && !unlocked) throw new Error("Unlock this model for 50 credits before generating.");
+      if (first?.id !== c.id && !unlocked) throw new Error(`Unlock this model for ${MODEL_UNLOCK_COST} credits before generating.`);
     }
     const cost = admin ? 0 : data.kind === "video" ? Math.max(10, (data.seconds ?? 5) * 3) : 8;
     const balance = await ensureBalance(context.supabase, context.userId, cost);

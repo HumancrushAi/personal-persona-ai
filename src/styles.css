@@ -413,3 +413,19 @@ html[data-theme="noir"] {
   .creator-identity-row { margin-right: -.4rem; overflow-x: auto; }
   .creator-generate-button { margin-top: 1.25rem !important; }
 }
+
+/* Creator studio motion. Everything is opt-in to motion: under reduced
+   motion the classes do nothing and the page is static. */
+@keyframes hc-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes hc-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes hc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hc-word { from { opacity: 0; transform: translateY(40%); } to { opacity: 1; transform: none; } }
+@keyframes hc-shine { 0%, 70% { transform: translateX(-120%); } 100% { transform: translateX(260%); } }
+@media (prefers-reduced-motion: no-preference) {
+  .hc-rise { animation: hc-rise .55s cubic-bezier(.2,.7,.2,1) both; }
+  .hc-fade { animation: hc-fade .9s ease-out both; }
+  .hc-word { display: inline-block; animation: hc-word .45s cubic-bezier(.2,.7,.2,1) both; }
+  .hc-shine { position: relative; overflow: hidden; }
+  .hc-shine::after { content: ""; position: absolute; inset: 0; width: 40%; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255,255,255,.6), transparent); animation: hc-shine 3.4s ease-in-out infinite; }
+  .hc-shine:disabled::after { display: none; }
+}

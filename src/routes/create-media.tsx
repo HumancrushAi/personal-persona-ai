@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { z } from "zod";
-import { ArrowLeft, ArrowRight, Bolt, Check, ChevronRight, Clapperboard, Compass, Copy, Flame, Globe, Image as ImageIcon, Menu, MessageCircle, Sparkles, SquarePlus, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bolt, Check, ChevronRight, Clapperboard, Compass, Copy, Flame, Globe, Image as ImageIcon, Lock, Maximize2, Menu, MessageCircle, Sparkles, SquarePlus, Wand2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { standaloneGenerate, unlockCreatorModel } from "@/lib/standalone-media.functions";
 import { checkMediaJob } from "@/lib/media.functions";
@@ -70,6 +70,18 @@ type CreatorJob = {
   created_at: string;
   error: string | null;
 };
+
+/** "Surprise me" in 18+: explicit, fully written scenes between consenting adults. */
+const adultSceneIdeas = [
+  { name: "Morning in bed", prompt: "Fully nude, lying back on rumpled white sheets, one arm above her head, soft morning window light across her bare breasts and hips, relaxed sleepy smile, looking at the camera." },
+  { name: "Shower", prompt: "Naked in a glass shower, water running down her bare body, wet hair pushed back, hands on the tiles, steam and warm bathroom light, looking over her shoulder at the camera." },
+  { name: "Lingerie off", prompt: "Kneeling on the bed, sliding black lace panties down her thighs, topless, bra tossed beside her, dim bedside lamp light, teasing eye contact with the camera." },
+  { name: "Mirror nude", prompt: "Fully nude full-length mirror selfie in a modern bedroom, phone in one hand, other hand on her hip, bare breasts and smooth skin, soft evening light, confident expression." },
+  { name: "Spread on the sofa", prompt: "Naked on a leather sofa, legs open, one hand between her thighs, head tilted back, low warm living-room light, explicit and intimate, eyes on the camera." },
+  { name: "Bath tub", prompt: "Nude in a deep bathtub, bubbles sliding off her breasts, one leg raised over the rim, candles and warm golden light, sultry half-smile at the camera." },
+  { name: "From behind", prompt: "On all fours on the bed, completely nude, arching her back, looking back over her shoulder at the camera, bare ass and hips in soft side light, white sheets." },
+  { name: "Poolside topless", prompt: "Topless on a sun lounger by the pool, bikini bottoms only, oiled skin glowing in bright afternoon sun, sunglasses pushed up, playful smile at the camera." },
+] as const;
 
 const sceneIdeas = [
   { name: "Golden-hour rooftop", prompt: "A warm rooftop portrait at golden hour, relaxed smile, cream linen shirt." },
@@ -320,6 +332,8 @@ function Creator() {
     label: model.name,
   })), [showcaseModels]);
   const [hoveredModel, setHoveredModel] = useState<string | null>(null);
+  // A locked card asks to be unlocked in place instead of opening a sheet.
+  const [pendingUnlock, setPendingUnlock] = useState<string | null>(null);
   // The hero collage: every model with a reel, skipping the ones the picker
   // opens with, so its 18 desktop tiles do not repeat faces.
   const heroFaces = useMemo(() => {
@@ -415,6 +429,17 @@ function Creator() {
 
   useEffect(() => { void loadLibrary(); }, []);
 
+  // Once ownership is known, a signed-in user whose selection is locked starts
+  // on the first model they can actually render with, in display order.
+  useEffect(() => {
+    if (loading || credits === null || isAdmin || model === RANDOM_IDENTITY) return;
+    const current = models.find((item) => item.id === model);
+    if (current && readyForRender(current)) return;
+    const firstReady = displayModels.find((item) => readyForRender(item));
+    if (firstReady) setModel(firstReady.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, credits, isAdmin, unlocked, displayModels]);
+
   useEffect(() => {
     if (loading || restoreScrollRef.current === null) return;
     const top = restoreScrollRef.current;
@@ -438,13 +463,13 @@ function Creator() {
   }, [activeJob?.id, activeJob?.status]);
 
   async function unlockModel(item: CreatorModel) {
-    if (isAdmin) { setUnlocked((current) => current.includes(item.id) ? current : [...current, item.id]); setModel(item.id); setPreviewModel(item); return; }
+    if (isAdmin) { setUnlocked((current) => current.includes(item.id) ? current : [...current, item.id]); setModel(item.id); setPendingUnlock(null); return; }
     if (credits === null) { setPreviewModel(null); openAuthGate(); return; }
     setUnlockingModel(true);
     try {
       const result = await unlock({ data: { companionId: item.id } });
       setUnlocked((current) => current.includes(item.id) ? current : [...current, item.id]);
-      setModel(item.id); setPreviewModel(item);
+      setModel(item.id); setPendingUnlock(null);
       toast.success(result.cost ? `${item.name} unlocked for ${result.cost} credits.` : `${item.name} is ready to use.`);
     } catch (error) {
       const message = String((error as Error)?.message ?? error);
@@ -488,7 +513,7 @@ function Creator() {
       const [width, height] = sizes[size];
       const result = await run({ data: { companionId: selectedModel, prompt, kind, seconds, width, height, adult: contentMode === "adult" } });
       setActiveJob({ id: result.jobId, kind, status: "pending", media_url: null, prompt, created_at: new Date().toISOString(), error: null });
-      setCredits((current) => current === null || isAdmin ? current : Math.max(0, current - result.cost));
+      setCredits((current) => current === null ? current : Math.max(0, current - result.cost));
       toast.success(`Generation queued for ${result.cost} credits.`);
       setPrompt("");
     } catch (error) {
@@ -532,7 +557,10 @@ function Creator() {
     } catch { window.open(item.media_url, "_blank", "noopener,noreferrer"); }
   }
 
-  const surpriseMe = () => setPrompt(sceneIdeas[Math.floor(Math.random() * sceneIdeas.length)].prompt);
+  const surpriseMe = () => {
+    const ideas = contentMode === "adult" ? adultSceneIdeas : sceneIdeas;
+    setPrompt(ideas[Math.floor(Math.random() * ideas.length)].prompt);
+  };
   const renderStatus = activeJob && (
     <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-white/[0.24] bg-white/[0.035] px-4 py-3 text-sm">
       <span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${activeJob.status === "completed" ? "bg-[#7FE0B0]" : activeJob.status === "failed" ? "bg-[#FF8C8C]" : "animate-pulse bg-white"}`} />{activeJob.status === "completed" ? "Render complete." : activeJob.status === "failed" ? "Render failed." : `Rendering your ${activeJob.kind}...`}</span>
@@ -583,23 +611,45 @@ function Creator() {
           {displayModels.map((item, index) => {
             const selected = model === item.id;
             const ready = readyForRender(item);
+            const asking = !ready && pendingUnlock === item.id;
             return (
               <article
                 key={item.id}
                 onMouseEnter={() => setHoveredModel(item.id)}
                 onMouseLeave={() => setHoveredModel((current) => (current === item.id ? null : current))}
                 style={{ animationDelay: `${Math.min(index + 1, 8) * 50}ms` }}
-                className={`hc-rise group relative aspect-[3/4] w-[148px] shrink-0 snap-start overflow-hidden rounded-2xl border transition duration-300 sm:w-[200px] ${selected ? "border-white ring-2 ring-white/40" : "border-white/[0.1] hover:-translate-y-0.5 hover:border-white/[0.3]"}`}
+                className={`hc-rise group relative aspect-[3/4] w-[148px] shrink-0 snap-start overflow-hidden rounded-2xl transition duration-300 sm:w-[200px] ${selected ? "-translate-y-1 border-[3px] border-white shadow-[0_18px_40px_rgba(0,0,0,.55),0_0_0_4px_rgba(255,255,255,.12)]" : "border border-white/[0.1] hover:-translate-y-0.5 hover:border-white/[0.35]"}`}
               >
-                <button type="button" aria-pressed={selected} aria-label={`${item.name}${selected ? ", selected" : ready ? "" : ", locked"}`} onClick={() => { if (ready) setModel(item.id); setPreviewModel(item); }} className="absolute inset-0 block text-left">
-                  <ReelMedia reel={getEffectiveCompanionReel(item)} poster={item.image_url} alt={item.name} eager={index < 3} className={`h-full w-full transition duration-500 ${selected ? "" : "group-hover:scale-[1.04]"} ${ready ? "" : "saturate-[.85]"}`} />
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  aria-label={`${item.name}${selected ? ", selected" : ready ? ", tap to select" : ", locked, tap to unlock"}`}
+                  onClick={() => {
+                    if (ready) { setModel(item.id); setPendingUnlock(null); }
+                    else setPendingUnlock((current) => (current === item.id ? null : item.id));
+                  }}
+                  className="absolute inset-0 block text-left"
+                >
+                  <ReelMedia reel={getEffectiveCompanionReel(item)} poster={item.image_url} alt={item.name} eager={index < 3} className={`h-full w-full transition duration-500 ${selected ? "scale-[1.03]" : "group-hover:scale-[1.04]"} ${ready ? "" : "brightness-[.8] saturate-[.85]"}`} />
                   <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-3 pb-3 pt-12">
-                    <span className="block truncate text-sm font-bold text-white">{item.name}</span>
-                    <span className="mt-0.5 block text-[11px] text-white/70">{selected ? "Selected" : ready ? "Owned" : `${creatorBilling.creditCosts.modelUnlock} credits`}</span>
+                    <span className="block truncate text-[15px] font-extrabold text-white">{item.name}</span>
+                    {selected
+                      ? <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-[#101012]"><Check className="h-3 w-3" />Selected</span>
+                      : <span className="mt-0.5 block text-[11px] text-white/75">{ready ? "Tap to select" : `Unlock · ${creatorBilling.creditCosts.modelUnlock} credits`}</span>}
                   </span>
                 </button>
-                {selected && <span className="pointer-events-none absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-white text-[#101012] shadow-lg motion-safe:animate-[hc-pop_.3s_ease-out]"><Check className="h-4 w-4" /></span>}
-                {!ready && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(item)} className="absolute bottom-3 right-2 min-h-8 rounded-full bg-white px-3 text-[11px] font-bold text-[#101012] shadow-lg transition hover:bg-[#E4E4E7] disabled:opacity-50">{unlockingModel ? "…" : "Unlock"}</button>}
+                {selected && <span className="pointer-events-none absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white text-[#101012] shadow-lg motion-safe:animate-[hc-pop_.3s_ease-out]"><Check className="h-4 w-4" strokeWidth={3} /></span>}
+                {!ready && !asking && !selected && <span className="pointer-events-none absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm"><Lock className="h-3.5 w-3.5" /></span>}
+                <button type="button" aria-label={`View ${item.name} bigger`} onClick={() => setPreviewModel(item)} className="absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white opacity-90 backdrop-blur-sm transition hover:bg-black/70"><Maximize2 className="h-3.5 w-3.5" /></button>
+                {asking && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 p-3 text-center backdrop-blur-[2px] motion-safe:animate-[hc-fade_.2s_ease-out]">
+                    <Lock className="h-5 w-5 text-white" />
+                    <p className="text-sm font-bold leading-tight text-white">Unlock {item.name}</p>
+                    <p className="text-[11px] text-white/75">Keep her face in every render</p>
+                    <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(item)} className="mt-1 min-h-10 w-full rounded-full bg-white text-xs font-bold text-[#101012] disabled:opacity-50">{unlockingModel ? "Unlocking…" : `Unlock · ${creatorBilling.creditCosts.modelUnlock} credits`}</button>
+                    <button type="button" onClick={() => setPendingUnlock(null)} className="min-h-8 text-[11px] font-semibold text-white/75">Not now</button>
+                  </div>
+                )}
               </article>
             );
           })}

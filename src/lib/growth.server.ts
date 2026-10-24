@@ -184,3 +184,6 @@ export async function sendOwnerAlert(
   });
   await Promise.race([settled, new Promise((resolve) => setTimeout(resolve, deps.budgetMs ?? 1500))]);
 }
+
+// Say once, when the server first loads this module, that alerts are off.
+configuredChannels();

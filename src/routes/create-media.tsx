@@ -196,7 +196,7 @@ function PlansSection({ plans, currentPlan, isAdmin, onChoose }: { plans: readon
   return <section id="plans" className="mt-16 scroll-mt-24">
     <div className="text-center">
       <h2 className="font-display text-3xl font-extrabold tracking-[-0.02em] sm:text-4xl">Start creating.</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[#A1A1AA]">A photo is {creatorBilling.creditCosts.image} credit, a video {creatorBilling.creditCosts.videoPerSecond} credits a second ({creatorBilling.creditCosts.video} minimum). Unused credits roll over.</p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[#A1A1AA]">A photo is {creatorBilling.creditCosts.image} credits, a video {creatorBilling.creditCosts.videoPerSecond} credits a second ({creatorBilling.creditCosts.video} minimum). Unused credits roll over.</p>
       <div role="radiogroup" aria-label="Billing period" className="mt-6 inline-flex items-center gap-1 rounded-full border border-white/[0.12] bg-[#17171A] p-1 text-sm font-semibold">
         <button type="button" role="radio" aria-checked={period === "monthly"} onClick={() => setPeriod("monthly")} className={`min-h-10 rounded-full px-4 ${period === "monthly" ? "bg-white text-[#101012]" : "text-[#A1A1AA] hover:text-white"}`}>Monthly</button>
         <button type="button" role="radio" aria-checked={period === "yearly"} onClick={() => setPeriod("yearly")} className={`inline-flex min-h-10 items-center gap-2 rounded-full px-4 ${period === "yearly" ? "bg-white text-[#101012]" : "text-[#A1A1AA] hover:text-white"}`}>Yearly{savings && <span className="rounded-full bg-[#E5484D] px-2 py-0.5 text-[10px] font-bold text-white">{savings}</span>}</button>
@@ -243,6 +243,17 @@ function Creator() {
   // The sticky Generate bar waits for the first scroll so the banner and
   // model picker own the first screen on short phones.
   const [scrolledPastTop, setScrolledPastTop] = useState(false);
+  // The sticky Generate bar steps aside while the panel's own Generate button
+  // is on screen, so a phone never shows two of them at once.
+  const inlineGenerateRef = useRef<HTMLButtonElement>(null);
+  const [inlineGenerateVisible, setInlineGenerateVisible] = useState(false);
+  useEffect(() => {
+    const button = inlineGenerateRef.current;
+    if (!button || !("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver(([entry]) => setInlineGenerateVisible(entry?.isIntersecting ?? false));
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     const sync = () => setScrolledPastTop(window.scrollY > 120);
     sync();
@@ -310,6 +321,13 @@ function Creator() {
     label: model.name,
   })), [showcaseModels]);
   const [hoveredModel, setHoveredModel] = useState<string | null>(null);
+  // The hero collage: every model with a reel, skipping the ones the picker
+  // opens with, so its 18 desktop tiles do not repeat faces.
+  const heroFaces = useMemo(() => {
+    const withReel = displayModels.filter((item) => getEffectiveCompanionReel(item));
+    const rest = withReel.slice(PICKER_LEAD);
+    return rest.length >= 9 ? rest : withReel;
+  }, [displayModels]);
   const studioRef = useRef<HTMLElement>(null);
 
   const showcaseRailRef = useRef<HTMLDivElement>(null);
@@ -536,27 +554,38 @@ function Creator() {
       <CreatorNav credits={credits} onSignIn={openAuthGate} />
       <main className="mx-auto max-w-[1200px] px-4 pb-36 sm:px-6 lg:max-w-[1400px] lg:pb-16">
         <section id="showcase" aria-label="HumanCrush creator studio" className="scroll-mt-24 pt-3 sm:pt-6">
-          <div className="relative h-[176px] overflow-hidden rounded-3xl border border-white/[0.08] bg-[#17171A] sm:h-[220px] lg:h-[240px]">
-            <div aria-hidden="true" className="absolute inset-0 grid grid-cols-3 gap-1.5 p-1.5 sm:grid-cols-5 lg:grid-cols-6">
-              {showcaseModels.slice(0, 6).map((face, index) => (
-                <ReelMedia key={face.id} reel={index % 2 === 1 ? getEffectiveCompanionReel(face) : null} poster={face.image_url} posterWidth={360} alt="" eager={index < 3} className={`h-full w-full rounded-2xl ${index === 5 ? "hidden lg:block" : index >= 3 ? "hidden sm:block" : ""}`} />
+          <div className="relative h-[200px] overflow-hidden rounded-[28px] bg-[#17171A] sm:h-[280px] lg:h-[320px]">
+            <div aria-hidden="true" className="absolute inset-0 grid grid-cols-3 gap-2 p-2 sm:grid-cols-4 lg:grid-cols-6">
+              {[0, 1, 2, 3, 4, 5].map((column) => (
+                <div key={column} className={`flex flex-col gap-2 ${column % 2 === 1 ? "-translate-y-[38%]" : "-translate-y-[8%]"} ${column >= 4 ? "hidden lg:flex" : column === 3 ? "hidden sm:flex" : ""}`}>
+                  {[0, 1, 2].map((row) => {
+                    const face = heroFaces[(column * 3 + row) % Math.max(1, heroFaces.length)];
+                    if (!face) return null;
+                    return <ReelMedia key={row} reel={row === 1 && column < 3 ? getEffectiveCompanionReel(face) : null} poster={face.image_url} posterWidth={320} alt="" eager={row < 2} className="aspect-[3/4] w-full shrink-0 rounded-2xl" />;
+                  })}
+                </div>
               ))}
             </div>
-            <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(16,16,18,.95)_0%,rgba(16,16,18,.55)_45%,rgba(16,16,18,.1)_100%)] sm:bg-[linear-gradient(90deg,rgba(16,16,18,.95)_0%,rgba(16,16,18,.6)_50%,rgba(16,16,18,.05)_100%)]" />
-            <div className="absolute inset-0 flex flex-col justify-end p-4 sm:justify-center sm:p-8">
-              <h1 className="font-display text-[26px] font-extrabold leading-[0.95] tracking-[-0.03em] text-white sm:text-5xl"><span className="font-serif font-normal italic">Your</span> AI content studio</h1>
-              <p className="mt-1.5 max-w-sm text-xs leading-snug text-white/80 sm:mt-3 sm:text-base">One face, every scene. Photos and short videos in minutes.</p>
-              <div className="mt-3 flex gap-2 sm:mt-5">
-                <button type="button" onClick={() => studioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="hc-shine inline-flex min-h-11 items-center rounded-full bg-white px-4 text-sm font-bold text-[#101012]">Start creating</button>
-                <button type="button" onClick={() => { setGalleryStartIndex(0); setSheet("gallery"); }} className="inline-flex min-h-11 items-center rounded-full border border-white/[0.3] bg-black/30 px-4 text-sm font-semibold text-white backdrop-blur-sm">View gallery</button>
-              </div>
-            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
+            <h1 className="absolute inset-x-0 bottom-3 px-4 font-display font-extrabold uppercase leading-[0.86] tracking-[-0.04em] text-white drop-shadow-[0_4px_18px_rgba(0,0,0,.45)] sm:bottom-6 sm:px-8">
+              <span className="block text-[46px] sm:text-[72px] lg:text-[88px]"><span className="font-script mr-0.5 align-[-0.08em] text-[64px] normal-case sm:text-[100px] lg:text-[124px]">Y</span>our</span>
+              <span className="block text-[40px] sm:text-[64px] lg:text-[80px]">AI content</span>
+              <span className="block text-right text-[40px] sm:text-[64px] lg:text-[80px]">studio</span>
+            </h1>
+          </div>
+          <p className="mt-3 hidden text-center text-sm text-[#D4D4D8] sm:block">Make AI photos and short videos of one consistent model, ready to post.</p>
+          <div className="mt-3 flex gap-2 sm:mx-auto sm:max-w-md">
+            <button type="button" onClick={() => studioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="hc-shine min-h-12 flex-1 rounded-full bg-white text-sm font-extrabold uppercase tracking-[0.02em] text-[#101012]">Get started</button>
+            <button type="button" onClick={() => { setGalleryStartIndex(0); setSheet("gallery"); }} className="min-h-12 rounded-full border border-white/[0.2] px-5 text-sm font-semibold text-white">View gallery</button>
           </div>
         </section>
 
         <section id="models" className="scroll-mt-24 pt-4 sm:pt-7"><div className="flex items-end justify-between gap-3"><div><h2 className="font-display text-2xl font-extrabold sm:text-3xl">Choose your model</h2><p className="mt-1 hidden text-sm sm:block text-[#A1A1AA]">Select a face to keep consistent in your render.</p></div><Link to="/models" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">Browse all</Link></div><div className="relative mt-3 sm:mt-4"><button type="button" aria-label="Scroll models left" onClick={() => scrollRail(modelsRailRef, -1)} className="absolute left-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowLeft className="h-4 w-4" /></button><div ref={modelsRailRef} className="flex items-start snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button type="button" onClick={() => { if (credits === null) openAuthGate(); else navigate({ to: "/create" }); }} className="hc-rise group relative flex aspect-[3/4] w-[148px] shrink-0 snap-start flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-white/[0.22] bg-[radial-gradient(circle_at_50%_35%,#2A2A30,#16161A_70%)] p-4 text-center transition duration-300 hover:-translate-y-0.5 hover:border-white/[0.4] sm:w-[200px]"><span className="grid h-14 w-14 place-items-center rounded-full bg-white/[0.08] transition duration-300 group-hover:scale-110 group-hover:bg-white/[0.14]"><Sparkles className="h-6 w-6 text-white" /></span><span className="text-sm font-bold">Create your own</span><span className="text-xs text-[#A1A1AA]">Build a new character</span></button>
-          {[...ownedModels, ...lockedModels].map((item, index) => {
+          {/* Display order, not owned-first: the free model (Vanessa) and the other
+              big-bust identities trail the rail (display-models.ts); owned ones
+              just say so on the card. */}
+          {displayModels.map((item, index) => {
             const selected = model === item.id;
             const ready = readyForRender(item);
             return (
@@ -568,7 +597,7 @@ function Creator() {
                 className={`hc-rise group relative aspect-[3/4] w-[148px] shrink-0 snap-start overflow-hidden rounded-2xl border transition duration-300 sm:w-[200px] ${selected ? "border-white ring-2 ring-white/40" : "border-white/[0.1] hover:-translate-y-0.5 hover:border-white/[0.3]"}`}
               >
                 <button type="button" aria-pressed={selected} aria-label={`${item.name}${selected ? ", selected" : ready ? "" : ", locked"}`} onClick={() => { if (ready) setModel(item.id); setPreviewModel(item); }} className="absolute inset-0 block text-left">
-                  <ReelMedia reel={getEffectiveCompanionReel(item)} poster={item.image_url} alt={item.name} active={selected || hoveredModel === item.id} eager={index < 3} className={`h-full w-full transition duration-500 ${selected ? "" : "group-hover:scale-[1.04]"} ${ready ? "" : "saturate-[.85]"}`} />
+                  <ReelMedia reel={getEffectiveCompanionReel(item)} poster={item.image_url} alt={item.name} eager={index < 3} className={`h-full w-full transition duration-500 ${selected ? "" : "group-hover:scale-[1.04]"} ${ready ? "" : "saturate-[.85]"}`} />
                   <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-3 pb-3 pt-12">
                     <span className="block truncate text-sm font-bold text-white">{item.name}</span>
                     <span className="mt-0.5 block text-[11px] text-white/70">{selected ? "Selected" : ready ? "Owned" : `${creatorBilling.creditCosts.modelUnlock} credits`}</span>
@@ -612,7 +641,7 @@ function Creator() {
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-5">
                 <p className="text-sm text-[#A1A1AA]">Estimated cost <span className="font-bold text-white">{cost} {cost === 1 ? "credit" : "credits"}</span>{contentMode === "adult" && <span className="ml-2 text-xs text-[#E5484D]">18+ rate</span>}</p>
-                <button type="button" aria-disabled={busy || prompt.trim().length < 3} disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-bold text-[#101012] shadow-[0_10px_30px_rgba(255,255,255,.08)] transition hover:bg-[#E4E4E7] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"><Sparkles className="h-4 w-4" />{busy ? "Queuing…" : `Generate · ${cost} ${cost === 1 ? "credit" : "credits"}`}</button>
+                <button ref={inlineGenerateRef} type="button" aria-disabled={busy || prompt.trim().length < 3} disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-bold text-[#101012] shadow-[0_10px_30px_rgba(255,255,255,.08)] transition hover:bg-[#E4E4E7] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"><Sparkles className="h-4 w-4" />{busy ? "Queuing…" : `Generate · ${cost} ${cost === 1 ? "credit" : "credits"}`}</button>
               </div>
               {renderStatus}{loadError && <p className="mt-3 text-sm text-[#FF8C8C]">{loadError}</p>}
             </div>
@@ -626,7 +655,7 @@ function Creator() {
 
         {credits !== null && <section id="renders" className="mt-12 scroll-mt-24"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">Your renders</p><h2 className="mt-1 font-display text-2xl font-extrabold">Recent work</h2></div><Link to="/library" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">See more <ChevronRight className="inline h-4 w-4" /></Link></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{activeJob && activeJob.status !== "completed" && <div className="flex aspect-[4/5] animate-pulse items-end rounded-xl border border-dashed border-white/[0.18] bg-[#19191C] p-3 text-xs font-semibold">Rendering…</div>}{library.slice(0, activeJob && activeJob.status !== "completed" ? 5 : 6).map((item) => <Link to="/library" search={{ item: item.id } as never} key={item.id} className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] text-left">{item.kind === "video" ? <video muted preload="metadata" className="pointer-events-none h-full w-full object-cover" src={item.media_url ?? undefined} /> : <img src={item.media_url ?? ""} alt="Saved render" loading="lazy" draggable={false} className="pointer-events-none h-full w-full object-cover transition group-hover:scale-105" />}<span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold">{item.kind === "video" ? "Video" : "Photo"}</span></Link>)}</div>{library.length === 0 && !activeJob && <p className="mt-4 rounded-xl border border-dashed border-white/[0.12] p-8 text-center text-sm text-[#A1A1AA]">Your completed renders will appear here.</p>}</section>}
       </main>
-      {!promptFocused && scrolledPastTop && <div className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t border-white/[0.12] bg-[#101012]/95 px-4 py-2 backdrop-blur-xl lg:hidden"><button type="button" disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine min-h-12 w-full rounded-xl bg-white px-5 text-sm font-bold text-[#101012] disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Queuing…" : `Generate · ${cost} ${cost === 1 ? "credit" : "credits"}`}</button></div>}
+      {!promptFocused && scrolledPastTop && !inlineGenerateVisible && <div className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t border-white/[0.12] bg-[#101012]/95 px-4 py-2 backdrop-blur-xl lg:hidden"><button type="button" disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine min-h-12 w-full rounded-xl bg-white px-5 text-sm font-bold text-[#101012] disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Queuing…" : `Generate · ${cost} ${cost === 1 ? "credit" : "credits"}`}</button></div>}
       <CreatorFooter />
       <style>{`@media (max-width:639px){button[aria-label^="Scroll models"]{display:none!important}}`}</style>
       {previewModel && <CreatorSheet open onClose={() => setPreviewModel(null)} title={`${previewModel.name} preview`}><ReelMedia reel={getEffectiveCompanionReel(previewModel)} poster={previewModel.image_url} alt={previewModel.name} eager className="mx-auto aspect-[3/4] max-h-[60dvh] w-full max-w-sm rounded-xl" /><p className="mt-4 text-sm text-[#A1A1AA]">{readyForRender(previewModel) ? "Owned identity. This face will stay consistent." : "Unlock this identity to keep the face consistent in your renders."}</p>{!readyForRender(previewModel) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(previewModel)} className="mt-4 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-50">{unlockingModel ? "Unlocking…" : `Unlock for ${creatorBilling.creditCosts.modelUnlock} credits`}</button>}</CreatorSheet>}

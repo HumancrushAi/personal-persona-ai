@@ -3,12 +3,12 @@ import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@/lib/credit-packs";
 /**
  * The creator screen must use the same costs as standalone-media.functions.
  * These are not marketing estimates: they are the debit amounts enforced by
- * the server (1 credit per photo, 10 credits minimum plus 3 per video second).
+ * the server (8 credits per photo, 10 credits minimum plus 3 per video second).
  */
 export const creatorBilling = {
   yearlyDiscountLabel: "Save 26%",
   creditCosts: {
-    image: 1,
+    image: 8,
     video: 10,
     videoPerSecond: 3,
     /** Every model after the first free one (standalone-media.functions). */

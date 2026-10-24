@@ -30,6 +30,7 @@ import { openSupport } from "@/components/SupportWidget";
 import { SUPPORT_EMAIL, supportMailto } from "@/lib/support-contact";
 import { useSystemStatus } from "@/hooks/use-app-setting";
 import { LogoLink } from "@/components/Logo";
+import { openAuthModal } from "@/components/auth/AuthModal";
 
 // Whether this session's user is an admin, asked once per page load rather than
 // on every header mount. The header is on every page, and the role check is a
@@ -302,14 +303,8 @@ export function SiteHeader({
                     <LogOut className="h-4 w-4" /> Sign Out
                   </Button>
                 ) : (
-                  <Button
-                    asChild
-                    className="w-full justify-start gap-2 rounded-xl bg-primary text-primary-foreground"
-                    onClick={close}
-                  >
-                    <Link to="/auth" search={{ mode: "signin" } as any}>
-                      <LogIn className="h-4 w-4" /> Sign In
-                    </Link>
+                  <Button className="w-full justify-start gap-2 rounded-xl bg-primary text-primary-foreground" onClick={() => { close(); openAuthModal({ initialScreen: "signin" }); }}>
+                    <LogIn className="h-4 w-4" /> Sign In
                   </Button>
                 )}
               </div>
@@ -337,16 +332,8 @@ export function SiteHeader({
           </span>
           {authed === false && (
             <>
-              <Link
-                to="/auth"
-                search={{ mode: "signin" } as any}
-                className={`${pill} border border-white/25 text-white hover:bg-white/5`}
-              >
-                Login
-              </Link>
-              <Link to="/auth" className={`${pill} bg-primary text-primary-foreground hover:bg-primary/90`}>
-                Join Free
-              </Link>
+              <button type="button" onClick={() => openAuthModal({ initialScreen: "signin" })} className={`${pill} border border-white/25 text-white hover:bg-white/5`}>Login</button>
+              <button type="button" onClick={() => openAuthModal({ initialScreen: "signup" })} className={`${pill} bg-primary text-primary-foreground hover:bg-primary/90`}>Join Free</button>
             </>
           )}
           {authed && (

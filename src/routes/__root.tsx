@@ -9,7 +9,7 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
@@ -180,6 +180,7 @@ import { PushNotificationPrompt } from "../components/PushNotificationPrompt";
 import { autoSubscribePushIfGranted } from "../lib/push-client";
 import { initGoogleTranslate } from "../lib/languages";
 import { Analytics } from "@vercel/analytics/react";
+import { AuthModal, listenForAuthModal, type AuthModalRequest } from "@/components/auth/AuthModal";
 
 const SUPPORT_BUBBLE_PATHS = ["/", "/auth"];
 const NO_SUPPORT_PREFIXES = ["/chat/", "/admin", "/studio"];
@@ -196,6 +197,11 @@ function RootComponent() {
   // True while a link's page is still loading its data. Without a sign of it
   // the old page just sat there and a click looked dead.
   const navigating = useRouterState({ select: (s) => s.isLoading || s.status === "pending" });
+  const [authModal, setAuthModal] = useState<AuthModalRequest | null>(null);
+
+  // Header sign-in returns to the page it was opened from, for email and
+  // Google alike, unless the caller asked for somewhere else.
+  useEffect(() => listenForAuthModal((request) => setAuthModal({ ...request, redirectPath: request.redirectPath ?? `${window.location.pathname}${window.location.search}` })), []);
 
   // Initialize translation and push on mount
   useEffect(() => {
@@ -260,6 +266,7 @@ function RootComponent() {
       <AffiliateTracker />
       <BottomNav />
       <PushNotificationPrompt />
+      <AuthModal open={authModal !== null} onClose={() => setAuthModal(null)} onAuthenticated={() => window.location.assign(authModal?.redirectPath ?? window.location.href)} initialScreen={authModal?.initialScreen} redirectPath={authModal?.redirectPath} companionId={authModal?.companionId} />
       {supportMounted && <SupportWidget floating={supportBubble} />}
       <Toaster richColors position="top-center" />
       {/* Page views and referrers */}

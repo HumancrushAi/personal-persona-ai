@@ -11,6 +11,7 @@ import { totalCredits } from "@/lib/credits";
 import { toast } from "sonner";
 import { LogoLink } from "@/components/Logo";
 import { CreatorSheet } from "@/components/creator/CreatorSheet";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { creatorBilling, creatorPlans, creatorPlansFromTiers, estimatedPlanMedia, formatCredits, formatPlanPrice, type BillingPeriod, type CreatorPlan } from "@/config/plans";
 import { getNextGate } from "@/lib/creator-gates";
 import { showcaseConfig } from "@/config/showcase";
@@ -103,7 +104,7 @@ function CreatorNav({ credits }: { credits: number | null }) {
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
           {credits === null ? <Link to="/auth" search={{ redirect: "/create-media" } as never} className="hidden min-h-10 items-center rounded-full border border-white/[0.12] px-3 text-xs font-semibold text-white sm:inline-flex">Sign in</Link> : <Link to="/credits" className="inline-flex min-h-9 items-center gap-1 rounded-full border border-white/[0.12] px-2.5 text-xs font-semibold text-white sm:min-h-10 sm:gap-1.5 sm:px-4 sm:text-sm">
-            <Bolt className="h-4 w-4 text-[#FF4D6A]" />
+            <Bolt className="h-4 w-4 text-white" />
             <span>{credits === null ? "--" : credits}</span><span className="hidden text-[#B3A9B0] sm:inline">credits</span>
           </Link>}
           <Link to="/me" aria-label="Open account" className="grid h-9 w-9 place-items-center rounded-full bg-[#2E2730] text-sm font-bold text-white sm:h-10 sm:w-10">G</Link>
@@ -251,6 +252,26 @@ function Creator() {
   const [showcasePaused, setShowcasePaused] = useState(false);
   const [promptFocused, setPromptFocused] = useState(false);
 
+  // The auth sheet and /auth route both return here. Restore only the local
+  // draft that was already captured before the gate; credit and adult checks
+  // still run again when the user presses Generate.
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("hc_creator_intent");
+      if (!stored) return;
+      const intent = JSON.parse(stored) as Partial<{ model: string; contentMode: "social" | "adult"; prompt: string; kind: "image" | "video"; seconds: number; size: keyof typeof sizes }>;
+      if (typeof intent.model === "string") setModel(intent.model);
+      if (intent.contentMode === "social" || intent.contentMode === "adult") setContentMode(intent.contentMode);
+      if (typeof intent.prompt === "string") setPrompt(intent.prompt);
+      if (intent.kind === "image" || intent.kind === "video") setKind(intent.kind);
+      if (typeof intent.seconds === "number" && [3, 5, 8, 10].includes(intent.seconds)) setSeconds(intent.seconds);
+      if (intent.size && intent.size in sizes) setSize(intent.size);
+      sessionStorage.removeItem("hc_creator_intent");
+    } catch {
+      sessionStorage.removeItem("hc_creator_intent");
+    }
+  }, []);
+
   const readyForRender = (item: CreatorModel) => isAdmin || models[0]?.id === item.id || unlocked.includes(item.id);
   const selectedIdentity = models.find((item) => item.id === model) ?? null;
   const selectedName = model === RANDOM_IDENTITY ? "Random identity" : selectedIdentity?.name ?? "Random identity";
@@ -341,7 +362,9 @@ function Creator() {
       if (pricing?.tiers?.length) setPlans(creatorPlansFromTiers(pricing.tiers));
       const requested = search.model;
       const visualFirst = orderModelsForDisplay(companionRows)[0];
-      if (visualFirst) setModel(requested && companionRows.some((item) => item.id === requested) ? requested : visualFirst.id);
+      // A model restored from the pre-auth draft is already in state; keep it
+      // unless the URL names one explicitly.
+      if (visualFirst) setModel((current) => requested && companionRows.some((item) => item.id === requested) ? requested : current === RANDOM_IDENTITY || companionRows.some((item) => item.id === current) ? current : visualFirst.id);
       if (auth.user) {
         const [{ data: unlockRows }, { data: role }, { data: profile }, { data: balance }] = await Promise.all([
           (supabase as any).from("creator_model_unlocks").select("companion_id").eq("user_id", auth.user.id),
@@ -457,9 +480,9 @@ function Creator() {
 
   const surpriseMe = () => setPrompt(sceneIdeas[Math.floor(Math.random() * sceneIdeas.length)].prompt);
   const renderStatus = activeJob && (
-    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-[#FF4D6A]/60 bg-[#FF4D6A]/[0.06] px-4 py-3 text-sm">
-      <span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${activeJob.status === "completed" ? "bg-[#7FE0B0]" : activeJob.status === "failed" ? "bg-[#FF8C8C]" : "animate-pulse bg-[#FF4D6A]"}`} />{activeJob.status === "completed" ? "Render complete." : activeJob.status === "failed" ? "Render failed." : `Rendering your ${activeJob.kind}...`}</span>
-      <Link to="/library" className="font-semibold text-[#FF7A90] hover:text-white">Open library <ChevronRight className="inline h-4 w-4" /></Link>
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-white/[0.24] bg-white/[0.035] px-4 py-3 text-sm">
+      <span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${activeJob.status === "completed" ? "bg-[#7FE0B0]" : activeJob.status === "failed" ? "bg-[#FF8C8C]" : "animate-pulse bg-white"}`} />{activeJob.status === "completed" ? "Render complete." : activeJob.status === "failed" ? "Render failed." : `Rendering your ${activeJob.kind}...`}</span>
+      <Link to="/library" className="font-semibold text-white hover:text-[#D4D4D8]">Open library <ChevronRight className="inline h-4 w-4" /></Link>
     </div>
   );
 
@@ -489,7 +512,7 @@ function Creator() {
         </section>
 
         <section id="models" className="scroll-mt-24 pt-4 sm:pt-7"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-display text-2xl font-extrabold sm:text-3xl">Choose your model</h2><p className="mt-1 text-sm text-[#A1A1AA]">Select a face to keep consistent in your render.</p></div><Link to="/models" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">Browse all</Link></div><div className="relative mt-4"><button type="button" aria-label="Scroll models left" onClick={() => scrollRail(modelsRailRef, -1)} className="absolute left-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowLeft className="h-4 w-4" /></button><div ref={modelsRailRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <Link to="/create" className="relative flex w-[148px] shrink-0 snap-start flex-col justify-end overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] p-4 text-left transition hover:border-white/[0.25] sm:w-[220px]"><span className="grid aspect-[3/4] place-items-center rounded-lg bg-[#232327]"><Sparkles className="h-8 w-8 text-white" /></span><span className="mt-3 text-sm font-bold">Create your own</span><span className="mt-1 text-xs text-[#A1A1AA]">Build a new character</span></Link>
+          <button type="button" onClick={() => { if (credits === null) setSheet("auth"); else navigate({ to: "/create" }); }} className="relative flex w-[148px] shrink-0 snap-start flex-col justify-end overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] p-4 text-left transition hover:border-white/[0.25] sm:w-[220px]"><span className="grid aspect-[3/4] place-items-center rounded-lg bg-[#232327]"><Sparkles className="h-8 w-8 text-white" /></span><span className="mt-3 text-sm font-bold">Create your own</span><span className="mt-1 text-xs text-[#A1A1AA]">Build a new character</span></button>
           {[...ownedModels, ...lockedModels].map((item) => <article key={item.id} className={`w-[148px] shrink-0 snap-start overflow-hidden rounded-xl border bg-[#19191C] sm:w-[220px] ${model === item.id ? "border-[#E5484D] ring-2 ring-[#E5484D]/30" : "border-white/[0.1]"}`}><button type="button" aria-pressed={model === item.id} onClick={() => { if (readyForRender(item)) setModel(item.id); setPreviewModel(item); }} className="block w-full text-left"><img src={item.image_url} alt={item.name} loading="lazy" className="aspect-[3/4] w-full object-cover object-top" /><div className="p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-[#A1A1AA]">{model === item.id ? "Selected" : readyForRender(item) ? "Owned" : "Unlock for 50 credits"}</p></div></button>{!readyForRender(item) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(item)} className="mx-3 mb-3 min-h-10 w-[calc(100%-1.5rem)] rounded-lg border border-white/[0.14] px-2 text-xs font-semibold text-white hover:bg-white/[0.08]">{unlockingModel ? "Unlocking..." : "Unlock"}</button>}</article>)}
         </div><button type="button" aria-label="Scroll models right" onClick={() => scrollRail(modelsRailRef, 1)} className="absolute right-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowRight className="h-4 w-4" /></button></div>{selectedIdentity && sampleModels.length > 0 && <div className="mt-5"><div className="mb-2 flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#A1A1AA]">More faces</p><p className="mt-1 text-xs text-[#8E858C]">Different references, no repeats</p></div><div className="flex gap-2"><button type="button" aria-label="Scroll more faces left" onClick={() => scrollRail(sampleRailRef, -1)} className="grid h-8 w-8 place-items-center rounded-full border border-white/[0.15] bg-[#19191C] text-white"><ArrowLeft className="h-3.5 w-3.5" /></button><button type="button" aria-label="Scroll more faces right" onClick={() => scrollRail(sampleRailRef, 1)} className="grid h-8 w-8 place-items-center rounded-full border border-white/[0.15] bg-[#19191C] text-white"><ArrowRight className="h-3.5 w-3.5" /></button></div></div><div ref={sampleRailRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={`${selectedIdentity.name} related models`}>{sampleModels.map((item) => <figure key={item.id} className="w-[150px] shrink-0 snap-start"><img src={item.image_url} alt={item.name} loading="lazy" className="aspect-[4/3] w-full rounded-xl object-cover object-top" /><figcaption className="mt-2 text-xs font-semibold text-[#D4D4D8]">{item.name}</figcaption></figure>)}</div></div>}</section>
 
@@ -507,7 +530,7 @@ function Creator() {
       <CreatorFooter />
       <style>{`@media (max-width:639px){button[aria-label^="Scroll models"]{display:none!important}}`}</style>
       {previewModel && <CreatorSheet open onClose={() => setPreviewModel(null)} title={`${previewModel.name} preview`}><img src={previewModel.image_url} alt={previewModel.name} className="max-h-[60dvh] w-full rounded-xl object-cover object-top" /><p className="mt-4 text-sm text-[#A1A1AA]">{readyForRender(previewModel) ? "Owned identity. This face will stay consistent." : "Unlock this identity to keep the face consistent in your renders."}</p>{!readyForRender(previewModel) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(previewModel)} className="mt-4 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-50">{unlockingModel ? "Unlocking…" : "Unlock for 50 credits"}</button>}</CreatorSheet>}
-      <CreatorSheet open={sheet === "auth"} onClose={() => setSheet(null)} title="Sign in to continue"><p className="text-sm leading-relaxed text-[#A1A1AA]">Create an account or sign in to save renders, use your credits, and keep an identity consistent.</p><Link to="/auth" search={{ redirect: "/create-media" } as never} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-bold text-[#101012]">Open sign in</Link></CreatorSheet>
+      <AuthModal open={sheet === "auth"} onClose={() => setSheet(null)} redirectPath="/create-media" onAuthenticated={() => window.location.reload()} />
       <CreatorSheet open={sheet === "age"} onClose={() => setSheet(null)} title="Confirm your age"><label className="flex items-start gap-3 text-sm leading-relaxed text-[#A1A1AA]"><input type="checkbox" checked={ageAgreed} onChange={(event) => setAgeAgreed(event.target.checked)} className="mt-1 h-4 w-4 accent-[#E5484D]" /><span>I confirm that I am 18 or older and agree to the Terms and Privacy Policy.</span></label><button type="button" disabled={!ageAgreed} onClick={() => { void agreeToAdultMode(); setSheet(null); setContentMode("adult"); }} className="mt-5 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-40">Continue to 18+</button></CreatorSheet>
       <CreatorSheet open={sheet === "plan"} onClose={() => setSheet(null)} title="Choose a plan"><p className="text-sm leading-relaxed text-[#A1A1AA]">A creator plan unlocks the render wallet. Social is available for eligible credits; 18+ also requires age confirmation. Checkout uses these exact live tiers.</p><div className="mt-4 grid gap-3">{plans.map((plan) => <button type="button" key={plan.tierId} onClick={() => choosePlan(plan)} className="flex min-h-14 items-center justify-between rounded-xl border border-white/[0.12] px-4 text-left hover:bg-white/[0.08]"><span><span className="block font-semibold">{plan.name}</span><span className="block text-xs text-[#A1A1AA]">{formatPlanPrice(plan)} · {formatCredits(plan.credits)}</span></span><ChevronRight className="h-4 w-4" /></button>)}</div></CreatorSheet>
       <CreatorSheet open={sheet === "gallery"} onClose={() => setSheet(null)} title="Creator gallery"><p className="mb-4 text-sm text-[#A1A1AA]">Viewing {showcaseItems[galleryStartIndex]?.label ?? "the creator showcase"}</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{showcaseItems.map((item, index) => <button type="button" key={item.id} onClick={() => setGalleryStartIndex(index)} aria-pressed={index === galleryStartIndex} className={`overflow-hidden rounded-xl border text-left transition ${index === galleryStartIndex ? "border-white ring-2 ring-white/25" : "border-white/[0.1]"}`}><img src={item.poster} alt={item.alt} loading="lazy" className="aspect-[3/4] w-full object-cover" /><span className="block p-2 text-xs font-semibold text-white">{item.label}</span></button>)}</div><Link to="/gallery" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/[0.14] text-sm font-semibold">View more</Link></CreatorSheet>

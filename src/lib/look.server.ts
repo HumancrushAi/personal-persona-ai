@@ -121,30 +121,21 @@ async function describeScene(url: string): Promise<string> {
   }
 }
 
-async function describePortrait(url: string): Promise<string> {
-  const key = process.env.OPENROUTER_API_KEY;
+export const LOOK_PROMPT =
+  "Describe this person's looks for a portrait artist in one comma-separated phrase of at most 28 words. State exact hair color, texture and part, and measure its visible length as chin-length, shoulder-length, chest-length, waist-length, or longer. Then state eye color, skin tone, body build and bust size. Mention tattoos with locations only when clearly visible; if none are visible, omit tattoos entirely. Describe actual features, not clothing. Only the phrase, no sentence, no names.";
+
+async function describeWith(endpoint: string, key: string | undefined, model: string, url: string): Promise<string> {
   if (!key) return "";
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(25_000),
       body: JSON.stringify({
-        model: process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct",
+        model,
         temperature: 0,
         max_tokens: 90,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Describe this person's looks for a portrait artist in one comma-separated phrase of at most 28 words. State exact hair color, texture and part, and measure its visible length as chin-length, shoulder-length, chest-length, waist-length, or longer. Then state eye color, skin tone, body build and bust size. Mention tattoos with locations only when clearly visible; if none are visible, omit tattoos entirely. Describe actual features, not clothing. Only the phrase, no sentence, no names.",
-              },
-              { type: "image_url", image_url: { url } },
-            ],
-          },
-        ],
+        messages: [{ role: "user", content: [{ type: "text", text: LOOK_PROMPT }, { type: "image_url", image_url: { url } }] }],
       }),
     });
     if (!res.ok) return "";
@@ -153,6 +144,29 @@ async function describePortrait(url: string): Promise<string> {
   } catch {
     return "";
   }
+}
+
+/**
+ * Her look in words. The OpenRouter vision model came back empty for 64 of
+ * 83 catalog portraits (refusals on lingerie shots, errors, timeouts), and an
+ * empty look is never cached, so those companions rendered with tattoos in
+ * the NEGATIVE prompt and lost their ink. Grok vision, already used for the
+ * photo check, answers when it does not.
+ */
+async function describePortrait(url: string): Promise<string> {
+  const viaOpenRouter = await describeWith(
+    "https://openrouter.ai/api/v1/chat/completions",
+    process.env.OPENROUTER_API_KEY,
+    process.env.VISION_VERIFY_MODEL || "qwen/qwen2.5-vl-72b-instruct",
+    url,
+  );
+  if (viaOpenRouter) return viaOpenRouter;
+  return describeWith(
+    "https://api.x.ai/v1/chat/completions",
+    process.env.XAI_API_KEY,
+    process.env.XAI_VISION_MODEL || "grok-4-1-fast-non-reasoning",
+    url,
+  );
 }
 
 // One short lowercase phrase; anything that reads like a refusal or an essay is dropped.
@@ -167,7 +181,8 @@ export function tidyLook(raw: string | null | undefined): string {
   // noun and draws one. Absence belongs in the negative prompt instead.
   s = s
     .replace(/(?:^|,\s*)no visible tattoos?(?=,|$)/gi, "")
-    .replace(/(?:^|,\s*)no tattoos?(?=,|$)/gi, "")
+    .replace(/(?:^|,\s*)no tattoos?(?:\s+(?:visible|seen|shown))?(?=,|$)/gi, "")
+    .replace(/(?:^|,\s*)(?:without|free of) tattoos?(?=,|$)/gi, "")
     .replace(/^,\s*|,\s*$/g, "")
     .replace(/,\s*,/g, ",");
   const words = s.split(" ");

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { LogoLink } from "@/components/Logo";
 import { CreatorSheet } from "@/components/creator/CreatorSheet";
 import { ReelMedia } from "@/components/creator/ReelMedia";
+import { DoneForYouPopup } from "@/components/creator/DoneForYouPopup";
 import { resizedImage } from "@/lib/companion-images";
 import { hasSocialExplicitTerms } from "@/lib/social-safety";
 import { AuthModal } from "@/components/auth/AuthModal";
@@ -155,7 +156,7 @@ function CreatorNav({ credits, onSignIn }: { credits: number | null; onSignIn: (
 
 function CreatorFooter() {
   return (
-    <footer className="mx-auto mt-16 flex max-w-[1240px] flex-col gap-3 border-t border-white/[0.08] px-4 py-8 text-xs text-[#8E858C] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <footer className="mx-auto mt-8 flex max-w-[1240px] flex-col gap-3 border-t border-white/[0.08] px-4 pb-24 pt-6 sm:mt-16 sm:py-8 text-xs text-[#8E858C] sm:flex-row sm:items-center sm:justify-between sm:px-6">
       <p>All characters are fictional, AI-generated adults. Results vary by prompt and provider.</p>
       <nav className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Policies">
         <Link to="/legal/$slug" params={{ slug: "terms" }} className="transition hover:text-white">Terms</Link>
@@ -332,6 +333,16 @@ function Creator() {
     label: model.name,
   })), [showcaseModels]);
   const [hoveredModel, setHoveredModel] = useState<string | null>(null);
+  // The gallery sheet shows every model, not only the banner's twelve.
+  const galleryItems = useMemo<ShowcaseItem[]>(() => displayModels.map((item, index) => ({
+    ...(showcaseConfig[index % showcaseConfig.length] ?? showcaseConfig[0]),
+    id: item.id,
+    type: "video" as const,
+    src: getEffectiveCompanionReel(item) ?? item.image_url,
+    poster: item.image_url,
+    alt: `${item.name} creator reference`,
+    label: item.name,
+  })), [displayModels]);
   // A locked card asks to be unlocked in place instead of opening a sheet.
   const [pendingUnlock, setPendingUnlock] = useState<string | null>(null);
   // The hero collage: every model with a reel, skipping the ones the picker
@@ -594,7 +605,7 @@ function Creator() {
         <div className="absolute inset-0 bg-[radial-gradient(120%_60%_at_50%_0%,transparent,#101012_75%)]" />
       </div>
       <CreatorNav credits={credits} onSignIn={openAuthGate} />
-      <main className="mx-auto max-w-[1200px] px-4 pb-36 sm:px-6 lg:max-w-[1400px] lg:pb-16">
+      <main className="mx-auto max-w-[1200px] px-4 pb-4 sm:px-6 lg:max-w-[1400px] lg:pb-16">
         <section id="showcase" aria-label="HumanCrush creator studio" className="scroll-mt-24 pt-3 sm:pt-6">
           <div className="relative h-[200px] overflow-hidden rounded-[28px] bg-[#17171A] sm:h-[280px] lg:h-[320px]">
             <div aria-hidden="true" className="absolute inset-0 grid grid-cols-3 gap-2 p-2 sm:grid-cols-4 lg:grid-cols-6">
@@ -721,12 +732,17 @@ function Creator() {
       </main>
       {!promptFocused && scrolledPastTop && !inlineGenerateVisible && <div className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t border-white/[0.12] bg-[#101012]/95 px-4 py-2 backdrop-blur-xl lg:hidden"><button type="button" disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine min-h-12 w-full rounded-xl bg-white px-5 text-sm font-bold text-[#101012] disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Queuing…" : `Generate · ${cost} ${cost === 1 ? "credit" : "credits"}`}</button></div>}
       <CreatorFooter />
+      <DoneForYouPopup
+        href={BOOK_CALL_SMS}
+        face={heroFaces[0] ? { name: heroFaces[0].name, image_url: heroFaces[0].image_url, reel: getEffectiveCompanionReel(heroFaces[0]) } : null}
+        busy={promptFocused || sheet !== null || previewModel !== null}
+      />
       <style>{`@media (max-width:639px){button[aria-label^="Scroll models"]{display:none!important}}`}</style>
       {previewModel && <CreatorSheet open onClose={() => setPreviewModel(null)} title={`${previewModel.name} preview`}><ReelMedia reel={getEffectiveCompanionReel(previewModel)} poster={previewModel.image_url} alt={previewModel.name} eager className="mx-auto aspect-[3/4] max-h-[60dvh] w-full max-w-sm rounded-xl" /><p className="mt-4 text-sm text-[#A1A1AA]">{readyForRender(previewModel) ? "Owned identity. This face will stay consistent." : "Unlock this identity to keep the face consistent in your renders."}</p>{!readyForRender(previewModel) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(previewModel)} className="mt-4 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-50">{unlockingModel ? "Unlocking…" : `Unlock for ${creatorBilling.creditCosts.modelUnlock} credits`}</button>}</CreatorSheet>}
       <AuthModal open={sheet === "auth"} onClose={() => setSheet(null)} redirectPath="/create-media" onAuthenticated={() => window.location.reload()} />
       <CreatorSheet open={sheet === "age"} onClose={() => setSheet(null)} title="Confirm your age"><label className="flex items-start gap-3 text-sm leading-relaxed text-[#A1A1AA]"><input type="checkbox" checked={ageAgreed} onChange={(event) => setAgeAgreed(event.target.checked)} className="mt-1 h-4 w-4 accent-[#E5484D]" /><span>I confirm that I am 18 or older and agree to the Terms and Privacy Policy.</span></label><button type="button" disabled={!ageAgreed} onClick={() => { void agreeToAdultMode(); setSheet(null); setContentMode("adult"); }} className="mt-5 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-40">Continue to 18+</button></CreatorSheet>
       <CreatorSheet open={sheet === "plan"} onClose={() => setSheet(null)} title="Choose a plan"><p className="text-sm leading-relaxed text-[#A1A1AA]">A creator plan unlocks the render wallet. Social is available for eligible credits; 18+ also requires age confirmation. Checkout uses these exact live tiers.</p><div className="mt-4 grid gap-3">{plans.map((plan) => <button type="button" key={plan.tierId} onClick={() => choosePlan(plan)} className="flex min-h-14 items-center justify-between rounded-xl border border-white/[0.12] px-4 text-left hover:bg-white/[0.08]"><span><span className="block font-semibold">{plan.name}</span><span className="block text-xs text-[#A1A1AA]">{formatPlanPrice(plan)} · {formatCredits(plan.credits)}</span></span><ChevronRight className="h-4 w-4" /></button>)}</div></CreatorSheet>
-      <CreatorSheet open={sheet === "gallery"} onClose={() => setSheet(null)} title="Creator gallery"><p className="mb-4 text-sm text-[#A1A1AA]">Viewing {showcaseItems[galleryStartIndex]?.label ?? "the creator showcase"}</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{showcaseItems.map((item, index) => <button type="button" key={item.id} onClick={() => setGalleryStartIndex(index)} aria-pressed={index === galleryStartIndex} className={`overflow-hidden rounded-xl border text-left transition ${index === galleryStartIndex ? "border-white ring-2 ring-white/25" : "border-white/[0.1]"}`}><ReelMedia reel={item.type === "video" ? item.src : null} poster={item.poster} alt={item.alt} className="aspect-[3/4] w-full" /><span className="block p-2 text-xs font-semibold text-white">{item.label}</span></button>)}</div><Link to="/gallery" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/[0.14] text-sm font-semibold">View more</Link></CreatorSheet>
+      <CreatorSheet open={sheet === "gallery"} onClose={() => setSheet(null)} title="Creator gallery"><p className="mb-4 text-sm text-[#A1A1AA]">Viewing {galleryItems[galleryStartIndex]?.label ?? "the creator showcase"}</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{galleryItems.map((item, index) => <button type="button" key={item.id} onClick={() => setGalleryStartIndex(index)} aria-pressed={index === galleryStartIndex} className={`overflow-hidden rounded-xl border text-left transition ${index === galleryStartIndex ? "border-white ring-2 ring-white/25" : "border-white/[0.1]"}`}><ReelMedia reel={item.type === "video" ? item.src : null} poster={item.poster} alt={item.alt} className="aspect-[3/4] w-full" /><span className="block p-2 text-xs font-semibold text-white">{item.label}</span></button>)}</div><Link to="/gallery" className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/[0.14] text-sm font-semibold">View more</Link></CreatorSheet>
     </div>
   );
 }

@@ -21,8 +21,19 @@ export function CreatorSheet({ open, onClose, title, children, labelledBy }: Cre
   useEffect(() => {
     if (!open) return;
     triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Lock the page behind the sheet. overflow:hidden on body alone is not
+    // enough here: <html> is overflow-y:scroll site-wide, and mobile browsers
+    // keep scrolling it. Pinning the body in place does hold, and the scroll
+    // position is put back exactly when the sheet closes.
+    const scrollY = window.scrollY;
+    const body = document.body.style;
+    const html = document.documentElement.style;
+    const previous = { position: body.position, top: body.top, width: body.width, overflow: body.overflow, htmlOverflow: html.overflow };
+    body.position = "fixed";
+    body.top = `-${scrollY}px`;
+    body.width = "100%";
+    body.overflow = "hidden";
+    html.overflow = "hidden";
     const panel = panelRef.current;
     panel?.focus();
     const closeFromHistory = () => {
@@ -45,7 +56,12 @@ export function CreatorSheet({ open, onClose, title, children, labelledBy }: Cre
     document.addEventListener("keydown", onKeyDown);
     window.addEventListener("popstate", closeFromHistory, { once: true });
     return () => {
-      document.body.style.overflow = previousOverflow;
+      body.position = previous.position;
+      body.top = previous.top;
+      body.width = previous.width;
+      body.overflow = previous.overflow;
+      html.overflow = previous.htmlOverflow;
+      window.scrollTo(0, scrollY);
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("popstate", closeFromHistory);
       triggerRef.current?.focus();
@@ -71,7 +87,7 @@ export function CreatorSheet({ open, onClose, title, children, labelledBy }: Cre
           <h2 id={titleId} className="truncate text-center font-display text-lg font-bold text-white">{title}</h2>
           <button type="button" aria-label={`Close ${title}`} onClick={requestClose} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/[0.12] text-white transition hover:bg-white/[0.08]"><X className="h-5 w-5" /></button>
         </div>
-        <div className="max-h-[calc(90dvh-5rem)] overflow-y-auto px-5 py-5">{children}</div>
+        <div className="max-h-[calc(90dvh-5rem)] overflow-y-auto overscroll-contain px-5 py-5 [-webkit-overflow-scrolling:touch]">{children}</div>
       </div>
     </div>
   );

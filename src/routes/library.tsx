@@ -1,4 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+// Social jobs store an internal marker at the head of the prompt; never show it.
+import { stripContentModeMarker } from "@/lib/social-safety";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, Download, Heart, Image as ImageIcon, Play, RefreshCw, Trash2, Video, X } from "lucide-react";
 import { z } from "zod";
@@ -108,7 +110,7 @@ function LibraryPage() {
     if (!reset && cursor) query = query.lt("created_at", cursor);
     const { data, error } = await query;
     if (error) { setLoading(false); return; }
-    const page = (data ?? []).map((row) => { const info = conversationMap.get(row.conversation_id ?? ""); return { ...row, media_url: row.media_url ?? "", modelName: info?.modelName ?? "Model", companionId: info?.companionId ?? "" } as Item; });
+    const page = (data ?? []).map((row) => { const info = conversationMap.get(row.conversation_id ?? ""); return { ...row, prompt: stripContentModeMarker(row.prompt), media_url: row.media_url ?? "", modelName: info?.modelName ?? "Model", companionId: info?.companionId ?? "" } as Item; });
     setItems((current) => reset ? page : [...current, ...page]);
     setCursor(page.at(-1)?.created_at ?? null);
     setHasMore(page.length === PAGE_SIZE);

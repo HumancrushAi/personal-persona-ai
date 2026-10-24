@@ -183,6 +183,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { AuthModal, listenForAuthModal, type AuthModalRequest } from "@/components/auth/AuthModal";
 
 const SUPPORT_BUBBLE_PATHS = ["/", "/auth"];
+const NOIR_PREFIXES = ["/create-media", "/library", "/auth", "/gallery"];
 const NO_SUPPORT_PREFIXES = ["/chat/", "/admin", "/studio"];
 const NO_FOOTER_PREFIXES = ["/chat/", "/admin", "/studio", "/create-media", "/library", "/auth"];
 
@@ -223,7 +224,10 @@ function RootComponent() {
     const requested = params.get("theme");
     if (requested === "noir") window.localStorage.setItem("hc-theme", "noir");
     if (requested === "default") window.localStorage.removeItem("hc-theme");
-    const theme = requested ?? window.localStorage.getItem("hc-theme") ?? import.meta.env.VITE_THEME;
+    // The creator funnel is designed for Noir only, so it is on there unless
+    // ?theme=default is set; the rest of the site keeps its opt-in.
+    const creatorRoute = NOIR_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+    const theme = requested ?? window.localStorage.getItem("hc-theme") ?? import.meta.env.VITE_THEME ?? (creatorRoute ? "noir" : "default");
     document.documentElement.dataset.theme = theme === "noir" ? "noir" : "default";
   }, [pathname]);
 

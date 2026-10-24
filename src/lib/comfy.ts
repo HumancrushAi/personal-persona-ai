@@ -681,6 +681,42 @@ export function withProductReferences(template: string, imageNames: string[]): s
   return JSON.stringify(graph);
 }
 
+/**
+ * Her whole portrait as a second, regular (PLUS) IP-Adapter reference on the
+ * main sampler, on top of FaceID. FaceID carries only the face; this carries
+ * what text cannot: body shape, skin, and the actual tattoo art. Off unless
+ * COMFY_BODY_REF sets a weight. "style transfer" keeps her look without
+ * copying the portrait's pose and outfit as strongly as "linear" does.
+ */
+export function withBodyReference(
+  template: string,
+  opts: { weight: number; weightType?: string; endAt?: number },
+): string {
+  if (!(opts.weight > 0)) return template;
+  const graph = JSON.parse(template) as Record<string, any>;
+  const sampler = graph["3"];
+  if (!sampler?.inputs?.model) return template;
+  // 60s: clear of face restoration (30), the LoRA (40) and product refs (50s).
+  graph["60"] = { class_type: "IPAdapterUnifiedLoader", inputs: { model: sampler.inputs.model, preset: "PLUS (high strength)" } };
+  graph["61"] = { class_type: "LoadImage", inputs: { image: REFERENCE_NAME, upload: "image" } };
+  graph["62"] = {
+    class_type: "IPAdapterAdvanced",
+    inputs: {
+      model: ["60", 0],
+      ipadapter: ["60", 1],
+      image: ["61", 0],
+      weight: opts.weight,
+      weight_type: opts.weightType || "style transfer",
+      combine_embeds: "concat",
+      start_at: 0,
+      end_at: opts.endAt ?? 0.8,
+      embeds_scaling: "V only",
+    },
+  };
+  sampler.inputs.model = ["62", 0];
+  return JSON.stringify(graph);
+}
+
 /** The name the reference portrait is saved under in the worker's input folder. */
 export const REFERENCE_NAME = "reference.png";
 

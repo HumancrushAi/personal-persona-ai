@@ -27,7 +27,10 @@ export const companionReelUrl = (id: string | null | undefined): string | null =
   id ? `${BASE}/companion-${id}.mp4` : null;
 
 // All 52 companions have 1:1 matching animated dress reels generated directly from their portraits.
-const MISMATCHED_REELS = new Set<string>([]);
+// Catalog companions whose reel file does not exist (checked 2026-10-24).
+const MISMATCHED_REELS = new Set<string>([
+  "4fd6e503-2627-47b5-83be-0e9f12385fc7", // Sin
+]);
 
 export function getEffectiveCompanionReel(c: {
   id?: string;

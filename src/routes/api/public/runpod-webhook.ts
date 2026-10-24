@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/runpod-webhook")({
 
         const { data: job } = await supabaseAdmin
           .from("media_jobs")
-          .select("id, user_id, conversation_id, kind, cost, status, provider, content_mode, prompt")
+          .select("id, user_id, conversation_id, kind, cost, status, provider, prompt") // Social is read from the prompt marker; content_mode may not exist live
           .eq("replicate_id", jobId)
           .maybeSingle();
 

@@ -42,7 +42,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
     billingMonths: 1,
     perks: [
       "80 creator credits / month",
-      "Create 80 photos or 8 videos",
+      "Create 10 photos or 8 videos",
       "Social and 18+ modes (18+ needs age confirmation)",
       "1 model included, more for 50 credits each",
       "Unused credits roll over",
@@ -58,7 +58,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
     billingMonths: 12,
     perks: [
       "960 creator credits / year",
-      "Create 960 photos or 96 videos a year",
+      "Create 120 photos or 96 videos a year",
       "Social and 18+ modes (18+ needs age confirmation)",
       "1 model included, more for 50 credits each",
       "Unused credits roll over",
@@ -74,7 +74,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
     billingMonths: 1,
     perks: [
       "350 creator credits / month",
-      "Create 350 photos or 35 videos",
+      "Create 43 photos or 35 videos",
       "Social and 18+ modes (18+ needs age confirmation)",
       "1 model included, more for 50 credits each",
       "Unused credits roll over",
@@ -90,7 +90,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
     billingMonths: 12,
     perks: [
       "4,200 creator credits / year",
-      "Create 4,200 photos or 420 videos a year",
+      "Create 525 photos or 420 videos a year",
       "Social and 18+ modes (18+ needs age confirmation)",
       "1 model included, more for 50 credits each",
       "Unused credits roll over",
@@ -107,7 +107,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
     badge: "Popular",
     perks: [
       "750 creator credits / month",
-      "Create 750 photos or 75 videos",
+      "Create 93 photos or 75 videos",
       "Social and 18+ modes (18+ needs age confirmation)",
       "1 model included, more for 50 credits each",
       "Unused credits roll over",
@@ -124,7 +124,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
     badge: "Popular",
     perks: [
       "9,000 creator credits / year",
-      "Create 9,000 photos or 900 videos a year",
+      "Create 1,125 photos or 900 videos a year",
       "Social and 18+ modes (18+ needs age confirmation)",
       "1 model included, more for 50 credits each",
       "Unused credits roll over",

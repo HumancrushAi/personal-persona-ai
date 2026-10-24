@@ -1130,11 +1130,24 @@ export function unsleeve(text: string): string {
     .replace(/\b(?:full\s+)?(?:colou?rful\s+|black(?:-and-grey|work)?\s+|ink\s+)?(?:tattoo\s+)?sleeves?(?:\s+tattoos?)?\b/gi, "arms covered in tattoos");
 }
 
+/**
+ * "slim athletic build" as a weighted lead tag came out emaciated (Giulia,
+ * 2026-10-24: ribs, hollow cheeks). A slim build is said as a healthy one;
+ * muscular and curvy builds are left as they are.
+ */
+export function healthyBuild(part: string): string {
+  if (/\bmuscular\b/.test(part) || !/\b(?:slim|slender|thin|lean|skinny|athletic)\b/.test(part) || !/\b(?:build|figure|frame)\b/.test(part)) return part;
+  return "slim healthy feminine figure with soft natural curves, toned but not bony";
+}
+
 export function inkTags(look: string | null | undefined): string | null {
   const l = (look ?? "").toLowerCase();
   // Her build rides with the ink: the house build was dropped for hers, but
   // said once mid-prompt it lost to the checkpoint's default body.
-  const build = l.split(/\s*,\s*/).filter((p) => /\b(?:bust|build|figure|curvy|slim|petite|hourglass|voluptuous)\b/.test(p));
+  const build = l
+    .split(/\s*,\s*/)
+    .filter((p) => /\b(?:bust|build|figure|curvy|slim|petite|hourglass|voluptuous)\b/.test(p))
+    .map(healthyBuild);
   if (!/tattoo/.test(l)) return build.length ? build.join(", ") : null;
   const parts = l
     .split(/\s*,\s*/)
@@ -1342,6 +1355,24 @@ export async function comfyJobInput(
   const promptSetsComposition = composes(req);
   // Nude without a hard pose still needs medium denoise or the clothed portrait wins.
   const needsUndress = requestIsNude(req) && !requestKeepsGarment(req);
+  // The body reference is her portrait, outfit and all: on a strong weight it
+  // put her black satin dress back on a "naked" request. Say what not to copy.
+  // Her whole portrait as a body reference (shape, skin, the real tattoo art)
+  // on top of the FaceID face lock, for NUDE requests only: tested on the pod
+  // 2026-10-24, it also copies the portrait's outfit, so a "white sundress"
+  // came back as her black lace bra. Nude renders have no outfit to lose, and
+  // the negative below keeps the portrait's clothes off. Off unless
+  // COMFY_BODY_REF sets a weight (0.8 tested).
+  const bodyRefWeight = needsUndress ? Number(process.env.COMFY_BODY_REF || 0) : 0;
+  if (bodyRefWeight > 0) {
+    const { withBodyReference } = await import("./comfy");
+    template = withBodyReference(template, {
+      weight: bodyRefWeight,
+      weightType: process.env.COMFY_BODY_REF_TYPE || "style transfer",
+      endAt: Number(process.env.COMFY_BODY_REF_END || 0.8),
+    });
+    negative = `${negative}, dress, slip dress, satin, silk, bodysuit, lingerie, panties, underwear, bra, clothing, clothes, fabric`;
+  }
   // Her mouth has to be free to change: a lighter face lock and no detailer
   // pass, on these requests only. See isMouthAct and templateForMouthAct.
   const mouthAct = isMouthAct(req);

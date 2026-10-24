@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, X } from "lucide-react";
 
 type CreatorSheetProps = {
@@ -78,7 +79,10 @@ export function CreatorSheet({ open, onClose, title, children, labelledBy }: Cre
 
   if (!open) return null;
   const titleId = labelledBy ?? `creator-sheet-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-  return (
+  // Rendered at the top of the page: a parent with its own stacking context
+  // (the creator page is `isolate`) would otherwise trap the sheet under the
+  // fixed tab bar.
+  return createPortal(
     <div className="creator-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
       <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="creator-sheet-panel">
         <div className="creator-sheet-handle" aria-hidden="true" />
@@ -89,6 +93,7 @@ export function CreatorSheet({ open, onClose, title, children, labelledBy }: Cre
         </div>
         <div className="max-h-[calc(90dvh-5rem)] overflow-y-auto overscroll-contain px-5 py-5 [-webkit-overflow-scrolling:touch]">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

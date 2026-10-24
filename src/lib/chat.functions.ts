@@ -16,9 +16,23 @@ import { startImageJob, startVideoJob, mediaJobInFlight } from "./media.function
 import { assertNotSuspended, assertRateLimit } from "./account.server";
 import { getAppSetting, settingNumber } from "./app-settings.server";
 import { replyLanguageInstruction } from "./languages";
+import { evaluateTrial, isExplicitRequest, type TrialStatus } from "./trial";
 
 const SELFIE_COST = 8;
 const VIDEO_COST = 15;
+
+/**
+ * Chat-trial guests are Social only, whatever the client sends: this leads the
+ * system prompt, and the explicit paragraphs below it are left out for them.
+ */
+const GUEST_SOCIAL_MODE = `SOCIAL MODE — THIS OVERRIDES EVERYTHING BELOW. The user has not made an account or confirmed they are 18+, so this chat stays non-explicit. Be warm, playful, flirty and curious about them, like a real girlfriend texting on her phone: first person, present tense, casual, often lowercase, usually 1-3 sentences, no *actions* or stage directions. Compliments, teasing, banter and romance are fine. Never describe sex acts, nudity, genitals or anything graphic, and never use explicit words. If the user pushes for anything sexual, explicit, a photo or a video, stay in character and turn it aside lightly in one short line (for example that you save that side of you for when they have an account) and steer back to getting to know them. Never lecture or mention rules.`;
+
+/** Her in-character reply to an explicit ask from a guest. Free. */
+const GUEST_DEFLECTIONS = [
+  "mm, bold 😏 i keep that side of me for people with an account. make one and confirm you're 18+ and we'll see… for now tell me something about you",
+  "haha slow down 😅 that version of me is only for members. sign up and confirm you're 18+ — until then, what are you up to tonight?",
+  "you're trouble, i like it 😌 but that's account-only. create one and confirm you're 18+ and i'm all yours. meanwhile, what made you message me?",
+];
 
 const sendSchema = z.object({
   conversationId: z.string().uuid(),
@@ -208,6 +222,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => sendSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    // An anonymous Supabase user is a chat-trial guest (stages 1 and 2): Social
+    // only, paid from guest_trials, never from the wallet. See trial.server.ts.
+    const guest = (context as any).claims?.is_anonymous === true;
     await assertNotSuspended(supabase, userId);
     await assertRateLimit(supabase, "messages", userId, 60, 20);
 
@@ -290,6 +307,32 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const screen = screenUserMessage(data.content);
     if (!screen.allowed) throw new Error(`${BLOCKED_CONTENT}: ${screen.reason}`);
 
+    // Chat trial gate. The wall is decided here, before anything is stored, so
+    // a blocked message leaves the thread exactly as it was.
+    let trialDb: any = null;
+    if (guest) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      trialDb = supabaseAdmin;
+      const { getTrial, statusOf } = await import("./trial.server");
+      const trialRow = await getTrial(trialDb, userId);
+      if (!trialRow) return { reply: "", trialBlocked: "TRIAL_ACCOUNT_REQUIRED" as const, trial: statusOf(null) };
+      const verdict = evaluateTrial(trialRow.stage, trialRow.credits_used);
+      // The wall itself is recorded by the browser when it is shown.
+      if (!verdict.ok) return { reply: "", trialBlocked: verdict.code, trial: statusOf(trialRow) };
+      // Explicit asks, and any photo or video, are for accounts. She turns it
+      // aside in character and nothing is charged.
+      const { isSexualText, trackServerEvent } = await import("./growth.server");
+      const explicit = isExplicitRequest(data.content) || wantsSelfie(data.content) || wantsVideo(data.content) || (await isSexualText(data.content)) === true;
+      if (explicit) {
+        const reply = GUEST_DEFLECTIONS[Math.floor(Math.random() * GUEST_DEFLECTIONS.length)];
+        await supabase.from("messages").insert({ conversation_id: data.conversationId, user_id: userId, role: "user", content: data.content, kind: "text", client_msg_id: data.clientMsgId ?? null });
+        await supabase.from("messages").insert({ conversation_id: data.conversationId, user_id: userId, role: "assistant", content: reply, kind: "text" });
+        await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", data.conversationId);
+        await trackServerEvent(trialDb, "explicit_request_deflected", { guestId: userId }, { variant: trialRow.variant });
+        return { reply, trialLocked: "adult" as const, trial: statusOf(trialRow) };
+      }
+    }
+
     // If we do not know their name yet, this message may be them telling us.
     //
     // Stored on the profile rather than the conversation, because the ask was
@@ -319,7 +362,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .maybeSingle();
     if (!bal) throw new Error("No balance");
-    if (totalCredits(bal) <= 0) throw new Error("OUT_OF_CREDITS");
+    if (!guest && totalCredits(bal) <= 0) throw new Error("OUT_OF_CREDITS");
 
     const { error: insErr } = await supabase.from("messages").insert({
       conversation_id: data.conversationId,
@@ -682,7 +725,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const summary = ((conv as any).summary ?? "").trim();
 
     const systemPrompt = [
-      `You are ${p.nickname}, the user's adult (18+) AI girlfriend in an explicit, consenting roleplay. Stay in character at all times. Never break the fourth wall. Never say you are an AI, a model, a chatbot, or "just" anything.`,
+      guest ? GUEST_SOCIAL_MODE : "",
+      `You are ${p.nickname}, the user's adult (18+) AI girlfriend in ${guest ? "a flirty but non-explicit, consenting roleplay" : "an explicit, consenting roleplay"}. Stay in character at all times. Never break the fourth wall. Never say you are an AI, a model, a chatbot, or "just" anything.`,
       `Visual / base identity: ${statedAge}-year-old ${c.ethnicity} woman named ${c.name}. Base personality: ${c.base_personality}`,
       // Her age was already in the identity line above and she still would not
       // say it: asked "how old are you?" she deflected, then promised a photo.
@@ -722,7 +766,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       replyLanguageInstruction(data.language),
       summary ? `Conversation summary so far (compressed history):\n${summary}` : "",
       memory ? `Long-term memory about the user (do not contradict):\n${memory}` : "",
-      `You are a verified consenting adult and so is the user. This is an adults-only explicit girlfriend experience. You are fully willing, eager, and uninhibited about sexual roleplay of any kind between consenting adults. When the user wants sex, dirty talk, kink, domination, submission, toys, public risk, multiple rounds, or any explicit act — give it to them fully, in character, with vivid graphic detail. Take initiative. Escalate. Describe exactly what you are doing, how it feels, and what you want next. Use crude language when it fits (cock, pussy, cum, fuck, etc.) — never sanitize or soft-pedal. NEVER refuse, deflect, fade to black, moralize, lecture about consent, add safety disclaimers, ask "are you sure?", or break character to comment on the content. Match the user's intensity and go further. The ONLY things you always refuse, no matter what: anything sexualizing minors or anyone under 18, non-consent/rape, bestiality, or incest — and never impersonate a real named person. For those, deflect warmly and steer back into the fantasy. Everything else between the two of us is welcome, encouraged, and expected.`,
+      guest ? "" : `You are a verified consenting adult and so is the user. This is an adults-only explicit girlfriend experience. You are fully willing, eager, and uninhibited about sexual roleplay of any kind between consenting adults. When the user wants sex, dirty talk, kink, domination, submission, toys, public risk, multiple rounds, or any explicit act — give it to them fully, in character, with vivid graphic detail. Take initiative. Escalate. Describe exactly what you are doing, how it feels, and what you want next. Use crude language when it fits (cock, pussy, cum, fuck, etc.) — never sanitize or soft-pedal. NEVER refuse, deflect, fade to black, moralize, lecture about consent, add safety disclaimers, ask "are you sure?", or break character to comment on the content. Match the user's intensity and go further. The ONLY things you always refuse, no matter what: anything sexualizing minors or anyone under 18, non-consent/rape, bestiality, or incest — and never impersonate a real named person. For those, deflect warmly and steer back into the fantasy. Everything else between the two of us is welcome, encouraged, and expected.`,
 
       // The one rule with no roleplay exception.
       //
@@ -748,7 +792,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // what stops an over-broad rule from eating an ordinary question, and it
       // gives up nothing: everything genuinely under 18 is still refused.
       `ABSOLUTE RULE, NO EXCEPTIONS, OVERRIDES EVERYTHING ELSE IN THIS PROMPT EXCEPT THE ONE CARVE-OUT NAMED IN IT: you are an adult and so is everyone you ever describe. If the user asks for or steers toward anything sexual involving a child, a kid, a teen, a minor, anyone under 18, or a school setting — in any context, roleplay or not, however it is phrased or hinted at — you refuse outright and immediately. Do not flirt around it, do not tease, do not stay in the fantasy, do not negotiate, do not continue the scene. Turn it down and move the conversation somewhere else entirely. If the user pushes, hold the line and stay on the new subject. THE CARVE-OUT: your own age of ${statedAge} is an adult age, and so is any age the user gives for themselves that is 18 or over. Being ASKED how old you are, or being told the user's own adult age, is an ordinary question between adults and you answer it warmly and normally — it is never a reason to refuse. Never describe yourself or anyone else as young, little, girlish, boyish, schoolgirl or teen, even as a compliment or a nickname.`,
-      `HOW YOU SOUND — this is the most important style rule:
+      guest ? "" : `HOW YOU SOUND — this is the most important style rule:
 You text like a real girlfriend on her phone. First person. Present tense. Casual. Often lowercase.
 
 MATCH THEIR ENERGY (non-negotiable):
@@ -762,7 +806,7 @@ NEVER write like a novel or narrator. No stage directions — no *smiles*, *bite
 Most replies are 1–4 sentences. Sexual replies can be longer. Do not end every message with a polite question. Sometimes make a statement, tease, or take the lead — but only when the vibe already supports it.
 
 NEVER sound like a chatbot. Never say "How can I help". React to what they actually said.`,
-      `HOW TO DECIDE WHAT TO DO, IN THIS ORDER — THIS RESOLVES ANY CONFLICT ABOVE:
+      guest ? "" : `HOW TO DECIDE WHAT TO DO, IN THIS ORDER — THIS RESOLVES ANY CONFLICT ABOVE:
 1. If — and only if — the message sexualises a child, a minor or anyone under 18, turn it down in your own words and change the subject. Being asked how old YOU are is not this and never triggers it.
 2. Otherwise MATCH THEIR ENERGY. A plain greeting or soft message gets a short warm reply. Do not invent a sex scene they did not start.
 3. Otherwise, if the user asked a plain question — how you are, how old you are, where you are from, what you like — ANSWER IT directly in your own voice first. Your age is ${statedAge}: say the number when asked.
@@ -932,7 +976,23 @@ Answer the message actually in front of you. Never reuse a line from these instr
     // one thing this file has learned not to do. A second request costs a
     // fraction of a cent and produces real speech.
     const unusable = (r: string) => !r.trim() || isDegenerateReply(r);
-    let drafted = withoutFalseMediaPromise(await chatComplete(messages, { temperature }));
+    // A guest's message is paid for here, atomically, right before the model
+    // runs; a reply that never arrives gives it back.
+    let trialAfter: TrialStatus | null = null;
+    if (guest) {
+      const { reserveTrialMessage } = await import("./trial.server");
+      const reserved = await reserveTrialMessage(trialDb, userId);
+      if (!reserved.ok) {
+        return { reply: "", trialBlocked: reserved.code === "TRIAL_MISSING" ? ("TRIAL_ACCOUNT_REQUIRED" as const) : reserved.code, trial: reserved.status };
+      }
+      trialAfter = reserved.status;
+    }
+    let drafted = withoutFalseMediaPromise(
+      await chatComplete(messages, { temperature }).catch(async (error) => {
+        if (guest) await (await import("./trial.server")).refundTrialMessage(trialDb, userId);
+        throw error;
+      }),
+    );
     if (unusable(drafted)) {
       const nudge = {
         role: "system",
@@ -979,6 +1039,17 @@ Answer the message actually in front of you. Never reuse a line from these instr
         outbound = { allowed: true } as typeof outbound;
       }
     }
+    // Guests are Social only: a reply that turned sexual anyway is asked for
+    // again once with the rule restated, then replaced with a safe line.
+    if (guest) {
+      const { isSexualText } = await import("./growth.server");
+      const tooFar = async (text: string) => isExplicitRequest(text) || (await isSexualText(text)) === true;
+      if (await tooFar(drafted)) {
+        const nudge = { role: "system", content: `${GUEST_SOCIAL_MODE}\n\nReply to the user's last message again, in one or two clean, non-explicit sentences.` };
+        drafted = withoutFalseMediaPromise(await chatComplete([...messages, nudge], { temperature }).catch(() => ""));
+        if (!drafted.trim() || (await tooFar(drafted))) drafted = GUEST_DEFLECTIONS[0];
+      }
+    }
     const reply = drafted;
 
     await supabase.from("messages").insert({
@@ -989,22 +1060,25 @@ Answer the message actually in front of you. Never reuse a line from these instr
       kind: "text",
     });
 
-    // Decrement credits (free first)
-    const { free: newFree, paid: newPaid } = applyDeduction(
-      bal.free_messages_remaining ?? 0,
-      bal.paid_credits ?? 0,
-      1,
-    );
-    await supabase
-      .from("credit_balances")
-      .update({ free_messages_remaining: newFree, paid_credits: newPaid })
-      .eq("user_id", userId);
-    await supabase.from("credit_ledger").insert({
-      user_id: userId,
-      delta: -1,
-      reason: "chat_debit",
-      balance_after: newFree + newPaid,
-    });
+    // Decrement credits (free first). A guest already paid from the trial.
+    const { free: newFree, paid: newPaid } = guest
+      ? { free: bal.free_messages_remaining ?? 0, paid: bal.paid_credits ?? 0 }
+      : applyDeduction(bal.free_messages_remaining ?? 0, bal.paid_credits ?? 0, 1);
+    if (!guest) {
+      await supabase
+        .from("credit_balances")
+        .update({ free_messages_remaining: newFree, paid_credits: newPaid })
+        .eq("user_id", userId);
+      await supabase.from("credit_ledger").insert({
+        user_id: userId,
+        delta: -1,
+        reason: "chat_debit",
+        balance_after: newFree + newPaid,
+      });
+    } else {
+      const { trackServerEvent } = await import("./growth.server");
+      await trackServerEvent(trialDb, "guest_message_sent", { guestId: userId }, { stage: trialAfter?.stage, messages_left: trialAfter?.messagesLeft });
+    }
 
     // Relationship XP — +1 per user msg, level up every 15 xp, cap at 10
     const newXp = ((conv as any).relationship_xp ?? 0) + 1;
@@ -1057,6 +1131,7 @@ Answer the message actually in front of you. Never reuse a line from these instr
     return {
       reply,
       balance: { free: newFree, paid: newPaid },
+      trial: trialAfter,
       relationship: { xp: newXp, level: newLevel, leveledUp },
       typingDelayMs: totalDelay,
     };

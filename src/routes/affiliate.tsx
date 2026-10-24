@@ -10,6 +10,7 @@
 //   paused / rejected → said plainly, not as a dashboard full of zeroes
 
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/affiliate")({
     // getUser rather than getSession — getSession will hand back a cached,
     // possibly expired session without checking it.
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth", search: { mode: "signin" } });
+    if (error || !isAccount(data.user)) throw redirect({ to: "/auth", search: { mode: "signin" } });
   },
   component: AffiliatePage,
 });

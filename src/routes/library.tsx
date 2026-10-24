@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, Download, Heart, Image as ImageIcon, Play, RefreshCw, Trash2, Video, X } from "lucide-react";
 import { z } from "zod";
@@ -93,7 +94,7 @@ function LibraryPage() {
     if (loading && !reset) return;
     setLoading(true);
     const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) { navigate({ to: "/auth", search: { mode: "signin", redirect: "/library" } as never }); return; }
+    if (!isAccount(auth.user)) { navigate({ to: "/auth", search: { mode: "signin", redirect: "/library" } as never }); return; }
     const { data: conversations, error: conversationsError } = await supabase.from("conversations").select("id,personality_id").eq("user_id", auth.user.id).eq("title", "Creator render");
     if (conversationsError || !conversations?.length) { setItems(reset ? [] : items); setHasMore(false); setLoading(false); return; }
     const personalityIds = conversations.map((row) => row.personality_id);

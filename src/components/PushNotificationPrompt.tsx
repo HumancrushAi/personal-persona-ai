@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { isAccount } from "@/lib/account-user";
 import { supabase } from "@/integrations/supabase/client";
 import { enablePush, type PushResult } from "@/lib/push-client";
 import { Bell, X, Sparkles, Smartphone } from "lucide-react";
@@ -19,7 +20,7 @@ export function PushNotificationPrompt() {
 
     // Check if user is logged in and push notifications permission is default
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) return;
+      if (!isAccount(data.session?.user)) return;
 
       if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
 

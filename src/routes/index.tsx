@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { LogoLink } from "@/components/Logo";
@@ -326,7 +327,7 @@ function Landing() {
   // the server, so the only thing a stale session buys here is a "Chats"
   // button that leads to the sign-in page.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
+    supabase.auth.getSession().then(({ data }) => setAuthed(isAccount(data.session?.user)));
   }, []);
 
   // One entry covers both overlays, so handing off story -> tease doesn't churn
@@ -1003,7 +1004,7 @@ function SectionTitle({
 function Nav() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+    supabase.auth.getUser().then(({ data }) => setAuthed(isAccount(data.user)));
   }, []);
 
   return (
@@ -1203,7 +1204,15 @@ function TeaseChat({ companion, onClose }: { companion: Companion; onClose: () =
       /* private mode */
     }
     const { data } = await supabase.auth.getUser();
-    if (!data.user) {
+    if (!isAccount(data.user)) {
+      // Chat trial: open a guest chat with her; the typed message is sent
+      // there. Only when that is not possible does the sign-up gate show.
+      const { guestChatAllowed, startGuestChat } = await import("@/lib/guest-chat");
+      const started = guestChatAllowed() ? await startGuestChat(companion.id).catch(() => null) : null;
+      if (started?.ok) {
+        navigate({ to: "/chat/$conversationId", params: { conversationId: started.conversationId } });
+        return;
+      }
       setGate(true);
       return;
     }

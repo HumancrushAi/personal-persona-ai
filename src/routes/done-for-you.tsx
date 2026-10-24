@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
@@ -42,13 +43,13 @@ function DoneForYou() {
     const timer = window.setInterval(() => setRemaining(Math.max(0, deadline - Date.now())), 1000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => { supabase.auth.getUser().then(async ({ data: { user } }) => { if (!user) return; const { data } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }); setIsAdmin(!!data); }); }, []);
+  useEffect(() => { supabase.auth.getUser().then(async ({ data: { user } }) => { if (!isAccount(user)) return; const { data } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }); setIsAdmin(!!data); }); }, []);
   const hours = Math.floor(remaining / 3_600_000).toString().padStart(2, "0");
   const minutes = Math.floor((remaining % 3_600_000) / 60_000).toString().padStart(2, "0");
   const seconds = Math.floor((remaining % 60_000) / 1000).toString().padStart(2, "0");
   async function choose(tier: (typeof tiers)[number]) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate({ to: "/auth", search: { redirect: "/done-for-you" } as never }); return; }
+    if (!isAccount(user)) { navigate({ to: "/auth", search: { redirect: "/done-for-you" } as never }); return; }
     // The Done-for-you tier is a business service, not a media-generation
     // shortcut. It must never route to the creator, including for admins.
     if (tier.name === "Done-for-you") { return; }

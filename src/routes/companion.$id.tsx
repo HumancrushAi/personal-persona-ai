@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { z } from "zod";
@@ -117,7 +118,7 @@ function Page() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setAuthed(!!data.user);
+      setAuthed(isAccount(data.user));
       setCurrentUserId(data.user?.id ?? null);
     });
   }, []);
@@ -141,7 +142,7 @@ function Page() {
     queryKey: ["my-personality", id, personalityId ?? "latest"],
     queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return null;
+      if (!isAccount(u.user)) return null;
       let q = supabase
         .from("user_personalities")
         .select("*")
@@ -203,9 +204,18 @@ function Page() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!authed) {
-      // Carry the companion through, so signing up lands back on her rather
-      // than on a generic browse page — the whole reason they were sent away
-      // was that they wanted to talk to this one.
+      // Chat trial: a signed-out visitor starts talking to her right away as a
+      // guest. Anything that stops that (trial off, control arm, abuse caps)
+      // falls back to sign-up, carrying the companion through so they land
+      // back on her rather than on a generic browse page.
+      setSaving(true);
+      const { guestChatAllowed, startGuestChat } = await import("@/lib/guest-chat");
+      const started = guestChatAllowed() ? await startGuestChat(id).catch(() => null) : null;
+      setSaving(false);
+      if (started?.ok) {
+        navigate({ to: "/chat/$conversationId", params: { conversationId: started.conversationId } });
+        return;
+      }
       navigate({ to: "/auth", search: { companion: id } as any });
       return;
     }

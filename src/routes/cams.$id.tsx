@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ function CamView() {
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+    supabase.auth.getUser().then(({ data }) => setAuthed(isAccount(data.user)));
   }, []);
 
   const { data: model } = useQuery({
@@ -65,7 +66,7 @@ function CamView() {
     queryKey: ["balance"],
     queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return null;
+      if (!isAccount(u.user)) return null;
       const { data } = await supabase
         .from("credit_balances")
         .select("free_messages_remaining, paid_credits")

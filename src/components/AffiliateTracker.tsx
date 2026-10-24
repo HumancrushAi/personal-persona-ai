@@ -11,6 +11,7 @@
 // than in a server session or a router-level state.
 
 import { useEffect } from "react";
+import { isAccount } from "@/lib/account-user";
 import { useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -66,7 +67,7 @@ export function AffiliateTracker() {
       const code = readStoredRef();
       if (!code || cancelled) return;
       const { data } = await supabase.auth.getUser();
-      if (!data.user || cancelled) return;
+      if (!isAccount(data.user) || cancelled) return;
 
       try {
         const res = await claimReferral({ data: { code } });

@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -246,7 +247,7 @@ function CreatePage() {
       return;
     }
     const { data: u } = await supabase.auth.getUser();
-    if (!u.user) {
+    if (!isAccount(u.user)) {
       const draft = {
         name,
         gender,

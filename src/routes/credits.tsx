@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { type Dispatch, type FormEvent, type SetStateAction, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -36,7 +37,7 @@ function CreditsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
+      if (!isAccount(data.user)) {
         const query = window.location.search;
         navigate({ to: "/auth", search: { redirect: `/credits${query}` } as never });
       }

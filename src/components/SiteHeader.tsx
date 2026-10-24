@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { isAccount } from "@/lib/account-user";
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -111,8 +112,8 @@ export function SiteHeader({
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       const user = data.session?.user;
-      setAuthed(!!user);
-      if (user) setIsAdmin(await isAdminFor(user.id));
+      setAuthed(isAccount(user));
+      if (user && isAccount(user)) setIsAdmin(await isAdminFor(user.id));
     });
   }, []);
 

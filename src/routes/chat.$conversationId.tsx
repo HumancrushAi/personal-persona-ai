@@ -5,6 +5,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { companionImage } from "@/lib/companion-images";
 import { sendChatMessage } from "@/lib/chat.functions";
+import { isAccount } from "@/lib/account-user";
+import type { TrialStatus } from "@/lib/trial";
+import { getTrialStatus } from "@/lib/trial.functions";
+import { trackWall } from "@/lib/guest-chat";
+import { TrialEmailCard } from "@/components/chat/TrialEmailCard";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { readPreferredLanguage } from "@/lib/languages";
 import { refreshTesterCredits } from "@/lib/tester.functions";
 import {
@@ -138,6 +144,18 @@ function ChatPage() {
   // and assumed it was broken while the job was in fact still running.
   const [waited, setWaited] = useState(0);
 
+  // Chat trial: a guest (anonymous session) sees how many free messages are
+  // left and, when they run out, the email card or the account wall.
+  const [guest, setGuest] = useState(false);
+  const [trial, setTrial] = useState<TrialStatus | null>(null);
+  const [wall, setWall] = useState<"email" | "account" | "adult" | null>(null);
+  const [trialEmail, setTrialEmail] = useState("");
+  const composerRef = useRef<HTMLInputElement>(null);
+  const showWall = (kind: "email" | "account") => {
+    setWall(kind);
+    trackWall(kind === "email" ? "email_wall_shown" : "account_wall_shown", { stage: trial?.stage ?? null });
+  };
+
   const [localJobs, setLocalJobs] = useState<LocalPendingJob[]>([]);
 
   // Helper to save to localStorage
@@ -177,8 +195,16 @@ function ChatPage() {
   }, [mediaBusy]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) navigate({ to: "/auth" });
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) {
+        navigate({ to: "/auth" });
+        return;
+      }
+      if (!isAccount(data.user)) {
+        setGuest(true);
+        const status = await getTrialStatus().catch(() => null);
+        if (status && status.stage !== "account") setTrial(status);
+      }
     });
   }, []);
 
@@ -320,7 +346,14 @@ function ChatPage() {
     if (!content || sending || sendingRef.current) return;
     sendingRef.current = true;
     const total = (balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0);
-    if (total <= 0) {
+    if (guest && trial && trial.messagesLeft === 0) {
+      // Out of trial messages: the right wall, and the text stays in the box.
+      showWall(trial.stage === "email" ? "account" : "email");
+      setInput(content);
+      sendingRef.current = false;
+      return;
+    }
+    if (!guest && total <= 0) {
       toast.error("You're out of credits");
       navigate({ to: "/credits" });
       sendingRef.current = false;
@@ -339,6 +372,17 @@ function ChatPage() {
       const res = await send({
         data: { conversationId, content, language: readPreferredLanguage(), clientMsgId },
       });
+
+      // The trial answered instead of her: nothing was stored or charged.
+      const trialReply = res as { trial?: TrialStatus | null; trialBlocked?: string; trialLocked?: string };
+      if (trialReply.trial) setTrial(trialReply.trial);
+      if (trialReply.trialBlocked) {
+        setPendingUser(null);
+        setInput(content);
+        showWall(trialReply.trialBlocked === "TRIAL_EMAIL_REQUIRED" ? "email" : "account");
+        return;
+      }
+      if (trialReply.trialLocked === "adult") setWall("adult");
 
       const target = (res as any)?.typingDelayMs ?? 3000;
       const elapsed = Date.now() - start;
@@ -1178,6 +1222,28 @@ function ChatPage() {
                 </div>
               </div>
             )}
+            {guest && wall === "email" && (
+              <TrialEmailCard
+                modelName={p?.nickname ?? "She"}
+                companionId={p?.companion_id}
+                onCaptured={(status, email) => {
+                  setTrial(status);
+                  setTrialEmail(email);
+                  setWall(null);
+                  window.setTimeout(() => composerRef.current?.focus(), 50);
+                }}
+                onNeedAccount={(email) => {
+                  setTrialEmail(email);
+                  showWall("account");
+                }}
+              />
+            )}
+            {guest && wall === "adult" && (
+              <div className="mx-auto w-full max-w-md rounded-2xl border border-white/[0.12] bg-[#19191C] p-4 text-white">
+                <p className="text-sm leading-relaxed">Create an account and confirm you're 18+ to unlock this.</p>
+                <button type="button" onClick={() => showWall("account")} className="mt-3 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#111113]">Create account</button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1191,7 +1257,7 @@ function ChatPage() {
               type="button"
               size="icon"
               variant="ghost"
-              onClick={() => !isBusy && setAsking("photo")}
+              onClick={() => (guest ? showWall("account") : !isBusy && setAsking("photo"))}
               disabled={isBusy}
               className="h-9 w-9 rounded-full shrink-0 text-white/80 hover:bg-white/10 hover:text-primary transition"
               title="Ask for a selfie (8 credits)"
@@ -1202,7 +1268,7 @@ function ChatPage() {
               type="button"
               size="icon"
               variant="ghost"
-              onClick={handleVoice}
+              onClick={() => (guest ? showWall("account") : void handleVoice())}
               disabled={isBusy}
               className="h-9 w-9 rounded-full shrink-0 text-white/80 hover:bg-white/10 hover:text-primary transition"
               title="Get her voice note of last reply (3 credits)"
@@ -1213,7 +1279,7 @@ function ChatPage() {
               type="button"
               size="icon"
               variant="ghost"
-              onClick={() => !isBusy && setAsking("video")}
+              onClick={() => (guest ? showWall("account") : !isBusy && setAsking("video"))}
               disabled={isBusy}
               className="h-9 w-9 rounded-full shrink-0 text-white/80 hover:bg-white/10 hover:text-primary transition"
               title="Ask her for a video (15 credits)"
@@ -1222,6 +1288,7 @@ function ChatPage() {
             </Button>
 
             <Input
+              ref={composerRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={`Message ${p?.nickname ?? ""}…`}
@@ -1240,14 +1307,37 @@ function ChatPage() {
           </div>
 
           <div className="mx-auto mt-1.5 flex max-w-2xl items-center justify-center gap-2 text-[10px] text-white/50">
-            <span className="inline-flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-primary" />
-              Selfie 8 · Voice 3 · Video 15 · Text 1 credit
-            </span>
+            {guest ? (
+              <span className="text-[12px] text-white/60" aria-live="polite">
+                {trial?.messagesLeft == null ? "Free trial" : `${trial.messagesLeft} free ${trial.messagesLeft === 1 ? "message" : "messages"} left`}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-primary" />
+                Selfie 8 · Voice 3 · Video 15 · Text 1 credit
+              </span>
+            )}
           </div>
         </form>
       </div>
 
+      <AuthModal
+        open={guest && wall === "account"}
+        onClose={() => setWall(null)}
+        initialScreen="signup"
+        signupTitle={`Create your account to keep chatting with ${p?.nickname ?? "her"}.`}
+        prefillEmail={trialEmail}
+        collectPhone
+        source="chat_trial"
+        onAuthenticated={() => {
+          // Same chat, history intact: the server moved it onto the account.
+          setGuest(false);
+          setTrial(null);
+          setWall(null);
+          void qc.invalidateQueries();
+          window.setTimeout(() => composerRef.current?.focus(), 300);
+        }}
+      />
       <TreasureChestButton
         attention={chestAttention && !chest}
         open={Boolean(chest)}

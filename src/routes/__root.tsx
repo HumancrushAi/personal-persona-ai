@@ -202,6 +202,11 @@ function RootComponent() {
 
   // Header sign-in returns to the page it was opened from, for email and
   // Google alike, unless the caller asked for somewhere else.
+  // A social sign-in comes back here; finish moving any guest chat over.
+  useEffect(() => {
+    void import("@/lib/guest-chat").then(({ resumePendingFinish }) => resumePendingFinish());
+  }, []);
+
   useEffect(() => listenForAuthModal((request) => setAuthModal({ ...request, redirectPath: request.redirectPath ?? `${window.location.pathname}${window.location.search}` })), []);
 
   // Initialize translation and push on mount

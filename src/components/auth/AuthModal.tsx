@@ -1,4 +1,4 @@
-import { AuthForm, type AuthScreen } from "@/components/auth/AuthForm";
+import { AuthForm, type AuthScreen, type AuthSource } from "@/components/auth/AuthForm";
 import { CreatorSheet } from "@/components/creator/CreatorSheet";
 
 const AUTH_MODAL_EVENT = "hc:open-auth-modal";
@@ -27,11 +27,15 @@ type AuthModalProps = {
   redirectPath?: string;
   companionId?: string;
   initialScreen?: Extract<AuthScreen, "signup" | "signin">;
+  signupTitle?: string;
+  prefillEmail?: string;
+  collectPhone?: boolean;
+  source?: AuthSource;
 };
 
 /** Shared responsive auth sheet; no provider or server configuration is defined here. */
-export function AuthModal({ open, onClose, onAuthenticated, redirectPath, companionId, initialScreen = "signup" }: AuthModalProps) {
+export function AuthModal({ open, onClose, onAuthenticated, redirectPath, companionId, initialScreen = "signup", signupTitle, prefillEmail, collectPhone, source }: AuthModalProps) {
   return <CreatorSheet open={open} onClose={onClose} title="Account">
-    <AuthForm initialScreen={initialScreen} redirectPath={redirectPath} companionId={companionId} compact onCancel={onClose} onAuthenticated={onAuthenticated} />
+    <AuthForm initialScreen={initialScreen} redirectPath={redirectPath} companionId={companionId} compact onCancel={onClose} onAuthenticated={onAuthenticated} signupTitle={signupTitle} prefillEmail={prefillEmail} collectPhone={collectPhone} source={source} />
   </CreatorSheet>;
 }

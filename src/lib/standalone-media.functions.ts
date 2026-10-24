@@ -65,7 +65,8 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
       const { data: unlocked } = await (context.supabase as any).from("creator_model_unlocks").select("companion_id").eq("user_id", context.userId).eq("companion_id", c.id).maybeSingle();
       if (first?.id !== c.id && !unlocked) throw new Error(`Unlock this model for ${MODEL_UNLOCK_COST} credits before generating.`);
     }
-    const cost = admin ? 0 : data.kind === "video" ? Math.max(creatorBilling.creditCosts.video, (data.seconds ?? 5) * creatorBilling.creditCosts.videoPerSecond) : creatorBilling.creditCosts.image;
+    // Admins are charged too, so credit deduction can be tested end to end.
+    const cost = data.kind === "video" ? Math.max(creatorBilling.creditCosts.video, (data.seconds ?? 5) * creatorBilling.creditCosts.videoPerSecond) : creatorBilling.creditCosts.image;
     const balance = await ensureBalance(context.supabase, context.userId, cost);
     const after = await deductCredits(context.supabase, context.userId, cost, `creator_${data.kind}`, balance.free, balance.paid);
     const adminClient = (await import("@/integrations/supabase/client.server")).supabaseAdmin;

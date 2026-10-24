@@ -916,7 +916,7 @@ async function resubmitImageJob(
     moving: false,
     age: ctx.companion.age,
     toy: ctx.toy,
-    socialSafe: !isExplicitMediaRequest(ctx.userRequest),
+    socialSafe: contentModeFromPrompt(ctx.row.prompt) === "social" || (ctx.row as { content_mode?: string | null }).content_mode === "social" || !isExplicitMediaRequest(ctx.userRequest),
   });
   const input = await comfyJobInput(
     stripContentModeMarker(ctx.row.prompt),
@@ -934,7 +934,7 @@ async function resubmitImageJob(
       // otherwise her portrait, as the first render did.
       startFrame: await (await import("./compose.server")).storedStartFrame(ctx.row.id),
       startFromPortrait: (await import("./compose.server")).composeMode() === "portrait",
-      socialSafe: !isExplicitMediaRequest(ctx.userRequest),
+      socialSafe: contentModeFromPrompt(ctx.row.prompt) === "social" || (ctx.row as { content_mode?: string | null }).content_mode === "social" || !isExplicitMediaRequest(ctx.userRequest),
     },
   );
   const target = await pickImageTarget(supabaseAdmin, endpoint);

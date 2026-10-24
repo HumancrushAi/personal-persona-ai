@@ -837,7 +837,9 @@ export async function startImageJob(
   // smuggled through as Social by setting the flag to true, and an adult
   // request must pass the entitlement check below before provider I/O.
   const explicitRequest = isExplicitMediaRequest(userRequest);
-  const requestedAdult = options.socialSafe === false || explicitRequest;
+  // socialSafe === true is the user's Social toggle and is binding: an explicit
+  // prompt is rendered clothed (and moderated), never upgraded to adult.
+  const requestedAdult = options.socialSafe !== true && (options.socialSafe === false || explicitRequest);
   const socialMode = !requestedAdult;
   if (!socialMode) {
     try {
@@ -1826,7 +1828,9 @@ export async function startVideoJob(
   // intent and an explicit adult request both select the adult path; the
   // entitlement check below is authoritative for that path.
   const explicitRequest = isExplicitMediaRequest(userReq);
-  const requestedAdult = options.socialSafe === false || explicitRequest;
+  // socialSafe === true is the user's Social toggle and is binding: an explicit
+  // prompt is rendered clothed (and moderated), never upgraded to adult.
+  const requestedAdult = options.socialSafe !== true && (options.socialSafe === false || explicitRequest);
   const socialMode = !requestedAdult;
   // Chat keeps its fixed 15-credit video price. The standalone creator sets
   // the exact duration-based debit here so the job record and every refund

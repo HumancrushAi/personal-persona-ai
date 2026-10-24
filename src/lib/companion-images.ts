@@ -18,3 +18,14 @@ export function companionImage(filename: string): string {
   }
   return map[filename] ?? "";
 }
+
+/**
+ * A resized copy of a Supabase Storage image, via the image render endpoint
+ * (a 290 KB portrait PNG becomes ~40 KB at card size). Anything that is not a
+ * public Storage URL comes back untouched.
+ */
+export function resizedImage(url: string, width: number, quality = 70): string {
+  if (!url || !url.includes("/storage/v1/object/public/")) return url;
+  const resized = url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+  return `${resized}${resized.includes("?") ? "&" : "?"}width=${width}&quality=${quality}`;
+}

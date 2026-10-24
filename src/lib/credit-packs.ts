@@ -38,10 +38,12 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
     badge: "Creator",
     perks: [
       "800 creator credits / month",
-      "Identity lock for one model",
-      "Social and 18+ creator modes",
-      "Photos, short videos, and downloads",
-      "Cancel any time from your account",
+      "Unlocks the creator studio: Social and 18+ modes",
+      "18+ also needs a one-time age confirmation",
+      "Photo 8 credits, video 3 per second (10 minimum)",
+      "1 model included, more for 50 credits each",
+      "Credits also pay for chat (1 per message)",
+      "Unused credits roll over; cancel any time",
     ],
   },
   {
@@ -54,10 +56,12 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
     badge: "Save 26%",
     perks: [
       "9,600 creator credits / year",
-      "Identity lock for one model",
-      "Social and 18+ creator modes",
-      "Photos, short videos, and downloads",
-      "Cancel any time from your account",
+      "Unlocks the creator studio: Social and 18+ modes",
+      "18+ also needs a one-time age confirmation",
+      "Photo 8 credits, video 3 per second (10 minimum)",
+      "1 model included, more for 50 credits each",
+      "Credits also pay for chat (1 per message)",
+      "Unused credits roll over; cancel any time",
     ],
   },
   {

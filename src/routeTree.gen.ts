@@ -26,6 +26,7 @@ import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedStudioRouteImport } from './routes/_authenticated/studio'
 import { Route as CamsIndexRouteImport } from './routes/cams.index'
@@ -127,6 +128,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
@@ -259,6 +266,7 @@ export interface FileRoutesByTo {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
@@ -295,6 +303,7 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/studio': typeof AuthenticatedStudioRoute
   '/cams/$id': typeof CamsIdRoute
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/verify-email'
     | '/admin'
     | '/studio'
     | '/cams/$id'
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/verify-email'
     | '/admin'
     | '/studio'
     | '/cams/$id'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/verify-email'
     | '/_authenticated/admin'
     | '/_authenticated/studio'
     | '/cams/$id'
@@ -436,6 +448,7 @@ export interface RootRouteChildren {
   MeRoute: typeof MeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   CamsIdRoute: typeof CamsIdRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   CompanionIdRoute: typeof CompanionIdRoute
@@ -571,6 +584,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -719,6 +739,7 @@ const rootRouteChildren: RootRouteChildren = {
   MeRoute: MeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   CamsIdRoute: CamsIdRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   CompanionIdRoute: CompanionIdRoute,

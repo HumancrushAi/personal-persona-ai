@@ -181,6 +181,7 @@ import { autoSubscribePushIfGranted } from "../lib/push-client";
 import { initGoogleTranslate } from "../lib/languages";
 import { Analytics } from "@vercel/analytics/react";
 import { AuthModal, listenForAuthModal, type AuthModalRequest } from "@/components/auth/AuthModal";
+import { VerifyEmailBanner } from "@/components/VerifyEmailBanner";
 
 const SUPPORT_BUBBLE_PATHS = ["/", "/auth"];
 const NOIR_PREFIXES = ["/create-media", "/library", "/auth", "/gallery"];
@@ -263,6 +264,7 @@ function RootComponent() {
           <div className="h-full w-1/3 animate-[navbar_1s_ease-in-out_infinite] bg-primary" />
         </div>
       )}
+      <VerifyEmailBanner />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       {/* The home page has a fixed 256px sidebar on large screens, and the

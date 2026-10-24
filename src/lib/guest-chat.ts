@@ -157,6 +157,6 @@ export async function resumePendingFinish() {
   }
 }
 
-export function trackWall(event: "email_wall_shown" | "account_wall_shown" | "plans_viewed" | "checkout_started", properties: Record<string, string | number | boolean | null> = {}) {
+export function trackClientEvent(event: "email_wall_shown" | "account_wall_shown" | "plans_viewed" | "checkout_started", properties: Record<string, string | number | boolean | null> = {}) {
   void trackFunnelEvent({ data: { event, properties: { ...properties, variant: deviceVariant() } } }).catch(() => undefined);
 }

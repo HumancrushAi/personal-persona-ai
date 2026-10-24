@@ -36,6 +36,9 @@ function CreditsPage() {
 
   const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
+    void import("@/lib/guest-chat").then(({ trackClientEvent }) => trackClientEvent("plans_viewed", { page: "credits" }));
+  }, []);
+  useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!isAccount(data.user)) {
         const query = window.location.search;

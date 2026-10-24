@@ -68,6 +68,8 @@ export const standaloneGenerate = createServerFn({ method: "POST" })
             socialSafe: contentMode === "social",
             cost,
           });
+      const { count: jobCount } = await adminClient.from("media_jobs").select("id", { count: "exact", head: true }).eq("user_id", context.userId);
+      if (jobCount === 1) await (await import("./growth.server")).trackEvent("first_generation", context.userId, { kind: data.kind, mode: contentMode });
       return { jobId, cost, status: "pending" as const };
     } catch (e) {
       throw e;

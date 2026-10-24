@@ -408,6 +408,10 @@ function Creator() {
   useEffect(() => { void loadLibrary(); }, []);
 
   useEffect(() => {
+    if (sheet === "plan") void import("@/lib/guest-chat").then(({ trackClientEvent }) => trackClientEvent("plans_viewed", { page: "create-media" }));
+  }, [sheet]);
+
+  useEffect(() => {
     if (loading || restoreScrollRef.current === null) return;
     const top = restoreScrollRef.current;
     restoreScrollRef.current = null;

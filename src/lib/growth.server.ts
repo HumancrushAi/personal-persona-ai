@@ -187,3 +187,13 @@ export async function sendOwnerAlert(
 
 // Say once, when the server first loads this module, that alerts are off.
 configuredChannels();
+
+/** trackServerEvent with the service-role client, for call sites that have none. */
+export async function trackEvent(event: FunnelEvent, userId: string, properties: Record<string, unknown> = {}) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await trackServerEvent(supabaseAdmin, event, { userId }, properties);
+  } catch (error) {
+    console.error(`[funnel] could not record ${event}`, error);
+  }
+}

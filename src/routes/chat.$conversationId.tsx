@@ -8,7 +8,7 @@ import { sendChatMessage } from "@/lib/chat.functions";
 import { isAccount } from "@/lib/account-user";
 import type { TrialStatus } from "@/lib/trial";
 import { getTrialStatus } from "@/lib/trial.functions";
-import { trackWall } from "@/lib/guest-chat";
+import { trackClientEvent } from "@/lib/guest-chat";
 import { TrialEmailCard } from "@/components/chat/TrialEmailCard";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { readPreferredLanguage } from "@/lib/languages";
@@ -153,7 +153,7 @@ function ChatPage() {
   const composerRef = useRef<HTMLInputElement>(null);
   const showWall = (kind: "email" | "account") => {
     setWall(kind);
-    trackWall(kind === "email" ? "email_wall_shown" : "account_wall_shown", { stage: trial?.stage ?? null });
+    trackClientEvent(kind === "email" ? "email_wall_shown" : "account_wall_shown", { stage: trial?.stage ?? null });
   };
 
   const [localJobs, setLocalJobs] = useState<LocalPendingJob[]>([]);

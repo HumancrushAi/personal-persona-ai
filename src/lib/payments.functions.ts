@@ -64,6 +64,7 @@ export const purchaseCredits = createServerFn({ method: "POST" })
     const tier = (await getEffectiveTiers()).find((t) => t.id === data.packId);
     const item = pack ?? tier;
     if (!item) throw new Error("Invalid pack");
+    await (await import("./growth.server")).trackEvent("checkout_started", userId, { pack_id: data.packId, amount_cents: item.priceCents });
 
     const apiLoginId = process.env.AUTHORIZE_NET_API_LOGIN_ID;
     const transactionKey = process.env.AUTHORIZE_NET_TRANSACTION_KEY;
@@ -168,6 +169,7 @@ export const purchaseCredits = createServerFn({ method: "POST" })
         authnet_transaction_id: subscriptionId,
         status: "pending",
       });
+      await (await import("./growth.server")).trackEvent("purchase_completed", userId, { pack_id: data.packId, amount_cents: item.priceCents, subscription: true });
 
       return {
         success: true,
@@ -236,6 +238,7 @@ export const purchaseCredits = createServerFn({ method: "POST" })
       authnet_transaction_id: transId,
       status: "completed",
     });
+    await (await import("./growth.server")).trackEvent("purchase_completed", userId, { pack_id: data.packId, amount_cents: item.priceCents, subscription: false });
 
     return {
       success: true,
@@ -345,6 +348,7 @@ export const confirmAge = createServerFn({ method: "POST" })
       .update({ age_confirmed: true })
       .eq("id", userId);
     if (error) throw error;
+    await (await import("./growth.server")).trackEvent("age_confirmed", userId, {});
     return { ok: true };
   });
 

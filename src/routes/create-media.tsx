@@ -56,7 +56,7 @@ const sizes = {
 const FRAME_RATIO: Record<keyof typeof sizes, string> = { portrait: "3:4", square: "1:1", landscape: "4:3" };
 const BOOK_CALL_SMS = "sms:7082537082?&body=Hi%2C%20I%27m%20interested%20in%20your%20done-for-you%20content%20creator%20program.%20Please%20tell%20me%20more%20and%20let%20me%20know%20how%20to%20schedule%20a%20call.";
 
-type CreatorModel = { id: string; name: string; image_url: string; gender?: string | null };
+type CreatorModel = { id: string; name: string; image_url: string; gender?: string | null; created_by?: string | null };
 type ShowcaseItem = (typeof showcaseConfig)[number] & {
   id: string;
   src: string;
@@ -307,7 +307,14 @@ function Creator() {
   const selectedIdentity = models.find((item) => item.id === model) ?? null;
   const selectedName = model === RANDOM_IDENTITY ? "Random identity" : selectedIdentity?.name ?? "Random identity";
   const cost = kind === "image" ? creatorBilling.creditCosts.image : Math.max(creatorBilling.creditCosts.video, seconds * creatorBilling.creditCosts.videoPerSecond);
-  const displayModels = useMemo(() => orderModelsForDisplay(models), [models]);
+  // Everything on this page plays a reel, so it lists only models that have
+  // one: user-created models and catalog models without a reel file are left
+  // out, except the signed-in user's own creations, which they can still use.
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const displayModels = useMemo(
+    () => orderModelsForDisplay(models).filter((item) => getEffectiveCompanionReel(item) || (viewerId && item.created_by === viewerId)),
+    [models, viewerId],
+  );
   // The banner shows different women from the ones the picker leads with, and
   // shows them moving: every catalog model has a reel cut from her portrait.
   // The first few in display order are the picker's opening cards, so the
@@ -404,7 +411,7 @@ function Creator() {
     let active = true;
     (async () => {
       const [{ data, error }, { data: auth }, pricing] = await Promise.all([
-        supabase.from("companions").select("id,name,image_url,gender").order("sort_order"),
+        supabase.from("companions").select("id,name,image_url,gender,created_by").order("sort_order"),
         supabase.auth.getUser(),
         getPricing().catch(() => null),
       ]);
@@ -419,6 +426,7 @@ function Creator() {
       // unless the URL names one explicitly.
       if (visualFirst) setModel((current) => requested && companionRows.some((item) => item.id === requested) ? requested : current === RANDOM_IDENTITY || companionRows.some((item) => item.id === current) ? current : visualFirst.id);
       if (auth.user) {
+        setViewerId(auth.user.id);
         const [{ data: unlockRows }, { data: role }, { data: profile }, { data: balance }] = await Promise.all([
           (supabase as any).from("creator_model_unlocks").select("companion_id").eq("user_id", auth.user.id),
           supabase.rpc("has_role", { _user_id: auth.user.id, _role: "admin" }),

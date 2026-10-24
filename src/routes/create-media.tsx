@@ -429,6 +429,13 @@ function Creator() {
 
   useEffect(() => { void loadLibrary(); }, []);
 
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (!activeJob || activeJob.status === "completed" || activeJob.status === "failed") return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [activeJob?.id, activeJob?.status]);
+
   // Once ownership is known, a signed-in user whose selection is locked starts
   // on the first model they can actually render with, in display order.
   useEffect(() => {
@@ -561,12 +568,24 @@ function Creator() {
     const ideas = contentMode === "adult" ? adultSceneIdeas : sceneIdeas;
     setPrompt(ideas[Math.floor(Math.random() * ideas.length)].prompt);
   };
-  const renderStatus = activeJob && (
-    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-white/[0.24] bg-white/[0.035] px-4 py-3 text-sm">
-      <span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${activeJob.status === "completed" ? "bg-[#7FE0B0]" : activeJob.status === "failed" ? "bg-[#FF8C8C]" : "animate-pulse bg-white"}`} />{activeJob.status === "completed" ? "Render complete." : activeJob.status === "failed" ? "Render failed." : `Rendering your ${activeJob.kind}...`}</span>
-      <Link to="/library" className="font-semibold text-white hover:text-[#D4D4D8]">Open library <ChevronRight className="inline h-4 w-4" /></Link>
-    </div>
-  );
+  const renderStatus = activeJob && (() => {
+    const rendering = activeJob.status !== "completed" && activeJob.status !== "failed";
+    const elapsedMs = Math.max(0, clock - Date.parse(activeJob.created_at));
+    const elapsed = `${Math.floor(elapsedMs / 60_000)}:${String(Math.floor((elapsedMs % 60_000) / 1000)).padStart(2, "0")}`;
+    const usual = activeJob.kind === "video" ? "Videos usually take 5 to 15 minutes" : "Photos usually take about a minute";
+    return (
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-white/[0.24] bg-white/[0.035] px-4 py-3 text-sm">
+        <span className="flex min-w-0 items-start gap-2">
+          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${activeJob.status === "completed" ? "bg-[#7FE0B0]" : activeJob.status === "failed" ? "bg-[#FF8C8C]" : "animate-pulse bg-white"}`} />
+          <span>
+            <span className="block">{activeJob.status === "completed" ? "Render complete." : activeJob.status === "failed" ? "Render failed. Your credits were refunded." : `Rendering your ${activeJob.kind}… ${elapsed}`}</span>
+            {rendering && <span className="mt-0.5 block text-xs text-[#A1A1AA]">{usual}. You can leave this page; it lands in your library.</span>}
+          </span>
+        </span>
+        <Link to="/library" className="font-semibold text-white hover:text-[#D4D4D8]">Open library <ChevronRight className="inline h-4 w-4" /></Link>
+      </div>
+    );
+  })();
 
   return (
     <div className="relative isolate min-h-screen bg-[#101012] text-[#F4F4F5]">

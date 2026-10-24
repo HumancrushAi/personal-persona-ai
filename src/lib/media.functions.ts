@@ -2200,7 +2200,10 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     const { data: job } = await supabase
       .from("media_jobs")
       .select(
-        "id, user_id, conversation_id, kind, cost, status, provider, content_mode, prompt, replicate_id, media_url, error, created_at",
+        // No content_mode here: the live table may not have that column yet
+        // (20261021000000_social_render_safety.sql), and asking for it failed
+        // every poll. Social jobs are marked in the prompt and read from there.
+        "id, user_id, conversation_id, kind, cost, status, provider, prompt, replicate_id, media_url, error, created_at",
       )
       .eq("id", data.jobId)
       .eq("user_id", userId)
@@ -2228,10 +2231,17 @@ export const checkMediaJob = createServerFn({ method: "POST" })
     // launched.
     const ageMs = Date.now() - new Date((job as any).created_at).getTime();
     const jobTimeoutMs = job.kind === "image" ? STALE_IMAGE_JOB_MS : STALE_VIDEO_JOB_MS;
-    if (ageMs > jobTimeoutMs) {
+    const stale = ageMs > jobTimeoutMs;
+    const timedOut = async () => {
       await fail(job as any, "Generation timed out — the provider never finished this job.");
-      return { status: "failed" };
-    }
+      return { status: "failed" as const };
+    };
+    // A RunPod job that reached the provider is asked first: a render that
+    // finished but was never collected is delivered, however late, and only
+    // a job that is still unfinished is failed for its age (below).
+    const pollableRunpod =
+      (job as any).provider === "runpod" && !!(job as any).replicate_id && (job as any).replicate_id !== "retrying";
+    if (stale && !pollableRunpod) return timedOut();
 
     // Written but not yet launched, and not old enough to give up on. The
     // caller keeps polling.
@@ -2309,6 +2319,7 @@ export const checkMediaJob = createServerFn({ method: "POST" })
           await fail(job as any, message, (job as any).replicate_id);
           return { status: "failed", error: message };
         }
+        if (stale) return timedOut();
         return { status: job.status }; // transient — keep polling
       }
 
@@ -2321,6 +2332,7 @@ export const checkMediaJob = createServerFn({ method: "POST" })
         );
         return { status: "failed" };
       }
+      if (state === "processing" && stale) return timedOut();
       if (state === "processing") {
         // Still in the queue after minutes: no worker has taken it. Send it
         // again once, and tell the client what it is waiting on.

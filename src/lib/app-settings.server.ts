@@ -76,7 +76,7 @@ export async function getEffectiveTiers(): Promise<SubscriptionTier[]> {
       t.monthlyCredits = Math.round(settingNumber(credits, t.monthlyCredits));
       // The first perk is the credit count spelled out, so it follows the number.
       if (t.perks[0] && /(?:messages|creator credits) \/ (?:month|year)/.test(t.perks[0])) {
-        const noun = t.id.startsWith("sub-creator") ? "creator credits" : "messages";
+        const noun = t.id.startsWith("sub-creator") || t.id.startsWith("sub-studio") ? "creator credits" : "messages";
         const period = t.billingMonths === 12 ? "year" : "month";
         t.perks[0] = `${t.monthlyCredits.toLocaleString()} ${noun} / ${period}`;
       }

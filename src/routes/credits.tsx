@@ -102,7 +102,7 @@ function CreditsPage() {
   }, []);
 
   const [tab, setTab] = useState<"subs" | "packs">("subs");
-  const [selected, setSelected] = useState<string>("sub-creator");
+  const [selected, setSelected] = useState<string>("sub-studio-creator");
   const [cardNumber, setCardNumber] = useState("");
   const [expMonth, setExpMonth] = useState("");
   const [expYear, setExpYear] = useState("");
@@ -118,6 +118,12 @@ function CreditsPage() {
     if (requested === "annual") { setTab("subs"); setSelected("sub-soulmate"); }
     if (requested === "creator") { setTab("subs"); setSelected("sub-creator"); }
     if (requested === "creator-annual") { setTab("subs"); setSelected("sub-creator-annual"); }
+    // The creator page sends the exact tier it showed.
+    if (requested?.startsWith("sub-")) {
+      setTab("subs");
+      setSelected(requested);
+      setBillingCycle(requested.endsWith("-annual") ? "yearly" : "monthly");
+    }
   }, []);
 
   const { data: payCfg } = useQuery({ queryKey: ["pay-cfg"], queryFn: () => getPaymentConfig() });
@@ -197,7 +203,7 @@ function CreditsPage() {
   const total = (balance?.free_messages_remaining ?? 0) + (balance?.paid_credits ?? 0);
 
   const visibleTiers = tiers.filter((tier) =>
-    billingCycle === "yearly" ? tier.billingMonths === 12 : tier.billingMonths !== 12,
+    !tier.legacy && (billingCycle === "yearly" ? tier.billingMonths === 12 : tier.billingMonths !== 12),
   );
 
   return (
@@ -524,8 +530,8 @@ function PricingExperience({
           <h1 className="mt-4 font-display text-4xl font-extrabold tracking-[-0.04em] sm:text-6xl">Create more. Keep your credits.</h1>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-white/55 sm:text-base">Choose a recurring plan for creator renders and companion chats, or top up once when you need a little more.</p>
           <div className="mt-7 inline-flex items-center rounded-full border border-white/10 bg-[#1d1d1f] p-1 text-sm">
-            <button type="button" onClick={() => { setBillingCycle("monthly"); setSelected("sub-creator"); }} className={`rounded-full px-4 py-2 font-semibold transition ${billingCycle === "monthly" ? "bg-white text-[#151515]" : "text-white/55 hover:text-white"}`}>Monthly</button>
-            <button type="button" onClick={() => { setBillingCycle("yearly"); setSelected("sub-creator-annual"); }} className={`rounded-full px-4 py-2 font-semibold transition ${billingCycle === "yearly" ? "bg-white text-[#151515]" : "text-white/55 hover:text-white"}`}>Yearly <span className="ml-1 rounded-full bg-[#ff4d6a] px-2 py-0.5 text-[10px] text-white">save more</span></button>
+            <button type="button" onClick={() => { setBillingCycle("monthly"); setSelected("sub-studio-creator"); }} className={`rounded-full px-4 py-2 font-semibold transition ${billingCycle === "monthly" ? "bg-white text-[#151515]" : "text-white/55 hover:text-white"}`}>Monthly</button>
+            <button type="button" onClick={() => { setBillingCycle("yearly"); setSelected("sub-studio-creator-annual"); }} className={`rounded-full px-4 py-2 font-semibold transition ${billingCycle === "yearly" ? "bg-white text-[#151515]" : "text-white/55 hover:text-white"}`}>Yearly <span className="ml-1 rounded-full bg-[#ff4d6a] px-2 py-0.5 text-[10px] text-white">save more</span></button>
           </div>
         </header>
 
@@ -542,7 +548,7 @@ function PricingExperience({
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2" role="tablist" aria-label="Billing options">
-            <button type="button" onClick={() => { setTab("subs"); setSelected(billingCycle === "yearly" ? "sub-creator-annual" : "sub-creator"); }} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === "subs" ? "bg-[#ff4d6a] text-white" : "bg-[#27272a] text-white/55 hover:text-white"}`}>Subscriptions</button>
+            <button type="button" onClick={() => { setTab("subs"); setSelected(billingCycle === "yearly" ? "sub-studio-creator-annual" : "sub-studio-creator"); }} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === "subs" ? "bg-[#ff4d6a] text-white" : "bg-[#27272a] text-white/55 hover:text-white"}`}>Subscriptions</button>
             <button type="button" onClick={() => { setTab("packs"); setSelected("lover"); }} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === "packs" ? "bg-[#ff4d6a] text-white" : "bg-[#27272a] text-white/55 hover:text-white"}`}>Credit packs</button>
           </div>
 

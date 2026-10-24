@@ -7,7 +7,16 @@ export type AdultEntitlementState = {
   subscriptionStatus?: string | null;
 };
 
-export const ADULT_CREATOR_TIERS = ["sub-creator", "sub-creator-annual"] as const;
+export const ADULT_CREATOR_TIERS = [
+  "sub-creator",
+  "sub-creator-annual",
+  "sub-studio-starter",
+  "sub-studio-starter-annual",
+  "sub-studio-creator",
+  "sub-studio-creator-annual",
+  "sub-studio-pro",
+  "sub-studio-pro-annual",
+] as const;
 
 export class AdultAccessError extends Error {
   constructor(code: "AGE_CONFIRMATION_REQUIRED" | "CREATOR_SUBSCRIPTION_REQUIRED") {

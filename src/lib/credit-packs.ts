@@ -23,13 +23,117 @@ export type SubscriptionTier = {
   billingMonths?: number;
   perks: string[];
   badge?: string;
+  /**
+   * Still valid for existing subscribers (renewals, entitlement), but no
+   * longer offered: hidden from every plan list.
+   */
+  legacy?: boolean;
 };
 
 // One-time charge today; we mark the tier on the user's profile and grant the credits.
 // Renewal is manual on the user's part (re-purchase) until recurring billing is wired.
 export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
   {
+    id: "sub-studio-starter",
+    name: "Starter",
+    tagline: "Try the creator studio",
+    monthlyCredits: 80,
+    priceCents: 600,
+    billingMonths: 1,
+    perks: [
+      "80 creator credits / month",
+      "Create 80 photos or 8 videos",
+      "Social and 18+ modes (18+ needs age confirmation)",
+      "1 model included, more for 50 credits each",
+      "Unused credits roll over",
+      "Cancel anytime"
+    ],
+  },
+  {
+    id: "sub-studio-starter-annual",
+    name: "Starter",
+    tagline: "Try the creator studio, billed yearly",
+    monthlyCredits: 960,
+    priceCents: 4800,
+    billingMonths: 12,
+    perks: [
+      "960 creator credits / year",
+      "Create 960 photos or 96 videos a year",
+      "Social and 18+ modes (18+ needs age confirmation)",
+      "1 model included, more for 50 credits each",
+      "Unused credits roll over",
+      "Cancel anytime"
+    ],
+  },
+  {
+    id: "sub-studio-creator",
+    name: "Creator",
+    tagline: "For regular posting",
+    monthlyCredits: 350,
+    priceCents: 2600,
+    billingMonths: 1,
+    perks: [
+      "350 creator credits / month",
+      "Create 350 photos or 35 videos",
+      "Social and 18+ modes (18+ needs age confirmation)",
+      "1 model included, more for 50 credits each",
+      "Unused credits roll over",
+      "Cancel anytime"
+    ],
+  },
+  {
+    id: "sub-studio-creator-annual",
+    name: "Creator",
+    tagline: "For regular posting, billed yearly",
+    monthlyCredits: 4200,
+    priceCents: 21000,
+    billingMonths: 12,
+    perks: [
+      "4,200 creator credits / year",
+      "Create 4,200 photos or 420 videos a year",
+      "Social and 18+ modes (18+ needs age confirmation)",
+      "1 model included, more for 50 credits each",
+      "Unused credits roll over",
+      "Cancel anytime"
+    ],
+  },
+  {
+    id: "sub-studio-pro",
+    name: "Pro",
+    tagline: "For daily content",
+    monthlyCredits: 750,
+    priceCents: 5300,
+    billingMonths: 1,
+    badge: "Popular",
+    perks: [
+      "750 creator credits / month",
+      "Create 750 photos or 75 videos",
+      "Social and 18+ modes (18+ needs age confirmation)",
+      "1 model included, more for 50 credits each",
+      "Unused credits roll over",
+      "Cancel anytime"
+    ],
+  },
+  {
+    id: "sub-studio-pro-annual",
+    name: "Pro",
+    tagline: "For daily content, billed yearly",
+    monthlyCredits: 9000,
+    priceCents: 42600,
+    billingMonths: 12,
+    badge: "Popular",
+    perks: [
+      "9,000 creator credits / year",
+      "Create 9,000 photos or 900 videos a year",
+      "Social and 18+ modes (18+ needs age confirmation)",
+      "1 model included, more for 50 credits each",
+      "Unused credits roll over",
+      "Cancel anytime"
+    ],
+  },
+  {
     id: "sub-creator",
+    legacy: true,
     name: "Creator",
     tagline: "Launch a consistent AI model",
     monthlyCredits: 800,
@@ -48,6 +152,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
   },
   {
     id: "sub-creator-annual",
+    legacy: true,
     name: "Creator annual",
     tagline: "Save with yearly billing",
     monthlyCredits: 9600,

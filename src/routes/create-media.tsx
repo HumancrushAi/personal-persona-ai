@@ -41,7 +41,8 @@ export const Route = createFileRoute("/create-media")({
   component: Creator,
 });
 
-const CREATOR_PLAN_IDS = ["sub-creator", "sub-creator-annual"];
+// Every studio plan, old and new (content-mode.server.ts ADULT_CREATOR_TIERS).
+const CREATOR_PLAN_IDS = ["sub-creator", "sub-creator-annual", "sub-studio-starter", "sub-studio-starter-annual", "sub-studio-creator", "sub-studio-creator-annual", "sub-studio-pro", "sub-studio-pro-annual"];
 /** How many models the picker opens with; the banner features the ones after. */
 const PICKER_LEAD = 6;
 const RANDOM_IDENTITY = "__random_identity__";
@@ -50,6 +51,8 @@ const sizes = {
   square: [1024, 1024],
   landscape: [1024, 768],
 } as const;
+/** What each frame is, shown on the picker next to its pixel size. */
+const FRAME_RATIO: Record<keyof typeof sizes, string> = { portrait: "3:4", square: "1:1", landscape: "4:3" };
 const BOOK_CALL_SMS = "sms:7082537082?&body=Hi%2C%20I%27m%20interested%20in%20your%20done-for-you%20content%20creator%20program.%20Please%20tell%20me%20more%20and%20let%20me%20know%20how%20to%20schedule%20a%20call.";
 
 type CreatorModel = { id: string; name: string; image_url: string; gender?: string | null };
@@ -92,7 +95,7 @@ const PRESETS: readonly Preset[] = [
   { name: "Road trip", tag: "Reel", kind: "video", prompt: "Wind in her hair in the passenger seat of a convertible on a coastal road, sunglasses, laughing." },
   { name: "Red carpet", tag: "Fashion", kind: "image", prompt: "A glamorous red-carpet portrait in a floor-length evening gown, camera flashes, confident pose." },
 ];
-const PRESET_TAGS = ["All", ...Array.from(new Set(PRESETS.map((preset) => preset.tag)))];
+
 
 // Keep the first impression of the creator studio editorial and varied. The
 // database order is still preserved for entitlement checks (the first catalog
@@ -152,54 +155,32 @@ function CreatorFooter() {
   );
 }
 
-const HERO_WORDS = ["yours.", "iconic.", "bold.", "real."];
+const money = (cents: number) => `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
 
-/** The hero's last word, cycling. Static under reduced motion (CSS). */
-function RotatingWord() {
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = window.setInterval(() => setIndex((current) => (current + 1) % HERO_WORDS.length), 2600);
-    return () => window.clearInterval(timer);
-  }, []);
-  return <span key={index} className="hc-word bg-gradient-to-r from-white to-[#A1A1AA] bg-clip-text text-transparent">{HERO_WORDS[index]}</span>;
-}
-
-function ShowcaseCard({ item, index, onOpen }: { item: ShowcaseItem; index: number; onOpen: (index: number) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(index)}
-      style={{ animationDelay: `${Math.min(index, 6) * 60}ms` }}
-      className="hc-rise group relative aspect-[3/4] w-[130px] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/[0.1] text-left shadow-[0_10px_25px_rgba(0,0,0,.25)] transition duration-300 hover:-translate-y-0.5 hover:border-white/[0.3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-[145px]"
-      aria-label={`Open ${item.label} in the gallery`}
-    >
-      <ReelMedia reel={item.type === "video" ? item.src : null} poster={item.poster} alt={item.alt} eager={index < 3} className="h-full w-full transition duration-500 group-hover:scale-[1.04]" />
-      <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm"><span className="h-1.5 w-1.5 rounded-full bg-[#7FE0B0] motion-safe:animate-pulse" />In motion</span>
-      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent px-3 pb-3 pt-10 text-xs font-semibold text-white">{item.label}</span>
-    </button>
-  );
-}
-
-function PlanCard({ plan, currentPlan, isAdmin, onChoose, savings }: {
+/** One plan, laid out like foxy.ai's: price per month, what it creates, real perks only. */
+function PlanCard({ plan, currentPlan, isAdmin, onChoose }: {
   plan: CreatorPlan;
-  savings: string | null;
   currentPlan: string | null;
   isAdmin: boolean;
   onChoose: (plan: CreatorPlan) => void;
 }) {
   const isCurrent = currentPlan === plan.tierId;
-  const imageCount = estimatedPlanMedia(plan, "image");
-  const videoCount = estimatedPlanMedia(plan, "video");
-  const buttonLabel = isCurrent ? "Subscribed" : isAdmin ? "Admin access" : currentPlan ? `Switch to ${plan.name}` : `Choose ${plan.name}`;
+  const yearly = plan.period === "yearly";
+  const perMonth = yearly ? Math.round(plan.priceCents / plan.billingMonths) : plan.priceCents;
+  const buttonLabel = isCurrent ? "Current plan" : isAdmin ? "Admin access" : currentPlan ? `Switch to ${plan.name}` : "Get started";
   return (
-    <article className={`flex h-full flex-col rounded-2xl border p-5 shadow-[0_18px_50px_rgba(0,0,0,.18)] ${plan.featured ? "border-[#E5484D]/60 bg-[#21191d]" : "border-white/[0.1] bg-[#19191C]"}`}>
-      <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">{plan.billingMonths === 12 ? "Best value" : "Flexible start"}</p><p className="mt-2 font-display text-2xl font-extrabold">{plan.name}</p><p className="mt-3 font-display text-3xl font-extrabold">{formatPlanPrice(plan)}<span className="ml-1 text-sm font-medium text-[#A1A1AA]">/{plan.billingMonths === 12 ? "year" : "month"}</span></p></div>{plan.featured && savings && <span className="rounded-full border border-[#E5484D]/60 bg-[#E5484D]/15 px-2.5 py-1 text-[11px] font-bold text-[#FFB3BD]">{savings}</span>}</div>
-      <p className="mt-2 text-sm text-[#A1A1AA]">{formatCredits(plan.credits)} included</p>
-      <div className="mt-4 grid grid-cols-2 gap-2"><div className="rounded-xl bg-[#232327] p-3"><p className="text-[11px] text-[#A1A1AA]">Photos</p><p className="mt-1 text-lg font-bold">Up to {imageCount.toLocaleString()}</p><p className="text-[11px] text-[#A1A1AA]">8 credits each</p></div><div className="rounded-xl bg-[#232327] p-3"><p className="text-[11px] text-[#A1A1AA]">Videos</p><p className="mt-1 text-lg font-bold">Up to {videoCount.toLocaleString()}</p><p className="text-[11px] text-[#A1A1AA]">3s clips, {creatorBilling.creditCosts.video} credits each</p></div></div>
-      <div className="mt-4 flex-1 rounded-xl bg-[#232327] p-4"><p className="text-xs font-semibold text-[#A1A1AA]">Included</p><ul className="mt-3 space-y-2 text-xs leading-relaxed text-[#D4D4D8]">{plan.features.map((feature) => <li key={feature} className="flex gap-2"><Check className="h-3.5 w-3.5 shrink-0 text-[#7FE0B0]" />{feature}</li>)}</ul></div>
-      <p className="mt-3 text-[11px] leading-relaxed text-[#A1A1AA]">A video costs {creatorBilling.creditCosts.videoPerSecond} credits per second, {creatorBilling.creditCosts.video} minimum. Mix photos and videos however you like.</p>
-      <button type="button" disabled={isCurrent || isAdmin} onClick={() => onChoose(plan)} className={`mt-5 min-h-11 rounded-xl px-4 text-sm font-bold transition ${isCurrent ? "bg-[#232327] text-[#A1A1AA]" : isAdmin ? "border border-[#7FE0B0]/40 bg-[#7FE0B0]/10 text-[#B9F5D4]" : plan.featured ? "bg-white text-[#101012] hover:bg-[#E4E4E7]" : "border border-white/[0.16] text-white hover:bg-white/[0.08]"}`}>{buttonLabel}</button>
+    <article className={`relative flex h-full flex-col rounded-3xl border p-6 transition ${plan.featured ? "border-white/60 bg-[linear-gradient(180deg,#26262B,#17171A)] shadow-[0_24px_70px_rgba(0,0,0,.45)]" : "border-white/[0.1] bg-[#17171A]"}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-display text-xl font-extrabold">{plan.name}</p>
+        {plan.featured && <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#101012]">Popular</span>}
+      </div>
+      <p className="mt-5"><span className="font-display text-5xl font-extrabold tracking-[-0.03em]">{money(perMonth)}</span><span className="ml-1 text-sm text-[#A1A1AA]">/month</span></p>
+      <p className="mt-1 text-xs text-[#A1A1AA]">{yearly ? `Billed ${money(plan.priceCents)} yearly` : "Billed monthly"}</p>
+      <p className="mt-5 text-sm font-bold">{plan.credits.toLocaleString()} credits {yearly ? "a year, added up front" : "a month"}</p>
+      <ul className="mt-4 flex-1 space-y-2.5 text-sm leading-snug text-[#D4D4D8]">
+        {plan.features.slice(1).map((feature) => <li key={feature} className="flex gap-2.5"><Check className="mt-0.5 h-4 w-4 shrink-0 text-white" />{feature}</li>)}
+      </ul>
+      <button type="button" disabled={isCurrent || isAdmin} onClick={() => onChoose(plan)} className={`mt-6 min-h-12 rounded-full px-4 text-sm font-bold transition disabled:cursor-default ${isCurrent ? "bg-white/[0.08] text-[#A1A1AA]" : isAdmin ? "border border-[#7FE0B0]/40 bg-[#7FE0B0]/10 text-[#B9F5D4]" : plan.featured ? "hc-shine bg-white text-[#101012] hover:bg-[#E4E4E7]" : "border border-white/[0.18] text-white hover:bg-white/[0.08]"}`}>{buttonLabel}</button>
     </article>
   );
 }
@@ -207,12 +188,23 @@ function PlanCard({ plan, currentPlan, isAdmin, onChoose, savings }: {
 function PlansSection({ plans, currentPlan, isAdmin, onChoose }: { plans: readonly CreatorPlan[]; currentPlan: string | null; isAdmin: boolean; onChoose: (plan: CreatorPlan) => void }) {
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
   useEffect(() => {
-    if (currentPlan === "sub-creator-annual") setPeriod("yearly");
-    else if (currentPlan === "sub-creator") setPeriod("monthly");
+    if (currentPlan?.endsWith("-annual")) setPeriod("yearly");
   }, [currentPlan]);
   const visiblePlans = plans.filter((plan) => plan.period === period);
   const savings = yearlySavingsLabel(plans);
-  return <section id="plans" className="mt-14 scroll-mt-24"><div className="rounded-2xl border border-white/[0.1] bg-[#151519] p-5 sm:p-7"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold text-[#A1A1AA]">Plans & credits</p><h2 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">Pay for the renders you can use.</h2><p className="mt-2 max-w-xl text-sm leading-relaxed text-[#A1A1AA]">These prices and credit balances come directly from the checkout tiers. Social and 18+ creator modes use the same render wallet; 18+ also requires age confirmation and an eligible plan.</p></div><div className="flex items-center gap-2 rounded-full border border-white/[0.12] bg-[#19191C] p-1 text-xs font-semibold"><button type="button" onClick={() => setPeriod("monthly")} className={`min-h-10 rounded-full px-3 ${period === "monthly" ? "bg-white text-[#101012]" : "text-[#A1A1AA]"}`}>Monthly</button><button type="button" onClick={() => setPeriod("yearly")} className={`min-h-10 rounded-full px-3 ${period === "yearly" ? "bg-white text-[#101012]" : "text-[#A1A1AA]"}`}>Yearly</button><span className="rounded-full border border-[#7FE0B0]/30 bg-[#7FE0B0]/10 px-2 py-1 text-[10px] font-bold text-[#B9F5D4]">{savings}</span></div></div><div className="mt-6 grid gap-4 md:grid-cols-2">{visiblePlans.map((plan) => <PlanCard key={plan.tierId} plan={plan} currentPlan={currentPlan} isAdmin={isAdmin} onChoose={onChoose} savings={savings} />)}</div>{visiblePlans.length === 0 && <p className="mt-5 rounded-xl border border-dashed border-white/[0.14] p-5 text-center text-sm text-[#A1A1AA]">Pricing is loading from checkout.</p>}</div></section>;
+  return <section id="plans" className="mt-16 scroll-mt-24">
+    <div className="text-center">
+      <h2 className="font-display text-3xl font-extrabold tracking-[-0.02em] sm:text-4xl">Start creating.</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[#A1A1AA]">A photo is {creatorBilling.creditCosts.image} credit, a video {creatorBilling.creditCosts.videoPerSecond} credits a second ({creatorBilling.creditCosts.video} minimum). Unused credits roll over.</p>
+      <div role="radiogroup" aria-label="Billing period" className="mt-6 inline-flex items-center gap-1 rounded-full border border-white/[0.12] bg-[#17171A] p-1 text-sm font-semibold">
+        <button type="button" role="radio" aria-checked={period === "monthly"} onClick={() => setPeriod("monthly")} className={`min-h-10 rounded-full px-4 ${period === "monthly" ? "bg-white text-[#101012]" : "text-[#A1A1AA] hover:text-white"}`}>Monthly</button>
+        <button type="button" role="radio" aria-checked={period === "yearly"} onClick={() => setPeriod("yearly")} className={`inline-flex min-h-10 items-center gap-2 rounded-full px-4 ${period === "yearly" ? "bg-white text-[#101012]" : "text-[#A1A1AA] hover:text-white"}`}>Yearly{savings && <span className="rounded-full bg-[#E5484D] px-2 py-0.5 text-[10px] font-bold text-white">{savings}</span>}</button>
+      </div>
+    </div>
+    <div className="mt-8 grid gap-4 lg:grid-cols-3">{visiblePlans.map((plan) => <PlanCard key={plan.tierId} plan={plan} currentPlan={currentPlan} isAdmin={isAdmin} onChoose={onChoose} />)}</div>
+    {visiblePlans.length === 0 && <p className="mt-6 rounded-xl border border-dashed border-white/[0.14] p-5 text-center text-sm text-[#A1A1AA]">Pricing is loading from checkout.</p>}
+    {savings && period === "monthly" && <p className="mt-4 text-center text-xs text-[#A1A1AA]">{savings} with a yearly plan.</p>}
+  </section>;
 }
 
 function Creator() {
@@ -290,7 +282,7 @@ function Creator() {
   const readyForRender = (item: CreatorModel) => isAdmin || models[0]?.id === item.id || unlocked.includes(item.id);
   const selectedIdentity = models.find((item) => item.id === model) ?? null;
   const selectedName = model === RANDOM_IDENTITY ? "Random identity" : selectedIdentity?.name ?? "Random identity";
-  const cost = kind === "image" ? 8 : Math.max(10, seconds * 3);
+  const cost = kind === "image" ? creatorBilling.creditCosts.image : Math.max(creatorBilling.creditCosts.video, seconds * creatorBilling.creditCosts.videoPerSecond);
   const displayModels = useMemo(() => orderModelsForDisplay(models), [models]);
   // The banner shows different women from the ones the picker leads with, and
   // shows them moving: every catalog model has a reel cut from her portrait.
@@ -317,21 +309,8 @@ function Creator() {
     label: model.name,
   })), [showcaseModels]);
   const [hoveredModel, setHoveredModel] = useState<string | null>(null);
-  const presetModels = useMemo(() => {
-    const used = new Set(showcaseModels.map((item) => item.id));
-    const withReel = displayModels.filter((item) => getEffectiveCompanionReel(item));
-    const pool = withReel.slice(PICKER_LEAD).filter((item) => !used.has(item.id));
-    const source = pool.length >= 4 ? pool : withReel;
-    return source.length ? PRESETS.map((_, index) => source[index % source.length]) : [];
-  }, [displayModels, showcaseModels]);
   const studioRef = useRef<HTMLElement>(null);
-  const presetsRef = useRef<HTMLElement>(null);
-  const [presetTag, setPresetTag] = useState("All");
-  const usePreset = (preset: Preset) => {
-    setPrompt(preset.prompt);
-    setKind(preset.kind);
-    studioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+
   const showcaseRailRef = useRef<HTMLDivElement>(null);
   const showcasePauseTimerRef = useRef<number | null>(null);
   const modelsRailRef = useRef<HTMLDivElement>(null);
@@ -551,33 +530,22 @@ function Creator() {
       </div>
       <CreatorNav credits={credits} onSignIn={openAuthGate} />
       <main className="mx-auto max-w-[1200px] px-4 pb-36 sm:px-6 lg:max-w-[1400px] lg:pb-16">
-        <section id="showcase" className="scroll-mt-24 pt-3 sm:pt-8 lg:pt-6">
-          <div className="hidden gap-4 lg:grid lg:grid-cols-3">{([
-            { title: "Photo shoot", line: "Your model. Any scene.", face: showcaseModels[0], go: () => { setKind("image"); studioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
-            { title: "Short reels", line: "Bring her to life in 3 to 10 seconds.", face: showcaseModels[1], go: () => { setKind("video"); studioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
-            { title: "Presets", line: "One tap, ready to post.", face: showcaseModels[2], go: () => presetsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) },
-          ]).map((tile, index) => <button key={tile.title} type="button" onClick={tile.go} style={{ animationDelay: `${index * 80}ms` }} className="hc-rise group relative h-[230px] overflow-hidden rounded-2xl border border-white/[0.08] text-left shadow-[0_18px_50px_rgba(0,0,0,.35)]">
-            {tile.face && <ReelMedia reel={getEffectiveCompanionReel(tile.face)} poster={tile.face.image_url} posterWidth={900} alt="" eager className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-[1.05]" />}
-            <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            <span className="absolute inset-x-0 bottom-7 text-center"><span className="block font-display text-[28px] font-extrabold tracking-[-0.02em] text-white drop-shadow">{tile.title}</span><span className="mt-1 block text-sm text-white/80">{tile.line}</span></span>
-          </button>)}</div>
-          <div className="lg:hidden sm:rounded-2xl sm:border sm:border-white/[0.1] sm:bg-[#18181B] sm:px-6 sm:py-5 sm:shadow-[0_18px_55px_rgba(0,0,0,.18)]">
-            <div className="mb-2 flex items-center justify-between gap-3 sm:mb-3 sm:gap-4">
-              <h1 className="font-display text-[20px] font-extrabold leading-tight tracking-[-0.03em] text-white min-[400px]:text-[22px] sm:text-3xl">Make the scene <RotatingWord /></h1>
-              <button type="button" onClick={() => { setGalleryStartIndex(0); setSheet("gallery"); }} className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-white/[0.16] px-3.5 text-sm font-semibold text-white transition hover:bg-white/[0.08] sm:px-4">View gallery</button>
+        <section id="showcase" aria-label="HumanCrush creator studio" className="scroll-mt-24 pt-3 sm:pt-6">
+          <div className="relative h-[176px] overflow-hidden rounded-3xl border border-white/[0.08] bg-[#17171A] sm:h-[220px] lg:h-[240px]">
+            <div aria-hidden="true" className="absolute inset-0 grid grid-cols-3 gap-1.5 p-1.5 sm:grid-cols-5 lg:grid-cols-6">
+              {showcaseModels.slice(0, 6).map((face, index) => (
+                <ReelMedia key={face.id} reel={index % 2 === 1 ? getEffectiveCompanionReel(face) : null} poster={face.image_url} posterWidth={360} alt="" eager={index < 3} className={`h-full w-full rounded-2xl ${index === 5 ? "hidden lg:block" : index >= 3 ? "hidden sm:block" : ""}`} />
+              ))}
             </div>
-            <div
-              ref={showcaseRailRef}
-              onPointerDown={pauseShowcase}
-              onPointerUp={resumeShowcase}
-              onPointerCancel={resumeShowcase}
-              onPointerLeave={resumeShowcase}
-              className="flex max-h-[175px] snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-h-[188px]"
-              aria-label="Social-safe creator showcase"
-            >
-              {showcaseItems.map((item, index) => <ShowcaseCard key={item.id} item={item} index={index} onOpen={(selectedIndex) => { setGalleryStartIndex(selectedIndex); setSheet("gallery"); }} />)}
+            <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(16,16,18,.95)_0%,rgba(16,16,18,.55)_45%,rgba(16,16,18,.1)_100%)] sm:bg-[linear-gradient(90deg,rgba(16,16,18,.95)_0%,rgba(16,16,18,.6)_50%,rgba(16,16,18,.05)_100%)]" />
+            <div className="absolute inset-0 flex flex-col justify-end p-4 sm:justify-center sm:p-8">
+              <h1 className="font-display text-[26px] font-extrabold leading-[0.95] tracking-[-0.03em] text-white sm:text-5xl"><span className="font-serif font-normal italic">Your</span> AI content studio</h1>
+              <p className="mt-1.5 max-w-sm text-xs leading-snug text-white/80 sm:mt-3 sm:text-base">One face, every scene. Photos and short videos in minutes.</p>
+              <div className="mt-3 flex gap-2 sm:mt-5">
+                <button type="button" onClick={() => studioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="hc-shine inline-flex min-h-11 items-center rounded-full bg-white px-4 text-sm font-bold text-[#101012]">Start creating</button>
+                <button type="button" onClick={() => { setGalleryStartIndex(0); setSheet("gallery"); }} className="inline-flex min-h-11 items-center rounded-full border border-white/[0.3] bg-black/30 px-4 text-sm font-semibold text-white backdrop-blur-sm">View gallery</button>
+              </div>
             </div>
-            
           </div>
         </section>
 
@@ -609,8 +577,8 @@ function Creator() {
         </div><button type="button" aria-label="Scroll models right" onClick={() => scrollRail(modelsRailRef, 1)} className="absolute right-1 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-white/[0.18] bg-[#101012]/90 text-white shadow-lg"><ArrowRight className="h-4 w-4" /></button></div></section>
 
         <section id="create" className="mt-8 scroll-mt-24"><h2 className="font-display text-2xl font-extrabold sm:text-3xl">Describe the scene</h2>
-          <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:items-start">
-          <section ref={studioRef} className="scroll-mt-24 overflow-hidden rounded-3xl lg:sticky lg:top-24 border border-white/[0.1] bg-[linear-gradient(180deg,#1C1C21,#141417)] shadow-[0_30px_80px_rgba(0,0,0,.35)]">
+          <div className="mx-auto mt-4 max-w-3xl">
+          <section ref={studioRef} className="scroll-mt-24 overflow-hidden rounded-3xl border border-white/[0.1] bg-[linear-gradient(180deg,#1C1C21,#141417)] shadow-[0_30px_80px_rgba(0,0,0,.35)]">
             <div className="flex items-center gap-3 border-b border-white/[0.07] px-4 py-3 sm:px-6">
               <ReelMedia reel={selectedIdentity ? getEffectiveCompanionReel(selectedIdentity) : null} poster={selectedIdentity?.image_url ?? ""} posterWidth={96} alt="" active className="h-11 w-11 shrink-0 rounded-full ring-2 ring-white/20" />
               <div className="min-w-0 flex-1"><p className="text-[11px] text-[#A1A1AA]">Rendering as</p><p className="truncate text-sm font-bold">{selectedName}</p></div>
@@ -629,31 +597,20 @@ function Creator() {
               <textarea id="creator-prompt" value={prompt} maxLength={2000} onFocus={() => setPromptFocused(true)} onBlur={() => setPromptFocused(false)} onChange={(event) => setPrompt(event.target.value)} placeholder="Describe the pose, outfit, setting, lighting, and action..." className="mt-4 min-h-[120px] w-full resize-y rounded-2xl border border-white/[0.1] bg-black/35 p-4 text-base leading-relaxed text-white outline-none transition placeholder:text-[#71717A] focus:border-white/60 focus:bg-black/45 focus:ring-4 focus:ring-white/[0.06] sm:min-h-[170px]" />
               {contentMode === "social" && hasSocialExplicitTerms(prompt) && <p role="status" className="mt-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs leading-relaxed text-[#D4D4D8]">Nudity isn't available in Social mode. <button type="button" onClick={() => (isAdmin || creatorSubscription ? selectMode("adult") : setSheet("plan"))} className="font-semibold text-white underline">{isAdmin || creatorSubscription ? "Switch to 18+" : "See the plan with 18+"}</button></p>}
               <div className="mt-2 flex items-center justify-between gap-2 text-xs text-[#71717A]"><span>{prompt.length} / 2000</span><button type="button" onClick={surpriseMe} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/[0.14] px-3 font-semibold text-white transition hover:bg-white/[0.08]"><Wand2 className="h-3.5 w-3.5" />Surprise me</button></div>
+              <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:px-0" aria-label="Scene ideas">{PRESETS.map((preset) => {
+                const on = prompt === preset.prompt;
+                return <button key={preset.name} type="button" onClick={() => { setPrompt(preset.prompt); setKind(preset.kind); }} aria-pressed={on} className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition ${on ? "border-white bg-white text-[#101012]" : "border-white/[0.12] bg-white/[0.03] text-[#D4D4D8] hover:border-white/[0.3]"}`}>{preset.kind === "video" ? <Clapperboard className="h-3.5 w-3.5" /> : <ImageIcon className="h-3.5 w-3.5" />}{preset.name}</button>;
+              })}</div>
               <div className={`mt-5 grid gap-5 border-t border-white/[0.07] pt-5 ${kind === "video" ? "sm:grid-cols-2" : ""}`}>
-                <div><p className="text-xs font-semibold text-[#A1A1AA]">Frame</p><div className="mt-2 grid grid-cols-3 gap-2">{Object.entries(sizes).map(([key, [width, height]]) => <button type="button" key={key} onClick={() => setSize(key as keyof typeof sizes)} aria-pressed={size === key} className={`flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-xl border text-[11px] font-semibold capitalize transition ${size === key ? "border-white bg-white/[0.08] text-white" : "border-white/[0.1] text-[#A1A1AA] hover:text-white"}`}><span className="rounded-[4px] border-2 border-current" style={{ width: Math.round((width / 1024) * 22), height: Math.round((height / 1024) * 22) }} />{key}</button>)}</div></div>
+                <div><p className="text-xs font-semibold text-[#A1A1AA]">Frame</p><div className="mt-2 grid grid-cols-3 gap-2">{Object.entries(sizes).map(([key, [width, height]]) => <button type="button" key={key} onClick={() => setSize(key as keyof typeof sizes)} aria-pressed={size === key} aria-label={`${key}, ${FRAME_RATIO[key as keyof typeof sizes]}, ${width} by ${height} pixels`} className={`flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-xl border px-1 text-center transition ${size === key ? "border-white bg-white/[0.08] text-white" : "border-white/[0.1] text-[#A1A1AA] hover:text-white"}`}><span className="grid h-9 place-items-center"><span className="rounded-[4px] border-2 border-current" style={{ width: Math.round((width / 1024) * 30), height: Math.round((height / 1024) * 30) }} /></span><span className="text-xs font-bold capitalize leading-none">{key}</span><span className="text-[10px] leading-none opacity-80">{FRAME_RATIO[key as keyof typeof sizes]} · {width}×{height}</span></button>)}</div></div>
                 {kind === "video" && <div><p className="text-xs font-semibold text-[#A1A1AA]">Duration</p><div className="mt-2 grid grid-cols-4 gap-2">{[3, 5, 8, 10].map((value) => <button type="button" key={value} onClick={() => setSeconds(value)} aria-pressed={seconds === value} className={`min-h-[64px] rounded-xl border text-sm font-bold transition ${seconds === value ? "border-white bg-white/[0.08] text-white" : "border-white/[0.1] text-[#A1A1AA] hover:text-white"}`}>{value}s</button>)}</div></div>}
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-5">
-                <p className="text-sm text-[#A1A1AA]">Estimated cost <span className="font-bold text-white">{cost} credits</span>{contentMode === "adult" && <span className="ml-2 text-xs text-[#E5484D]">18+ rate</span>}</p>
-                <button type="button" aria-disabled={busy || prompt.trim().length < 3} disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-bold text-[#101012] shadow-[0_10px_30px_rgba(255,255,255,.08)] transition hover:bg-[#E4E4E7] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"><Sparkles className="h-4 w-4" />{busy ? "Queuing…" : `Generate · ${cost} credits`}</button>
+                <p className="text-sm text-[#A1A1AA]">Estimated cost <span className="font-bold text-white">{cost} {cost === 1 ? "credit" : "credits"}</span>{contentMode === "adult" && <span className="ml-2 text-xs text-[#E5484D]">18+ rate</span>}</p>
+                <button type="button" aria-disabled={busy || prompt.trim().length < 3} disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-bold text-[#101012] shadow-[0_10px_30px_rgba(255,255,255,.08)] transition hover:bg-[#E4E4E7] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"><Sparkles className="h-4 w-4" />{busy ? "Queuing…" : `Generate · ${cost} ${cost === 1 ? "credit" : "credits"}`}</button>
               </div>
               {renderStatus}{loadError && <p className="mt-3 text-sm text-[#FF8C8C]">{loadError}</p>}
             </div>
-          </section>
-          <section ref={presetsRef} aria-labelledby="presets-title" className="min-w-0 scroll-mt-24">
-            <div className="flex items-end justify-between gap-3"><div><h3 id="presets-title" className="font-display text-xl font-extrabold">Presets</h3><p className="mt-1 text-sm text-[#A1A1AA]">One tap fills the scene. Your model stays the same.</p></div><button type="button" onClick={() => { setGalleryStartIndex(0); setSheet("gallery"); }} className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-white/[0.16] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.08]">View gallery</button></div>
-            <div role="tablist" aria-label="Preset categories" className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0">{PRESET_TAGS.map((tag) => <button key={tag} type="button" role="tab" aria-selected={presetTag === tag} onClick={() => setPresetTag(tag)} className={`min-h-9 shrink-0 rounded-full px-3.5 text-xs font-semibold transition ${presetTag === tag ? "bg-white text-[#101012]" : "text-[#A1A1AA] hover:bg-white/[0.06] hover:text-white"}`}>{tag}</button>)}</div>
-            <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">{PRESETS.map((preset, index) => {
-              if (presetTag !== "All" && preset.tag !== presetTag) return null;
-              const face = presetModels[index];
-              const on = prompt === preset.prompt;
-              return <button key={preset.name} type="button" onClick={() => usePreset(preset)} aria-pressed={on} style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }} className={`hc-rise group relative aspect-[3/4] overflow-hidden rounded-xl border text-left transition duration-300 ${on ? "border-white ring-2 ring-white/40" : "border-white/[0.1] hover:-translate-y-0.5 hover:border-white/[0.3]"}`}>
-                {face && <ReelMedia reel={getEffectiveCompanionReel(face)} poster={face.image_url} alt={`${preset.name} preset`} className="absolute inset-0 h-full w-full transition duration-500 group-hover:scale-[1.04]" />}
-                <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">{preset.kind === "video" ? <Clapperboard className="h-3 w-3" /> : <ImageIcon className="h-3 w-3" />}{preset.tag}</span>
-                {on && <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-white text-[#101012]"><Check className="h-3.5 w-3.5" /></span>}
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-3 pb-3 pt-12"><span className="block text-sm font-bold leading-tight text-white">{preset.name}</span><span className="mt-0.5 block text-[11px] text-white/70">{on ? "In your prompt" : "Use preset"}</span></span>
-              </button>;
-            })}</div>
           </section>
           </div>
         </section>
@@ -664,7 +621,7 @@ function Creator() {
 
         {credits !== null && <section id="renders" className="mt-12 scroll-mt-24"><div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#A1A1AA]">Your renders</p><h2 className="mt-1 font-display text-2xl font-extrabold">Recent work</h2></div><Link to="/library" className="text-sm font-semibold text-[#A1A1AA] hover:text-white">See more <ChevronRight className="inline h-4 w-4" /></Link></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{activeJob && activeJob.status !== "completed" && <div className="flex aspect-[4/5] animate-pulse items-end rounded-xl border border-dashed border-white/[0.18] bg-[#19191C] p-3 text-xs font-semibold">Rendering…</div>}{library.slice(0, activeJob && activeJob.status !== "completed" ? 5 : 6).map((item) => <Link to="/library" search={{ item: item.id } as never} key={item.id} className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-white/[0.1] bg-[#19191C] text-left">{item.kind === "video" ? <video muted preload="metadata" className="pointer-events-none h-full w-full object-cover" src={item.media_url ?? undefined} /> : <img src={item.media_url ?? ""} alt="Saved render" loading="lazy" draggable={false} className="pointer-events-none h-full w-full object-cover transition group-hover:scale-105" />}<span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold">{item.kind === "video" ? "Video" : "Photo"}</span></Link>)}</div>{library.length === 0 && !activeJob && <p className="mt-4 rounded-xl border border-dashed border-white/[0.12] p-8 text-center text-sm text-[#A1A1AA]">Your completed renders will appear here.</p>}</section>}
       </main>
-      {!promptFocused && scrolledPastTop && <div className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t border-white/[0.12] bg-[#101012]/95 px-4 py-2 backdrop-blur-xl lg:hidden"><button type="button" disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine min-h-12 w-full rounded-xl bg-white px-5 text-sm font-bold text-[#101012] disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Queuing…" : `Generate · ${cost} credits`}</button></div>}
+      {!promptFocused && scrolledPastTop && <div className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t border-white/[0.12] bg-[#101012]/95 px-4 py-2 backdrop-blur-xl lg:hidden"><button type="button" disabled={busy || loading || prompt.trim().length < 3 || !model} onClick={() => void submit()} className="hc-shine min-h-12 w-full rounded-xl bg-white px-5 text-sm font-bold text-[#101012] disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Queuing…" : `Generate · ${cost} ${cost === 1 ? "credit" : "credits"}`}</button></div>}
       <CreatorFooter />
       <style>{`@media (max-width:639px){button[aria-label^="Scroll models"]{display:none!important}}`}</style>
       {previewModel && <CreatorSheet open onClose={() => setPreviewModel(null)} title={`${previewModel.name} preview`}><ReelMedia reel={getEffectiveCompanionReel(previewModel)} poster={previewModel.image_url} alt={previewModel.name} eager className="mx-auto aspect-[3/4] max-h-[60dvh] w-full max-w-sm rounded-xl" /><p className="mt-4 text-sm text-[#A1A1AA]">{readyForRender(previewModel) ? "Owned identity. This face will stay consistent." : "Unlock this identity to keep the face consistent in your renders."}</p>{!readyForRender(previewModel) && <button type="button" disabled={unlockingModel} onClick={() => void unlockModel(previewModel)} className="mt-4 min-h-11 w-full rounded-xl bg-white text-sm font-bold text-[#101012] disabled:opacity-50">{unlockingModel ? "Unlocking…" : `Unlock for ${creatorBilling.creditCosts.modelUnlock} credits`}</button>}</CreatorSheet>}

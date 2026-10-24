@@ -38,6 +38,7 @@ import { Route as ModelsIndexRouteImport } from './routes/models.index'
 import { Route as ModelsSlugRouteImport } from './routes/models.$slug'
 import { Route as ApiCronIdleNudgeRouteImport } from './routes/api/cron/idle-nudge'
 import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
+import { Route as ApiCronRenewalRemindersRouteImport } from './routes/api/cron/renewal-reminders'
 import { Route as ApiPublicAuthnetWebhookRouteImport } from './routes/api/public/authnet-webhook'
 import { Route as ApiPublicReelWebhookRouteImport } from './routes/api/public/reel-webhook'
 import { Route as ApiPublicRunpodWebhookRouteImport } from './routes/api/public/runpod-webhook'
@@ -187,6 +188,11 @@ const ApiCronReengageRoute = ApiCronReengageRouteImport.update({
   path: '/api/cron/reengage',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronRenewalRemindersRoute = ApiCronRenewalRemindersRouteImport.update({
+  id: '/api/cron/renewal-reminders',
+  path: '/api/cron/renewal-reminders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAuthnetWebhookRoute = ApiPublicAuthnetWebhookRouteImport.update({
   id: '/api/public/authnet-webhook',
   path: '/api/public/authnet-webhook',
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/models/': typeof ModelsIndexRoute
   '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
+  '/api/cron/renewal-reminders': typeof ApiCronRenewalRemindersRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/models': typeof ModelsIndexRoute
   '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
+  '/api/cron/renewal-reminders': typeof ApiCronRenewalRemindersRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
@@ -307,6 +315,7 @@ export interface FileRoutesById {
   '/models/': typeof ModelsIndexRoute
   '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
+  '/api/cron/renewal-reminders': typeof ApiCronRenewalRemindersRoute
   '/api/public/authnet-webhook': typeof ApiPublicAuthnetWebhookRoute
   '/api/public/reel-webhook': typeof ApiPublicReelWebhookRoute
   '/api/public/runpod-webhook': typeof ApiPublicRunpodWebhookRoute
@@ -343,6 +352,7 @@ export interface FileRouteTypes {
     | '/models/'
     | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
+    | '/api/cron/renewal-reminders'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/models'
     | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
+    | '/api/cron/renewal-reminders'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/models/'
     | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
+    | '/api/cron/renewal-reminders'
     | '/api/public/authnet-webhook'
     | '/api/public/reel-webhook'
     | '/api/public/runpod-webhook'
@@ -446,6 +458,7 @@ export interface RootRouteChildren {
   ModelsIndexRoute: typeof ModelsIndexRoute
   ApiCronIdleNudgeRoute: typeof ApiCronIdleNudgeRoute
   ApiCronReengageRoute: typeof ApiCronReengageRoute
+  ApiCronRenewalRemindersRoute: typeof ApiCronRenewalRemindersRoute
   ApiPublicAuthnetWebhookRoute: typeof ApiPublicAuthnetWebhookRoute
   ApiPublicReelWebhookRoute: typeof ApiPublicReelWebhookRoute
   ApiPublicRunpodWebhookRoute: typeof ApiPublicRunpodWebhookRoute
@@ -657,6 +670,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronReengageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/renewal-reminders': {
+      id: '/api/cron/renewal-reminders'
+      path: '/api/cron/renewal-reminders'
+      fullPath: '/api/cron/renewal-reminders'
+      preLoaderRoute: typeof ApiCronRenewalRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/authnet-webhook': {
       id: '/api/public/authnet-webhook'
       path: '/api/public/authnet-webhook'
@@ -729,6 +749,7 @@ const rootRouteChildren: RootRouteChildren = {
   ModelsIndexRoute: ModelsIndexRoute,
   ApiCronIdleNudgeRoute: ApiCronIdleNudgeRoute,
   ApiCronReengageRoute: ApiCronReengageRoute,
+  ApiCronRenewalRemindersRoute: ApiCronRenewalRemindersRoute,
   ApiPublicAuthnetWebhookRoute: ApiPublicAuthnetWebhookRoute,
   ApiPublicReelWebhookRoute: ApiPublicReelWebhookRoute,
   ApiPublicRunpodWebhookRoute: ApiPublicRunpodWebhookRoute,

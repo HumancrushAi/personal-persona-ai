@@ -37,7 +37,7 @@ export function trialStatus(stage: Exclude<TrialStage, "account">, creditsUsed: 
  * system prompt and the reply screen.
  */
 const EXPLICIT_RE =
-  /\b(sex|sexy\s+(?:pic|photo|selfie)|nude|nudes|naked|nsfw|porn|horny|cum|cumming|orgasm|masturbat\w*|jerk(?:ing)?\s+off|blow\s?job|handjob|cock|dick|penis|pussy|vagina|clit|tits|titties|boobs?|nipples?|ass(?:hole)?|anal|fuck\w*|suck\s+(?:my|your)|ride\s+(?:me|my|you)|strip(?:\s+for)?|undress|take\s+(?:it|everything|your\s+\w+)\s+off|lingerie\s+off|topless|bottomless|dirty\s+talk|sext\w*|kinky|bdsm|spank\w*|wet\s+for\s+(?:you|me)|69|threesome|creampie|deepthroat|squirt\w*)\b/i;
+  /\b(sex|sexy\s+(?:pic|photo|selfie)|nude|nudes|naked|nsfw|porn|horny|cum|cumming|orgasm|masturbat\w*|jerk(?:ing)?\s+off|blow\s?job|handjob|cock|dick|penis|pussy|vagina|clit|tits|titties|boobs?|nipples?|ass(?:hole)?|anal|fuck\w*|suck\s+(?:my|your)|ride\s+(?:me|my|you)|strip(?:\s+for)?|undress|take\s+(?:it|everything|your\s+\w+)\s+off|lingerie\s+off|topless|bottomless|dirty\s+talk|talk\s+dirty|sext\w*|kinky|bdsm|spank\w*|wet\s+for\s+(?:you|me)|69|threesome|creampie|deepthroat|squirt\w*)\b/i;
 
 export function isExplicitRequest(text: string) {
   return EXPLICIT_RE.test(text);
@@ -78,7 +78,7 @@ export function isE164(phone: string) {
  * Sticky experiment arm from a per-device seed. With experimentSplit 0 every
  * device gets the trial; with 0.5 half of them get the old account-first flow.
  */
-export function trialVariant(seed: string, split = growthConfig.chatTrial.experimentSplit): "trial" | "control" {
+export function trialVariant(seed: string, split: number = growthConfig.chatTrial.experimentSplit): "trial" | "control" {
   if (!growthConfig.chatTrial.enabled) return "control";
   if (split <= 0) return "trial";
   let hash = 0;

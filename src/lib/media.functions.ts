@@ -1355,15 +1355,18 @@ export async function comfyJobInput(
   const promptSetsComposition = composes(req);
   // Nude without a hard pose still needs medium denoise or the clothed portrait wins.
   const needsUndress = requestIsNude(req) && !requestKeepsGarment(req);
-  // The body reference is her portrait, outfit and all: on a strong weight it
-  // put her black satin dress back on a "naked" request. Say what not to copy.
   // Her whole portrait as a body reference (shape, skin, the real tattoo art)
-  // on top of the FaceID face lock, for NUDE requests only: tested on the pod
-  // 2026-10-24, it also copies the portrait's outfit, so a "white sundress"
-  // came back as her black lace bra. Nude renders have no outfit to lose, and
-  // the negative below keeps the portrait's clothes off. Off unless
-  // COMFY_BODY_REF sets a weight (0.8 tested).
-  const bodyRefWeight = needsUndress ? Number(process.env.COMFY_BODY_REF || 0) : 0;
+  // on top of the FaceID face lock, for PLAIN nude requests only. Tested on
+  // the pod 2026-10-24: it also copies the portrait's outfit (a "white
+  // sundress" came back as her black lace bra), so clothed requests skip it,
+  // and the negative below keeps the portrait's clothes off a nude. Toy,
+  // insertion and mouth-act renders skip it too: on top of the toy's own
+  // product reference it produced a giant duplicated plug held beside her
+  // (Gary, 2026-10-24), and those acts have their own pod-verified setup.
+  // Off unless COMFY_BODY_REF sets a weight (0.8 tested).
+  const { propIsInserted: insertsProp } = await import("./props");
+  const plainNude = needsUndress && !toyReferenceImages.length && !insertsProp(req) && !isMouthAct(req);
+  const bodyRefWeight = plainNude ? Number(process.env.COMFY_BODY_REF || 0) : 0;
   if (bodyRefWeight > 0) {
     const { withBodyReference } = await import("./comfy");
     template = withBodyReference(template, {
@@ -1398,7 +1401,11 @@ export async function comfyJobInput(
         ? "smallest beads already inside, remaining graduated beads and pull ring outside"
         : "most of the insertable shaft already visibly inside the opening, only a short outer shaft section plus handle or base visible outside, body rim overlapping and hiding both sides of the shaft at one fixed entry point with no air gap, stable contact shadow and skin compression";
   const insertedHands =
-    "exactly two arms and exactly two hands total, right hand gripping only the outer handle or base, left hand planted flat on lower stomach and visibly connected to left arm";
+    opts.toyKind === "plug"
+      ? "exactly two arms and exactly two hands total, both hands on her ass cheeks spreading them, nothing held in her hands, the plug held in place by her body alone"
+      : opts.toyKind === "beads"
+        ? "exactly two arms and exactly two hands total, one hand holding only the pull ring, the other hand on her ass cheek"
+        : "exactly two arms and exactly two hands total, right hand gripping only the outer handle or base, left hand planted flat on lower stomach and visibly connected to left arm";
   const toyPlaced = opts.toyPlan || (opts.toyTags
     ? propIsInserted(req) && insertableToy
       ? analToy
@@ -1430,7 +1437,8 @@ export async function comfyJobInput(
     // The insertion LoRA, for a toy inside her (COMFY_LORA_INSERT_PUSSY /
     // _ASS name the files on the volume; unset, nothing changes).
     const { propIsInserted } = await import("./props");
-    if (propIsInserted(req)) {
+    const shaftToy = !opts.toyKind || ["dildo", "vibrator", "strap-on"].includes(opts.toyKind);
+    if (propIsInserted(req) && shaftToy) {
       const anal = /\b(?:ass|anus|butt|asshole|booty)\b/i.test(req) && !/\b(?:pussy|vagina|cunt)\b/i.test(req);
       const name = (anal ? process.env.COMFY_LORA_INSERT_ASS : process.env.COMFY_LORA_INSERT_PUSSY)?.trim();
       if (name) {

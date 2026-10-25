@@ -592,6 +592,11 @@ function Creator() {
     const elapsedMs = Math.max(0, clock - Date.parse(activeJob.created_at));
     const elapsed = `${Math.floor(elapsedMs / 60_000)}:${String(Math.floor((elapsedMs % 60_000) / 1000)).padStart(2, "0")}`;
     const usual = activeJob.kind === "video" ? "Videos usually take 5 to 15 minutes" : "Photos usually take about a minute";
+    // The renderer reports no progress, so this is an estimate against the
+    // usual time: it eases towards 95% and only shows 100% once the render
+    // has actually landed.
+    const expectedMs = activeJob.kind === "video" ? 10 * 60_000 : 60_000;
+    const percent = activeJob.status === "completed" ? 100 : activeJob.status === "failed" ? 0 : Math.min(95, Math.round(95 * (1 - Math.exp(-elapsedMs / (expectedMs * 0.6)))));
     return (
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-white/[0.24] bg-white/[0.035] px-4 py-3 text-sm">
         <span className="flex min-w-0 items-start gap-2">
@@ -599,6 +604,12 @@ function Creator() {
           <span>
             <span className="block">{activeJob.status === "completed" ? "Render complete." : activeJob.status === "failed" ? "Render failed. Your credits were refunded." : `Rendering your ${activeJob.kind}… ${elapsed}`}</span>
             {rendering && <span className="mt-0.5 block text-xs text-[#A1A1AA]">{usual}. You can leave this page; it lands in your library.</span>}
+            {activeJob.status !== "failed" && (
+              <span className="mt-2 flex items-center gap-2" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={`${activeJob.kind} progress, estimated`}>
+                <span className="h-1.5 w-40 overflow-hidden rounded-full bg-white/[0.1] sm:w-56"><span className="block h-full rounded-full bg-white transition-[width] duration-1000 ease-out" style={{ width: `${percent}%` }} /></span>
+                <span className="text-xs font-bold tabular-nums text-white">{percent}%</span>
+              </span>
+            )}
           </span>
         </span>
         <Link to="/library" className="font-semibold text-white hover:text-[#D4D4D8]">Open library <ChevronRight className="inline h-4 w-4" /></Link>

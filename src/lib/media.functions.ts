@@ -1330,9 +1330,12 @@ export async function comfyJobInput(
     const base64 = await readPortrait(ref.url);
     if (base64) toyReferenceImages.push({ name: `toy-reference-${index}.png`, base64 });
   }
-  // The live worker has the product IP-Adapter nodes. Product references are
-  // therefore on by default; explicit "0" remains an emergency kill switch.
-  if (toyReferenceImages.length && process.env.COMFY_TOY_REFERENCE !== "0") {
+  // The toy product photo as an image reference is OFF unless explicitly
+  // enabled. Live 2026-10-24/25 it copied the product shot into the frame: a
+  // giant crystal plug filling the picture, duplicated, her face pushed out,
+  // on the pod and the serverless worker alike. The toy is drawn from its
+  // text spec and tags instead (the setup verified 3/3 on the pod on 10-12).
+  if (toyReferenceImages.length && process.env.COMFY_TOY_REFERENCE === "experimental") {
     const { withProductReferences } = await import("./comfy");
     template = withProductReferences(template, toyReferenceImages.map((r) => r.name));
     extraImages.push(...toyReferenceImages);

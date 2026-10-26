@@ -37,6 +37,8 @@ function MePage() {
           "id, title, updated_at, relationship_level, user_personalities(nickname, companion_id, companions(image_url))",
         )
         .eq("user_id", userId!)
+        // Creator-studio render conversations belong to the Library, not chats.
+        .or('title.is.null,title.neq."Creator render"')
         .order("updated_at", { ascending: false });
       if (error) throw error;
       // One entry per model — keep the most recent conversation per companion.

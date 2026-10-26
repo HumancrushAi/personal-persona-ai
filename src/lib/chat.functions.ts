@@ -1125,6 +1125,9 @@ export const startChat = createServerFn({ method: "POST" })
       .select("id")
       .eq("user_id", userId)
       .eq("personality_id", personalityId)
+      // Creator-studio renders have their own conversations (standalone-media
+      // .functions.ts); chat must never land in one.
+      .or('title.is.null,title.neq."Creator render"')
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();

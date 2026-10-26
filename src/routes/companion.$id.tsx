@@ -246,6 +246,8 @@ function Page() {
           .select("id")
           .eq("user_id", user.user!.id)
           .eq("personality_id", existing!.id)
+          // Not a Creator-studio render conversation: those stay in the Library.
+          .or('title.is.null,title.neq."Creator render"')
           .order("updated_at", { ascending: false })
           .limit(1);
         if (convs?.[0]) {

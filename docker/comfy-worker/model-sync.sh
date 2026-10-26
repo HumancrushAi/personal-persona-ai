@@ -57,7 +57,8 @@ status() {
       | awk '{ printf "%7.1fGB %s\n", $1/1e9, $2 }' | sort -k2
     echo "--- log"
     tail -20 /tmp/model-sync.log 2>/dev/null
-  } > "$STATUS_DIR/hc-sync-status.txt.tmp" && mv "$STATUS_DIR/hc-sync-status.txt.tmp" "$STATUS_DIR/hc-sync-status.txt" \n    || echo "[sync] ! could not write status to $STATUS_DIR"
+  } > "$STATUS_DIR/hc-sync-status.txt.tmp" && mv "$STATUS_DIR/hc-sync-status.txt.tmp" "$STATUS_DIR/hc-sync-status.txt" \
+    || echo "[sync] ! could not write status to $STATUS_DIR"
 }
 
 # Status every minute on its own, so a long download still shows progress.

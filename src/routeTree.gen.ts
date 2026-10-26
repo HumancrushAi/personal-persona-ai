@@ -36,6 +36,7 @@ import { Route as LegalIndexRouteImport } from './routes/legal.index'
 import { Route as LegalSlugRouteImport } from './routes/legal.$slug'
 import { Route as ModelsIndexRouteImport } from './routes/models.index'
 import { Route as ModelsSlugRouteImport } from './routes/models.$slug'
+import { Route as ApiAdminPhotoCheckRouteImport } from './routes/api/admin/photo-check'
 import { Route as ApiCronIdleNudgeRouteImport } from './routes/api/cron/idle-nudge'
 import { Route as ApiCronReengageRouteImport } from './routes/api/cron/reengage'
 import { Route as ApiCronRenewalRemindersRouteImport } from './routes/api/cron/renewal-reminders'
@@ -178,6 +179,11 @@ const ModelsSlugRoute = ModelsSlugRouteImport.update({
   path: '/models/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminPhotoCheckRoute = ApiAdminPhotoCheckRouteImport.update({
+  id: '/api/admin/photo-check',
+  path: '/api/admin/photo-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronIdleNudgeRoute = ApiCronIdleNudgeRouteImport.update({
   id: '/api/cron/idle-nudge',
   path: '/api/cron/idle-nudge',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/cams/': typeof CamsIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/models/': typeof ModelsIndexRoute
+  '/api/admin/photo-check': typeof ApiAdminPhotoCheckRoute
   '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/cron/renewal-reminders': typeof ApiCronRenewalRemindersRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/cams': typeof CamsIndexRoute
   '/legal': typeof LegalIndexRoute
   '/models': typeof ModelsIndexRoute
+  '/api/admin/photo-check': typeof ApiAdminPhotoCheckRoute
   '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/cron/renewal-reminders': typeof ApiCronRenewalRemindersRoute
@@ -313,6 +321,7 @@ export interface FileRoutesById {
   '/cams/': typeof CamsIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/models/': typeof ModelsIndexRoute
+  '/api/admin/photo-check': typeof ApiAdminPhotoCheckRoute
   '/api/cron/idle-nudge': typeof ApiCronIdleNudgeRoute
   '/api/cron/reengage': typeof ApiCronReengageRoute
   '/api/cron/renewal-reminders': typeof ApiCronRenewalRemindersRoute
@@ -350,6 +359,7 @@ export interface FileRouteTypes {
     | '/cams/'
     | '/legal/'
     | '/models/'
+    | '/api/admin/photo-check'
     | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
     | '/api/cron/renewal-reminders'
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
     | '/cams'
     | '/legal'
     | '/models'
+    | '/api/admin/photo-check'
     | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
     | '/api/cron/renewal-reminders'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/cams/'
     | '/legal/'
     | '/models/'
+    | '/api/admin/photo-check'
     | '/api/cron/idle-nudge'
     | '/api/cron/reengage'
     | '/api/cron/renewal-reminders'
@@ -456,6 +468,7 @@ export interface RootRouteChildren {
   CamsIndexRoute: typeof CamsIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
   ModelsIndexRoute: typeof ModelsIndexRoute
+  ApiAdminPhotoCheckRoute: typeof ApiAdminPhotoCheckRoute
   ApiCronIdleNudgeRoute: typeof ApiCronIdleNudgeRoute
   ApiCronReengageRoute: typeof ApiCronReengageRoute
   ApiCronRenewalRemindersRoute: typeof ApiCronRenewalRemindersRoute
@@ -656,6 +669,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModelsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/photo-check': {
+      id: '/api/admin/photo-check'
+      path: '/api/admin/photo-check'
+      fullPath: '/api/admin/photo-check'
+      preLoaderRoute: typeof ApiAdminPhotoCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/idle-nudge': {
       id: '/api/cron/idle-nudge'
       path: '/api/cron/idle-nudge'
@@ -747,6 +767,7 @@ const rootRouteChildren: RootRouteChildren = {
   CamsIndexRoute: CamsIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
   ModelsIndexRoute: ModelsIndexRoute,
+  ApiAdminPhotoCheckRoute: ApiAdminPhotoCheckRoute,
   ApiCronIdleNudgeRoute: ApiCronIdleNudgeRoute,
   ApiCronReengageRoute: ApiCronReengageRoute,
   ApiCronRenewalRemindersRoute: ApiCronRenewalRemindersRoute,

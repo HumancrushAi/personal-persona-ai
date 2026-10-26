@@ -16,6 +16,7 @@ bash /hc-link-models.sh || echo "[entrypoint] linking FaceID models reported a p
 # be killed mid-download, so they leave it to the pod.
 if [ "${SERVE_API_LOCALLY:-}" = "true" ] || [ "${HC_PROVISION_TOY_EDIT:-}" = "on" ]; then
   nohup bash /provision-toy-edit.sh > /tmp/provision-toy-edit.log 2>&1 &
+  nohup bash /hc-model-sync.sh > /tmp/model-sync.out 2>&1 &
 fi
 
 # The base image has changed the name of this over releases, so try the known

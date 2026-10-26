@@ -175,7 +175,8 @@ RUN chmod +x /hc-link-models.sh \
 
 COPY provision-models.sh /provision-models.sh
 COPY provision-toy-edit.sh /provision-toy-edit.sh
+COPY model-sync.sh /hc-model-sync.sh
 COPY entrypoint.sh /hc-entrypoint.sh
-RUN chmod +x /provision-models.sh /provision-toy-edit.sh /hc-entrypoint.sh
+RUN chmod +x /provision-models.sh /provision-toy-edit.sh /hc-model-sync.sh /hc-entrypoint.sh
 
 ENTRYPOINT ["/hc-entrypoint.sh"]

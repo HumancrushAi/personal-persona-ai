@@ -11,11 +11,10 @@ bash /provision-models.sh || echo "[entrypoint] provisioning reported a problem;
 
 bash /hc-link-models.sh || echo "[entrypoint] linking FaceID models reported a problem; starting anyway"
 
-# The 31GB toy-edit model downloads in the background, on the always-on pod
-# only (SERVE_API_LOCALLY=true): serverless workers share the volume and would
-# be killed mid-download, so they leave it to the pod.
-if [ "${SERVE_API_LOCALLY:-}" = "true" ] || [ "${HC_PROVISION_TOY_EDIT:-}" = "on" ]; then
-  nohup bash /provision-toy-edit.sh > /tmp/provision-toy-edit.log 2>&1 &
+# Models beyond the FaceID set come from the app-controlled list
+# (model-sync.sh), on the always-on pod only (SERVE_API_LOCALLY=true):
+# serverless workers share the volume and would be killed mid-download.
+if [ "${SERVE_API_LOCALLY:-}" = "true" ] || [ "${HC_MODEL_SYNC:-}" = "on" ]; then
   nohup bash /hc-model-sync.sh > /tmp/model-sync.out 2>&1 &
 fi
 

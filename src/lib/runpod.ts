@@ -224,6 +224,8 @@ export async function runpodRun(
     const { podQueue } = await import("./comfy-pod");
     return podQueue(endpoint, input);
   }
+  // Only the pod has the toy-edit model; serverless renders without that pass.
+  input = (await import("./comfy")).withoutToyEdit(input);
   const key = process.env.RUNPOD_API_KEY;
   if (!key) throw new Error("RUNPOD_API_KEY not configured");
 

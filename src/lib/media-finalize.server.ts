@@ -927,8 +927,11 @@ async function resubmitImageJob(
     {
       ...opts,
       hasPenis: anatomyOf(ctx.companion.gender).hasPenis,
+      gender: ctx.companion.gender,
       toyTags: ctx.toy?.tags ?? null,
       toyKind: ctx.toy?.kind ?? null,
+      // A retake gets the toy-edit pass too.
+      toyReferences: ctx.toy?.image ? [{ id: ctx.toy.id, url: ctx.toy.image }] : [],
       lookTags: (await import("./media.functions")).inkTags(await (await import("./look.server")).companionLook(ctx.companion.image_url)),
       // The same composed frame the first render started from, when it had one;
       // otherwise her portrait, as the first render did.

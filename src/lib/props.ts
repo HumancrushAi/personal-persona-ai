@@ -29,7 +29,7 @@ const PROPS: Prop[] = [
   {
     id: "anal-beads",
     match: kw("anal beads"),
-    spec: "The anal beads are one flexible silicone string of separate round beads, each about the size of a marble and graduating in size, with a ring handle at the end. Every bead is individually visible with a clear gap and a clean edge between it and the next.",
+    spec: "The anal beads are one flexible silicone string of separate round beads, each about the size of a marble and each one a little bigger than the last, with a ring handle at the end. Every bead is individually visible with a clear gap and a clean edge between it and the next.",
   },
   {
     id: "butt-plug",
@@ -111,7 +111,7 @@ function insertedClauseFor(toy: Toy | null, propId: string, a: Anatomy, anal: bo
     return `The tapered steel bulb leads inside her ${target}; its narrow neck sits at the opening and the flat base with its large faceted pink crystal remains fully outside her body and visible. The jewel is the outer handle, never the inserted end.`;
   }
   if (ownedId === "beads" || propId === "anal-beads") {
-    return `The smallest black silicone bead leads inside her ${target}; the graduated beads follow in a clear line, with the final bead and black pull ring remaining outside her body and visible. Each bead stays separate with a clean gap.`;
+    return `The smallest black silicone bead leads inside her ${target}; the bigger beads follow in a clear line, with the final bead and black pull ring remaining outside her body and visible. Each bead stays separate with a clean gap.`;
   }
   if (ownedId === "rabbit-tongue") {
     return `The rounded curved shaft tip leads inside her ${target}; the short pink arm and its soft silicone tongue remain outside against her clitoris, with the handle below the toy held in her hand. Both parts stay attached as one rabbit vibrator.`;
@@ -139,7 +139,7 @@ function handleClauseFor(toy: Toy | null, propId: string): string {
   if (id === "plug-jewel")
     return "Her hand holds the flat base beneath the steel plug; the faceted pink crystal is visible outside her body with a clean edge against skin.";
   if (id === "beads" || id === "anal-beads")
-    return "Her hand holds the black pull ring; every graduated silicone bead remains separate and visible with a clean edge against skin.";
+    return "Her hand holds the black pull ring; every silicone bead remains separate and visible with a clean edge against skin.";
   if (id === "rabbit-tongue")
     return "Her hand holds the slim rabbit handle; the curved shaft and separate clitoral tongue remain attached and visibly distinct from her fingers.";
   if (id === "strap-on")
@@ -156,7 +156,7 @@ function twoHandsClauseFor(toy: Toy | null, propId: string): string {
 // Every clause here was written for "her", and a man asking for a toy got
 // "her ass" and "her hand" in his prompt. "her" is both possessive and
 // object in English; "inside her" is the one object use these clauses make.
-function pronounize(text: string, a: Anatomy): string {
+export function pronounize(text: string, a: Anatomy): string {
   if (a.subject === "she") return text;
   const S = `${a.subject[0].toUpperCase()}${a.subject.slice(1)}`;
   const Poss = `${a.poss[0].toUpperCase()}${a.poss.slice(1)}`;

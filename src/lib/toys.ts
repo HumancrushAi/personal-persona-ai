@@ -97,15 +97,17 @@ export const TOYS: Toy[] = [
   {
     id: "rabbit-tongue",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/rabbit-tongue.png?v=20261014-catalog1",
-    tags: "photorealistic glossy hot-pink silicone rabbit vibrator, curved shaft, clitoral tongue arm, handle",
+    tags: "photorealistic glossy hot-pink silicone rabbit vibrator, long curved shaft, short curved clitoral arm, handle",
     name: "Vibrating Rabbit with Tongue",
     emoji: "🐰",
     blurb: "Pink rabbit vibrator — a curved shaft plus a flicking silicone tongue for her clit.",
     price: 650,
     kind: "vibrator",
     match: /\b(?:rabbit|tongue)\s+(?:vibe|vibrator|dildo|toy)\b|\b(?:vibrating\s+)?(?:dildo|vibrator|toy)\s+with\s+(?:a\s+)?tongue\b|\brabbit\b/i,
-    spec: `The toy is a separate solid object of glossy hot-pink silicone: a curved rounded shaft ${SIZE_HAND}, and at its base a second short arm ending in a small soft flat silicone tongue that reaches her clit, with a slim handle below. Clean hard edges, sharp focus, distinct from skin.`,
-    negative: "purple dildo, plain dildo, black dildo, glass dildo",
+    spec: `The toy is a separate solid object of glossy hot-pink silicone: a curved rounded shaft ${SIZE_HAND}, and at its base a second short curved arm ending in a small flat silicone flicker tip that reaches her clit, with a slim handle below. Clean hard edges, sharp focus, distinct from skin.`,
+    // "Tongue" anywhere in the prompt put her tongue out and the toy in her
+    // mouth (pod, 2026-10-26), so the words say flicker tip and these forbid it.
+    negative: "purple dildo, plain dildo, black dildo, glass dildo, tongue out, licking, toy in mouth, open mouth",
   },
   {
     id: "wand",
@@ -149,7 +151,7 @@ export const TOYS: Toy[] = [
   {
     id: "beads",
     image: "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/beads.png?v=20261014-catalog1",
-    tags: "photorealistic matte black silicone anal beads, six graduated round beads, clear gaps, pull ring",
+    tags: "photorealistic matte black silicone anal beads, six round beads increasing in size, clear gaps, pull ring",
     name: "Anal Beads",
     emoji: "⚫",
     blurb: "Black silicone beads that grow bigger down the string, with a pull ring.",
@@ -316,6 +318,85 @@ export const TOYS: Toy[] = [
 export function toyById(id: string | null | undefined): Toy | null {
   return TOYS.find((t) => t.id === id) ?? null;
 }
+
+// The edit pass (comfy.ts withToyEdit): Qwen Image Edit is shown the render as
+// image 1 and a product photo as image 2, and told what to make of it. SDXL
+// drew every toy from words and invented it (the plug a crystal ball on a
+// chain, the beads a necklace and a graduation cap); the edit copies the photo.
+// Each sentence below is the one that passed on the pod, 2026-10-26.
+//
+// `inserted` is for a toy inside her, with `insertedImage` showing only the
+// part that stays outside: shown the whole plug, the edit pasted the whole
+// plug on top of her. `penis` is for a body with one (the stroker).
+const EDIT_IMG = "https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/v1/object/public/avatars/toys/edit";
+
+export type ToyEdit = {
+  edit: string;
+  inserted?: string;
+  insertedImage?: string;
+  /**
+   * The direct picture (comfy.ts toyDirectWorkflow) uses the whole product
+   * photo: given only the balls and suction cup of the realistic dildo, it drew
+   * balls at both ends. The plug is the exception — its jewel is all that shows.
+   */
+  insertedImageDirect?: boolean;
+  /** Replaces the catalogue photo for the edit, e.g. one without a shop's logo. */
+  image?: string;
+  penis?: string;
+};
+
+export const TOY_EDITS: Record<string, ToyEdit> = {
+  "dildo-realistic": {
+    edit: "The dildo is exactly the realistic flesh-coloured dildo from image 2, with its veined shaft, rounded head, two testicles and suction-cup base, real life size: as long as her hand, two fingers thick.",
+    inserted: "The object inside her is a realistic flesh-coloured dildo, deep inside her: its whole shaft and head are inside her and hidden. Sticking out of her is only the base end shown in image 2, at real toy size: two small round flesh-coloured testicles side by side, each the size of a walnut and together no wider than her palm, and a flat round suction cup under them. Her skin is stretched around the shaft where it enters.",
+    insertedImage: `${EDIT_IMG}/dildo-realistic-base.png`,
+  },
+  "dildo-black": {
+    image: `${EDIT_IMG}/dildo-black-clean.png`,
+    edit: "The dildo is exactly the glossy black veined dildo from image 2, the same shape and texture, at real toy size: about as long as her forearm and as thick as her wrist, never bigger. It is the only black object in the picture: no gloves, sleeves or straps.",
+    inserted: "The object inside her is exactly the glossy black veined dildo from image 2: most of its shaft is inside her, her skin stretched around it where it enters, and the base end sticks out.",
+  },
+  "dildo-glass": {
+    edit: "The dildo is exactly the clear glass dildo from image 2, with its ridged shaft and rounded handle end, real size, two fingers thick.",
+    inserted: "The object inside her is exactly the clear glass dildo from image 2: the ridged glass shaft is mostly inside her, her skin stretched around the clear glass, and the rounded glass handle end sticks out. Real size, two fingers thick. Only glass: no metal, no rod, no machine.",
+  },
+  "rabbit-tongue": {
+    edit: "The toy is exactly the hot-pink rabbit vibrator from image 2, the only toy in the picture: one long curved shaft with a second short curved arm branching off near its base, above a ribbed handle, pressed against her pussy, her hand on the handle. It is far from her face; her mouth is closed.",
+    inserted: "The toy is exactly the hot-pink rabbit vibrator from image 2, the only toy in the picture: its long curved shaft is inserted in her, its second short curved arm presses on her clit, and her hand holds the ribbed handle. It is far from her face; her mouth is closed.",
+  },
+  wand: {
+    edit: "The wand vibrator is exactly the white magic wand from image 2: its round white head pressed on her clit between her spread legs, her hand on the long white handle, the cord trailing down. It is not near her face or chest.",
+  },
+  bullet: {
+    edit: "The vibrator is exactly the small pink bullet vibrator from image 2, pressed on her clit between her legs by her fingers, with its pink remote in her other hand, joined by the thin pink cord.",
+  },
+  "plug-jewel": {
+    edit: "The butt plug is exactly the polished steel plug with the pink jewel base from image 2, real size, small enough to hold in her palm.",
+    inserted: "A jewelled butt plug is fully inserted in her anus. The only visible part is exactly the base in image 2: a polished silver round rim holding a large faceted pink jewel, about the size of a coin, sitting flush in the centre of her anus between her buttocks, the jewel facing the camera. No metal bulb is visible anywhere; it is inside her.",
+    insertedImage: `${EDIT_IMG}/plug-jewel-base.png`,
+    insertedImageDirect: true,
+  },
+  beads: {
+    edit: "The anal beads are exactly the matte black silicone beads from image 2: big smooth round beads joined by short links, ending in a black ring held in her fingers.",
+    inserted: "One single string of exactly the matte black anal beads from image 2 is in her anus: the smaller beads are inside her body; coming out of her anus is one straight line of three big round black beads, one after another, then the black ring, which she holds between her fingers. One string only.",
+  },
+  "strap-on": {
+    edit: "She wears exactly the black leather strap-on harness from image 2 on her hips: the straps and silver buckles around her waist and thighs, the black dildo sticking out in front of her crotch.",
+  },
+  stroker: {
+    edit: "She holds exactly the black cylindrical stroker from image 2 in her hands.",
+    penis: "His hand is down at his crotch, using the stroker on himself: his erect penis is inside exactly the black cylindrical stroker from image 2, his hand grips the black case around his shaft, only the base of his penis and his balls visible below it.",
+  },
+  flogger: { edit: "She holds one single flogger, exactly the black leather flogger from image 2, by its braided handle in one hand, its many flat leather tails hanging down." },
+  crop: { edit: "She holds exactly the slim black riding crop from image 2 in her hand: a straight stiff black shaft with a small flat leather loop at the tip and a straight grip at the other end, no hook or curve." },
+  paddle: { edit: "She holds exactly the black leather spanking paddle with the heart cut-out from image 2 in her hand." },
+  cuffs: { edit: "Exactly the polished silver handcuffs from image 2 are locked on both her wrists, the short chain between them." },
+  clamps: { edit: "Exactly the silver nipple clamps from image 2 are clamped on both her nipples, the fine chain hanging in a loop between them." },
+  collar: { edit: "She wears exactly the studded black leather collar from image 2 around her neck, the black leather leash clipped to its silver ring and hanging down." },
+  gag: { edit: "Exactly the red ball gag from image 2 is in her mouth: the red ball between her teeth, the black leather strap around her head." },
+  rope: { edit: "Exactly the red cotton rope from image 2 is tied around her chest and body in a neat shibari harness with knots." },
+  blindfold: { edit: "Exactly the black satin blindfold from image 2 is tied over her eyes." },
+};
 
 // What else the chest sells. Not toys: nothing to render by itself.
 export type ChestExtra = { id: string; name: string; emoji: string; blurb: string; price: number; image?: string };

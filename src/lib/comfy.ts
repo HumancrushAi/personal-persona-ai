@@ -717,6 +717,119 @@ export function withBodyReference(
   return JSON.stringify(graph);
 }
 
+/**
+ * A second pass that puts the chest toy's own product photo into the finished
+ * render, with Qwen Image Edit. SDXL drew every toy from words and invented
+ * it: the plug became a crystal ball on a chain, the beads a necklace. The
+ * edit model reads the catalogue photo itself (toys.ts TOY_EDITS says what to
+ * do with it). It runs on the render before the face swap and detailer, so
+ * her face is restored after the edit as before. Nodes in the 70s, clear of
+ * the other helpers. COMFY_TOY_EDIT=on.
+ *
+ * The checkpoint is Phr00t's Qwen-Image-Edit Rapid AIO, NSFW build: the base
+ * 2511 edit model put toys on her but never in her (it was not trained on
+ * nudity); this merge was, and model, CLIP and VAE come in one file.
+ */
+export const TOY_EDIT_CHECKPOINT = process.env.COMFY_TOY_EDIT_CKPT || "Qwen-Rapid-AIO-NSFW-v23.safetensors";
+
+export function withToyEdit(
+  template: string,
+  opts: { toyImageName: string; instruction: string; seed: number },
+): string {
+  const g = JSON.parse(template) as Record<string, any>;
+  if (g["70"]) return template;
+  // The render as it leaves the main pass: whatever the swap, the detailer or
+  // the save would otherwise read first.
+  const host = g["30"] ? ["30", "image"] : g["14"]?.inputs?.image ? ["14", "image"] : ["9", "images"];
+  const src = g[host[0]]?.inputs?.[host[1]];
+  if (!src) return template;
+  g["70"] = { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: TOY_EDIT_CHECKPOINT } };
+  g["76"] = { class_type: "LoadImage", inputs: { image: opts.toyImageName, upload: "image" } };
+  const encode = (prompt: string) => ({
+    class_type: "TextEncodeQwenImageEditPlus",
+    inputs: { clip: ["70", 1], prompt, vae: ["70", 2], image1: src, image2: ["76", 0] },
+  });
+  g["77"] = encode(opts.instruction);
+  g["78"] = encode("");
+  g["81"] = { class_type: "VAEEncode", inputs: { pixels: src, vae: ["70", 2] } };
+  // 4 steps at CFG 1 with er_sde/beta: the merge's own recommendation.
+  g["82"] = {
+    class_type: "KSampler",
+    inputs: {
+      model: ["70", 0], seed: opts.seed, steps: 4, cfg: 1, sampler_name: "er_sde", scheduler: "beta",
+      positive: ["77", 0], negative: ["78", 0], latent_image: ["81", 0], denoise: 1,
+    },
+  };
+  g["83"] = { class_type: "VAEDecode", inputs: { samples: ["82", 0], vae: ["70", 2] } };
+  g[host[0]].inputs[host[1]] = ["83", 0];
+  return JSON.stringify(g);
+}
+
+/**
+ * A chest-toy picture made by Qwen Image Edit alone, from two pictures: her
+ * portrait (image 1) and the toy's product photo (image 2). The SDXL render
+ * set the scene wrong often enough that editing it could not save it — a
+ * metal rod under the glass dildo, the wand at her chest, the stroker held up
+ * in the air — and the edit inherited all of it. Made this way the toy is the
+ * catalogue one and the pose is the one asked for (pod, 2026-10-26). The face
+ * swap from her portrait runs last, as on every other graph.
+ */
+export function toyDirectWorkflow(opts: {
+  toyImageName: string;
+  instruction: string;
+  seed: number;
+  width?: number;
+  height?: number;
+}): string {
+  return JSON.stringify({
+    "10": { class_type: "LoadImage", inputs: { image: "{{REFERENCE_IMAGE}}", upload: "image" } },
+    "76": { class_type: "LoadImage", inputs: { image: opts.toyImageName, upload: "image" } },
+    "70": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: TOY_EDIT_CHECKPOINT } },
+    "77": {
+      class_type: "TextEncodeQwenImageEditPlus",
+      inputs: { clip: ["70", 1], prompt: opts.instruction, vae: ["70", 2], image1: ["10", 0], image2: ["76", 0] },
+    },
+    "78": {
+      class_type: "TextEncodeQwenImageEditPlus",
+      inputs: { clip: ["70", 1], prompt: "", vae: ["70", 2], image1: ["10", 0], image2: ["76", 0] },
+    },
+    "81": { class_type: "EmptySD3LatentImage", inputs: { width: opts.width ?? 864, height: opts.height ?? 1152, batch_size: 1 } },
+    "82": {
+      class_type: "KSampler",
+      inputs: {
+        model: ["70", 0], seed: opts.seed, steps: 4, cfg: 1, sampler_name: "er_sde", scheduler: "beta",
+        positive: ["77", 0], negative: ["78", 0], latent_image: ["81", 0], denoise: 1,
+      },
+    },
+    "83": { class_type: "VAEDecode", inputs: { samples: ["82", 0], vae: ["70", 2] } },
+    "30": { class_type: "HCFaceSwap", inputs: { image: ["83", 0], source: ["10", 0] } },
+    "9": { class_type: "SaveImage", inputs: { images: ["30", 0], filename_prefix: "hc-toy" } },
+  });
+}
+
+/**
+ * The job without the edit pass, for the serverless fallback: its worker image
+ * has neither the Qwen nodes nor the checkpoint, and an unrunnable graph is a
+ * failed, refunded picture where the SDXL render alone is still a picture.
+ */
+export function withoutToyEdit(input: Record<string, unknown>): Record<string, unknown> {
+  // A toyDirectWorkflow job carries the ordinary SDXL job for this case.
+  if (input.fallbackInput) return input.fallbackInput as Record<string, unknown>;
+  const wf = input.workflow as Record<string, any> | undefined;
+  if (!wf?.["83"] || !wf["81"]) return input;
+  const src = wf["81"].inputs.pixels;
+  const g: Record<string, any> = {};
+  for (const [id, node] of Object.entries(wf)) {
+    if (["70", "76", "77", "78", "81", "82", "83"].includes(id)) continue;
+    const inputs = Object.fromEntries(
+      Object.entries(node.inputs ?? {}).map(([k, v]) => [k, Array.isArray(v) && v[0] === "83" ? src : v]),
+    );
+    g[id] = { ...node, inputs };
+  }
+  const images = (input.images as { name: string }[] | undefined)?.filter((i) => i.name !== "toy-edit.png");
+  return { ...input, workflow: g, ...(images ? { images } : {}) };
+}
+
 /** The name the reference portrait is saved under in the worker's input folder. */
 export const REFERENCE_NAME = "reference.png";
 

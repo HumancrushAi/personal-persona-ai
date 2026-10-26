@@ -1016,6 +1016,7 @@ export async function startImageJob(
       provider === "comfy"
         ? await comfyJobInput(imagePrompt, negative, sourceImage, promptRequest, seedSalt, {
             hasPenis: anatomyOf(companion.gender).hasPenis,
+            gender: companion.gender,
             // Give the renderer the catalogue geometry as well as the short
             // tags; otherwise transparent glass is easily read as a bottle.
             toyTags: toys.length ? toys.map((t) => `${t.tags}. ${t.spec}`).join(" ") : null,
@@ -1193,6 +1194,8 @@ export async function comfyJobInput(
     memorySafe?: boolean;
     /** The companion has a penis: climax tags describe ejaculation, not squirting. */
     hasPenis?: boolean;
+    /** The companion's gender: pronouns in the toy edit instruction. */
+    gender?: string | null;
     /** The chest toy's short tags, so the toy leads the prompt weighted and is drawn at all. */
     toyTags?: string | null;
     /** The owned toy kind, used to avoid applying dildo insertion tags to a wand or bullet. */
@@ -1401,7 +1404,7 @@ export async function comfyJobInput(
     opts.toyKind === "plug"
       ? "tapered bulb already inside, narrow neck centered in the opening, flared base fully outside"
       : opts.toyKind === "beads"
-        ? "smallest beads already inside, remaining graduated beads and pull ring outside"
+        ? "smallest beads already inside, remaining beads, each one bigger than the last, and pull ring outside"
         : "most of the insertable shaft already visibly inside the opening, only a short outer shaft section plus handle or base visible outside, body rim overlapping and hiding both sides of the shaft at one fixed entry point with no air gap, stable contact shadow and skin compression";
   const insertedHands =
     opts.toyKind === "plug"
@@ -1447,39 +1450,127 @@ export async function comfyJobInput(
       if (name) {
         template = withLora(template, name, Number(process.env.COMFY_LORA_INSERT_STRENGTH || "0.8"));
         // The LoRA's own trigger words (sdxl-dildo: "vaginal object insertion").
+        // A bare "dildo" at the head of the prompt beat the chest toy's look:
+        // the glass one rendered black, the realistic one chrome. The toy's
+        // own name leads instead.
+        const toyName = opts.toyTags?.split(/[,.]/)[0].replace(/^\s*photorealistic\s+/i, "").trim() || "dildo";
         insertTrigger = anal
-          ? process.env.COMFY_LORA_INSERT_TRIGGER_ASS || "dildo, anal object insertion"
-          : process.env.COMFY_LORA_INSERT_TRIGGER_PUSSY || "dildo, vaginal object insertion";
+          ? process.env.COMFY_LORA_INSERT_TRIGGER_ASS || `${toyName}, anal object insertion`
+          : process.env.COMFY_LORA_INSERT_TRIGGER_PUSSY || `${toyName}, vaginal object insertion`;
       }
     }
   }
   if (insertTrigger) finalPrompt = `${insertTrigger}, ${finalPrompt}`;
-  return comfyInput(
-    {
-      ...comfySettings(prompt, {
-        promptSetsComposition,
-        needsUndress,
-        template,
-        seedSalt,
-        mouthAct,
-        composed,
-        preserveScene: opts.preserveScene,
-        memorySafe: opts.memorySafe,
-        outputSize: opts.outputSize,
-      }),
-      prompt: finalPrompt,
-      negative,
-      poseImage: guide ? extraImages.find((i) => i.name === guide.file)?.name : undefined,
-      startImage:
-        template === FACEID_I2I_WORKFLOW ||
-        template === FACEID_LITE_I2I_WORKFLOW ||
-        template === FACEID_LITE_ROOM_INPAINT_WORKFLOW
-          ? "start.png"
-          : undefined,
-      roomMaskImage: opts.preserveScene ? "room-mask.png" : undefined,
-    },
-    { template, referenceBase64, extraImages },
-  );
+
+  // The chest toy's own product photo (toys.ts TOY_EDITS says what to do
+  // with it), the first owned toy that has one. COMFY_TOY_EDIT=direct makes
+  // the picture from her portrait and that photo with Qwen Image Edit
+  // (comfy.ts toyDirectWorkflow), except a toy inside her, which gets the
+  // edit pass; =on always edits the SDXL render (withToyEdit). Video opening
+  // stills come through here too, so the clip starts from the same toy.
+  const toyMode = opts.socialSafe ? "" : (process.env.COMFY_TOY_EDIT ?? "");
+  let direct: { instruction: string; base64: string } | null = null;
+  if (toyMode === "on" || toyMode === "direct") {
+    const { TOY_EDITS } = await import("./toys");
+    const ref = (opts.toyReferences ?? []).find((r) => TOY_EDITS[r.id]);
+    const spec = ref ? TOY_EDITS[ref.id] : null;
+    if (ref && spec) {
+      const { anatomyOf } = await import("./anatomy");
+      const { pronounize } = await import("./props");
+      const { withToyEdit, seedFor } = await import("./comfy");
+      const a = anatomyOf(opts.gender);
+      const inside = Boolean(spec.inserted) && propIsInserted(req);
+      // A toy inside her goes through the edit pass even in direct mode: made
+      // from two pictures, the glass and realistic dildos lay on top of her
+      // however the insertion was worded, while SDXL with the insertion LoRA
+      // gets the anatomy right and the edit then makes the toy the real one.
+      // The plug is the exception: only its jewel shows, and direct got it.
+      const useDirect = toyMode === "direct" && (!inside || Boolean(spec.insertedImageDirect));
+      const url = inside && spec.insertedImage ? spec.insertedImage : (spec.image ?? ref.url);
+      const base64 = url ? await readPortrait(url) : null;
+      if (base64) {
+        const use = a.hasPenis && spec.penis ? spec.penis : inside ? spec.inserted : spec.edit;
+        if (useDirect) {
+          // Without a pose the model picks one that hides the toy; with the
+          // one that shows it, the insertion is in frame. A pose the user
+          // named wins.
+          const posed = /\b(?:bent|bend\w*|all fours|doggy|lying|lie|lay\w*|on (?:her|his|your|my) back|sit\w*|squat\w*|kneel\w*|stand\w*|rid(?:e|ing)|shower|bath\w*|spread\w*)\b/i.test(req);
+          const pose = posed
+            ? ""
+            : inside
+              ? analToy
+                ? "She is on all fours on the bed, her ass toward the camera, looking back over her shoulder."
+                : "She lies on her back on the bed, knees up and legs spread wide, seen from between her legs."
+              : a.hasPenis && spec.penis
+                ? "She sits on the bed."
+                : "";
+          const noun = a.subject === "he" ? "man" : "woman";
+          const neck = ref.id === "collar" ? "" : "Her neck is bare.";
+          // The toy has one real size; "riding the big black dildo" got one as
+          // long as her thigh. The request is quoted for pose and place only.
+          const asked = req.replace(/\b(?:big|bigger|huge|giant|massive|large|enormous)\s+/gi, "");
+          direct = {
+            base64,
+            instruction: pronounize(
+              `A photo of the ${noun} from image 1: the same face, hair, body shape, skin and tattoos${needsUndress ? ", completely nude" : ""}. ${pose} ${use} ${neck} What was asked for: "${asked}". Amateur smartphone photo, natural light, professional digital photography, photorealistic.`,
+              a,
+            ).replace(/\s+/g, " "),
+          };
+        } else {
+          // Something on her neck came with nearly every insertion render, and
+          // the edit alone did not always take it off: SDXL is told too.
+          const neck = ref.id === "collar" ? "" : "Remove any choker, collar, necklace or band from her neck; her neck is bare.";
+          if (neck) negative = `${negative}, choker, collar, necklace, neck band, neck ribbon`;
+          const instruction = pronounize(
+            `Edit image 1. ${use} Remove any wrong, extra or deformed object that is not part of this toy, such as stray chains, pendants, hats or other toys. ${neck} Keep her face, hair, body, skin, tattoos, pose, lighting and background exactly the same. Professional digital photography, photorealistic.`,
+            a,
+          );
+          template = withToyEdit(template, { toyImageName: "toy-edit.png", instruction, seed: seedFor(`${finalPrompt}#${seedSalt ?? ""}#toy-edit`) });
+          extraImages.push({ name: "toy-edit.png", base64 });
+        }
+      }
+    }
+  }
+  const vars = {
+    ...comfySettings(prompt, {
+      promptSetsComposition,
+      needsUndress,
+      template,
+      seedSalt,
+      mouthAct,
+      composed,
+      preserveScene: opts.preserveScene,
+      memorySafe: opts.memorySafe,
+      outputSize: opts.outputSize,
+    }),
+    prompt: finalPrompt,
+    negative,
+    poseImage: guide ? extraImages.find((i) => i.name === guide.file)?.name : undefined,
+    startImage:
+      template === FACEID_I2I_WORKFLOW ||
+      template === FACEID_LITE_I2I_WORKFLOW ||
+      template === FACEID_LITE_ROOM_INPAINT_WORKFLOW
+        ? "start.png"
+        : undefined,
+    roomMaskImage: opts.preserveScene ? "room-mask.png" : undefined,
+  };
+  const input = comfyInput(vars, { template, referenceBase64, extraImages });
+  if (!direct) return input;
+  // The ordinary job rides along for the serverless worker, which has no Qwen.
+  const { toyDirectWorkflow, seedFor } = await import("./comfy");
+  const identity = (portraitUrl ? await readPortrait(portraitUrl) : null) ?? referenceBase64;
+  if (!identity) return input;
+  const directTemplate = toyDirectWorkflow({
+    toyImageName: "toy-edit.png",
+    instruction: direct.instruction,
+    seed: seedFor(`${finalPrompt}#${seedSalt ?? ""}#toy-direct`),
+    width: opts.outputSize?.width,
+    height: opts.outputSize?.height,
+  });
+  return {
+    ...comfyInput(vars, { template: directTemplate, referenceBase64: identity, extraImages: [{ name: "toy-edit.png", base64: direct.base64 }] }),
+    fallbackInput: input,
+  };
 }
 
 /**
@@ -2141,6 +2232,7 @@ export async function startVideoJob(
           `video-${job.id}`,
           {
             hasPenis: anatomyOf(companion.gender).hasPenis,
+            gender: companion.gender,
             // The opening still is the frame the video actually animates.
             // Keep the owned chest toy in this path too; otherwise the video
             // silently falls back to the checkpoint's generic prop.

@@ -20,8 +20,10 @@ LIST_URL="${HC_MODEL_LIST_URL:-https://bhjnfsqbocyfczpbxtrz.supabase.co/storage/
 STATUS_DIR="${HC_STATUS_DIR:-/comfyui/input}"
 INTERVAL="${HC_MODEL_SYNC_INTERVAL:-180}"
 [ -d "$VOL" ] || { echo "[sync] no volume at $VOL"; exit 0; }
+echo "[sync] started; list $LIST_URL; status in $STATUS_DIR"
+mkdir -p "$STATUS_DIR" 2>/dev/null || true
 
-log() { echo "$(date -u +%H:%M:%S) $*" >> /tmp/model-sync.log; }
+log() { local line="$(date -u +%H:%M:%S) $*"; echo "[sync] $line"; echo "$line" >> /tmp/model-sync.log; }
 
 valid() {
   case "$1" in checkpoints|unet|clip|vae|loras|controlnet) ;; *) return 1 ;; esac
@@ -55,7 +57,7 @@ status() {
       | awk '{ printf "%7.1fGB %s\n", $1/1e9, $2 }' | sort -k2
     echo "--- log"
     tail -20 /tmp/model-sync.log 2>/dev/null
-  } > "$STATUS_DIR/hc-sync-status.txt.tmp" && mv "$STATUS_DIR/hc-sync-status.txt.tmp" "$STATUS_DIR/hc-sync-status.txt"
+  } > "$STATUS_DIR/hc-sync-status.txt.tmp" && mv "$STATUS_DIR/hc-sync-status.txt.tmp" "$STATUS_DIR/hc-sync-status.txt" \n    || echo "[sync] ! could not write status to $STATUS_DIR"
 }
 
 # Status every minute on its own, so a long download still shows progress.

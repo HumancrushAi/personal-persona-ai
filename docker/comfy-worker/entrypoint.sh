@@ -15,7 +15,8 @@ bash /hc-link-models.sh || echo "[entrypoint] linking FaceID models reported a p
 # (model-sync.sh), on the always-on pod only (SERVE_API_LOCALLY=true):
 # serverless workers share the volume and would be killed mid-download.
 if [ "${SERVE_API_LOCALLY:-}" = "true" ] || [ "${HC_MODEL_SYNC:-}" = "on" ]; then
-  nohup bash /hc-model-sync.sh > /tmp/model-sync.out 2>&1 &
+  # No redirect: its lines go to the container log (RunPod Logs tab).
+  nohup bash /hc-model-sync.sh 2>&1 &
 fi
 
 # The base image has changed the name of this over releases, so try the known

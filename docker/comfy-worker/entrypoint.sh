@@ -11,6 +11,13 @@ bash /provision-models.sh || echo "[entrypoint] provisioning reported a problem;
 
 bash /hc-link-models.sh || echo "[entrypoint] linking FaceID models reported a problem; starting anyway"
 
+# The 31GB toy-edit model downloads in the background, on the always-on pod
+# only (SERVE_API_LOCALLY=true): serverless workers share the volume and would
+# be killed mid-download, so they leave it to the pod.
+if [ "${SERVE_API_LOCALLY:-}" = "true" ] || [ "${HC_PROVISION_TOY_EDIT:-}" = "on" ]; then
+  nohup bash /provision-toy-edit.sh > /tmp/provision-toy-edit.log 2>&1 &
+fi
+
 # The base image has changed the name of this over releases, so try the known
 # ones in order rather than pinning one and breaking on the next bump.
 for candidate in /start.sh /entrypoint.sh /usr/local/bin/start.sh; do

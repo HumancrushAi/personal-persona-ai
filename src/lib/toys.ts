@@ -343,20 +343,38 @@ export type ToyEdit = {
   /** Replaces the catalogue photo for the edit, e.g. one without a shop's logo. */
   image?: string;
   penis?: string;
+  /**
+   * Inside her: Pony tags for the act (comfy.ts toyPonyWorkflow), and the
+   * Qwen sentence that makes Pony's toy this product, when it needs one.
+   */
+  pony?: { tags: string; anal?: boolean; material?: string };
 };
 
 export const TOY_EDITS: Record<string, ToyEdit> = {
   "dildo-realistic": {
+    pony: {
+      tags: "lying on back, spread legs, knees up, from below, (vaginal object insertion:1.3), (dildo inside pussy:1.2), penetration, holding the base of the dildo with her own hand, labia stretched around the dildo, realistic dildo, flesh-colored dildo, dildo with testicles, suction cup base outside",
+      material: "The dildo inserted in her vagina becomes exactly the realistic flesh-coloured dildo from image 2: smooth light flesh-coloured silicone with subtle veins, its two testicles and suction-cup base just outside her body. Same position, same angle, still inside her.",
+    },
     edit: "The dildo is exactly the realistic flesh-coloured dildo from image 2, with its veined shaft, rounded head, two testicles and suction-cup base, real life size: as long as her hand, two fingers thick.",
     inserted: "The object inside her is a realistic flesh-coloured dildo, deep inside her: its whole shaft and head are inside her and hidden. Sticking out of her is only the base end shown in image 2, at real toy size: two small round flesh-coloured testicles side by side, each the size of a walnut and together no wider than her palm, and a flat round suction cup under them. Her skin is stretched around the shaft where it enters.",
     insertedImage: `${EDIT_IMG}/dildo-realistic-base.png`,
   },
   "dildo-black": {
+    // "black dildo" alone brought a man into the frame (Pony's data pairs them).
+    pony: {
+      tags: "lying on back, spread legs, knees up, from below, (vaginal object insertion:1.3), (dildo inside pussy:1.2), penetration, holding the base of the dildo with her own hand, labia stretched around the dildo, black silicone dildo, glossy black veined sex toy",
+      material: "The dildo inserted in her vagina becomes exactly the glossy black dildo from image 2: smooth glossy black silicone with soft veins and a rounded head, no studs, spikes or bumps. Same position, same angle, still inside her.",
+    },
     image: `${EDIT_IMG}/dildo-black-clean.png`,
     edit: "The dildo is exactly the glossy black veined dildo from image 2, the same shape and texture, at real toy size: about as long as her forearm and as thick as her wrist, never bigger. It is the only black object in the picture: no gloves, sleeves or straps.",
     inserted: "The object inside her is exactly the glossy black veined dildo from image 2: most of its shaft is inside her, her skin stretched around it where it enters, and the base end sticks out.",
   },
   "dildo-glass": {
+    pony: {
+      tags: "lying on back, spread legs, knees up, from below, (vaginal object insertion:1.3), (dildo inside pussy:1.2), penetration, holding the base of the dildo with her own hand, labia stretched around the dildo, glass dildo, clear transparent glass dildo, ridged glass shaft, rounded glass handle outside",
+      material: "Change only the material of the dildo inserted in her vagina: it becomes clear transparent glass exactly like the glass dildo in image 2, with smooth rounded glass ridges and a round clear glass handle end outside her. Same position, same angle, still inside her.",
+    },
     edit: "The dildo is exactly the clear glass dildo from image 2, with its ridged shaft and rounded handle end, real size, two fingers thick.",
     inserted: "The object inside her is exactly the clear glass dildo from image 2: the ridged glass shaft is mostly inside her, her skin stretched around the clear glass, and the rounded glass handle end sticks out. Real size, two fingers thick. Only glass: no metal, no rod, no machine.",
   },
@@ -371,6 +389,13 @@ export const TOY_EDITS: Record<string, ToyEdit> = {
     edit: "The vibrator is exactly the small pink bullet vibrator from image 2, pressed on her clit between her legs by her fingers, with its pink remote in her other hand, joined by the thin pink cord.",
   },
   "plug-jewel": {
+    // Owner's reference photos: a coin-sized jewel flush in the anus, the
+    // vulva separate below it, matte skin. Pony draws exactly that.
+    pony: {
+      anal: true,
+      tags: "all fours, from behind, ass focus, close-up, looking back, (jeweled butt plug:1.3), (butt plug in anus:1.2), small light pink gem butt plug, silver rim, anal object insertion, anus, pussy",
+      material: "The jewel of the butt plug in her anus becomes exactly the light pink faceted crystal in a polished silver rim from image 2, the same small coin size, flush in her anus. Same position, same angle.",
+    },
     edit: "The butt plug is exactly the polished steel plug with the pink jewel base from image 2, real size, small enough to hold in her palm.",
     inserted: "A jewelled butt plug is fully inserted in her anus. The only visible part is exactly the base in image 2: a polished silver round rim holding a large faceted pink jewel, about the size of a coin, sitting flush in the centre of her anus between her buttocks, the jewel facing the camera. No metal bulb is visible anywhere; it is inside her.",
     insertedImage: `${EDIT_IMG}/plug-jewel-base.png`,

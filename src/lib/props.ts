@@ -223,8 +223,12 @@ const INSERT_TARGET_RE =
 const SELF_INSERTED_RE =
   /\bfuck\w*\s+(?:yourself|herself|himself|themselves)\s+(?:using|with)\s+(?:an?\s+|the\s+|your\s+)?(?:[\w-]+\s+){0,3}(?:dildo|vibrator|toy\s+(?:cock|dick)|strap[- ]on)\b/i;
 
+// Riding a dildo is always having it inside: "riding the big black dildo"
+// names no opening, and went out as a toy held beside her.
+const RIDE_TOY_RE = /\brid(?:e|es|ing)\s+(?:on\s+)?(?:the\s+|a\s+|an\s+|your\s+|my\s+|her\s+)?(?:[\w-]+\s+){0,3}(?:dildo|cock|dick|strap[- ]on|toy)\b/i;
+
 function insertedRequest(text: string): boolean {
-  return (INSERT_ACTION_RE.test(text) && INSERT_TARGET_RE.test(text)) || SELF_INSERTED_RE.test(text);
+  return (INSERT_ACTION_RE.test(text) && INSERT_TARGET_RE.test(text)) || SELF_INSERTED_RE.test(text) || RIDE_TOY_RE.test(text);
 }
 
 function propFor(req: string): Prop | null {

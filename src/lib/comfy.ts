@@ -808,6 +808,76 @@ export function toyDirectWorkflow(opts: {
 }
 
 /**
+ * A chest toy inside her, made the way a real photo of it looks. Qwen alone
+ * could not put a toy in a body: it reversed it, laid it on top or added a
+ * third hand. CyberRealistic Pony was trained on exactly these pictures, tagged
+ * by act, so it draws the insertion right (a small jewel flush in the anus,
+ * the glass dildo tip-first) — but with its own woman. Each Qwen pass after it
+ * then changes one thing toward her and the product: the toy's material
+ * (from its photo), stray objects out, her tattoos and her face (from her
+ * portrait). The face swap from the portrait runs last. Pod, 2026-10-27.
+ */
+export const PONY_CHECKPOINT = process.env.COMFY_PONY_CKPT || "CyberRealisticPony_V18.0_F16.safetensors";
+
+export function toyPonyWorkflow(opts: {
+  positive: string;
+  negative: string;
+  seed: number;
+  width?: number;
+  height?: number;
+  /** Qwen edits in order; image2 is the named upload ("{{REFERENCE_IMAGE}}" for her portrait). */
+  edits: { instruction: string; imageName: string }[];
+}): string {
+  const g: Record<string, any> = {
+    "10": { class_type: "LoadImage", inputs: { image: "{{REFERENCE_IMAGE}}", upload: "image" } },
+    "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: PONY_CHECKPOINT } },
+    "2": { class_type: "CLIPSetLastLayer", inputs: { clip: ["1", 1], stop_at_clip_layer: -2 } },
+    "3": { class_type: "CLIPTextEncode", inputs: { clip: ["2", 0], text: opts.positive } },
+    "4": { class_type: "CLIPTextEncode", inputs: { clip: ["2", 0], text: opts.negative } },
+    "5": { class_type: "EmptyLatentImage", inputs: { width: opts.width ?? 832, height: opts.height ?? 1216, batch_size: 1 } },
+    "6": {
+      class_type: "KSampler",
+      inputs: {
+        model: ["1", 0], seed: opts.seed, steps: 30, cfg: 5, sampler_name: "dpmpp_2m_sde", scheduler: "karras",
+        positive: ["3", 0], negative: ["4", 0], latent_image: ["5", 0], denoise: 1,
+      },
+    },
+    "7": { class_type: "VAEDecode", inputs: { samples: ["6", 0], vae: ["1", 2] } },
+    "70": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: TOY_EDIT_CHECKPOINT } },
+  };
+  let image: [string, number] = ["7", 0];
+  const loaded: Record<string, string> = { "{{REFERENCE_IMAGE}}": "10" };
+  opts.edits.forEach((edit, i) => {
+    const base = 100 + i * 10;
+    let ref = loaded[edit.imageName];
+    if (!ref) {
+      ref = String(base);
+      g[ref] = { class_type: "LoadImage", inputs: { image: edit.imageName, upload: "image" } };
+      loaded[edit.imageName] = ref;
+    }
+    const enc = (prompt: string) => ({
+      class_type: "TextEncodeQwenImageEditPlus",
+      inputs: { clip: ["70", 1], prompt, vae: ["70", 2], image1: image, image2: [ref, 0] },
+    });
+    g[String(base + 1)] = enc(edit.instruction);
+    g[String(base + 2)] = enc("");
+    g[String(base + 3)] = { class_type: "VAEEncode", inputs: { pixels: image, vae: ["70", 2] } };
+    g[String(base + 4)] = {
+      class_type: "KSampler",
+      inputs: {
+        model: ["70", 0], seed: opts.seed + i + 1, steps: 4, cfg: 1, sampler_name: "er_sde", scheduler: "beta",
+        positive: [String(base + 1), 0], negative: [String(base + 2), 0], latent_image: [String(base + 3), 0], denoise: 1,
+      },
+    };
+    g[String(base + 5)] = { class_type: "VAEDecode", inputs: { samples: [String(base + 4), 0], vae: ["70", 2] } };
+    image = [String(base + 5), 0];
+  });
+  g["30"] = { class_type: "HCFaceSwap", inputs: { image, source: ["10", 0] } };
+  g["9"] = { class_type: "SaveImage", inputs: { images: ["30", 0], filename_prefix: "hc-toy-in" } };
+  return JSON.stringify(g);
+}
+
+/**
  * The job without the edit pass, for the serverless fallback: its worker image
  * has neither the Qwen nodes nor the checkpoint, and an unrunnable graph is a
  * failed, refunded picture where the SDXL render alone is still a picture.

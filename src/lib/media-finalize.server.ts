@@ -932,7 +932,8 @@ async function resubmitImageJob(
       toyKind: ctx.toy?.kind ?? null,
       // A retake gets the toy-edit pass too.
       toyReferences: ctx.toy?.image ? [{ id: ctx.toy.id, url: ctx.toy.image }] : [],
-      lookTags: (await import("./media.functions")).inkTags(await (await import("./look.server")).companionLook(ctx.companion.image_url)),
+      // The complete look, as the first render had (hair, skin, eyes, build).
+      lookTags: await (await import("./look.server")).companionLook(ctx.companion.image_url),
       // The same composed frame the first render started from, when it had one;
       // otherwise her portrait, as the first render did.
       startFrame: await (await import("./compose.server")).storedStartFrame(ctx.row.id),

@@ -1470,6 +1470,7 @@ export async function comfyJobInput(
   // stills come through here too, so the clip starts from the same toy.
   const toyMode = opts.socialSafe ? "" : (process.env.COMFY_TOY_EDIT ?? "");
   let direct: { instruction: string; base64: string } | null = null;
+  let pony: { positive: string; negative: string; edits: { instruction: string; imageName: string }[]; toyBase64: string } | null = null;
   if (toyMode === "on" || toyMode === "direct") {
     const { TOY_EDITS } = await import("./toys");
     const ref = (opts.toyReferences ?? []).find((r) => TOY_EDITS[r.id]);
@@ -1485,10 +1486,48 @@ export async function comfyJobInput(
       // however the insertion was worded, while SDXL with the insertion LoRA
       // gets the anatomy right and the edit then makes the toy the real one.
       // The plug is the exception: only its jewel shows, and direct got it.
-      const useDirect = toyMode === "direct" && (!inside || Boolean(spec.insertedImageDirect));
-      const url = inside && spec.insertedImage ? spec.insertedImage : (spec.image ?? ref.url);
+      const ponyAct = toyMode === "direct" && inside && a.hasVulva && spec.pony && Boolean(spec.pony.anal) === analToy ? spec.pony : null;
+      const useDirect = toyMode === "direct" && !ponyAct && (!inside || Boolean(spec.insertedImageDirect));
+      const url = ponyAct ? (spec.image ?? ref.url) : inside && spec.insertedImage ? spec.insertedImage : (spec.image ?? ref.url);
       const base64 = url ? await readPortrait(url) : null;
-      if (base64) {
+      if (base64 && ponyAct) {
+        // A toy inside her, the way real photos of it look (comfy.ts
+        // toyPonyWorkflow): Pony draws the act, then one Qwen pass each for
+        // the product, stray objects, her tattoos and her face.
+        const look = opts.lookTags ? unsleeve(opts.lookTags) : "";
+        // Her look said once among Pony's tags lost to its defaults: red hair,
+        // a busty oiled body, tattoos over her whole back. Her hair is
+        // weighted, her build kept to what it is, and her ink is listed by
+        // place so every other place is told to stay bare.
+        const lookParts = look.split(/\s*,\s*/).filter(Boolean);
+        const hair = lookParts.filter((p) => /\bhair\b/i.test(p)).join(", ");
+        const inked = lookParts.filter((p) => /tattoo/i.test(p));
+        const bigBust = /\b(?:large|big|full|heavy|huge|voluptuous)\s+(?:bust|breasts?|chest)\b|\bcurvy\b/i.test(look);
+        const same =
+          "Her skin is natural and matte, with real pores, never oiled, glossy or shiny. Change nothing else: same pose, same hands, same body shape and breast size, same toy and insertion, same bed, same camera angle and lighting. Photorealistic.";
+        pony = {
+          toyBase64: base64,
+          positive: `score_9, score_8_up, score_7_up, photo, photorealistic, raw photo, amateur smartphone photo, natural light, natural matte skin texture, 1girl, solo, adult woman, ${hair ? `(${hair}:1.3), ` : ""}${look}, natural breasts, completely nude, alone in her bedroom, plain white sheets, ${ponyAct.tags}`,
+          negative: `score_6, score_5, score_4, anime, cartoon, 3d, render, drawing, oiled, shiny skin, glossy skin, airbrushed, deep tan, ${bigBust ? "" : "large breasts, huge breasts, busty, implants, "}${inked.length ? "full body tattoo, back tattoo, stomach tattoo, colorful tattoos, " : "tattoo, tattoos, "}teenager, 1boy, man, male, penis, second person, male legs, extra hands, extra arms, third hand, extra fingers, deformed, mutated, bad anatomy, duplicate, two toys, phone, smartphone, text, watermark, logo`,
+          edits: [
+            ...(ponyAct.material ? [{ instruction: `Edit image 1. ${ponyAct.material} ${same}`, imageName: "toy-edit.png" }] : []),
+            {
+              instruction: `Edit image 1. Remove every phone, extra sex toy, statue, bottle or object lying on the bed or standing on the bedside tables, and remove any other person or body part that is not hers; fill those areas with plain bed sheets or empty furniture. Keep the one toy that is in her exactly as it is. ${same}`,
+              imageName: "{{REFERENCE_IMAGE}}",
+            },
+            {
+              instruction: inked.length
+                ? `Edit image 1. Her only tattoos are: ${inked.join("; ")} (the neck tattoo included, on the front of her throat), looking exactly like those in image 2, in the same ink colours (black-and-grey stays black and grey, with no red, pink or green). Remove every other tattoo: her back, buttocks, chest, breasts and stomach are bare clean skin unless listed. ${same}`
+                : `Edit image 1. She has no tattoos at all: remove every tattoo so all her skin is bare and clean, like the woman in image 2. ${same}`,
+              imageName: "{{REFERENCE_IMAGE}}",
+            },
+            {
+              instruction: `Edit image 1. Give the woman in image 1 exactly the face, hair and skin tone of the woman in image 2: the shape of her face, eyebrows, eyes, nose and lips, her age, and her hair${hair ? ` (${hair})` : ""} in its exact colour and length. Her skin is natural and matte, not oiled or shiny. Keep her head angle and expression. ${same}`,
+              imageName: "{{REFERENCE_IMAGE}}",
+            },
+          ],
+        };
+      } else if (base64) {
         const use = a.hasPenis && spec.penis ? spec.penis : inside ? spec.inserted : spec.edit;
         if (useDirect) {
           // Without a pose the model picks one that hides the toy; with the
@@ -1555,11 +1594,26 @@ export async function comfyJobInput(
     roomMaskImage: opts.preserveScene ? "room-mask.png" : undefined,
   };
   const input = comfyInput(vars, { template, referenceBase64, extraImages });
-  if (!direct) return input;
+  if (!direct && !pony) return input;
   // The ordinary job rides along for the serverless worker, which has no Qwen.
-  const { toyDirectWorkflow, seedFor } = await import("./comfy");
+  const { toyDirectWorkflow, toyPonyWorkflow, seedFor } = await import("./comfy");
   const identity = (portraitUrl ? await readPortrait(portraitUrl) : null) ?? referenceBase64;
   if (!identity) return input;
+  if (pony) {
+    const ponyTemplate = toyPonyWorkflow({
+      positive: pony.positive,
+      negative: pony.negative,
+      edits: pony.edits,
+      seed: seedFor(`${finalPrompt}#${seedSalt ?? ""}#toy-pony`),
+      width: opts.outputSize?.width,
+      height: opts.outputSize?.height,
+    });
+    return {
+      ...comfyInput(vars, { template: ponyTemplate, referenceBase64: identity, extraImages: [{ name: "toy-edit.png", base64: pony.toyBase64 }] }),
+      fallbackInput: input,
+    };
+  }
+  if (!direct) return input;
   const directTemplate = toyDirectWorkflow({
     toyImageName: "toy-edit.png",
     instruction: direct.instruction,
